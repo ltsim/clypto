@@ -6,10 +6,11 @@
 
 import random
 import time
-from typing import List, Union, Tuple, Dict
+import typing
 
+import math
 import numpy as np
-from math import gamma
+import numpy.typing as npt
 
 from mealprint.utils.agent import Agent
 from mealprint.utils.history import History
@@ -35,9 +36,9 @@ class Optimizer:
         + objective_list = [obj_1, obj_2, ..., obj_M]
     """
 
-    EPSILON = 10E-10
-    AVAILABLE_MODES = []
-    SUPPORTED_ARRAYS = [list, tuple, np.ndarray]
+    EPSILON: typing.Final[float] = 10E-10
+    AVAILABLE_MODES: typing.Final[list[str]] = []
+    SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
         self.epoch, self.pop_size = None, None
@@ -49,7 +50,9 @@ class Optimizer:
 
         self.validator = Validator(log_to="console", log_file=None)
 
-        if self.name is None: self.name = self.__class__.__name__
+        if self.name is None:
+            self.name = self.__class__.__name__
+
         self.sort_flag = False
         self.nfe_counter = 1  # The first one is tested in Problem class
         self.parameters, self.params_name_ordered = {}, None
@@ -60,7 +63,7 @@ class Optimizer:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def set_parameters(self, parameters: Union[List, Tuple, Dict]) -> None:
+    def set_parameters(self, parameters: typing.Union[typing.List, typing.Tuple, typing.Dict]) -> None:
         """
         Set the parameters for current optimizer.
 
@@ -87,13 +90,13 @@ class Optimizer:
                 raise ValueError(f"Invalid input parameters: {new_para_names} for {self.get_name()} optimizer. "
                                  f"Valid parameters are: {valid_para_names}.")
 
-    def get_parameters(self) -> Dict:
+    def get_parameters(self) -> typing.Dict:
         """
         Get parameters of optimizer.
         """
         return self.parameters
 
-    def get_attributes(self) -> Dict:
+    def get_attributes(self) -> typing.Dict:
         """
         Get all attributes in optimizer.
         """
@@ -115,7 +118,8 @@ class Optimizer:
     def initialize_variables(self):
         pass
 
-    def before_initialization(self, starting_solutions: Union[List, Tuple, np.ndarray] = None) -> None:
+    def before_initialization(self,
+                              starting_solutions: typing.Union[typing.List, typing.Tuple, np.ndarray] = None) -> None:
         """
         Args:
             starting_solutions: The starting solutions (not recommended)
@@ -190,8 +194,9 @@ class Optimizer:
                     self.logger.warning(self.termination.message)
             return finished
 
-    def solve(self, problem: Union[Dict, Problem] = None, mode: str = 'single', n_workers: int = None,
-              termination: Union[Dict, Termination] = None, starting_solutions: Union[List, np.ndarray, Tuple] = None,
+    def solve(self, problem: typing.Optional[dict | Problem] = None, mode: str = 'single', n_workers: int = None,
+              termination: typing.Optional[dict | Termination] = None,
+              starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
               seed: int = None) -> Agent:
         """
         Args:
@@ -241,7 +246,7 @@ class Optimizer:
         self.track_optimize_process()
         return self.g_best
 
-    def track_optimize_step(self, pop: List[Agent] = None, epoch: int = None, runtime: float = None) -> None:
+    def track_optimize_step(self, pop: list[Agent] = None, epoch: int = None, runtime: float = None) -> None:
         """
         Save some historical data and print out the detailed information of training process in each epoch
 
@@ -300,7 +305,7 @@ class Optimizer:
         agent.target = self.get_target(agent.solution)
         return agent
 
-    def generate_population(self, pop_size: int = None) -> List[Agent]:
+    def generate_population(self, pop_size: int = None) -> list[Agent]:
         """
         Args:
             pop_size (int): number of solutions
@@ -340,7 +345,7 @@ class Optimizer:
         solution = self.amend_solution(solution)
         return self.problem.correct_solution(solution)
 
-    def update_target_for_population(self, pop: List[Agent] = None) -> List[Agent]:
+    def update_target_for_population(self, pop: list[Agent] = None) -> list[Agent]:
         """
         Update target for the input population
 
@@ -385,18 +390,18 @@ class Optimizer:
             return False if target_x.fitness < target_y.fitness else True
 
     @staticmethod
-    def compare_fitness(fitness_x: Union[float, int], fitness_y: Union[float, int], minmax: str = "min") -> bool:
+    def compare_fitness(fitness_x: float | int, fitness_y: float | int, minmax: str = "min") -> bool:
         if minmax == "min":
             return True if fitness_x < fitness_y else False
         else:
             return False if fitness_x < fitness_y else True
 
     @staticmethod
-    def duplicate_pop(pop: List[Agent]) -> List[Agent]:
+    def duplicate_pop(pop: list[Agent]) -> list[Agent]:
         return [agent.copy() for agent in pop]
 
     @staticmethod
-    def get_sorted_population(pop: List[Agent], minmax: str = "min", return_index: bool = False) -> List[Agent]:
+    def get_sorted_population(pop: list[Agent], minmax: str = "min", return_index: bool = False) -> list[Agent]:
         """
         Get sorted population based on type (minmax) of problem
 
@@ -421,7 +426,7 @@ class Optimizer:
             return pop_new
 
     @staticmethod
-    def get_best_agent(pop: List[Agent], minmax: str = "min") -> Agent:
+    def get_best_agent(pop: list[Agent], minmax: str = "min") -> Agent:
         """
         Args:
             pop: The population of agents
@@ -434,7 +439,7 @@ class Optimizer:
         return pop[0].copy()
 
     @staticmethod
-    def get_index_best(pop: List[Agent], minmax: str = "min") -> int:
+    def get_index_best(pop: list[Agent], minmax: str = "min") -> int:
         fit_list = np.array([agent.target.fitness for agent in pop])
         if minmax == "min":
             return np.argmin(fit_list)
@@ -442,7 +447,7 @@ class Optimizer:
             return np.argmax(fit_list)
 
     @staticmethod
-    def get_worst_agent(pop: List[Agent], minmax: str = "min") -> Agent:
+    def get_worst_agent(pop: list[Agent], minmax: str = "min") -> Agent:
         """
         Args:
             pop: The population of agents
@@ -455,9 +460,9 @@ class Optimizer:
         return pop[-1].copy()
 
     @staticmethod
-    def get_special_agents(pop: List[Agent] = None, n_best: int = 3, n_worst: int = 3,
-                           minmax: str = "min") -> Tuple[
-        List[Agent], Union[List[Agent], None], Union[List[Agent], None]]:
+    def get_special_agents(pop: list[Agent] = None, n_best: int = 3, n_worst: int = 3,
+                           minmax: str = "min") -> tuple[
+        list[Agent], list[Agent] | None, list[Agent] | None]:
         """
         Get special agents include sorted population, n1 best agents, n2 worst agents
 
@@ -483,8 +488,8 @@ class Optimizer:
                 return pop, [agent.copy() for agent in pop[:n_best]], [agent.copy() for agent in pop[::-1][:n_worst]]
 
     @staticmethod
-    def get_special_fitness(pop: List[Agent] = None, minmax: str = "min") -> Tuple[
-        Union[float, np.ndarray], float, float]:
+    def get_special_fitness(pop: list[Agent] = None, minmax: str = "min") -> tuple[
+        float | np.ndarray, float, float]:
         """
         Get special target include the total fitness, the best fitness, and the worst fitness
 
@@ -522,8 +527,9 @@ class Optimizer:
 
     ### Survivor Selection
     @staticmethod
-    def greedy_selection_population(pop_old: List[Agent] = None, pop_new: List[Agent] = None, minmax: str = "min") -> \
-            List[Agent]:
+    def greedy_selection_population(pop_old: list[Agent] | None = None, pop_new: list[Agent] | None = None,
+                                    minmax: str = "min") -> \
+            list[Agent]:
         """
         Args:
             pop_old: The current population
@@ -544,8 +550,8 @@ class Optimizer:
                     in range(len_old)]
 
     @staticmethod
-    def get_sorted_and_trimmed_population(pop: List[Agent] = None, pop_size: int = None, minmax: str = "min") -> List[
-        Agent]:
+    def get_sorted_and_trimmed_population(pop: list[Agent] | None = None, pop_size: int | None = None,
+                                          minmax: str = "min") -> list[Agent]:
         """
         Args:
             pop: The population
@@ -558,7 +564,7 @@ class Optimizer:
         pop = Optimizer.get_sorted_population(pop, minmax)
         return pop[:pop_size]
 
-    def update_global_best_agent(self, pop: List[Agent], save: bool = True) -> Union[List, Tuple]:
+    def update_global_best_agent(self, pop: list[Agent], save: bool = True) -> list | tuple:
         """
         Update global best and current best solutions in history object.
         Also update global worst and current worst solutions in history object.
@@ -621,8 +627,8 @@ class Optimizer:
         prob = final_fitness / np.sum(final_fitness)
         return int(self.generator.choice(range(0, len(list_fitness)), p=prob))
 
-    def get_index_kway_tournament_selection(self, pop: List = None, k_way: float = 0.2, output: int = 2,
-                                            reverse: bool = False) -> List:
+    def get_index_kway_tournament_selection(self, pop: list = None, k_way: float = 0.2, output: int = 2,
+                                            reverse: bool = False) -> list:
         """
         Args:
             pop: The population
@@ -646,8 +652,7 @@ class Optimizer:
         return [parent[0] for parent in list_parents[:output]]
 
     def get_levy_flight_step(self, beta: float = 1.0, multiplier: float = 0.001,
-                             size: Union[List, Tuple, np.ndarray] = None, case: int = 0) -> Union[
-        float, List, np.ndarray]:
+                             size: list | tuple | np.ndarray | None = None, case: int = 0) -> float | list | np.ndarray:
         """
         Get the Levy-flight step size
 
@@ -670,8 +675,8 @@ class Optimizer:
         """
         # u and v are two random variables which follow self.generator.normal distribution
         # sigma_u : standard deviation of u
-        sigma_u = np.power(gamma(1. + beta) * np.sin(np.pi * beta / 2) / (
-                gamma((1 + beta) / 2.) * beta * np.power(2., (beta - 1) / 2)), 1. / beta)
+        sigma_u = np.power(math.gamma(1. + beta) * np.sin(np.pi * beta / 2) / (
+                math.gamma((1 + beta) / 2.) * beta * np.power(2., (beta - 1) / 2)), 1. / beta)
         # sigma_v : standard deviation of v
         sigma_v = 1
         size = 1 if size is None else size
@@ -686,7 +691,7 @@ class Optimizer:
             step = multiplier * s
         return step[0] if size == 1 else step
 
-    def generate_opposition_solution(self, agent: Agent = None, g_best: Agent = None) -> np.ndarray:
+    def generate_opposition_solution(self, agent: Agent | None = None, g_best: Agent | None = None) -> np.ndarray:
         """
         Args:
             agent: The current agent
@@ -699,7 +704,7 @@ class Optimizer:
                 g_best.solution - agent.solution)
         return self.correct_solution(pos_new)
 
-    def generate_group_population(self, pop: List[Agent], n_groups: int, m_agents: int) -> List:
+    def generate_group_population(self, pop: list[Agent], n_groups: int, m_agents: int) -> list:
         """
         Generate a list of group population from pop
 
