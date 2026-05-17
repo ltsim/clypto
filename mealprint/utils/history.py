@@ -8,7 +8,6 @@ import numpy as np
 
 from mealprint.utils import visualize
 from mealprint.utils.agent import Agent
-from mealprint.utils.logger import Logger
 
 
 class History:
@@ -87,8 +86,6 @@ class History:
         self.list_current_worst = []  # List of current worst solution in each previous generations
         self.epoch, self.log_to, self.log_file = None, None, None
         self.__set_keyword_arguments(kwargs)
-        self.logger = Logger(self.log_to, log_file=self.log_file).create_logger(name=f"{__name__}.{__class__.__name__}",
-                                                                                format_str='%(asctime)s, %(levelname)s, %(name)s [line: %(lineno)d]: %(message)s')
 
     def __set_keyword_arguments(self, kwargs):
         for key, value in kwargs.items():

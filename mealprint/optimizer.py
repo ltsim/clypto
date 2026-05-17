@@ -14,7 +14,6 @@ import numpy.typing as npt
 
 from mealprint.utils.agent import Agent
 from mealprint.utils.history import History
-from mealprint.utils.logger import Logger
 from mealprint.utils.problem import Problem
 from mealprint.utils.target import Target
 from mealprint.utils.termination import Termination
@@ -53,7 +52,6 @@ class Optimizer:
         self.g_best = Agent()
         self.g_worst = None
         self.problem = None
-        self.logger = None
         self.history = None
 
         if self.name is None:
@@ -176,9 +174,7 @@ class Optimizer:
             raise ValueError("problem needs to be a dict or an instance of Problem class.")
         self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
-        self.logger = Logger(self.problem.log_to, log_file=self.problem.log_file).create_logger(
-            name=f"{self.__module__}.{self.__class__.__name__}")
-        self.logger.info(self)
+
         self.history = History(log_to=self.problem.log_to, log_file=self.problem.log_file)
         self.pop, self.g_best, self.g_worst = None, None, None
 
@@ -200,8 +196,8 @@ class Optimizer:
             if self.termination is not None:
                 es = self.history.get_global_repeated_times(self.termination.epsilon)
                 finished = self.termination.should_terminate(epoch, self.nfe_counter, time.perf_counter(), es)
-                if finished:
-                    self.logger.warning(self.termination.message)
+
+
             return finished
 
     def solve(self, problem: typing.Optional[dict | Problem] = None, mode: str = 'single', n_workers: int = None,
@@ -275,10 +271,6 @@ class Optimizer:
         pos_matrix = np.array([agent.solution for agent in pop])
         div = np.mean(np.abs(np.median(pos_matrix, axis=0) - pos_matrix), axis=0)
         self.history.list_diversity.append(np.mean(div, axis=0))
-        ## Print epoch
-        self.logger.info(
-            f">>>Problem: {self.problem.name}, Epoch: {epoch}, Current best: {self.history.list_current_best[-1].target.fitness}, "
-            f"Global best: {self.history.list_global_best[-1].target.fitness}, Runtime: {runtime:.5f} seconds")
 
     def track_optimize_process(self) -> None:
         """

@@ -9,7 +9,6 @@ from typing import Union, List, Tuple, Dict
 
 import numpy as np
 
-from mealprint.utils.logger import Logger
 from mealprint.utils.space import (BaseVar, IntegerVar, FloatVar, StringVar, BinaryVar, BoolVar,
                                    PermutationVar, CategoricalVar, SequenceVar, TransferBinaryVar, TransferBoolVar)
 from mealprint.utils.target import Target
@@ -29,8 +28,6 @@ class Problem:
         self.name, self.log_to, self.log_file = "P", "console", "history.txt"
         self.__set_keyword_arguments(kwargs)
         self.set_bounds(bounds)
-        self.logger = Logger(self.log_to, log_file=self.log_file).create_logger(name=f"{__name__}.{__class__.__name__}",
-                                                                                format_str='%(asctime)s, %(levelname)s, %(name)s [line: %(lineno)d]: %(message)s')
 
     @property
     def bounds(self):
@@ -49,10 +46,7 @@ class Problem:
                 raise ValueError("`obj_func` must return a number, list, tuple or numpy array.")
             if self.obj_weights is None:
                 if self._n_objs > 1:
-                    self.logger.warning(
-                        f"[Warning] Multi-objective problem detected (n_objs={self._n_objs}), "
-                        f"but `obj_weights` not provided. Defaulting to equal weights."
-                    )
+                    ...
                 self.obj_weights = np.ones(self._n_objs)
             elif len(np.array(self.obj_weights).ravel()) != self._n_objs:
                 raise ValueError(
