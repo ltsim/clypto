@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealpy import FloatVar, HS, Optimizer
+from mealprint import FloatVar, HS, Optimizer
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
