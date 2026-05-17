@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import operator
-from numbers import Number
+import numbers
 
 import numpy as np
 
@@ -39,7 +39,6 @@ def is_str_in_list(value: str, my_list: list):
 
 class Validator:
     def __init__(self, **kwargs):
-        self.log_to, self.log_file = None, None
         self.__set_keyword_arguments(kwargs)
 
     def __set_keyword_arguments(self, kwargs):
@@ -47,7 +46,7 @@ class Validator:
             setattr(self, key, value)
 
     def check_int(self, name: str, value: int, bound=None):
-        if isinstance(value, Number):
+        if isinstance(value, numbers.Number):
             if bound is None:
                 return int(value)
             elif is_in_bound(value, bound):
@@ -56,7 +55,7 @@ class Validator:
         raise ValueError(f"'{name}' is an integer {bound}.")
 
     def check_float(self, name: str, value: float, bound=None):
-        if isinstance(value, Number):
+        if isinstance(value, numbers.Number):
             if bound is None:
                 return float(value)
             elif is_in_bound(value, bound):
@@ -93,7 +92,7 @@ class Validator:
 
     def check_tuple_float(self, name: str, values: tuple, bounds=None):
         if isinstance(values, SEQUENCE) and len(values) > 1:
-            value_flag = [isinstance(item, Number) for item in values]
+            value_flag = [isinstance(item, numbers.Number) for item in values]
             if np.all(value_flag):
                 if bounds is not None and len(bounds) == len(values):
                     value_flag = [is_in_bound(item, bound) for item, bound in zip(values, bounds)]
