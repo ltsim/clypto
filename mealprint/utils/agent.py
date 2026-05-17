@@ -56,10 +56,12 @@ class Agent:
         Returns:
             bool: True if duplicate (and target updated), False otherwise.
         """
-        if self == other:  # use __eq__
+        is_eq = self == other
+
+        if is_eq:  # use __eq__
             self.target = other.target
-            return True
-        return False
+
+        return is_eq
 
     def _compare_fitness(self, other: "Agent", minmax: str = "min") -> int:
         """
