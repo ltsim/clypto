@@ -14,9 +14,17 @@ from mealprint.utils.target import Target
 class Agent:
     def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
         self.__solution = solution
-        self.target = target
+        self.__target = target
         self.__set_kwargs(kwargs)
         self.__kwargs = kwargs
+
+    @property
+    def target(self) -> Target | None:
+        return self.__target
+
+    @target.setter
+    def target(self, target: Target | None) -> None:
+        self.__target = target
 
     @property
     def solution(self) -> np.ndarray | None:
@@ -43,7 +51,7 @@ class Agent:
 
     def update_agent(self, solution: np.ndarray, target: Target) -> None:
         self.__solution = solution
-        self.target = target
+        self.__target = target
 
     def update(self, **kwargs) -> None:
         for attr, value in kwargs.items():
@@ -59,7 +67,7 @@ class Agent:
         is_eq = self == other
 
         if is_eq:  # use __eq__
-            self.target = other.target
+            self.__target = other.target
 
         return is_eq
 
@@ -74,7 +82,7 @@ class Agent:
         """
         if self.target.fitness == other.target.fitness:
             return 0
-        if minmax == "min":
+        elif minmax == "min":
             return -1 if self.target.fitness < other.target.fitness else 1
         else:
             return -1 if self.target.fitness > other.target.fitness else 1
