@@ -4,7 +4,6 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.utils.logger import Logger
 from mealprint.utils.validator import Validator
 
 
@@ -66,9 +65,6 @@ class Termination:
         self.validator = Validator(log_to="console", log_file=None)
         self.name, self.message, self.log_to, self.log_file = "Termination", "", None, None
         self.__set_condition(self.max_epoch, self.max_fe, self.max_time, self.max_early_stop)
-        self.logger = Logger(self.log_to, log_file=self.log_file).create_logger(name=f"{__name__}.{__class__.__name__}",
-                                                                                format_str='%(asctime)s, %(levelname)s, %(name)s [line: %(lineno)d]: %(message)s')
-        self.logger.propagate = False
 
     def __set_keyword_arguments(self, kwargs):
         if type(kwargs) == dict:
