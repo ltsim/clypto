@@ -1,43 +1,21 @@
-# mealpy-lts
+# MealPrint
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![PyPI - Version](https://img.shields.io/pypi/v/mealpy-lts?style=flat-square)
-![PyPI - Implementation](https://img.shields.io/pypi/implementation/mealpy-lts?style=flat-square)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mealpy-lts?style=flat-square)
-![PyPI - Wheel](https://img.shields.io/pypi/wheel/mealpy-lts?style=flat-square)
-![GitHub Release Date](https://img.shields.io/github/release-date/ltsim/mealpy-lts.svg?style=flat-square)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/mealpy-lts?style=flat-square)
+**MealPrint** is a lightweight, heavily refactored fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core. It serves as a pure, bloat-free collection of population-based metaheuristic algorithms (PBM) and acts as an architectural blueprint for educational purposes, clean research, and rapid prototyping.
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/mealpy-lts/publish.yml?style=flat-square&logo=pypi&label=Publish)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/mealpy-lts/test.yml?style=flat-square&logo=pytest&label=Testing)
+Unlike monolithic optimization frameworks, **MealPrint** cuts out all secondary overhead—such as visualization tools, complex logging, and heavy external dependencies—focusing strictly on the algorithmic logic and mathematical transition operators.
 
-This is a maintenance release, a fork of [MEALPY](https://github.com/thieu1995/mealpy), which offers a collection of cutting-edge metaheuristic algorithms. These include nature-inspired algorithms, bio-inspired algorithms, black-box optimization, global search optimizers, iterative learning algorithms, continuous optimization, derivative-free optimization, gradient-free optimization, zero-order optimization, stochastic search optimization, and random search optimization.
+## Why MealPrint?
 
-All of these methods fall under the category of population-based metaheuristics (PBM), which are among the most popular algorithms in the field of approximate optimization.
+*   **Lean Core & Zero Bloat:** Amputated all UI, plotting, and file-writing features to create an ultra-lightweight library, making it ideal to be consumed as a clean, plug-and-play mathematical dependency.
+*   **Aggressive Agent Refactoring:** Redesigned the original agent state model to eliminate heavy Python object/dictionary overhead, shifting towards a streamlined, flat population structure that maximizes data locality.
+*   **Didactic Blueprint Architecture:** Re-engineered with a highly pedagogical layout. Students and researchers can open any algorithm, understand its transition rules in pure Python/NumPy in just a few lines of code, and easily use the structure as a mold to implement new metaheuristics.
+*   **Ecosystem Ready:** Built to operate as a decoupled engine, making it perfectly tailored to be driven by external benchmarking and evaluation frameworks.
 
-For detailed information about the updates in each new version, see the [ChangeLog](/CHANGELOG.md) file.
+## Credits & Citation Request
 
-* **Free software:** MIT license
-* **Total algorithms**: 233 (206 official (original, hybrid, variants), 27 developed)
-* **Documentation:** https://mealpy.readthedocs.io/en/latest/
+This project is based is entirely built upon the foundational work, dedication, and effort of the original [MEALPY](https://github.com/thieu1995/mealpy) authors, **Nguyen Van Thieu** and **Seyedali Mirjalili**, as well as the global community of researchers and scientists who originally designed, investigated, and implemented the diverse metaheuristic algorithms contained within this collection. This fork merely restructures their brilliant mathematical work for decoupled, lightweight, and didactic purposes.
 
-## Goals
-
-Our goals are to implement all classical as well as the state-of-the-art nature-inspired algorithms, create a simple interface that helps researchers access optimization algorithms as quickly as possible, and share knowledge of the optimization field with everyone without a fee. What you can do with mealpy:
-
-- Analyse parameters of meta-heuristic algorithms.
-- Perform Qualitative and Quantitative Analysis of algorithms.
-- Analyse rate of convergence of algorithms.
-- Test and Analyse the scalability and the robustness of algorithms.
-- Save results in various formats (csv, json, pickle, png, pdf, jpeg)
-- Export and import models can also be done with Mealpy.
-- **Solve any optimization problem**
-
-
-## Citation Request
-
-Please include these citations if you plan to use this library:
-
+If you use this library, its restructured architecture, or the underlying algorithms in your academic research, please ensure proper credit is given to the original creators by citing:
 ```bibtex 
 @article{van2023mealpy,
   title={MEALPY: An open-source library for latest meta-heuristic algorithms in Python},
@@ -71,58 +49,44 @@ Please include these citations if you plan to use this library:
 }
 ```
 
+## Algorithmic Citations
+To honor the individual authors who contributed each method to the field of approximate optimization, we strongly encourage you to cite the specific foundational papers for the algorithms used in your experiments.
+
+You can find the complete list of original scientific papers and their corresponding citations in our dedicated [REFERENCES.md](REFERENCES.md) file included within this repository.
+
+## Goals
+
+Our goals are to implement all classical as well as the state-of-the-art nature-inspired algorithms, create a simple interface that helps researchers access optimization algorithms as quickly as possible, and share knowledge of the optimization field with everyone without a fee. What you can do with mealpy:
+
+- Analyse parameters of meta-heuristic algorithms.
+- Perform Qualitative and Quantitative Analysis of algorithms.
+- Analyse rate of convergence of algorithms.
+- Test and Analyse the scalability and the robustness of algorithms.
+- Save results in various formats (csv, json, pickle, png, pdf, jpeg)
+- Export and import models can also be done with Mealpy.
+- **Solve any optimization problem**
+
+
 # Usage
 
 ## Installation
 
-* Install the stable (latest) version from [PyPI release](https://pypi.python.org/pypi/mealpy-lts):
+* Install the stable (latest) version from [PyPI release](https://pypi.python.org/pypi/mealprint):
 ```bash
-$ pip install mealpy-lts --upgrade
+$ pip install mealprint --upgrade
 ```
 
 * Install the pre-release version directly from the source code:
 ```bash
-$ git clone https://github.com/ltsim/mealpy-lts.git
-$ cd mealpy-lts
+$ git clone https://github.com/ltsim/mealprint.git
+$ cd mealprint
 $ python setup.py install
 ```
 
 * In case, you want to install the development version from Github:
 ```bash
-$ pip install git+https://github.com/ltsim/mealpy-lts 
+$ pip install git+https://github.com/ltsim/mealprint 
 ```
-
-After installation, check the version to ensure successful installation:
-
-```bash
-$ python
->>> import mealpy
->>> mealpy.__version__
-
->>> print(mealpy.get_all_optimizers())
->>> model = mealpy.get_optimizer_by_name("OriginalWOA")(epoch=100, pop_size=50)
-```
-
-## Decision Variables
-
-Before we dive into some examples, let's briefly consider the type of problem you're aiming to solve with MEALPY. 
-Understanding your specific problem and its desired solution can help you select the most appropriate approach.
-
-To assist you in choosing the right tools, refer to the table below. It outlines different types of **decision variables** available in MEALPY, 
-along with their syntax and common problem applications. This will guide you in defining your search space effectively.
-
-| Class             | Syntax                                                                                                          | Problem Types               |
-|-------------------|-----------------------------------------------------------------------------------------------------------------|-----------------------------|
-| FloatVar          | `FloatVar(lb=(-10., )*7, ub=(10., )*7, name="delta")`                                                           | Continuous Problem          |
-| IntegerVar        | `IntegerVar(lb=(-10., )*7, ub=(10., )*7, name="delta")`                                                         | LP, IP, NLP, QP, MIP        |
-| StringVar         | `StringVar(valid_sets=(("auto", "backward", "forward"), ("leaf", "branch", "root")), name="delta")`             | ML, AI-optimize             |
-| BinaryVar         | `BinaryVar(n_vars=11, name="delta")`                                                                            | Networks                    |
-| BoolVar           | `BoolVar(n_vars=11, name="delta")`                                                                              | ML, AI-optimize             |
-| PermutationVar    | `PermutationVar(valid_set=(-10, -4, 10, 6, -2), name="delta")`                                                  | Combinatorial Optimization  |
-| CategoricalVar    | `CategoricalVar(valid_sets=(("auto", 2, 3, "backward", True), (0, "tournament", "round-robin")), name="delta")` | MIP,  MILP                  |
-| SequenceVar       | `SequenceVar(valid_sets=((1, ), {2, 3}, [3, 5, 1]), return_type=list, name='delta')`                            | Hyper-parameter tuning      |
-| TransferBoolVar   | `TransferBoolVar(n_vars=11, name="delta", tf_func="sstf_02")`                                                   | ML, AI-optimize, Feature    |
-| TransferBinaryVar | `TransferBinaryVar(n_vars=11, name="delta", tf_func="vstf_04")`                                                 | Networks, Feature Selection |
 
 ## Optimizer Classification Table
 
@@ -172,94 +136,7 @@ Using unoriginal or unethical work can compromise the **scientific credibility**
 > **Check [PubPeer1](https://pubpeer.com/publications/1F5DCE5BC42BF2D77A1B0C281A5295)** and [PubPeer2](https://pubpeer.com/publications/D47357D409AE273F9E03C7CBE30EB7) to 
 > find ongoing discussions and critiques from the academic community.
 
-## Examples
-
-### Simple Benchmark Function
-
-MEALPY allows you to define your optimization problem in a couple of ways.
-
-#### 1. Define Problem as a Dictionary
-
-You can quickly define your problem using a Python dictionary. However, this approach is only valid for problems with float decision variables.
-
-```python
-from mealpy import FloatVar, SMA
-import numpy as np
-
-def objective_function(solution):
-    return np.sum(solution**2)
-
-problem = {
-    "obj_func": objective_function,
-    "bounds": FloatVar(lb=(-100., )*30, ub=(100., )*30),
-    "minmax": "min",
-    "log_to": "console",
-}
-
-## Run the algorithm
-model = SMA.OriginalSMA(epoch=100, pop_size=50, pr=0.03)
-g_best = model.solve(problem)
-print(f"Best solution: {g_best.solution}, Best fitness: {g_best.target.fitness}")
-```
-
-#### 2. Define a Custom Problem Class
-
-For more complex scenarios, especially when your decision variables are not exclusively `FloatVar`, 
-**we recommend defining a custom class that inherits from the Problem class.**
-Let's demonstrate this with a simple "Squared" class.
-
-In the `__init__` method of your custom Problem class (e.g., Squared class), you must set the bounds and minmax attributes of the problem.
-
-+ `bounds`: Defines the search space and the type of decision variables (e.g., `FloatVar`, `IntegerVar`).
-
-+ `minmax`: A string indicating whether the problem is a minimization ("min") or maximization ("max") problem.
-
-After defining the initialization, you must override the abstract method `obj_func()`. This method is the core of your problem definition:
-
-+ It takes a single parameter: solution (the encoded solution vector generated by the optimizer).
-
-+ It must return the objective function value (or fitness) for the given solution.
-
-The resulting code structure for a custom problem class would look similar to the snippet below. 
-You can include any additional parameters you need in your custom class (like '`data`' or '`name`' in this example).
-
-
-```python
-from mealpy import Problem, FloatVar, BBO 
-import numpy as np
-
-# Our custom problem class
-class Squared(Problem):
-    def __init__(self, bounds=None, minmax="min", data=None, **kwargs):
-        super().__init__(bounds, minmax, **kwargs)
-        self.data = data     # This is additional variable use for passing data to objective function
-
-    def obj_func(self, solution):
-        return np.sum(solution ** 2)
-
-    
-## Now, we define an algorithm, and pass an instance of our *Squared* class as the problem argument. 
-bound = FloatVar(lb=(-10., )*20, ub=(10., )*20, name="my_var")      # The `name` of variable is important when decoding.
-problem = Squared(bounds=bound, minmax="min", name="Squared", data="Amazing")
-model = BBO.OriginalBBO(epoch=100, pop_size=20)
-g_best = model.solve(problem)
-
-## Show some attributes
-print(g_best.solution)
-print(g_best.target.fitness)
-print(g_best.target.objectives)
-print(g_best)
-print(model.get_parameters())
-print(model.get_name())
-print(model.get_attributes()["g_best"])
-print(model.problem.get_name())
-print(model.problem.n_dims)
-print(model.problem.bounds)
-print(model.problem.lb)
-print(model.problem.ub)
-```
-
-We provide many examples for complicated applications that can use Mealpy to solve.
+For detailed information about the updates in each new version, see the [ChangeLog](/CHANGELOG.md) file.
 
 ---
 
