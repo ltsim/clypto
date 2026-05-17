@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalFFO(OptimizerV1):
+class OriginalFFO(OptimizerClassic):
     """
     The original version of: Fennec Fox Optimization (FFO)
 

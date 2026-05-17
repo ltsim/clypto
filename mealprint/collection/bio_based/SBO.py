@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class DevSBO(OptimizerV1):
+class DevSBO(OptimizerClassic):
     """
     The developed version: Satin Bowerbird Optimizer (SBO)
 

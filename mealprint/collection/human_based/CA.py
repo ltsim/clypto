@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalCA(OptimizerV1):
+class OriginalCA(OptimizerClassic):
     """
     The original version of: Culture Algorithm (CA)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalWHO(OptimizerV1):
+class OriginalWHO(OptimizerClassic):
     """
     The original version of: Wildebeest Herd Optimization (WHO)
 

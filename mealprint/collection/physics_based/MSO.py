@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalMSO(OptimizerV1):
+class OriginalMSO(OptimizerClassic):
     """
     The original version of: Mirage Search Optimization (MSO)
 

@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, OptimizerV1
+from mealprint import FloatVar, OptimizerClassic
 from mealprint.collection.swarm_based import BA
 
 
@@ -34,6 +34,6 @@ def test_BA_results(problem):
     ]
     for model in models:
         g_best = model.solve(problem)
-        assert isinstance(model, OptimizerV1)
+        assert isinstance(model, OptimizerClassic)
         assert isinstance(g_best.solution, np.ndarray)
         assert len(g_best.solution) == len(model.problem.lb)

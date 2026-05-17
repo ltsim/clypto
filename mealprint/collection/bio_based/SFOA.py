@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalSFOA(OptimizerV1):
+class OriginalSFOA(OptimizerClassic):
     """
     The original version: Starfish Optimization Algorithm (SFOA)
 

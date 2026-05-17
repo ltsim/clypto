@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalINFO(OptimizerV1):
+class OriginalINFO(OptimizerClassic):
     """
     The original version of: weIghted meaN oF vectOrs (INFO)
 

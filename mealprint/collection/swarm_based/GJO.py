@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalGJO(OptimizerV1):
+class OriginalGJO(OptimizerClassic):
     """
     The original version of: Golden jackal optimization (GJO)
 

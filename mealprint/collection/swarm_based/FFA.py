@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalFFA(OptimizerV1):
+class OriginalFFA(OptimizerClassic):
     """
     The original version of: Firefly Algorithm (FFA)
 

@@ -20,7 +20,7 @@ from mealprint.utils.termination import Termination
 from mealprint.utils.validator import Validator
 
 
-class OptimizerV1:
+class OptimizerClassic:
     """
     The base class of all algorithms. All methods in this class will be inherited
 
@@ -40,8 +40,13 @@ class OptimizerV1:
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
+        def set_keyword_arguments(args):
+            for k, v in args.items():
+                setattr(self, k, v)
+
         self.__validator = Validator(log_to="console", log_file=None)
-        self.__set_keyword_arguments(kwargs)
+
+        set_keyword_arguments(kwargs)
 
         self.epoch = None
         self.pop_size = None
@@ -66,10 +71,6 @@ class OptimizerV1:
     @property
     def validator(self) -> Validator:
         return self.__validator
-
-    def __set_keyword_arguments(self, kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
 
     def set_parameters(self, parameters: typing.Union[typing.List, typing.Tuple, typing.Dict]) -> None:
         """
@@ -266,7 +267,7 @@ class OptimizerV1:
         """
         ## Save history data
         if self.problem.save_population:
-            self.history.list_population.append(OptimizerV1.duplicate_pop(pop))
+            self.history.list_population.append(OptimizerClassic.duplicate_pop(pop))
         self.history.list_epoch_time.append(runtime)
         self.history.list_global_best_fit.append(self.history.list_global_best[-1].target.fitness)
         self.history.list_current_best_fit.append(self.history.list_current_best[-1].target.fitness)
@@ -440,7 +441,7 @@ class OptimizerV1:
         Returns:
             The best agent
         """
-        pop = OptimizerV1.get_sorted_population(pop, minmax)
+        pop = OptimizerClassic.get_sorted_population(pop, minmax)
         return pop[0].copy()
 
     @staticmethod
@@ -461,7 +462,7 @@ class OptimizerV1:
         Returns:
             The worst agent
         """
-        pop = OptimizerV1.get_sorted_population(pop, minmax)
+        pop = OptimizerClassic.get_sorted_population(pop, minmax)
         return pop[-1].copy()
 
     @staticmethod
@@ -480,7 +481,7 @@ class OptimizerV1:
         Returns:
             The sorted_population, n1 best agents and n2 worst agents
         """
-        pop = OptimizerV1.get_sorted_population(pop, minmax)
+        pop = OptimizerClassic.get_sorted_population(pop, minmax)
         if n_best is None:
             if n_worst is None:
                 return pop, None, None
@@ -506,7 +507,7 @@ class OptimizerV1:
             The total fitness, the best fitness, and the worst fitness
         """
         total_fitness = np.sum([agent.target.fitness for agent in pop])
-        pop = OptimizerV1.get_sorted_population(pop, minmax)
+        pop = OptimizerClassic.get_sorted_population(pop, minmax)
         return total_fitness, pop[0].target.fitness, pop[-1].target.fitness
 
     @staticmethod
@@ -566,7 +567,7 @@ class OptimizerV1:
         Returns:
             The sorted and trimmed population with pop_size size
         """
-        pop = OptimizerV1.get_sorted_population(pop, minmax)
+        pop = OptimizerClassic.get_sorted_population(pop, minmax)
         return pop[:pop_size]
 
     def update_global_best_agent(self, pop: list[Agent], save: bool = True) -> list | tuple:

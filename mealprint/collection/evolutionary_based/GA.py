@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class BaseGA(OptimizerV1):
+class BaseGA(OptimizerClassic):
     """
     The original version of: Genetic Algorithm (GA)
 
@@ -776,7 +776,7 @@ class EliteMultiGA(MultiGA):
             self.pop = self.update_target_for_population(pop_new)
 
 
-class OriginalGA(OptimizerV1):
+class OriginalGA(OptimizerClassic):
     """
     The fully tuned version of: Genetic Algorithm (GA)
 

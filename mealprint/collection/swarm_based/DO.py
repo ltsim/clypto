@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalDO(OptimizerV1):
+class OriginalDO(OptimizerClassic):
     """
     The original version of: Dragonfly Optimization (DO)
 

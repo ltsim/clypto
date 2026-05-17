@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, OptimizerV1
+from mealprint import FloatVar, OptimizerClassic
 from mealprint.collection.bio_based import EOA
 
 
@@ -36,7 +36,7 @@ def test_BaseEOA_results(problem):
     gama = 0.9
     model = EOA.OriginalEOA(epoch, pop_size, p_c, p_m, n_best, alpha, beta, gama)
     g_best = model.solve(problem)
-    assert isinstance(model, OptimizerV1)
+    assert isinstance(model, OptimizerClassic)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

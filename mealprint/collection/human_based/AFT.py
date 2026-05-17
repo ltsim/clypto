@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalAFT(OptimizerV1):
+class OriginalAFT(OptimizerClassic):
     """
     The original version of: Ali baba and the Forty Thieves (AFT) optimizer
 

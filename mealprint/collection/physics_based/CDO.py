@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalCDO(OptimizerV1):
+class OriginalCDO(OptimizerClassic):
     """
     The original version of: Chernobyl Disaster Optimizer (CDO)
 

@@ -7,11 +7,11 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 from mealprint.utils.agent import Agent
 
 
-class DevBRO(OptimizerV1):
+class DevBRO(OptimizerClassic):
     """
     The developed version: Battle Royale Optimization (BRO)
 

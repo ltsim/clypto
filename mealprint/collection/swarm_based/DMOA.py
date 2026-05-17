@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalDMOA(OptimizerV1):
+class OriginalDMOA(OptimizerClassic):
     """
     The original version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 
@@ -122,7 +122,7 @@ class OriginalDMOA(OptimizerV1):
             self.pop[idx] = self.generate_agent(new_pos)
 
 
-class DevDMOA(OptimizerV1):
+class DevDMOA(OptimizerClassic):
     """
     The developed version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 

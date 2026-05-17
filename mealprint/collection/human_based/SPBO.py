@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalSPBO(OptimizerV1):
+class OriginalSPBO(OptimizerClassic):
     """
     The original version of: Student Psychology Based Optimization (SPBO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class DevSSA(OptimizerV1):
+class DevSSA(OptimizerClassic):
     """
     The developed version: Sparrow Search Algorithm (SSA)
 

@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 from mealprint.utils.agent import Agent
 
 
-class DevSCA(OptimizerV1):
+class DevSCA(OptimizerClassic):
     """
     The developed version: Sine Cosine Algorithm (SCA)
 

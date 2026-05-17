@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalMGO(OptimizerV1):
+class OriginalMGO(OptimizerClassic):
     """
     The original version of: Mountain Gazelle Optimizer (MGO)
 

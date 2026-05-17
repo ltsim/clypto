@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class DevEFO(OptimizerV1):
+class DevEFO(OptimizerClassic):
     """
     The developed version: Electromagnetic Field Optimization (EFO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalEO(OptimizerV1):
+class OriginalEO(OptimizerClassic):
     """
     The original version of: Equilibrium Optimizer (EO)
 

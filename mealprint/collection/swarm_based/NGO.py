@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalNGO(OptimizerV1):
+class OriginalNGO(OptimizerClassic):
     """
     The original version of: Northern Goshawk Optimization (NGO)
 

@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalCDDO(OptimizerV1):
+class OriginalCDDO(OptimizerClassic):
     """
     The original version of: Child Drawing Development Optimization (CCDO)
 

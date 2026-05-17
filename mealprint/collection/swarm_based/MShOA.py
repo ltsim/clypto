@@ -18,10 +18,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalMShOA(OptimizerV1):
+class OriginalMShOA(OptimizerClassic):
     """
     The original version of: Mantis Shrimp Optimization Algorithm (MShOA)
     

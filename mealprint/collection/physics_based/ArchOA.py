@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 from mealprint.utils.agent import Agent
 
 
-class OriginalArchOA(OptimizerV1):
+class OriginalArchOA(OptimizerClassic):
     """
     The original version of: Archimedes Optimization Algorithm (ArchOA)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class DevMVO(OptimizerV1):
+class DevMVO(OptimizerClassic):
     """
     The developed version: Multi-Verse Optimizer (MVO)
 

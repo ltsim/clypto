@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalEOA(OptimizerV1):
+class OriginalEOA(OptimizerClassic):
     """
     The developed version: Earthworm Optimisation Algorithm (EOA)
 

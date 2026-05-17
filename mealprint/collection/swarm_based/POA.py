@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalPOA(OptimizerV1):
+class OriginalPOA(OptimizerClassic):
     """
     The original version of: Pelican Optimization Algorithm (POA)
 

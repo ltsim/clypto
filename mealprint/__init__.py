@@ -19,7 +19,7 @@ from .collection.human_based import SSDO, CA, ICA, AFT, CHIO, SARO, BSO, HBO, CD
 from mealprint.collection.math_based import (AOA, CEM, CGO, GBO, HC, INFO, PSS, RUN, SCA, SHIO, TS)
 from .collection.math_based import CircleSA
 from mealprint.collection.music_based import HS
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 from mealprint.collection.physics_based import (ArchOA, EFO, EO, EVO, FLA, HGSO, MVO, NRO, SA, TWO, WDO, ESO, SOO, MSO)
 from .collection.physics_based import RIME, ASO, CDO
 from mealprint.collection.sota_based import LSHADEcnEpSin, IMODE
@@ -54,7 +54,7 @@ def get_all_optimizers(verbose=True):
     for name, obj in inspect.getmembers(sys.modules[__name__]):
         if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES):
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, OptimizerV1):
+                if inspect.isclass(cls_obj) and issubclass(cls_obj, OptimizerClassic):
                     cls[cls_name] = cls_obj
     del cls['Optimizer']
     if verbose:
@@ -100,7 +100,7 @@ def get_optimizer_by_name(name, verbose=False):
         if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES) and (module_name == name):
             flag = True
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, OptimizerV1):
+                if inspect.isclass(cls_obj) and issubclass(cls_obj, OptimizerClassic):
                     cls[cls_name] = cls_obj
     if verbose:
         if not flag:

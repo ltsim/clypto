@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 from mealprint.utils.agent import Agent
 
 
-class OriginalSSpiderO(OptimizerV1):
+class OriginalSSpiderO(OptimizerClassic):
     """
     The original version of: Social Spider Optimization (SSpiderO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalRIME(OptimizerV1):
+class OriginalRIME(OptimizerClassic):
     """
     The original version of: physical phenomenon of RIME-ice  (RIME)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalFPA(OptimizerV1):
+class OriginalFPA(OptimizerClassic):
     """
     The original version of: Flower Pollination Algorithm (FPA)
 

@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 from mealprint.utils.agent import Agent
 
 
-class OriginalFOA(OptimizerV1):
+class OriginalFOA(OptimizerClassic):
     """
     The original version of: Fruit-fly Optimization Algorithm (FOA)
 

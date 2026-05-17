@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalHBO(OptimizerV1):
+class OriginalHBO(OptimizerClassic):
     """
     The original version of: Heap-based optimizer (HBO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalMRFO(OptimizerV1):
+class OriginalMRFO(OptimizerClassic):
     """
     The original version of: Manta Ray Foraging Optimization (MRFO)
 
@@ -127,7 +127,7 @@ class OriginalMRFO(OptimizerV1):
             self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
 
 
-class WMQIMRFO(OptimizerV1):
+class WMQIMRFO(OptimizerClassic):
     """
     The original version of: Wavelet Mutation and Quadratic Interpolation MRFO (WMQIMRFO)
 

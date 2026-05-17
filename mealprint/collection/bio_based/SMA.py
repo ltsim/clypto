@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class DevSMA(OptimizerV1):
+class DevSMA(OptimizerClassic):
     """
     The developed version: Slime Mould Algorithm (SMA)
 

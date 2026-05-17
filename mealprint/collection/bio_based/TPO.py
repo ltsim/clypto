@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class DevTPO(OptimizerV1):
+class DevTPO(OptimizerClassic):
     """
     The original version: Tree Physiology Optimization (TPO)
 

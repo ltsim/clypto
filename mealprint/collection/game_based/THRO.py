@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalTHRO(OptimizerV1):
+class OriginalTHRO(OptimizerClassic):
     """
     The original version of: Tianji's Horse Racing Optimization (THRO)
 

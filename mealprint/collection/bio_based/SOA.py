@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class DevSOA(OptimizerV1):
+class DevSOA(OptimizerClassic):
     """
     The developed version: Seagull Optimization Algorithm (SOA)
 
@@ -84,7 +84,7 @@ class DevSOA(OptimizerV1):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class OriginalSOA(OptimizerV1):
+class OriginalSOA(OptimizerClassic):
     """
     The original version: Seagull Optimization Algorithm (SOA)
 

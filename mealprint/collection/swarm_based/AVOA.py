@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalAVOA(OptimizerV1):
+class OriginalAVOA(OptimizerClassic):
     """
     The original version of: African Vultures Optimization Algorithm (AVOA)
 

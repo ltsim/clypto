@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalWaOA(OptimizerV1):
+class OriginalWaOA(OptimizerClassic):
     """
     The original version of: Walrus Optimization Algorithm (WaOA)
 

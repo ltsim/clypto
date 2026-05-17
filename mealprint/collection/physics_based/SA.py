@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalSA(OptimizerV1):
+class OriginalSA(OptimizerClassic):
     """
     The original version of: Simulated Annealing (SA)
 
@@ -87,7 +87,7 @@ class OriginalSA(OptimizerV1):
         self.pop = [self.g_best.copy(), self.agent_current.copy()]
 
 
-class GaussianSA(OptimizerV1):
+class GaussianSA(OptimizerClassic):
     """
     The developed version of: Gaussian Simulated Annealing (GaussianSA)
 
@@ -167,7 +167,7 @@ class GaussianSA(OptimizerV1):
         self.pop = [self.g_best.copy(), self.agent_current.copy()]
 
 
-class SwarmSA(OptimizerV1):
+class SwarmSA(OptimizerClassic):
     """
     The swarm version of: Simulated Annealing (SwarmSA)
 

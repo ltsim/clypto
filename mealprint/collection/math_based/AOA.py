@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from mealprint.optimizer.optimizer_v1 import OptimizerV1
+from mealprint.optimizer.optimizer_v1 import OptimizerClassic
 
 
-class OriginalAOA(OptimizerV1):
+class OriginalAOA(OptimizerClassic):
     """
     The original version of: Arithmetic Optimization Algorithm (AOA)
 
