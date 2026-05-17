@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalSOS(Optimizer):
+class OriginalSOS(OptimizerV1):
     """
     The original version: Symbiotic Organisms Search (SOS)
 

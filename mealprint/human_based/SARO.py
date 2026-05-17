@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class DevSARO(Optimizer):
+class DevSARO(OptimizerV1):
     """
     The developed version: Search And Rescue Optimization (SARO)
 

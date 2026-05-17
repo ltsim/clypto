@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 from mealprint.utils.agent import Agent
 
 
-class OriginalES(Optimizer):
+class OriginalES(OptimizerV1):
     """
     The original version of: Evolution Strategies (ES)
 
@@ -181,7 +181,7 @@ class LevyES(OriginalES):
                                                           self.problem.minmax)
 
 
-class CMA_ES(Optimizer):
+class CMA_ES(OptimizerV1):
     """
     The original version of: Covariance Matrix Adaptation Evolution Strategy (CMA-ES)
 
@@ -305,7 +305,7 @@ class CMA_ES(Optimizer):
             self.C = V * E / V
 
 
-class Simple_CMA_ES(Optimizer):
+class Simple_CMA_ES(OptimizerV1):
     """
     The simple version of: Covariance Matrix Adaptation Evolution Strategy (Simple-CMA-ES)
 

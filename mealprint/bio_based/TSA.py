@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalTSA(Optimizer):
+class OriginalTSA(OptimizerV1):
     """
     The original version: Tunicate Swarm Algorithm (TSA)
 

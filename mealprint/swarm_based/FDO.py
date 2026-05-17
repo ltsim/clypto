@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalFDO(Optimizer):
+class OriginalFDO(OptimizerV1):
     """
     The original version of: Fitness Dependent Optimizer (FDO)
 

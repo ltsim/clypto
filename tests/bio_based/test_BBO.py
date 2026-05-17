@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, BBO, Optimizer
+from mealprint import FloatVar, BBO, OptimizerV1
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -31,7 +31,7 @@ def test_OriginalBBO_results(problem):
     n_elites = 2
     model = BBO.OriginalBBO(epoch, pop_size, p_m, n_elites)
     g_best = model.solve(problem)
-    assert isinstance(model, Optimizer)
+    assert isinstance(model, OptimizerV1)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 
@@ -43,7 +43,7 @@ def test_DevBBO_results(problem):
     n_elites = 3
     model = BBO.DevBBO(epoch, pop_size, p_m, n_elites)
     g_best = model.solve(problem)
-    assert isinstance(model, Optimizer)
+    assert isinstance(model, OptimizerV1)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

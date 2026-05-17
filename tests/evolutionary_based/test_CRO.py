@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, CRO, Optimizer
+from mealprint import FloatVar, CRO, OptimizerV1
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -38,7 +38,7 @@ def test_OriginalCRO_results(problem):
     n_trials = 5
     model = CRO.OriginalCRO(epoch, pop_size, po, Fb, Fa, Fd, Pd, GCR, gamma_min, gamma_max, n_trials)
     g_best = model.solve(problem)
-    assert isinstance(model, Optimizer)
+    assert isinstance(model, OptimizerV1)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 
@@ -57,7 +57,7 @@ def test_OCRO_results(problem):
     n_trials = 5
     model = CRO.OriginalCRO(epoch, pop_size, po, Fb, Fa, Fd, Pd, GCR, gamma_min, gamma_max, n_trials)
     g_best = model.solve(problem)
-    assert isinstance(model, Optimizer)
+    assert isinstance(model, OptimizerV1)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, EOA, Optimizer
+from mealprint import FloatVar, EOA, OptimizerV1
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -35,7 +35,7 @@ def test_BaseEOA_results(problem):
     gama = 0.9
     model = EOA.OriginalEOA(epoch, pop_size, p_c, p_m, n_best, alpha, beta, gama)
     g_best = model.solve(problem)
-    assert isinstance(model, Optimizer)
+    assert isinstance(model, OptimizerV1)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import qmc
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalPSS(Optimizer):
+class OriginalPSS(OptimizerV1):
     """
     The original version of: Pareto-like Sequential Sampling (PSS)
 

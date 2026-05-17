@@ -8,10 +8,10 @@ from math import gamma
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalMSA(Optimizer):
+class OriginalMSA(OptimizerV1):
     """
     The original version: Moth Search Algorithm (MSA)
 

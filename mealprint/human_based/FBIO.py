@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class DevFBIO(Optimizer):
+class DevFBIO(OptimizerV1):
     """
     The developed : Forensic-Based Investigation Optimization (FBIO)
 

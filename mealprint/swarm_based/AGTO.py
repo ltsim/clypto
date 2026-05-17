@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalAGTO(Optimizer):
+class OriginalAGTO(OptimizerV1):
     """
     The original version of: Artificial Gorilla Troops Optimization (AGTO)
 
@@ -125,7 +125,7 @@ class OriginalAGTO(Optimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class MGTO(Optimizer):
+class MGTO(OptimizerV1):
     """
     The original version of: Modified Gorilla Troops Optimization (mGTO)
 

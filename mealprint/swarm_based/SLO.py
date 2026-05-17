@@ -8,11 +8,11 @@ from math import gamma
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 from mealprint.utils.agent import Agent
 
 
-class OriginalSLO(Optimizer):
+class OriginalSLO(OptimizerV1):
     """
     The original version of: Sea Lion Optimization Algorithm (SLO)
 
@@ -99,7 +99,7 @@ class OriginalSLO(Optimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class ModifiedSLO(Optimizer):
+class ModifiedSLO(OptimizerV1):
     """
     The original version of: Modified Sea Lion Optimization (M-SLO)
 

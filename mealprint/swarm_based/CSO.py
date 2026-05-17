@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 from mealprint.utils.agent import Agent
 
 
-class OriginalCSO(Optimizer):
+class OriginalCSO(OptimizerV1):
     """
     The original version of: Cat Swarm Optimization (CSO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalMPA(Optimizer):
+class OriginalMPA(OptimizerV1):
     """
     The developed version: Marine Predators Algorithm (MPA)
 

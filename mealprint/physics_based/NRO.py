@@ -8,10 +8,10 @@ import math
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalNRO(Optimizer):
+class OriginalNRO(OptimizerV1):
     """
     The original version of: Nuclear Reaction Optimization (NRO)
 

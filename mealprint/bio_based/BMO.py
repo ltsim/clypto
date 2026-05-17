@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalBMO(Optimizer):
+class OriginalBMO(OptimizerV1):
     """
     The original version: Barnacles Mating Optimizer (BMO)
 

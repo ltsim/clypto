@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 from mealprint.utils.agent import Agent
 
 
-class OriginalSRSR(Optimizer):
+class OriginalSRSR(OptimizerV1):
     """
     The original version of: Swarm Robotics Search And Rescue (SRSR)
 

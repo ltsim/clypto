@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class DevVCS(Optimizer):
+class DevVCS(OptimizerV1):
     """
     The developed version: Virus Colony Search (VCS)
 

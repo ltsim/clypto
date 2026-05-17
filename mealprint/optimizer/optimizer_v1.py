@@ -20,7 +20,7 @@ from mealprint.utils.termination import Termination
 from mealprint.utils.validator import Validator
 
 
-class Optimizer:
+class OptimizerV1:
     """
     The base class of all algorithms. All methods in this class will be inherited
 
@@ -172,6 +172,7 @@ class Optimizer:
             self.problem = Problem(**problem)
         else:
             raise ValueError("problem needs to be a dict or an instance of Problem class.")
+
         self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
 
@@ -200,7 +201,7 @@ class Optimizer:
 
             return finished
 
-    def solve(self, problem: typing.Optional[dict | Problem] = None, mode: str = 'single', n_workers: int = None,
+    def solve(self, problem: typing.Optional[dict | Problem] = None,
               termination: typing.Optional[dict | Termination] = None,
               starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
               seed: int = None) -> Agent:
@@ -249,7 +250,9 @@ class Optimizer:
 
             if self.check_termination("end", None, epoch):
                 break
+
         self.track_optimize_process()
+
         return self.g_best
 
     def track_optimize_step(self, pop: list[Agent] = None, epoch: int = None, runtime: float = None) -> None:
@@ -263,7 +266,7 @@ class Optimizer:
         """
         ## Save history data
         if self.problem.save_population:
-            self.history.list_population.append(Optimizer.duplicate_pop(pop))
+            self.history.list_population.append(OptimizerV1.duplicate_pop(pop))
         self.history.list_epoch_time.append(runtime)
         self.history.list_global_best_fit.append(self.history.list_global_best[-1].target.fitness)
         self.history.list_current_best_fit.append(self.history.list_current_best[-1].target.fitness)
@@ -437,7 +440,7 @@ class Optimizer:
         Returns:
             The best agent
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = OptimizerV1.get_sorted_population(pop, minmax)
         return pop[0].copy()
 
     @staticmethod
@@ -458,7 +461,7 @@ class Optimizer:
         Returns:
             The worst agent
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = OptimizerV1.get_sorted_population(pop, minmax)
         return pop[-1].copy()
 
     @staticmethod
@@ -477,7 +480,7 @@ class Optimizer:
         Returns:
             The sorted_population, n1 best agents and n2 worst agents
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = OptimizerV1.get_sorted_population(pop, minmax)
         if n_best is None:
             if n_worst is None:
                 return pop, None, None
@@ -503,7 +506,7 @@ class Optimizer:
             The total fitness, the best fitness, and the worst fitness
         """
         total_fitness = np.sum([agent.target.fitness for agent in pop])
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = OptimizerV1.get_sorted_population(pop, minmax)
         return total_fitness, pop[0].target.fitness, pop[-1].target.fitness
 
     @staticmethod
@@ -563,7 +566,7 @@ class Optimizer:
         Returns:
             The sorted and trimmed population with pop_size size
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = OptimizerV1.get_sorted_population(pop, minmax)
         return pop[:pop_size]
 
     def update_global_best_agent(self, pop: list[Agent], save: bool = True) -> list | tuple:

@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import Problem, Optimizer, FloatVar
+from mealprint import Problem, OptimizerV1, FloatVar
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -21,7 +21,7 @@ def model():
         "minmax": "min",
         "log_to": None,
     }
-    model = Optimizer()
+    model = OptimizerV1()
     model.problem = Problem(**problem)
     return model
 

@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 from mealprint.utils.agent import Agent
 
 
-class OriginalHGS(Optimizer):
+class OriginalHGS(OptimizerV1):
     """
     The original version of: Hunger Games Search (HGS)
 

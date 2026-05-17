@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 from mealprint.utils.agent import Agent
 
 
-class OriginalPSO(Optimizer):
+class OriginalPSO(OptimizerV1):
     """
     The original version of: Particle Swarm Optimization (PSO)
 
@@ -109,7 +109,7 @@ class OriginalPSO(Optimizer):
                 self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
 
 
-class AIW_PSO(Optimizer):
+class AIW_PSO(OptimizerV1):
     """
     The original version of: Adaptive Inertia Weight Particle Swarm Optimization (AIW-PSO)
 
@@ -214,7 +214,7 @@ class AIW_PSO(Optimizer):
                 self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
 
 
-class LDW_PSO(Optimizer):
+class LDW_PSO(OptimizerV1):
     """
     The original version of: Linearly Decreasing inertia Weight Particle Swarm Optimization (LDW-PSO)
 
@@ -318,7 +318,7 @@ class LDW_PSO(Optimizer):
                 self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
 
 
-class P_PSO(Optimizer):
+class P_PSO(OptimizerV1):
     """
     The original version of: Phasor Particle Swarm Optimization (P-PSO)
 
@@ -610,7 +610,7 @@ class C_PSO(P_PSO):
         self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new_child, self.pop_size, self.problem.minmax)
 
 
-class CL_PSO(Optimizer):
+class CL_PSO(OptimizerV1):
     """
     The original version of: Comprehensive Learning Particle Swarm Optimization (CL-PSO)
 

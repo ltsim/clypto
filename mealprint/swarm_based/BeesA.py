@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class CleverBookBeesA(Optimizer):
+class CleverBookBeesA(OptimizerV1):
     """
     The original version of: Bees Algorithm (CB-BeesA)
 
@@ -121,7 +121,7 @@ class CleverBookBeesA(Optimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class OriginalBeesA(Optimizer):
+class OriginalBeesA(OptimizerV1):
     """
     The original version of: Bees Algorithm (BeesA)
 
@@ -246,7 +246,7 @@ class OriginalBeesA(Optimizer):
         self.dyn_radius = self.dance_reduction * self.dance_radius
 
 
-class ProbBeesA(Optimizer):
+class ProbBeesA(OptimizerV1):
     """
     The original version of: Probabilistic Bees Algorithm (P-BeesA)
 

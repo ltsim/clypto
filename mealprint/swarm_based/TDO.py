@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalTDO(Optimizer):
+class OriginalTDO(OptimizerV1):
     """
     The original version of: Tasmanian Devil Optimization (TDO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class DevGCO(Optimizer):
+class DevGCO(OptimizerV1):
     """
     The developed version: Germinal Center Optimization (GCO)
 

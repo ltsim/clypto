@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalABC(Optimizer):
+class OriginalABC(OptimizerV1):
     """
     The original version of: Artificial Bee Colony (ABC)
 

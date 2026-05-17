@@ -8,10 +8,10 @@ from functools import reduce
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class DevTLO(Optimizer):
+class DevTLO(OptimizerV1):
     """
     The developed version: Teaching Learning-based Optimization (TLO)
 

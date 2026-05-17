@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalAO(Optimizer):
+class OriginalAO(OptimizerV1):
     """
     The original version of: Aquila Optimization (AO)
 
@@ -104,7 +104,7 @@ class OriginalAO(Optimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class AAO(Optimizer):
+class AAO(OptimizerV1):
     """
     The original version of: Adaptive Aquila Optimizer (AAO)
 

@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import cauchy, norm
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalLSHADEcnEpSin(Optimizer):
+class OriginalLSHADEcnEpSin(OptimizerV1):
     """
     The original version of: Ensemble sinusoidal differential covariance matrix adaptation with Euclidean neighborhood (LSHADEcnEpSin)
 

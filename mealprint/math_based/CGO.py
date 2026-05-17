@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalCGO(Optimizer):
+class OriginalCGO(OptimizerV1):
     """
     The original version of: Chaos Game Optimization (CGO)
 

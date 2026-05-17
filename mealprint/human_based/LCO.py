@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalLCO(Optimizer):
+class OriginalLCO(OptimizerV1):
     """
     The original version of: Life Choice-based Optimization (LCO)
 
@@ -167,7 +167,7 @@ class DevLCO(OriginalLCO):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class ImprovedLCO(Optimizer):
+class ImprovedLCO(OptimizerV1):
     """
     The improved version: Life Choice-based Optimization (ILCO)
 

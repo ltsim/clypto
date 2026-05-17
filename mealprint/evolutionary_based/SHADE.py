@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import cauchy
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalSHADE(Optimizer):
+class OriginalSHADE(OptimizerV1):
     """
     The original version of: Success-History Adaptation Differential Evolution (OriginalSHADE)
 
@@ -167,7 +167,7 @@ class OriginalSHADE(Optimizer):
                 self.k_counter = 0
 
 
-class L_SHADE(Optimizer):
+class L_SHADE(OptimizerV1):
     """
     The original version of: Linear Population Size Reduction Success-History Adaptation Differential Evolution (LSHADE)
 

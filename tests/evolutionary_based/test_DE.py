@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, DE, Optimizer
+from mealprint import FloatVar, DE, OptimizerV1
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -33,6 +33,6 @@ def test_DE_results(problem):
     ]
     for model in models:
         g_best = model.solve(problem)
-        assert isinstance(model, Optimizer)
+        assert isinstance(model, OptimizerV1)
         assert isinstance(g_best.solution, np.ndarray)
         assert len(g_best.solution) == len(model.problem.lb)

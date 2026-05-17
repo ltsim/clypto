@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class OriginalHBA(Optimizer):
+class OriginalHBA(OptimizerV1):
     """
     The original version of: Honey Badger Algorithm (HBA)
 

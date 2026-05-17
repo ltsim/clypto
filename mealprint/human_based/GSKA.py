@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.optimizer_v1 import OptimizerV1
 
 
-class DevGSKA(Optimizer):
+class DevGSKA(OptimizerV1):
     """
     The developed version: Gaining Sharing Knowledge-based Algorithm (GSKA)
 
@@ -119,7 +119,7 @@ class DevGSKA(Optimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class OriginalGSKA(Optimizer):
+class OriginalGSKA(OptimizerV1):
     """
     The original version of: Gaining Sharing Knowledge-based Algorithm (GSKA)
 
