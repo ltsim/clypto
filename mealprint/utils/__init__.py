@@ -6,7 +6,6 @@
 
 from . import chaotic
 from . import fuzzy
-from . import io
 from . import problem
 from . import termination
 from . import validator
