@@ -170,8 +170,8 @@ class Tuner:
 
     Examples
     --------
-    >>> from opfunu.cec_based.cec2017 import F52017
-    >>> from mealprint import FloatVar, BBO, Tuner
+    >>> from mealprint.collection.bio_based import BBO    >>> from opfunu.cec_based.cec2017 import F52017
+    >>> from mealprint import FloatVar,  Tuner
     >>>
     >>> f1 = F52017(30, f_bias=0)
     >>>

@@ -7,7 +7,8 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, PSO, OptimizerV1
+from mealprint import FloatVar, OptimizerV1
+from mealprint.collection.swarm_based import PSO
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning

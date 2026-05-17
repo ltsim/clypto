@@ -7,7 +7,8 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, BWO, OptimizerV1
+from mealprint import FloatVar, OptimizerV1
+from mealprint.collection.evolutionary_based import BWO
 
 
 @pytest.fixture(scope="module")

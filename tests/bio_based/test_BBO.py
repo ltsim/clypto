@@ -7,7 +7,8 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, BBO, OptimizerV1
+from mealprint import FloatVar, OptimizerV1
+from mealprint.collection.bio_based import BBO
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
