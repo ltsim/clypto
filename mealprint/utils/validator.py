@@ -9,11 +9,9 @@ from numbers import Number
 
 import numpy as np
 
-from mealprint.utils.logger import Logger
-
-SEQUENCE = (list, tuple, np.ndarray)
-DIGIT = (int, np.integer)
-REAL = (float, np.floating)
+SEQUENCE = list, tuple, np.ndarray
+DIGIT = int, np.integer
+REAL = float, np.floating
 
 
 def is_in_bound(value, bound):
@@ -43,9 +41,6 @@ class Validator:
     def __init__(self, **kwargs):
         self.log_to, self.log_file = None, None
         self.__set_keyword_arguments(kwargs)
-        self.logger = Logger(self.log_to, log_file=self.log_file).create_logger(name=f"{__name__}.{__class__.__name__}",
-                                                                                format_str='%(asctime)s, %(levelname)s, %(name)s [line: %(lineno)d]: %(message)s')
-        self.logger.propagate = False
 
     def __set_keyword_arguments(self, kwargs):
         for key, value in kwargs.items():
