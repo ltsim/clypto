@@ -41,14 +41,20 @@ class Optimizer:
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
-        self.epoch, self.pop_size = None, None
-        self.mode, self.n_workers, self.name = None, None, None
-        self.pop, self.g_best, self.g_worst = None, Agent(), None
-        self.problem, self.logger, self.history = None, None, None
-
+        self.__validator = Validator(log_to="console", log_file=None)
         self.__set_keyword_arguments(kwargs)
 
-        self.validator = Validator(log_to="console", log_file=None)
+        self.epoch = None
+        self.pop_size = None
+        self.mode = None
+        self.n_workers = None
+        self.name = None
+        self.pop = None
+        self.g_best = Agent()
+        self.g_worst = None
+        self.problem = None
+        self.logger = None
+        self.history = None
 
         if self.name is None:
             self.name = self.__class__.__name__
@@ -58,6 +64,10 @@ class Optimizer:
         self.parameters, self.params_name_ordered = {}, None
         self.is_parallelizable = True
         self.generator, self.rng = None, None  # random module for numpy and random (python)
+
+    @property
+    def validator(self) -> Validator:
+        return self.__validator
 
     def __set_keyword_arguments(self, kwargs):
         for key, value in kwargs.items():
