@@ -1,6 +1,7 @@
 # Version 0.0.0.1 (First version of MealPrint)
 
 + Welcome to MealPrint!
++ Remove broken and inefficient parallel agents model
 
 
 ---
