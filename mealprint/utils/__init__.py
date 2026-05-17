@@ -10,4 +10,3 @@ from . import io
 from . import problem
 from . import termination
 from . import validator
-from . import visualize
