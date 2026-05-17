@@ -8,7 +8,6 @@ import logging
 
 
 class Logger:
-
     def __init__(self, log_to="console", **kwargs):
         self.log_to = log_to
         self.log_file = None
