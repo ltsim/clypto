@@ -3,29 +3,6 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-#
-# Examples:
-# >>>
-# >>> from mealpy import FloatVar, PSO
-# >>> import numpy as np
-# >>>
-# >>> def objective_function(solution):
-# >>>     return np.sum(solution ** 2)
-# >>>
-# >>> p1 = {
-# >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-# >>>     "minmax": "min",
-# >>>     "obj_func": objective_function,
-# >>>     "save_population": True,  # To be able to draw the trajectory figure
-# >>>     "log_to": "file",
-# >>>     "log_file": "mealpy.log",
-# >>>     "name": "Square"
-# >>> }
-# >>>
-# >>> ## Run the algorithm
-# >>> model = PSO.C_PSO(epoch=5, pop_size=50, name="C-PSO")
-# >>> g_best = model.solve(problem)
-# >>> print(f"Best solution: {g_best.solution}, Best fitness: {g_best.target.fitness}")
 
 __version__ = "0.0.0.1"
 
@@ -95,7 +72,7 @@ def get_optimizer_by_class(class_name, verbose=False):
         all_optimizers = get_all_optimizers(verbose=verbose)
         return all_optimizers[class_name]
     except KeyError:
-        print(f"Mealpy doesn't support optimizer named: {class_name}.\n"
+        print(f"MealPrint doesn't support optimizer named: {class_name}.\n"
               f"Please see the supported Optimizer name from here: https://mealpy.readthedocs.io/en/latest/pages/support.html#classification-table")
         return None
 
@@ -121,7 +98,7 @@ def get_optimizer_by_name(name, verbose=False):
                     cls[cls_name] = cls_obj
     if verbose:
         if not flag:
-            print(f"Mealpy doesn't support optimizer named: {name}.\n"
+            print(f"MealPrint doesn't support optimizer named: {name}.\n"
                   f"Please see the supported Optimizer name from here: https://mealpy.readthedocs.io/en/latest/pages/support.html#classification-table")
             return None
         del cls['Optimizer']
