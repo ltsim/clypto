@@ -12,30 +12,29 @@ from mealprint.utils.target import Target
 
 
 class Agent:
-    ID = 0
-
-    def __init__(self, solution: np.ndarray = None, target: Target = None, **kwargs) -> None:
-        self.solution = solution
+    def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
+        self.__solution = solution
         self.target = target
-        self.set_kwargs(kwargs)
-        self.kwargs = kwargs
-        self.id = self.increase()
+        self.__set_kwargs(kwargs)
+        self.__kwargs = kwargs
 
-    @classmethod
-    def increase(cls) -> int:
-        cls.ID += 1
-        return cls.ID
+    @property
+    def solution(self) -> np.ndarray | None:
+        return self.__solution
+
+    @solution.setter
+    def solution(self, solution: np.ndarray):
+        self.__solution = solution
 
     def __getattr__(self, name: str) -> Any:
-        # return None or raise AttributeError
         return self.__dict__.get(name, None)
 
-    def set_kwargs(self, kwargs):
+    def __set_kwargs(self, kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
     def copy(self) -> 'Agent':
-        agent = Agent(self.solution, self.target.copy(), **self.kwargs)
+        agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
         # Copy any changes made to the attributes
         for attr, value in vars(self).items():
             if attr not in ['target', 'solution', 'id', 'kwargs']:
@@ -43,7 +42,7 @@ class Agent:
         return agent
 
     def update_agent(self, solution: np.ndarray, target: Target) -> None:
-        self.solution = solution
+        self.__solution = solution
         self.target = target
 
     def update(self, **kwargs) -> None:
