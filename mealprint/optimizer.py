@@ -13,7 +13,6 @@ from math import gamma
 from typing import List, Union, Tuple, Dict
 
 import numpy as np
-from tqdm import tqdm
 
 from mealprint.utils.agent import Agent
 from mealprint.utils.history import History
@@ -46,12 +45,13 @@ class Optimizer:
     SUPPORTED_ARRAYS = [list, tuple, np.ndarray]
 
     def __init__(self, **kwargs):
-        super(Optimizer, self).__init__()
         self.epoch, self.pop_size = None, None
         self.mode, self.n_workers, self.name = None, None, None
         self.pop, self.g_best, self.g_worst = None, Agent(), None
         self.problem, self.logger, self.history = None, None, None
+
         self.__set_keyword_arguments(kwargs)
+
         self.validator = Validator(log_to="console", log_file=None)
 
         if self.name is None: self.name = self.__class__.__name__
@@ -249,12 +249,7 @@ class Optimizer:
 
         self.before_main_loop()
 
-        # Check tqdm
-        use_tqdm = self.problem.log_to != "console"
         loop = range(1, self.epoch + 1)
-        if use_tqdm:
-            desc = f"{self.__module__}.{self.__class__.__name__}"
-            loop = tqdm(loop, desc=desc, unit="epoch")
 
         for epoch in loop:
             time_epoch = time.perf_counter()
@@ -268,13 +263,6 @@ class Optimizer:
 
             time_epoch = time.perf_counter() - time_epoch
             self.track_optimize_step(self.pop, epoch, time_epoch)
-
-            # update tqdm postfix để hiển thị fitness
-            if use_tqdm:
-                loop.set_postfix({
-                    "c_best": f"{self.history.list_current_best[-1].target.fitness:.6f}",
-                    "g_best": f"{self.g_best.target.fitness:.6f}"
-                })
 
             if self.check_termination("end", None, epoch):
                 break
@@ -351,6 +339,7 @@ class Optimizer:
         if pop_size is None:
             pop_size = self.pop_size
         pop = []
+
         if self.mode == "thread":
             with parallel.ThreadPoolExecutor(self.n_workers) as executor:
                 list_executors = [executor.submit(self.generate_agent) for _ in range(pop_size)]
@@ -365,6 +354,7 @@ class Optimizer:
                     pop.append(f.result())
         else:
             pop = [self.generate_agent() for _ in range(0, pop_size)]
+
         return pop
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
