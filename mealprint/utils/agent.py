@@ -12,30 +12,37 @@ from mealprint.utils.target import Target
 
 
 class Agent:
-    ID = 0
+    def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
+        self.__solution = solution
+        self.__target = target
+        self.__set_kwargs(kwargs)
+        self.__kwargs = kwargs
 
-    def __init__(self, solution: np.ndarray = None, target: Target = None, **kwargs) -> None:
-        self.solution = solution
-        self.target = target
-        self.set_kwargs(kwargs)
-        self.kwargs = kwargs
-        self.id = self.increase()
+    @property
+    def target(self) -> Target | None:
+        return self.__target
 
-    @classmethod
-    def increase(cls) -> int:
-        cls.ID += 1
-        return cls.ID
+    @target.setter
+    def target(self, target: Target | None) -> None:
+        self.__target = target
+
+    @property
+    def solution(self) -> np.ndarray | None:
+        return self.__solution
+
+    @solution.setter
+    def solution(self, solution: np.ndarray):
+        self.__solution = solution
 
     def __getattr__(self, name: str) -> Any:
-        # return None or raise AttributeError
         return self.__dict__.get(name, None)
 
-    def set_kwargs(self, kwargs):
+    def __set_kwargs(self, kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
 
     def copy(self) -> 'Agent':
-        agent = Agent(self.solution, self.target.copy(), **self.kwargs)
+        agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
         # Copy any changes made to the attributes
         for attr, value in vars(self).items():
             if attr not in ['target', 'solution', 'id', 'kwargs']:
@@ -43,8 +50,8 @@ class Agent:
         return agent
 
     def update_agent(self, solution: np.ndarray, target: Target) -> None:
-        self.solution = solution
-        self.target = target
+        self.__solution = solution
+        self.__target = target
 
     def update(self, **kwargs) -> None:
         for attr, value in kwargs.items():
@@ -57,10 +64,12 @@ class Agent:
         Returns:
             bool: True if duplicate (and target updated), False otherwise.
         """
-        if self == other:  # use __eq__
-            self.target = other.target
-            return True
-        return False
+        is_eq = self == other
+
+        if is_eq:  # use __eq__
+            self.__target = other.target
+
+        return is_eq
 
     def _compare_fitness(self, other: "Agent", minmax: str = "min") -> int:
         """
@@ -73,7 +82,7 @@ class Agent:
         """
         if self.target.fitness == other.target.fitness:
             return 0
-        if minmax == "min":
+        elif minmax == "min":
             return -1 if self.target.fitness < other.target.fitness else 1
         else:
             return -1 if self.target.fitness > other.target.fitness else 1
