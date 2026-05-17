@@ -4,15 +4,12 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-import concurrent.futures as parallel
-import os
 import random
 import time
-from functools import partial
-from math import gamma
 from typing import List, Union, Tuple, Dict
 
 import numpy as np
+from math import gamma
 
 from mealprint.utils.agent import Agent
 from mealprint.utils.history import History
@@ -39,9 +36,7 @@ class Optimizer:
     """
 
     EPSILON = 10E-10
-    SUPPORTED_MODES = ["process", "thread", "swarm", "single"]
-    AVAILABLE_MODES = ["process", "thread", "swarm"]
-    PARALLEL_MODES = ["process", "thread"]
+    AVAILABLE_MODES = []
     SUPPORTED_ARRAYS = [list, tuple, np.ndarray]
 
     def __init__(self, **kwargs):
@@ -130,11 +125,7 @@ class Optimizer:
         elif type(starting_solutions) in self.SUPPORTED_ARRAYS and len(starting_solutions) == self.pop_size:
             if type(starting_solutions[0]) in self.SUPPORTED_ARRAYS and len(
                     starting_solutions[0]) == self.problem.n_dims:
-                if self.mode in self.AVAILABLE_MODES:
-                    self.pop = [self.generate_empty_agent(solution) for solution in starting_solutions]
-                    self.pop = self.update_target_for_population(self.pop)
-                else:
-                    self.pop = [self.generate_agent(solution) for solution in starting_solutions]
+                self.pop = [self.generate_agent(solution) for solution in starting_solutions]
             else:
                 raise ValueError(
                     "Invalid starting_solutions. It should be a list of positions or 2D matrix of positions only.")
@@ -176,24 +167,6 @@ class Optimizer:
         self.logger.info(self)
         self.history = History(log_to=self.problem.log_to, log_file=self.problem.log_file)
         self.pop, self.g_best, self.g_worst = None, None, None
-
-    def check_mode_and_workers(self, mode, n_workers):
-        self.mode = self.validator.check_str("mode", mode, self.SUPPORTED_MODES)
-        if self.mode in self.PARALLEL_MODES:
-            if not self.is_parallelizable:
-                self.logger.warning(
-                    f"{self.get_name()} doesn't support parallelization. The default mode 'single' is activated.")
-                self.mode = "single"
-            elif n_workers is not None:
-                if self.mode == "process":
-                    self.n_workers = self.validator.check_int("n_workers", n_workers, [2, min(61, os.cpu_count() - 1)])
-                if self.mode == "thread":
-                    self.n_workers = self.validator.check_int("n_workers", n_workers, [2, min(32, os.cpu_count() + 4)])
-                self.logger.info(f"The parallel mode '{self.mode}' is selected with {self.n_workers} workers.")
-            else:
-                self.logger.warning(
-                    f"The parallel mode: {self.mode} is selected. But n_workers is not set. The default n_workers = 4 is used.")
-                self.n_workers = 4
 
     def check_termination(self, mode="start", termination=None, epoch=None):
         if mode == "start":
@@ -239,7 +212,6 @@ class Optimizer:
             g_best: g_best, the best found agent, that hold the best solution and the best target. Access by: .g_best.solution, .g_best.target
         """
         self.check_problem(problem, seed)
-        self.check_mode_and_workers(mode, n_workers)
         self.check_termination("start", termination, None)
         self.initialize_variables()
 
@@ -338,24 +310,8 @@ class Optimizer:
         """
         if pop_size is None:
             pop_size = self.pop_size
-        pop = []
 
-        if self.mode == "thread":
-            with parallel.ThreadPoolExecutor(self.n_workers) as executor:
-                list_executors = [executor.submit(self.generate_agent) for _ in range(pop_size)]
-                # This method yield the result everytime a thread finished their job (not by order)
-                for f in parallel.as_completed(list_executors):
-                    pop.append(f.result())
-        elif self.mode == "process":
-            with parallel.ProcessPoolExecutor(self.n_workers) as executor:
-                list_executors = [executor.submit(self.generate_agent) for _ in range(pop_size)]
-                # This method yield the result everytime a cpu finished their job (not by order).
-                for f in parallel.as_completed(list_executors):
-                    pop.append(f.result())
-        else:
-            pop = [self.generate_agent() for _ in range(0, pop_size)]
-
-        return pop
+        return [self.generate_agent() for _ in range(0, pop_size)]
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         """
@@ -395,24 +351,15 @@ class Optimizer:
             list: population with updated target value
         """
         pos_list = [agent.solution for agent in pop]
-        if self.mode == "thread":
-            with parallel.ThreadPoolExecutor(self.n_workers) as executor:
-                # Return result as original order, not the future object
-                list_results = executor.map(partial(self.get_target, counted=False), pos_list)
-                for idx, target in enumerate(list_results):
-                    pop[idx].target = target
-        elif self.mode == "process":
-            with parallel.ProcessPoolExecutor(self.n_workers) as executor:
-                # Return result as original order, not the future object
-                list_results = executor.map(partial(self.get_target, counted=False), pos_list)
-                for idx, target in enumerate(list_results):
-                    pop[idx].target = target
-        elif self.mode == "swarm":
+
+        if self.mode == "swarm":
             for idx, pos in enumerate(pos_list):
                 pop[idx].target = self.get_target(pos, counted=False)
         else:
             return pop
+
         self.nfe_counter += len(pop)
+
         return pop
 
     def get_target(self, solution: np.ndarray, counted: bool = True) -> Target:
