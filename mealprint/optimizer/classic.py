@@ -307,8 +307,7 @@ class ClassicOptimizer(Optimizer):
 
         return self.problem.correct_solution(solution)
 
-    def update_target_for_population(self, pop: list[Agent] | None = None) -> list[Agent]:
-
+    def update_target_for_population(self, pop: list[Agent]) -> list[Agent]:
         pos_list = [agent.solution for agent in pop]
 
         if self.mode == "swarm":
