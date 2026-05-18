@@ -64,7 +64,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def check_problem(self, problem: dict | Problem, seed: int | None):
+    def check_problem(self, problem: dict | Problem, seed: int | None, history_track: bool = False):
         """
 
         """
