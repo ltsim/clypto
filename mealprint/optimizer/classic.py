@@ -182,7 +182,7 @@ class ClassicOptimizer(Optimizer):
 
     def check_problem(self, problem: dict | Problem, seed: int | None) -> None:
         if isinstance(problem, Problem):
-            problem.set_seed(seed)
+            problem.seed = seed
             self.problem = problem
         elif type(problem) == dict:
             problem["seed"] = seed
@@ -193,7 +193,7 @@ class ClassicOptimizer(Optimizer):
         self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
 
-        self.history = History(log_to=self.problem.log_to, log_file=self.problem.log_file)
+        self.history = History()
         self.pop, self.g_best, self.g_worst = None, None, None
 
     def check_termination(self, mode="start", termination=None, epoch=None):
