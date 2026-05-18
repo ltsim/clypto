@@ -212,6 +212,8 @@ class ClassicOptimizer(Optimizer):
 
                 self.__nfe_counter = 0
                 self.__termination.set_start_values(0, self.__nfe_counter, time.perf_counter(), 0)
+
+            return None
         else:
             finished = False
 
@@ -259,6 +261,9 @@ class ClassicOptimizer(Optimizer):
 
         if track_optimize:
             self.track_optimize_process()
+
+        if self.g_best is None:
+            raise ValueError("Best solution was not found.")
 
         return self.g_best
 
