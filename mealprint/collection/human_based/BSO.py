@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class ImprovedBSO(OptimizerClassic):
+class ImprovedBSO(ClassicOptimizer):
     """
     The improved version: Improved Brain Storm Optimization (IBSO)
 

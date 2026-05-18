@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalACOR(OptimizerClassic):
+class OriginalACOR(ClassicOptimizer):
     """
     The original version of: Ant Colony Optimization Continuous (ACOR)
 

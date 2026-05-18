@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class DevQSA(OptimizerClassic):
+class DevQSA(ClassicOptimizer):
     """
     The developed version: Queuing Search Algorithm (QSA)
 

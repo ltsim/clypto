@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalBCO(OptimizerClassic):
+class OriginalBCO(ClassicOptimizer):
     """
     The original version of: Bacterial Colony Optimization (BCO)
 

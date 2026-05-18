@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalFLA(OptimizerClassic):
+class OriginalFLA(ClassicOptimizer):
     """
     The original version of: Fick's Law Algorithm (FLA)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalNMRA(OptimizerClassic):
+class OriginalNMRA(ClassicOptimizer):
     """
     The original version of: Naked Mole-Rat Algorithm (NMRA)
 
@@ -88,7 +88,7 @@ class OriginalNMRA(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class ImprovedNMRA(OptimizerClassic):
+class ImprovedNMRA(ClassicOptimizer):
     """
     The developed version of: Improved Naked Mole-Rat Algorithm (I-NMRA)
 

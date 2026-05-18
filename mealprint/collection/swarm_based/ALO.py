@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalALO(OptimizerClassic):
+class OriginalALO(ClassicOptimizer):
     """
     The original version of: Ant Lion Optimizer (ALO)
 

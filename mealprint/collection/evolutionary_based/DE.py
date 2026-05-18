@@ -7,11 +7,11 @@
 import numpy as np
 from scipy.stats import cauchy
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 
 
-class OriginalDE(OptimizerClassic):
+class OriginalDE(ClassicOptimizer):
     """
     The original version of: Differential Evolution (DE)
 
@@ -160,7 +160,7 @@ class OriginalDE(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
 
 
-class JADE(OptimizerClassic):
+class JADE(ClassicOptimizer):
     """
     The original version of: Differential Evolution (JADE)
 
@@ -300,7 +300,7 @@ class JADE(OptimizerClassic):
             self.dyn_miu_f = (1 - self.ap) * self.dyn_miu_f + self.ap * self.lehmer_mean(np.array(list_f))
 
 
-class SADE(OptimizerClassic):
+class SADE(ClassicOptimizer):
     """
     The original version of: Self-Adaptive Differential Evolution (SADE)
 
@@ -419,7 +419,7 @@ class SADE(OptimizerClassic):
             self.ns1 = self.ns2 = self.nf1 = self.nf2 = 0
 
 
-class SAP_DE(OptimizerClassic):
+class SAP_DE(ClassicOptimizer):
     """
     The original version of: Differential Evolution with Self-Adaptive Populations (SAP_DE)
 

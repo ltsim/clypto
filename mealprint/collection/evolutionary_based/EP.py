@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 
 
-class OriginalEP(OptimizerClassic):
+class OriginalEP(ClassicOptimizer):
     """
     The original version of: Evolutionary Programming (EP)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalWOA(OptimizerClassic):
+class OriginalWOA(ClassicOptimizer):
     """
     The original version of: Whale Optimization Algorithm (WOA)
 
@@ -93,7 +93,7 @@ class OriginalWOA(OptimizerClassic):
             self.pop = self.update_target_for_population(pop_new)
 
 
-class DevWOA(OptimizerClassic):
+class DevWOA(ClassicOptimizer):
     """
     The developed version of: Whale Optimization Algorithm (WOA)
 
@@ -181,7 +181,7 @@ class DevWOA(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class HI_WOA(OptimizerClassic):
+class HI_WOA(ClassicOptimizer):
     """
     The original version of: Hybrid Improved Whale Optimization Algorithm (HI-WOA)
 

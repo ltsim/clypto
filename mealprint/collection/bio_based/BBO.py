@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalBBO(OptimizerClassic):
+class OriginalBBO(ClassicOptimizer):
     """
     The original version of: Biogeography-Based Optimization (BBO)
 

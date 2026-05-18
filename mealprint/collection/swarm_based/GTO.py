@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalGTO(OptimizerClassic):
+class OriginalGTO(ClassicOptimizer):
     """
     The original version of: Giant Trevally Optimizer (GTO)
 
@@ -129,7 +129,7 @@ class OriginalGTO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class Matlab102GTO(OptimizerClassic):
+class Matlab102GTO(ClassicOptimizer):
     """
     The conversion of Matlab code (version 1.0.2 - 27/04/2023) to Python code of: Giant Trevally Optimizer (GTO)
 
@@ -250,7 +250,7 @@ class Matlab102GTO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class Matlab101GTO(OptimizerClassic):
+class Matlab101GTO(ClassicOptimizer):
     """
     The conversion of Matlab code (version 1.0.1 - 29/11/2022) to Python code of: Giant Trevally Optimizer (GTO)
 

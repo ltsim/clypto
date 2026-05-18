@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalHHO(OptimizerClassic):
+class OriginalHHO(ClassicOptimizer):
     """
     The original version of: Harris Hawks Optimization (HHO)
 

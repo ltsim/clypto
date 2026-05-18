@@ -7,11 +7,11 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 
 
-class OriginalSSpiderA(OptimizerClassic):
+class OriginalSSpiderA(ClassicOptimizer):
     """
     The developed version of: Social Spider Algorithm (OriginalSSpiderA)
 

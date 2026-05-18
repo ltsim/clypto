@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 
 
-class OriginalBFO(OptimizerClassic):
+class OriginalBFO(ClassicOptimizer):
     """
     The original version of: Bacterial Foraging Optimization (BFO)
 
@@ -155,7 +155,7 @@ class OriginalBFO(OptimizerClassic):
                     self.pop[idc] = self.generate_agent()
 
 
-class ABFO(OptimizerClassic):
+class ABFO(ClassicOptimizer):
     """
     The original version of: Adaptive Bacterial Foraging Optimization (ABFO)
 

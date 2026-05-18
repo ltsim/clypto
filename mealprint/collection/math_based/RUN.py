@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalRUN(OptimizerClassic):
+class OriginalRUN(ClassicOptimizer):
     """
     The original version of: RUNge Kutta optimizer (RUN)
 

@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 from mealprint.utils.problem import Problem
 from mealprint.utils.termination import Termination
@@ -214,11 +214,11 @@ class Tuner:
     >>>     print(tuner.best_algorithm.get_name())
     """
 
-    def __init__(self, algorithm: Union[str, OptimizerClassic] = None, param_grid: Union[Dict, List] = None,
+    def __init__(self, algorithm: Union[str, ClassicOptimizer] = None, param_grid: Union[Dict, List] = None,
                  **kwargs: object) -> None:
         self.__set_keyword_arguments(kwargs)
         self.validator = Validator(log_to="console", log_file=None)
-        self.algorithm = self.validator.check_is_instance("algorithm", algorithm, OptimizerClassic)
+        self.algorithm = self.validator.check_is_instance("algorithm", algorithm, ClassicOptimizer)
         self.param_grid = self.validator.check_is_instance("param_grid", param_grid, dict)
         self.results, self._best_row, self._best_params, self._best_score, self._best_algorithm = None, None, None, None, None
 

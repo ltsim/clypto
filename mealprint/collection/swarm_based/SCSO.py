@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalSCSO(OptimizerClassic):
+class OriginalSCSO(ClassicOptimizer):
     """
     The original version of: Sand Cat Swarm Optimization (SCSO)
 

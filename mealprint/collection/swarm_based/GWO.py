@@ -6,12 +6,12 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.chaotic import ChaoticMap as CM
 from mealprint.utils.fuzzy import FuzzySystem as FS
 
 
-class OriginalGWO(OptimizerClassic):
+class OriginalGWO(ClassicOptimizer):
     """
     The original version of: Grey Wolf Optimizer (GWO)
 
@@ -88,7 +88,7 @@ class OriginalGWO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class RW_GWO(OptimizerClassic):
+class RW_GWO(ClassicOptimizer):
     """
     The original version of: Random Walk Grey Wolf Optimizer (RW-GWO)
 
@@ -350,7 +350,7 @@ class IGWO(OriginalGWO):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class ChaoticGWO(OptimizerClassic):
+class ChaoticGWO(ClassicOptimizer):
     """
     The original version of: Chaotic-based Grey Wolf Optimizer (Chaotic-GWO or C-GWO)
 
@@ -456,7 +456,7 @@ class ChaoticGWO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class FuzzyGWO(OptimizerClassic):
+class FuzzyGWO(ClassicOptimizer):
     """
     The original version of: Fuzzy Hierarchical Operator - Grey Wolf Optimizer (FHO-GWO or FuzzyGWO or F-GWO)
 
@@ -544,7 +544,7 @@ class FuzzyGWO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class IncrementalGWO(OptimizerClassic):
+class IncrementalGWO(ClassicOptimizer):
     """
     The original version of: Incremental model-based Grey Wolf Optimizer (IncrementalGWO)
 
@@ -628,7 +628,7 @@ class IncrementalGWO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class ExGWO(OptimizerClassic):
+class ExGWO(ClassicOptimizer):
     """
     The original version of: Expanded Grey Wolf Optimizer (Ex-GWO)
 
@@ -714,7 +714,7 @@ class ExGWO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class DS_GWO(OptimizerClassic):
+class DS_GWO(ClassicOptimizer):
     """
     The original version of: Diversity enhanced Strategy based Grey Wolf Optimizer (DS-GWO)
 
@@ -828,7 +828,7 @@ class DS_GWO(OptimizerClassic):
         self.beta = self.delta_candidates[beta_idx].copy()
 
 
-class IOBL_GWO(OptimizerClassic):
+class IOBL_GWO(ClassicOptimizer):
     """
     The original version of: Improved Opposite-based Learning Grey Wolf Optimizer (IOBL-GWO)
 
@@ -943,7 +943,7 @@ class IOBL_GWO(OptimizerClassic):
                 self.pop[idx] = obl_pop[idx]
 
 
-class OGWO(OptimizerClassic):
+class OGWO(ClassicOptimizer):
     """
     The original version of: Opposition-based learning Grey Wolf Optimizer (OGWO)
 
@@ -1053,7 +1053,7 @@ class OGWO(OptimizerClassic):
                                                               minmax=self.problem.minmax)
 
 
-class ER_GWO(OptimizerClassic):
+class ER_GWO(ClassicOptimizer):
     """
     The original version of: Efficient and Robust Grey Wolf Optimizer (ER-GWO)
 
@@ -1149,7 +1149,7 @@ class ER_GWO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class CG_GWO(OptimizerClassic):
+class CG_GWO(ClassicOptimizer):
     """
     The original version of: Cauchy‑Gaussian mutation and improved search strategy GWO (CG‑GWO)
 

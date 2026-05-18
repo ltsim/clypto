@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalARO(OptimizerClassic):
+class OriginalARO(ClassicOptimizer):
     """
     The original version of: Artificial Rabbits Optimization (ARO)
 
@@ -95,7 +95,7 @@ class OriginalARO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_new, minmax=self.problem.minmax)
 
 
-class LARO(OptimizerClassic):
+class LARO(ClassicOptimizer):
     """
     The improved version of:  Lévy flight, and the selective opposition version of the artificial rabbit algorithm (LARO)
 
@@ -200,7 +200,7 @@ class LARO(OptimizerClassic):
                         self.pop[idx].update(solution=pos_new, target=target)
 
 
-class IARO(OptimizerClassic):
+class IARO(ClassicOptimizer):
     """
     The improved version of: Improved Artificial Rabbits Optimization (IARO)
 

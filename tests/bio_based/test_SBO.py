@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, OptimizerClassic
+from mealprint import FloatVar, ClassicOptimizer
 from mealprint.collection.bio_based import SBO
 
 
@@ -32,7 +32,7 @@ def test_OriginalSBO_results(problem):
     psw = 0.02
     model = SBO.OriginalSBO(epoch, pop_size, alpha, p_m, psw)
     g_best = model.solve(problem)
-    assert isinstance(model, OptimizerClassic)
+    assert isinstance(model, ClassicOptimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 
@@ -45,7 +45,7 @@ def test_DevSBO_results(problem):
     psw = 0.02
     model = SBO.DevSBO(epoch, pop_size, alpha, p_m, psw)
     g_best = model.solve(problem)
-    assert isinstance(model, OptimizerClassic)
+    assert isinstance(model, ClassicOptimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

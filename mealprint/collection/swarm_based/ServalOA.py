@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalServalOA(OptimizerClassic):
+class OriginalServalOA(ClassicOptimizer):
     """
     The original version of: Serval Optimization Algorithm (ServalOA)
 

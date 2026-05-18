@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalWCA(OptimizerClassic):
+class OriginalWCA(ClassicOptimizer):
     """
     The original version of: Water Cycle Algorithm (WCA)
 

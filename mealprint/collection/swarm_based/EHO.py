@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalEHO(OptimizerClassic):
+class OriginalEHO(ClassicOptimizer):
     """
     The original version of: Elephant Herding Optimization (EHO)
 

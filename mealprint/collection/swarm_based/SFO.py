@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalSFO(OptimizerClassic):
+class OriginalSFO(ClassicOptimizer):
     """
     The original version of: SailFish Optimizer (SFO)
 
@@ -146,7 +146,7 @@ class OriginalSFO(OptimizerClassic):
         self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)
 
 
-class ImprovedSFO(OptimizerClassic):
+class ImprovedSFO(ClassicOptimizer):
     """
     The original version: Improved Sailfish Optimizer (I-SFO)
 

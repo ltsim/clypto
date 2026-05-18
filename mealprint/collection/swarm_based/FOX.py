@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalFOX(OptimizerClassic):
+class OriginalFOX(ClassicOptimizer):
     """
     The original version of: Fox Optimizer (FOX)
 
@@ -97,7 +97,7 @@ class OriginalFOX(OptimizerClassic):
             self.pop = self.update_target_for_population(pop_new)
 
 
-class DevFOX(OptimizerClassic):
+class DevFOX(ClassicOptimizer):
     """
     The developed version of: Fox Optimizer (FOX)
 

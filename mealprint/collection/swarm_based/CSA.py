@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalCSA(OptimizerClassic):
+class OriginalCSA(ClassicOptimizer):
     """
     The original version of: Cuckoo Search Algorithm (CSA)
 

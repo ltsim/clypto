@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalMFO(OptimizerClassic):
+class OriginalMFO(ClassicOptimizer):
     """
     The developed version: Moth-Flame Optimization (MFO)
 

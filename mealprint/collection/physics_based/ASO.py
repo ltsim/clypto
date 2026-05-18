@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 
 
-class OriginalASO(OptimizerClassic):
+class OriginalASO(ClassicOptimizer):
     """
     The original version of: Atom Search Optimization (ASO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalGBO(OptimizerClassic):
+class OriginalGBO(ClassicOptimizer):
     """
     The original version of: Gradient-Based Optimizer (GBO)
 

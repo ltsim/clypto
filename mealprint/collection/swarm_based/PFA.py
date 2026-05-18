@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalPFA(OptimizerClassic):
+class OriginalPFA(ClassicOptimizer):
     """
     The original version of: Pathfinder Algorithm (PFA)
 

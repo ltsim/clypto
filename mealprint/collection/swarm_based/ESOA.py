@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 
 
-class OriginalESOA(OptimizerClassic):
+class OriginalESOA(ClassicOptimizer):
     """
     The original version of: Egret Swarm Optimization Algorithm (ESOA)
 

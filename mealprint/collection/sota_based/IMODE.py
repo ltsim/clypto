@@ -8,10 +8,10 @@ from typing import Tuple, List
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalIMODE(OptimizerClassic):
+class OriginalIMODE(ClassicOptimizer):
     """
     The original version of: Improved Multi-operator Differential Evolution Algorithm (IMODE)
 

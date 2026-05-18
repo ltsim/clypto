@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, OptimizerClassic
+from mealprint import FloatVar, ClassicOptimizer
 from mealprint.collection.bio_based import IWO
 
 
@@ -35,7 +35,7 @@ def test_OriginalIWO_results(problem):
 
     model = IWO.OriginalIWO(epoch, pop_size, seed_min, seed_max, exponent, sigma_start, sigma_end)
     g_best = model.solve(problem)
-    assert isinstance(model, OptimizerClassic)
+    assert isinstance(model, ClassicOptimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalICA(OptimizerClassic):
+class OriginalICA(ClassicOptimizer):
     """
     The original version of: Imperialist Competitive Algorithm (ICA)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalTSO(OptimizerClassic):
+class OriginalTSO(ClassicOptimizer):
     """
     The original version of: Tuna Swarm Optimization (TSO)
 

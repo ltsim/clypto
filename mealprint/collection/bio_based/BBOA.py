@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalBBOA(OptimizerClassic):
+class OriginalBBOA(ClassicOptimizer):
     """
     The original version of: Brown-Bear Optimization Algorithm (BBOA)
 

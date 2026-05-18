@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, OptimizerClassic
+from mealprint import FloatVar, ClassicOptimizer
 from mealprint.collection.bio_based import VCS
 
 
@@ -31,7 +31,7 @@ def test_OriginalVCS_results(problem):
     xichma = 0.3
     model = VCS.OriginalVCS(epoch, pop_size, lamda, xichma)
     g_best = model.solve(problem)
-    assert isinstance(model, OptimizerClassic)
+    assert isinstance(model, ClassicOptimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 
@@ -43,7 +43,7 @@ def test_DevVCS_results(problem):
     xichma = 0.3
     model = VCS.DevVCS(epoch, pop_size, lamda, xichma)
     g_best = model.solve(problem)
-    assert isinstance(model, OptimizerClassic)
+    assert isinstance(model, ClassicOptimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

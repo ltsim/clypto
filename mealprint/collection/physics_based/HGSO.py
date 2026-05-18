@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalHGSO(OptimizerClassic):
+class OriginalHGSO(ClassicOptimizer):
     """
     The original version of: Henry Gas Solubility Optimization (HGSO)
 

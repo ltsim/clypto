@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 
 
-class OriginalBA(OptimizerClassic):
+class OriginalBA(ClassicOptimizer):
     """
     The original version of: Bat-inspired Algorithm (BA)
 
@@ -106,7 +106,7 @@ class OriginalBA(OptimizerClassic):
                 self.pop[idx].update(solution=pop_new[idx].solution, target=pop_new[idx].target)
 
 
-class AdaptiveBA(OptimizerClassic):
+class AdaptiveBA(ClassicOptimizer):
     """
     The original version of: Adaptive Bat-inspired Algorithm (ABA)
 
@@ -217,7 +217,7 @@ class AdaptiveBA(OptimizerClassic):
                                      pulse_rate=pulse_rate)
 
 
-class DevBA(OptimizerClassic):
+class DevBA(ClassicOptimizer):
     """
     The original version of: Developed Bat-inspired Algorithm (DBA)
 

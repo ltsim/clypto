@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalHC(OptimizerClassic):
+class OriginalHC(ClassicOptimizer):
     """
     The original version of: Hill Climbing (HC)
 
@@ -79,7 +79,7 @@ class OriginalHC(OptimizerClassic):
         self.pop = self.update_target_for_population(pop_neighbours)
 
 
-class SwarmHC(OptimizerClassic):
+class SwarmHC(ClassicOptimizer):
     """
     The developed version: Swarm-based Hill Climbing (S-HC)
 

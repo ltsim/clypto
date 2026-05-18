@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalBWO(OptimizerClassic):
+class OriginalBWO(ClassicOptimizer):
     """
     The original version of: Black Widow Optimization (BWO)
 

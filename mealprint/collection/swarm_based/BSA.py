@@ -6,11 +6,11 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 
 
-class OriginalBSA(OptimizerClassic):
+class OriginalBSA(ClassicOptimizer):
     """
     The original version of: Bird Swarm Algorithm (BSA)
 

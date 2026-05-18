@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalAEO(OptimizerClassic):
+class OriginalAEO(ClassicOptimizer):
     """
     The original version of: Artificial Ecosystem-based Optimization (AEO)
 
@@ -233,7 +233,7 @@ class ImprovedAEO(OriginalAEO):
             self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
 
 
-class EnhancedAEO(OptimizerClassic):
+class EnhancedAEO(ClassicOptimizer):
     """
     The original version of: Enhanced Artificial Ecosystem-Based Optimization (EAEO)
 
@@ -365,7 +365,7 @@ class EnhancedAEO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
 
 
-class ModifiedAEO(OptimizerClassic):
+class ModifiedAEO(ClassicOptimizer):
     """
     The original version of: Modified Artificial Ecosystem-Based Optimization (MAEO)
 
@@ -485,7 +485,7 @@ class ModifiedAEO(OptimizerClassic):
             self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
 
 
-class AugmentedAEO(OptimizerClassic):
+class AugmentedAEO(ClassicOptimizer):
     """
     The original version of: Augmented Artificial Ecosystem Optimization (AAEO)
 

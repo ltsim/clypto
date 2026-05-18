@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class DevSMO(OptimizerClassic):
+class DevSMO(ClassicOptimizer):
     """
     The developed version of: Spider Monkey Optimization (SMO)
 

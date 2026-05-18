@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from mealprint.optimizer.optimizer_v1 import OptimizerClassic
+from mealprint.optimizer.classic import ClassicOptimizer
 
 
-class OriginalFA(OptimizerClassic):
+class OriginalFA(ClassicOptimizer):
     """
     The original version of: Fireworks Algorithm (FA)
 
