@@ -40,16 +40,9 @@ class ClassicOptimizer(Optimizer):
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
-        super().__init__()
-
-        def set_keyword_arguments(args):
-            for k, v in args.items():
-                setattr(self, k, v)
-
+        self.__history = History()
         self.__validator = Validator()
         self.__nfe_counter = 1
-
-        set_keyword_arguments(kwargs)
 
         self.epoch = None
         self.pop_size = None
@@ -60,7 +53,6 @@ class ClassicOptimizer(Optimizer):
         self.g_best = Agent()
         self.g_worst = None
         self.problem = None
-        self.history = None
 
         if self.name is None:
             self.name = self.__class__.__name__
@@ -172,7 +164,7 @@ class ClassicOptimizer(Optimizer):
             self.pop = pop_temp
 
         ## Store initial best and worst solutions
-        self.history.store_initial_best_worst(self.g_best, self.g_worst)
+        self.__history.store_initial_best_worst(self.g_best, self.g_worst)
 
     def before_main_loop(self):
         pass
@@ -192,8 +184,6 @@ class ClassicOptimizer(Optimizer):
 
         self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
-
-        self.history = History()
 
         self.pop, self.g_best, self.g_worst = None, None, None
 
@@ -216,7 +206,7 @@ class ClassicOptimizer(Optimizer):
             finished = False
 
             if self.termination is not None:
-                es = self.history.get_global_repeated_times(self.termination.epsilon)
+                es = self.__history.get_global_repeated_times(self.termination.epsilon)
                 finished = self.termination.should_terminate(epoch, self.__nfe_counter, time.perf_counter(), es)
 
             return finished
@@ -263,29 +253,29 @@ class ClassicOptimizer(Optimizer):
                             runtime: float | None = None) -> None:
         ## Save history data
         if self.problem.save_population:
-            self.history.list_population.append(ClassicOptimizer.duplicate_pop(pop))
+            self.__history.list_population.append(ClassicOptimizer.duplicate_pop(pop))
 
-        self.history.list_epoch_time.append(runtime)
-        self.history.list_global_best_fit.append(self.history.list_global_best[-1].target.fitness)
-        self.history.list_current_best_fit.append(self.history.list_current_best[-1].target.fitness)
+        self.__history.list_epoch_time.append(runtime)
+        self.__history.list_global_best_fit.append(self.__history.list_global_best[-1].target.fitness)
+        self.__history.list_current_best_fit.append(self.__history.list_current_best[-1].target.fitness)
 
         # Save the exploration and exploitation data for later usage
         pos_matrix = np.array([agent.solution for agent in pop])
         div = np.mean(np.abs(np.median(pos_matrix, axis=0) - pos_matrix), axis=0)
 
-        self.history.list_diversity.append(np.mean(div, axis=0))
+        self.__history.list_diversity.append(np.mean(div, axis=0))
 
     def track_optimize_process(self) -> None:
-        self.history.epoch = len(self.history.list_diversity)
+        self.__history.epoch = len(self.__history.list_diversity)
 
-        div_max = np.max(self.history.list_diversity)
+        div_max = np.max(self.__history.list_diversity)
 
-        self.history.list_exploration = 100 * (np.array(self.history.list_diversity) / div_max)
-        self.history.list_exploitation = 100 - self.history.list_exploration
-        self.history.list_global_best = self.history.list_global_best[1:]
-        self.history.list_current_best = self.history.list_current_best[1:]
-        self.history.list_global_worst = self.history.list_global_worst[1:]
-        self.history.list_current_worst = self.history.list_current_worst[1:]
+        self.__history.list_exploration = 100 * (np.array(self.__history.list_diversity) / div_max)
+        self.__history.list_exploitation = 100 - self.__history.list_exploration
+        self.__history.list_global_best = self.__history.list_global_best[1:]
+        self.__history.list_current_best = self.__history.list_current_best[1:]
+        self.__history.list_global_worst = self.__history.list_global_worst[1:]
+        self.__history.list_current_worst = self.__history.list_current_worst[1:]
 
     def generate_empty_agent(self, solution: np.ndarray | None = None) -> Agent:
         if solution is None:
@@ -537,31 +527,31 @@ class ClassicOptimizer(Optimizer):
 
         if save:
             ## Save current best
-            self.history.list_current_best.append(c_best)
-            better = self.get_better_agent(c_best, self.history.list_global_best[-1], self.problem.minmax)
+            self.__history.list_current_best.append(c_best)
+            better = self.get_better_agent(c_best, self.__history.list_global_best[-1], self.problem.minmax)
 
-            self.history.list_global_best.append(better)
+            self.__history.list_global_best.append(better)
 
             ## Save current worst
-            self.history.list_current_worst.append(c_worst)
+            self.__history.list_current_worst.append(c_worst)
 
-            worse = self.get_better_agent(c_worst, self.history.list_global_worst[-1], self.problem.minmax,
+            worse = self.get_better_agent(c_worst, self.__history.list_global_worst[-1], self.problem.minmax,
                                           reverse=True)
-            self.history.list_global_worst.append(worse)
+            self.__history.list_global_worst.append(worse)
             return sorted_pop, better
         else:
             ## Handle current best
-            local_better = self.get_better_agent(c_best, self.history.list_current_best[-1], self.problem.minmax)
-            self.history.list_current_best[-1] = local_better
-            global_better = self.get_better_agent(c_best, self.history.list_global_best[-1], self.problem.minmax)
-            self.history.list_global_best[-1] = global_better
+            local_better = self.get_better_agent(c_best, self.__history.list_current_best[-1], self.problem.minmax)
+            self.__history.list_current_best[-1] = local_better
+            global_better = self.get_better_agent(c_best, self.__history.list_global_best[-1], self.problem.minmax)
+            self.__history.list_global_best[-1] = global_better
             ## Handle current worst
-            local_worst = self.get_better_agent(c_worst, self.history.list_current_worst[-1], self.problem.minmax,
+            local_worst = self.get_better_agent(c_worst, self.__history.list_current_worst[-1], self.problem.minmax,
                                                 reverse=True)
-            self.history.list_current_worst[-1] = local_worst
-            global_worst = self.get_better_agent(c_worst, self.history.list_global_worst[-1], self.problem.minmax,
+            self.__history.list_current_worst[-1] = local_worst
+            global_worst = self.get_better_agent(c_worst, self.__history.list_global_worst[-1], self.problem.minmax,
                                                  reverse=True)
-            self.history.list_global_worst[-1] = global_worst
+            self.__history.list_global_worst[-1] = global_worst
             return sorted_pop, global_better
 
     ## Selection techniques
