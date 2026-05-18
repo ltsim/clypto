@@ -173,7 +173,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def update_target_for_population(self, pop: list[Agent] | None = None) -> list[Agent]:
+    def update_target_for_population(self, pop: list[Agent]) -> list[Agent]:
         """
         Update target for the input population
 
