@@ -29,16 +29,6 @@ class History:
         + list_population: List of POPULATION in each generations
         + **Warning**, the last variable 'list_population' can cause the error related to 'memory' when saving model.
             Better to set parameter 'save_population' to False in the input problem dictionary to not using it.
-
-    + There are 8 methods to draw available in this class:
-        + save_global_best_fitness_chart()
-        + save_local_best_fitness_chart()
-        + save_global_objectives_chart()
-        + save_local_objectives_chart()
-        + save_exploration_exploitation_chart()
-        + save_diversity_chart()
-        + save_runtime_chart()
-        + save_trajectory_chart()
     """
 
     def __init__(self, **kwargs):
@@ -53,12 +43,7 @@ class History:
         self.list_exploration = []  # List of exploration percentages for all generations
         self.list_global_worst = []  # List of global worst solution found so far in all previous generations
         self.list_current_worst = []  # List of current worst solution in each previous generations
-        self.epoch, self.log_to, self.log_file = None, None, None
-        self.__set_keyword_arguments(kwargs)
-
-    def __set_keyword_arguments(self, kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        self.epoch = None
 
     def store_initial_best_worst(self, best_agent: Agent, worst_agent: Agent) -> None:
         self.list_global_best = [best_agent.copy()]
@@ -68,10 +53,13 @@ class History:
 
     def get_global_repeated_times(self, epsilon: float) -> int:
         count = 0
+
         for idx in range(0, len(self.list_global_best) - 1):
             temp = np.abs(self.list_global_best[idx].target.fitness - self.list_global_best[idx + 1].target.fitness)
+
             if temp <= epsilon:
                 count += 1
             else:
                 count = 0
+
         return count
