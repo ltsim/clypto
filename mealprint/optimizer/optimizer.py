@@ -11,15 +11,19 @@ from mealprint.utils.target import Target
 
 
 class Optimizer(abc.ABC):
+    """
+
+    """
+
     def __init__(self):
+        """
+
+        """
         ...
 
     @abc.abstractmethod
     def initialize_variables(self) -> None:
         """
-
-        Args:
-
         """
         ...
 
@@ -33,26 +37,44 @@ class Optimizer(abc.ABC):
 
     @abc.abstractmethod
     def initialization(self) -> None:
+        """
+
+        """
         ...
 
     @abc.abstractmethod
     def after_initialization(self) -> None:
+        """
+
+        """
         ...
 
     @abc.abstractmethod
     def before_main_loop(self) -> None:
+        """
+
+        """
         ...
 
     @abc.abstractmethod
     def evolve(self, epoch: int) -> None:
+        """
+
+        """
         ...
 
     @abc.abstractmethod
     def check_problem(self, problem: dict | Problem, seed: int | None):
+        """
+
+        """
         ...
 
     @abc.abstractmethod
     def check_termination(self, mode="start", termination=None, epoch=None):
+        """
+
+        """
         ...
 
     @abc.abstractmethod
