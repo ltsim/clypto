@@ -14,13 +14,6 @@ class Optimizer(abc.ABC):
     """
 
     """
-
-    def __init__(self):
-        """
-
-        """
-        ...
-
     @abc.abstractmethod
     def initialize_variables(self) -> None:
         """
