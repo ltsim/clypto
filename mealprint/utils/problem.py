@@ -159,9 +159,9 @@ class Problem:
             temp = var.decode(x[n_vars:n_vars + var.n_vars])
 
             if var.n_vars == 1:
-                x_new[var.name] = temp[0]
+                x_new[var.__name] = temp[0]
             else:
-                x_new[var.name] = temp
+                x_new[var.__name] = temp
 
             n_vars += var.n_vars
 
