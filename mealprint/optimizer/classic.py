@@ -180,7 +180,7 @@ class ClassicOptimizer(Optimizer):
     def evolve(self, epoch: int) -> None:
         pass
 
-    def check_problem(self, problem: dict | Problem, seed: int | None) -> None:
+    def check_problem(self, problem: dict | Problem, seed: int | None, history_track = False) -> None:
         if isinstance(problem, Problem):
             problem.seed = seed
             self.problem = problem
@@ -193,12 +193,15 @@ class ClassicOptimizer(Optimizer):
         self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
 
-        self.history = History()
+        if history_track:
+            self.history = History()
+
         self.pop, self.g_best, self.g_worst = None, None, None
 
     def check_termination(self, mode="start", termination=None, epoch=None):
         if mode == "start":
             self.termination = termination
+
             if termination is not None:
                 if isinstance(termination, Termination):
                     self.termination = termination
@@ -207,10 +210,12 @@ class ClassicOptimizer(Optimizer):
                                                    **termination)
                 else:
                     raise ValueError("Termination needs to be a dict or an instance of Termination class.")
+
                 self.__nfe_counter = 0
                 self.termination.set_start_values(0, self.__nfe_counter, time.perf_counter(), 0)
         else:
             finished = False
+
             if self.termination is not None:
                 es = self.history.get_global_repeated_times(self.termination.epsilon)
                 finished = self.termination.should_terminate(epoch, self.__nfe_counter, time.perf_counter(), es)
