@@ -12,7 +12,7 @@ ackley_f = Ackley01(ndim=5)
 # 'bounds' uses the lb (lower bound) and ub (upper bound) from the Opfunu object
 problem_dict = {
     "obj_func": ackley_f.evaluate,
-    "bounds": FloatVar(lb=f3_func.lb, ub=f3_func.ub),
+    "bounds": FloatVar(lb=ackley_f.lb, ub=ackley_f.ub),
     "minmax": "min",
 }
 
