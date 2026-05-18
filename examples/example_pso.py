@@ -5,13 +5,13 @@ from mealprint import FloatVar
 
 # 1. Define the benchmark function from Opfunu
 # We'll use F3 from the CEC 2017 competition with 30 dimensions
-f3_func = Ackley01(ndim=5)
+ackley_f = Ackley01(ndim=5)
 
 # 2. Define the problem dictionary for MealPrint
 # 'obj_func' is the evaluation method from Opfunu
 # 'bounds' uses the lb (lower bound) and ub (upper bound) from the Opfunu object
 problem_dict = {
-    "obj_func": f3_func.evaluate,
+    "obj_func": ackley_f.evaluate,
     "bounds": FloatVar(lb=f3_func.lb, ub=f3_func.ub),
     "minmax": "min",
 }
