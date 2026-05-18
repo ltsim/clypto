@@ -4,8 +4,9 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
+import abc
 import numbers as nb
-from abc import ABC, abstractmethod
+import typing
 
 import numpy as np
 
@@ -22,9 +23,11 @@ class LabelEncoder:
         self.unique_labels = None
         self.label_to_index = {}
 
-    def set_y(self, y):
+    @staticmethod
+    def set_y(y):
         if type(y) not in (list, tuple, np.ndarray):
             y = (y,)
+
         return y
 
     def fit(self, y):
@@ -51,6 +54,7 @@ class LabelEncoder:
         # self.unique_labels = sorted(set(y), key=lambda x: (isinstance(x, (int, float)), x))
         self.unique_labels = sorted(set(y), key=safe_key)
         self.label_to_index = {label: i for i, label in enumerate(self.unique_labels)}
+
         return self
 
     def transform(self, y):
@@ -69,7 +73,9 @@ class LabelEncoder:
         """
         if self.unique_labels is None:
             raise ValueError("Label encoder has not been fit yet.")
+
         y = self.set_y(y)
+
         return [self.label_to_index[label] for label in y]
 
     def fit_transform(self, y):
@@ -86,7 +92,9 @@ class LabelEncoder:
             Encoded labels.
         """
         y = self.set_y(y)
+
         self.fit(y)
+
         return self.transform(y)
 
     def inverse_transform(self, y):
@@ -105,48 +113,66 @@ class LabelEncoder:
         """
         if self.unique_labels is None:
             raise ValueError("Label encoder has not been fit yet.")
+
         y = self.set_y(y)
+
         return [self.unique_labels[i] if i in self.label_to_index.values() else "unknown" for i in y]
 
 
-class BaseVar(ABC):
-    SUPPORTED_ARRAY = [tuple, list, np.ndarray]
+class BaseVar(abc.ABC):
+    SUPPORTED_ARRAY: typing.Final[tuple[type]] = tuple, list, np.ndarray
 
-    def __init__(self, name="variable"):
-        self.name = name
-        self.n_vars = None
-        self.lb, self.ub = None, None
-        self._seed = None
-        self.generator = np.random.default_rng()
-
-    def set_n_vars(self, n_vars):
+    def __init__(self, n_vars: int, bounds: tuple[typing.Any, typing.Any], name="variable"):
         if type(n_vars) is int and n_vars > 0:
-            self.n_vars = n_vars
+            self.__n_vars = n_vars
         else:
             raise ValueError(f"Invalid n_vars. It should be integer and > 0.")
 
+        self.__name = name
+        self.__seed = None
+        self.__lb, self.__ub = bounds
+        self.__n_vars = n_vars
+
+        self.generator = np.random.default_rng()
+
+    @property
+    def lb(self):
+        return self.__lb
+
+    @property
+    def ub(self):
+        return self.__ub
+
+    @property
+    def name(self) -> str:
+        return self.__name
+
+    @property
+    def n_vars(self):
+        return self.__n_vars
+
     @property
     def seed(self):
-        return self._seed
+        return self.__seed
 
     @seed.setter
     def seed(self, value: int) -> None:
-        self._seed = value
-        self.generator = np.random.default_rng(self._seed)
+        self.__seed = value
+        self.generator = np.random.default_rng(self.__seed)
 
-    @abstractmethod
+    @abc.abstractmethod
     def encode(self, x):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def decode(self, x):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def correct(self, x):
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def generate(self):
         pass
 
@@ -160,21 +186,19 @@ class BaseVar(ABC):
 
 class FloatVar(BaseVar):
     def __init__(self, lb=-10., ub=10., name="float"):
-        super().__init__(name)
-        self._set_bounds(lb, ub)
-
-    def _set_bounds(self, lb, ub):
         if isinstance(lb, nb.Number) and isinstance(ub, nb.Number):
-            self.lb, self.ub = np.array((lb,), dtype=float), np.array((ub,), dtype=float)
-            self.n_vars = 1
+            lb, ub = np.array((lb,), dtype=float), np.array((ub,), dtype=float)
+            n_vars = 1
         elif type(lb) in self.SUPPORTED_ARRAY and type(ub) in self.SUPPORTED_ARRAY:
             if len(lb) == len(ub):
-                self.lb, self.ub = np.array(lb, dtype=float), np.array(ub, dtype=float)
-                self.n_vars = len(lb)
+                lb, ub = np.array(lb, dtype=float), np.array(ub, dtype=float)
+                n_vars = len(lb)
             else:
                 raise ValueError(f"Invalid lb or ub. Length of lb should equal to length of ub.")
         else:
             raise TypeError(f"Invalid lb or ub. It should be one of following: {self.SUPPORTED_ARRAY}")
+
+        super().__init__(n_vars, (lb, ub), name)
 
     def encode(self, x):
         return np.array(x, dtype=float)
@@ -191,24 +215,23 @@ class FloatVar(BaseVar):
 
 
 class IntegerVar(BaseVar):
-    def __init__(self, lb=-10, ub=10, name="integer"):
-        super().__init__(name)
-        self.eps = 1e-4
-        self._set_bounds(lb, ub)
+    eps: typing.Final[float] = 1e-4
 
-    def _set_bounds(self, lb, ub):
+    def __init__(self, lb=-10, ub=10, name="integer"):
         if isinstance(lb, nb.Number) and isinstance(ub, nb.Number):
             lb, ub = int(lb) - 0.5, int(ub) + 0.5 - self.eps
-            self.lb, self.ub = np.array((lb,), dtype=float), np.array((ub,), dtype=float)
-            self.n_vars = 1
+            lb, ub = np.array((lb,), dtype=float), np.array((ub,), dtype=float)
+            return lb, ub, 1
         elif type(lb) in self.SUPPORTED_ARRAY and type(ub) in self.SUPPORTED_ARRAY:
             if len(lb) == len(ub):
-                self.lb, self.ub = np.array(lb, dtype=float) - 0.5, np.array(ub, dtype=float) + (0.5 - self.eps)
-                self.n_vars = len(lb)
+                lb, ub = np.array(lb, dtype=float) - 0.5, np.array(ub, dtype=float) + (0.5 - self.eps)
+                return (lb, ub), len(lb)
             else:
                 raise ValueError(f"Invalid lb or ub. Length of lb should equal to length of ub.")
         else:
             raise TypeError(f"Invalid lb or ub. It should be one of following: {self.SUPPORTED_ARRAY}")
+
+        super().__init__(n_vars, (lb, ub), name)
 
     def encode(self, x):
         return np.array(x, dtype=float)
@@ -226,36 +249,50 @@ class IntegerVar(BaseVar):
 
 
 class StringVar(BaseVar):
-    def __init__(self, valid_sets=(("",),), name="string"):
-        super().__init__(name)
-        self.eps = 1e-4
-        self._set_bounds(valid_sets)
+    eps: typing.Final[float] = 1e-4
 
-    def _set_bounds(self, valid_sets):
+    def __init__(self, valid_sets=(("",),), name="string"):
         if type(valid_sets) in self.SUPPORTED_ARRAY:
             if type(valid_sets[0]) not in self.SUPPORTED_ARRAY:
-                self.n_vars = 1
-                self.valid_sets = (tuple(valid_sets),)
+                n_vars = 1
+                valid_sets = (tuple(valid_sets),)
                 le = LabelEncoder().fit(valid_sets)
-                self.list_le = (le,)
-                self.lb = np.array([0., ])
-                self.ub = np.array([len(valid_sets) - self.eps, ])
+                list_le = (le,)
+
+                lb = np.array([0., ])
+                ub = np.array([len(valid_sets) - self.eps, ])
             else:
-                self.n_vars = len(valid_sets)
+                n_vars = len(valid_sets)
+
                 if all(len(item) > 1 for item in valid_sets):
-                    self.valid_sets = valid_sets
-                    self.list_le = []
+                    valid_sets = valid_sets
+                    list_le = []
                     ub = []
+
                     for vl_set in valid_sets:
                         le = LabelEncoder().fit(vl_set)
-                        self.list_le.append(le)
+                        list_le.append(le)
                         ub.append(len(vl_set) - self.eps)
-                    self.lb = np.zeros(self.n_vars)
-                    self.ub = np.array(ub)
+
+                    lb = np.zeros(self.n_vars)
+                    ub = np.array(ub)
                 else:
                     raise ValueError(f"Invalid valid_sets. All variables need to have at least 2 values.")
         else:
             raise TypeError(f"Invalid valid_sets. It should be {self.SUPPORTED_ARRAY}.")
+
+        super().__init__(n_vars, (lb, ub), name)
+
+        self.__list_le = list_le
+        self.__valid_sets = valid_sets
+
+    @property
+    def list_le(self):
+        return self.__list_le
+
+    @property
+    def valid_sets(self):
+        return self.__valid_sets
 
     def encode(self, x):
         return np.array([le.transform(val)[0] for (le, val) in zip(self.list_le, x)], dtype=float)
@@ -281,26 +318,32 @@ class CategoricalVar(StringVar):
 
 
 class SequenceVar(BaseVar):
+    eps: typing.Final[float] = 1e-4
+
     def __init__(self, valid_sets, return_type=tuple, name="sequence"):
-        super().__init__(name)
-        self.eps = 1e-4
-        self.valid_sets = [tuple(v) for v in valid_sets]  # Normalize to tuples for hashing
+        super().__init__(1, (np.array([0., ]), np.array([len(valid_sets) - self.eps, ])), name)
+
+        self.__valid_sets = [tuple(v) for v in valid_sets]  # Normalize to tuples for hashing
         self.return_type = return_type
-        self.label_to_index = {val: i for i, val in enumerate(self.valid_sets)}
-        self.index_to_label = {i: val for i, val in enumerate(self.valid_sets)}
-        self.n_vars = 1
-        self.lb = np.array([0., ])
-        self.ub = np.array([len(valid_sets) - self.eps, ])
+        self.label_to_index = {val: i for i, val in enumerate(self.__valid_sets)}
+        self.index_to_label = {i: val for i, val in enumerate(self.__valid_sets)}
+
+    @property
+    def valid_sets(self):
+        return self.__valid_sets
 
     def encode(self, x):
         x_tuple = tuple(x)
+
         if x_tuple not in self.label_to_index:
             raise ValueError(f"Unknown sequence for encoding: {x}")
+
         return np.array([self.label_to_index[x_tuple]], dtype=float)
 
     def decode(self, x):
         x = self.correct(x)
         val = self.index_to_label[x[0]]
+
         return [self.return_type(val)]
 
     def correct(self, x):
@@ -313,20 +356,25 @@ class SequenceVar(BaseVar):
 
 
 class PermutationVar(BaseVar):
-    def __init__(self, valid_set=(1, 2), name="permutation"):
-        super().__init__(name)
-        self.eps = 1e-4
-        self._set_bounds(valid_set)
+    eps: typing.Final[float] = 1e-4
 
-    def _set_bounds(self, valid_set):
+    def __init__(self, valid_set=(1, 2), name="permutation"):
         if type(valid_set) in self.SUPPORTED_ARRAY and len(valid_set) > 1:
-            self.valid_set = np.array(valid_set)
-            self.n_vars = len(valid_set)
-            self.le = LabelEncoder().fit(valid_set)
-            self.lb = np.zeros(self.n_vars)
-            self.ub = (self.n_vars - self.eps) * np.ones(self.n_vars)
+            valid_set = np.array(valid_set)
+            n_vars = len(valid_set)
+            le = LabelEncoder().fit(valid_set)
+            lb = np.zeros(self.n_vars)
+            ub = (self.n_vars - self.eps) * np.ones(self.n_vars)
         else:
             raise TypeError(f"Invalid valid_set. It should be {self.SUPPORTED_ARRAY} and contains at least 2 variables")
+
+        super().__init__(n_vars, (lb, ub), name)
+
+        self.__le = le
+
+    @property
+    def le(self):
+        return self.__le
 
     def encode(self, x):
         return np.array(self.le.transform(x), dtype=float)
@@ -343,12 +391,10 @@ class PermutationVar(BaseVar):
 
 
 class BinaryVar(BaseVar):
+    eps: typing.Final[float] = 1e-4
+
     def __init__(self, n_vars=1, name="binary"):
-        super().__init__(name)
-        self.set_n_vars(n_vars)
-        self.eps = 1e-4
-        self.lb = np.zeros(self.n_vars)
-        self.ub = (2 - self.eps) * np.ones(self.n_vars)
+        super().__init__(n_vars, (np.zeros(n_vars), (2 - self.eps) * np.ones(n_vars)), name)
 
     def encode(self, x):
         return np.array(x, dtype=float)
@@ -365,20 +411,21 @@ class BinaryVar(BaseVar):
 
 
 class TransferBinaryVar(BinaryVar):
-    SUPPORTED_TF_FUNCS = ["vstf_01", "vstf_02", "vstf_03", "vstf_04", "sstf_01", "sstf_02", "sstf_03", "sstf_04"]
+    SUPPORTED_TF_FUNCS: typing.Final[
+        tuple[str]] = "vstf_01", "vstf_02", "vstf_03", "vstf_04", "sstf_01", "sstf_02", "sstf_03", "sstf_04"
 
     def __init__(self, n_vars=1, name="tf-binary", tf_func="vstf_01", lb=-8., ub=8., all_zeros=True):
-        super().__init__(n_vars, name)
+        super().__init__(n_vars, (lb * np.zeros(n_vars), ub * np.ones(n_vars)), name)
+
         if tf_func in self.SUPPORTED_TF_FUNCS:
             self.tf_name = tf_func
             self.tf_func = getattr(transfer, tf_func)
         else:
             raise ValueError(f"Invalid transfer function! The supported TF funcs are: {self.SUPPORTED_TF_FUNCS}")
-        self.lb = lb * np.zeros(self.n_vars)
-        self.ub = ub * np.ones(self.n_vars)
+
         self.all_zeros = all_zeros
 
-    def _get_correct_x(self, x):
+    def __get_correct_x(self, x):
         if self.all_zeros:
             return x
         else:
@@ -391,20 +438,18 @@ class TransferBinaryVar(BinaryVar):
         x = self.tf_func(x)
         cons = self.generator.random(len(x))
         x = np.where(cons < x, 1, 0)
-        return self._get_correct_x(x)
+        return self.__get_correct_x(x)
 
     def generate(self):
         x = self.generator.integers(0, 2, self.n_vars)
-        return self._get_correct_x(x)
+        return self.__get_correct_x(x)
 
 
 class BoolVar(BaseVar):
+    eps: typing.Final[float] = 1e-4
+
     def __init__(self, n_vars=1, name="boolean"):
-        super().__init__(name)
-        self.set_n_vars(n_vars)
-        self.eps = 1e-4
-        self.lb = np.zeros(self.n_vars)
-        self.ub = (2 - self.eps) * np.ones(self.n_vars)
+        super().__init__(n_vars, (np.zeros(self.n_vars), (2 - self.eps) * np.ones(self.n_vars)), name)
 
     def encode(self, x):
         return np.array(x, dtype=float)
@@ -421,21 +466,34 @@ class BoolVar(BaseVar):
         return self.generator.choice([True, False], self.n_vars, replace=True)
 
 
-class TransferBoolVar(BoolVar):
-    SUPPORTED_TF_FUNCS = ["vstf_01", "vstf_02", "vstf_03", "vstf_04", "sstf_01", "sstf_02", "sstf_03", "sstf_04"]
+class TransferBoolVar(BaseVar):
+    SUPPORTED_TF_FUNCS: typing.Final[
+        tuple[str]] = "vstf_01", "vstf_02", "vstf_03", "vstf_04", "sstf_01", "sstf_02", "sstf_03", "sstf_04"
 
     def __init__(self, n_vars=1, name="boolean", tf_func="vstf_01", lb=-8., ub=8.):
-        super().__init__(n_vars, name)
+        super().__init__(n_vars, (lb * np.zeros(self.n_vars), ub * np.ones(self.n_vars)), name)
+
         if tf_func in self.SUPPORTED_TF_FUNCS:
             self.tf_name = tf_func
             self.tf_func = getattr(transfer, tf_func)
         else:
             raise ValueError(f"Invalid transfer function! The supported TF funcs are: {self.SUPPORTED_TF_FUNCS}")
-        self.lb = lb * np.zeros(self.n_vars)
-        self.ub = ub * np.ones(self.n_vars)
+
+    def encode(self, x):
+        return np.array(x, dtype=float)
+
+    def decode(self, x):
+        x = self.correct(x)
+        x = np.array(x, dtype=int)
+        return x == 1
 
     def correct(self, x):
         x = np.clip(x, self.lb, self.ub)
         x = self.tf_func(x)
+
         cons = self.generator.random(len(x))
+
         return np.where(cons < x, 1, 0)
+
+    def generate(self):
+        return self.generator.choice([True, False], self.n_vars, replace=True)
