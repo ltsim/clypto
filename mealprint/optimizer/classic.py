@@ -180,7 +180,7 @@ class ClassicOptimizer(Optimizer):
     def evolve(self, epoch: int) -> None:
         pass
 
-    def check_problem(self, problem: dict | Problem, seed: int | None, history_track = False) -> None:
+    def check_problem(self, problem: dict | Problem, seed: int | None) -> None:
         if isinstance(problem, Problem):
             problem.seed = seed
             self.problem = problem
@@ -193,8 +193,7 @@ class ClassicOptimizer(Optimizer):
         self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
 
-        if history_track:
-            self.history = History()
+        self.history = History()
 
         self.pop, self.g_best, self.g_worst = None, None, None
 
@@ -225,7 +224,7 @@ class ClassicOptimizer(Optimizer):
     def solve(self, problem: dict | Problem,
               termination: dict | Termination | None = None,
               starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
-              seed: int | None = None) -> Agent:
+              seed: int | None = None, track_optimize: bool = False) -> Agent:
         self.check_problem(problem, seed)
         self.check_termination("start", termination, None)
         self.initialize_variables()
@@ -249,12 +248,14 @@ class ClassicOptimizer(Optimizer):
             if self.sort_flag: self.pop = pop_temp
 
             time_epoch = time.perf_counter() - time_epoch
-            self.track_optimize_step(self.pop, epoch, time_epoch)
+            if track_optimize:
+                self.track_optimize_step(self.pop, epoch, time_epoch)
 
             if self.check_termination("end", None, epoch):
                 break
 
-        self.track_optimize_process()
+        if track_optimize:
+            self.track_optimize_process()
 
         return self.g_best
 

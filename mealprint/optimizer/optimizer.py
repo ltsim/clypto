@@ -64,7 +64,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def check_problem(self, problem: dict | Problem, seed: int | None, history_track: bool = False):
+    def check_problem(self, problem: dict | Problem, seed: int | None):
         """
 
         """
@@ -81,14 +81,14 @@ class Optimizer(abc.ABC):
     def solve(self, problem: dict | Problem,
               termination: typing.Optional[dict | Termination] = None,
               starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
-              seed: int | None = None) -> Agent:
+              seed: int | None = None, track_optimize: bool = False) -> Agent:
         """
         Args:
             problem: an instance of Problem class or a dictionary
             termination: The termination dictionary or an instance of Termination class
             starting_solutions: List or 2D matrix (numpy array) of starting positions with length equal pop_size parameter
             seed: seed for random number generation needed to be *explicitly* set to int value
-
+            track_optimize: Track optimize in history
         Returns:
             g_best: g_best, the best found agent, that hold the best solution and the best target. Access by: .g_best.solution, .g_best.target
         """
