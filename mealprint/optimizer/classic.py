@@ -48,6 +48,8 @@ class ClassicOptimizer(Optimizer):
         self.__generator = None
         self.__termination: Termination | None = None
 
+        self.__buffer = None
+
         self.epoch: int | None = None
         self.pop_size: int | None = None
         self.mode: str | None = None
@@ -308,10 +310,15 @@ class ClassicOptimizer(Optimizer):
         return agent
 
     def generate_population(self, pop_size: int | None = None) -> list[Agent]:
+        if self.__buffer is not None:
+            del self.__buffer
+
         if pop_size is None:
             pop_size = self.pop_size
 
-        return [self.generate_agent() for _ in range(0, pop_size)]
+        self.__buffer = np.array([self.problem.generate_solution() for _ in range(pop_size)])
+
+        return [self.generate_agent(self.__buffer) for _ in range(0, pop_size)]
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         return np.clip(solution, self.problem.lb, self.problem.ub)
