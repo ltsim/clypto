@@ -112,6 +112,7 @@ class Agent:
         """ Check if two agents are equal based on their solutions with a tolerance."""
         if not isinstance(other, Agent):
             return False
+
         return np.allclose(self.solution, other.solution, atol=1e-6)
 
     def __hash__(self):
