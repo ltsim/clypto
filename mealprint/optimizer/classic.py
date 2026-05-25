@@ -14,7 +14,7 @@ import numpy.typing as npt
 
 from mealprint.optimizer.optimizer import Optimizer
 from mealprint.utils.agent import Agent
-from mealprint.utils.history import History
+from mealprint.utils.history import TrackHistory
 from mealprint.utils.problem import Problem
 from mealprint.utils.target import Target
 from mealprint.utils.termination import Termination
@@ -36,41 +36,46 @@ class ClassicOptimizer(Optimizer):
     """
 
     EPSILON: typing.Final[float] = 10E-10
-    AVAILABLE_MODES: typing.Final[list[str]] = []
+    AVAILABLE_MODES: typing.Final[tuple[str]] = ("",)
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
-        super().__init__()
-
-        def set_keyword_arguments(args):
-            for k, v in args.items():
-                setattr(self, k, v)
-
+        self.__history = TrackHistory()
         self.__validator = Validator()
-        self.__nfe_counter = 1
+        self.__nfe_counter: int = 1
+        self.__name: str = kwargs.get("name", self.__class__.__name__)
+        self.__params_name_ordered = None
+        self.__generator = None
+        self.__termination: Termination | None = None
 
-        set_keyword_arguments(kwargs)
-
-        self.epoch = None
-        self.pop_size = None
-        self.mode = None
-        self.n_workers = None
-        self.name = ""
-        self.pop = None
-        self.g_best = Agent()
-        self.g_worst = None
-        self.problem = None
-        self.history = None
-
-        if self.name is None:
-            self.name = self.__class__.__name__
-
-        self.sort_flag = False
-        self.parameters = {}
-        self.params_name_ordered = None
-        self.is_parallelizable = True
-        self.generator = None
+        self.epoch: int | None = None
+        self.pop_size: int | None = None
+        self.mode: str | None = None
+        self.n_workers: int | None = None
+        self.pop: list[Agent] | None = None
+        self.g_best: Agent | None = Agent()
+        self.g_worst: Agent | None = None
+        self.problem: Problem | None = None
+        self.sort_flag: bool = False
+        self.parameters: dict = {}
+        self.is_parallelizable: bool = True
         self.rng = None
+
+    @property
+    def history(self) -> TrackHistory:
+        return self.__history
+
+    @property
+    def termination(self):
+        return self.__termination
+
+    @property
+    def generator(self):
+        return self.__generator
+
+    @property
+    def name(self):
+        return self.__name
 
     @property
     def validator(self) -> Validator:
@@ -91,11 +96,12 @@ class ClassicOptimizer(Optimizer):
             parameters: The parameters
         """
         if type(parameters) in (list, tuple):
-            self.params_name_ordered = tuple(parameters)
+            self.__params_name_ordered = tuple(parameters)
             self.parameters = {}
 
             for name in parameters:
                 self.parameters[name] = self.__dict__[name]
+
         elif type(parameters) is dict:
             valid_para_names = set(self.parameters.keys())
             new_para_names = set(parameters.keys())
@@ -129,7 +135,7 @@ class ClassicOptimizer(Optimizer):
     def __str__(self):
         temp = ""
 
-        for key in self.params_name_ordered:
+        for key in self.__params_name_ordered:
             temp += f"{key}={self.parameters[key]}, "
 
         temp = temp[:-2]
@@ -146,7 +152,7 @@ class ClassicOptimizer(Optimizer):
             starting_solutions: The starting solutions (not recommended)
         """
         if starting_solutions is None:
-            pass
+            ...
         elif type(starting_solutions) in self.SUPPORTED_ARRAYS and len(starting_solutions) == self.pop_size:
             if type(starting_solutions[0]) in self.SUPPORTED_ARRAYS and len(
                     starting_solutions[0]) == self.problem.n_dims:
@@ -172,7 +178,7 @@ class ClassicOptimizer(Optimizer):
             self.pop = pop_temp
 
         ## Store initial best and worst solutions
-        self.history.store_initial_best_worst(self.g_best, self.g_worst)
+        self.__history.store_initial_best_worst(self.g_best, self.g_worst)
 
     def before_main_loop(self):
         pass
@@ -190,37 +196,41 @@ class ClassicOptimizer(Optimizer):
         else:
             raise ValueError("problem needs to be a dict or an instance of Problem class.")
 
-        self.generator = np.random.default_rng(seed)
+        self.__generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
 
-        self.history = History()
         self.pop, self.g_best, self.g_worst = None, None, None
 
     def check_termination(self, mode="start", termination=None, epoch=None):
         if mode == "start":
-            self.termination = termination
+            self.__termination = termination
+
             if termination is not None:
                 if isinstance(termination, Termination):
-                    self.termination = termination
+                    self.__termination = termination
                 elif type(termination) == dict:
-                    self.termination = Termination(log_to=self.problem.log_to, log_file=self.problem.log_file,
+                    self.__termination = Termination(log_to=self.problem.log_to, log_file=self.problem.log_file,
                                                    **termination)
                 else:
                     raise ValueError("Termination needs to be a dict or an instance of Termination class.")
+
                 self.__nfe_counter = 0
-                self.termination.set_start_values(0, self.__nfe_counter, time.perf_counter(), 0)
+                self.__termination.set_start_values(0, self.__nfe_counter, time.perf_counter(), 0)
+
+            return None
         else:
             finished = False
-            if self.termination is not None:
-                es = self.history.get_global_repeated_times(self.termination.epsilon)
-                finished = self.termination.should_terminate(epoch, self.__nfe_counter, time.perf_counter(), es)
+
+            if self.__termination is not None:
+                es = self.__history.get_global_repeated_times(self.__termination.epsilon)
+                finished = self.__termination.should_terminate(epoch, self.__nfe_counter, time.perf_counter(), es)
 
             return finished
 
     def solve(self, problem: dict | Problem,
               termination: dict | Termination | None = None,
               starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
-              seed: int | None = None) -> Agent:
+              seed: int | None = None, track_optimize: bool = False) -> Agent:
         self.check_problem(problem, seed)
         self.check_termination("start", termination, None)
         self.initialize_variables()
@@ -241,15 +251,23 @@ class ClassicOptimizer(Optimizer):
 
             # Update global best solution, the population is sorted or not depended on algorithm's strategy
             pop_temp, self.g_best = self.update_global_best_agent(self.pop)
-            if self.sort_flag: self.pop = pop_temp
+
+            if self.sort_flag:
+                self.pop = pop_temp
 
             time_epoch = time.perf_counter() - time_epoch
-            self.track_optimize_step(self.pop, epoch, time_epoch)
+
+            if track_optimize:
+                self.track_optimize_step(self.pop, epoch, time_epoch)
 
             if self.check_termination("end", None, epoch):
                 break
 
-        self.track_optimize_process()
+        if track_optimize:
+            self.track_optimize_process()
+
+        if self.g_best is None:
+            raise ValueError("Best solution was not found.")
 
         return self.g_best
 
@@ -257,29 +275,29 @@ class ClassicOptimizer(Optimizer):
                             runtime: float | None = None) -> None:
         ## Save history data
         if self.problem.save_population:
-            self.history.list_population.append(ClassicOptimizer.duplicate_pop(pop))
+            self.__history.population.append(ClassicOptimizer.duplicate_pop(pop))
 
-        self.history.list_epoch_time.append(runtime)
-        self.history.list_global_best_fit.append(self.history.list_global_best[-1].target.fitness)
-        self.history.list_current_best_fit.append(self.history.list_current_best[-1].target.fitness)
+        self.__history.epoch_time.append(runtime)
+        self.__history.global_best_fit.append(self.__history.global_best[-1].target.fitness)
+        self.__history.current_best_fit.append(self.__history.current_best[-1].target.fitness)
 
         # Save the exploration and exploitation data for later usage
         pos_matrix = np.array([agent.solution for agent in pop])
         div = np.mean(np.abs(np.median(pos_matrix, axis=0) - pos_matrix), axis=0)
 
-        self.history.list_diversity.append(np.mean(div, axis=0))
+        self.__history.diversity.append(np.mean(div, axis=0))
 
     def track_optimize_process(self) -> None:
-        self.history.epoch = len(self.history.list_diversity)
+        self.__history.epoch = len(self.__history.diversity)
 
-        div_max = np.max(self.history.list_diversity)
+        div_max = np.max(self.__history.diversity)
 
-        self.history.list_exploration = 100 * (np.array(self.history.list_diversity) / div_max)
-        self.history.list_exploitation = 100 - self.history.list_exploration
-        self.history.list_global_best = self.history.list_global_best[1:]
-        self.history.list_current_best = self.history.list_current_best[1:]
-        self.history.list_global_worst = self.history.list_global_worst[1:]
-        self.history.list_current_worst = self.history.list_current_worst[1:]
+        self.__history.exploration = 100 * (np.array(self.__history.diversity) / div_max)
+        self.__history.exploitation = 100 - self.__history.exploration
+        self.__history.global_best = self.__history.global_best[1:]
+        self.__history.current_best = self.__history.current_best[1:]
+        self.__history.global_worst = self.__history.global_worst[1:]
+        self.__history.current_worst = self.__history.current_worst[1:]
 
     def generate_empty_agent(self, solution: np.ndarray | None = None) -> Agent:
         if solution is None:
@@ -423,6 +441,7 @@ class ClassicOptimizer(Optimizer):
             The sorted_population, n1 best agents and n2 worst agents
         """
         pop = ClassicOptimizer.get_sorted_population(pop, minmax)
+
         if n_best is None:
             if n_worst is None:
                 return pop, None, None
@@ -531,31 +550,31 @@ class ClassicOptimizer(Optimizer):
 
         if save:
             ## Save current best
-            self.history.list_current_best.append(c_best)
-            better = self.get_better_agent(c_best, self.history.list_global_best[-1], self.problem.minmax)
+            self.__history.current_best.append(c_best)
+            better = self.get_better_agent(c_best, self.__history.global_best[-1], self.problem.minmax)
 
-            self.history.list_global_best.append(better)
+            self.__history.global_best.append(better)
 
             ## Save current worst
-            self.history.list_current_worst.append(c_worst)
+            self.__history.current_worst.append(c_worst)
 
-            worse = self.get_better_agent(c_worst, self.history.list_global_worst[-1], self.problem.minmax,
+            worse = self.get_better_agent(c_worst, self.__history.global_worst[-1], self.problem.minmax,
                                           reverse=True)
-            self.history.list_global_worst.append(worse)
+            self.__history.global_worst.append(worse)
             return sorted_pop, better
         else:
             ## Handle current best
-            local_better = self.get_better_agent(c_best, self.history.list_current_best[-1], self.problem.minmax)
-            self.history.list_current_best[-1] = local_better
-            global_better = self.get_better_agent(c_best, self.history.list_global_best[-1], self.problem.minmax)
-            self.history.list_global_best[-1] = global_better
+            local_better = self.get_better_agent(c_best, self.__history.current_best[-1], self.problem.minmax)
+            self.__history.current_best[-1] = local_better
+            global_better = self.get_better_agent(c_best, self.__history.global_best[-1], self.problem.minmax)
+            self.__history.global_best[-1] = global_better
             ## Handle current worst
-            local_worst = self.get_better_agent(c_worst, self.history.list_current_worst[-1], self.problem.minmax,
+            local_worst = self.get_better_agent(c_worst, self.__history.current_worst[-1], self.problem.minmax,
                                                 reverse=True)
-            self.history.list_current_worst[-1] = local_worst
-            global_worst = self.get_better_agent(c_worst, self.history.list_global_worst[-1], self.problem.minmax,
+            self.__history.current_worst[-1] = local_worst
+            global_worst = self.get_better_agent(c_worst, self.__history.global_worst[-1], self.problem.minmax,
                                                  reverse=True)
-            self.history.list_global_worst[-1] = global_worst
+            self.__history.global_worst[-1] = global_worst
             return sorted_pop, global_better
 
     ## Selection techniques
@@ -573,7 +592,7 @@ class ClassicOptimizer(Optimizer):
             list_fitness = np.array(list_fitness).ravel()
 
         if np.ptp(list_fitness) == 0:
-            return int(self.generator.integers(0, len(list_fitness)))
+            return int(self.__generator.integers(0, len(list_fitness)))
 
         if np.any(list_fitness < 0):
             list_fitness = list_fitness - np.min(list_fitness)
@@ -584,7 +603,7 @@ class ClassicOptimizer(Optimizer):
 
         prob = final_fitness / np.sum(final_fitness)
 
-        return int(self.generator.choice(range(0, len(list_fitness)), p=prob))
+        return int(self.__generator.choice(range(0, len(list_fitness)), p=prob))
 
     def get_index_kway_tournament_selection(self, pop: list = None, k_way: float = 0.2, output: int = 2,
                                             reverse: bool = False) -> list:
@@ -601,7 +620,7 @@ class ClassicOptimizer(Optimizer):
         if 0 < k_way < 1:
             k_way = int(k_way * len(pop))
 
-        list_id = self.generator.choice(range(len(pop)), k_way, replace=False)
+        list_id = self.__generator.choice(range(len(pop)), k_way, replace=False)
         list_parents = [[idx, pop[idx].target.fitness] for idx in list_id]
 
         if self.problem.minmax == "min":
@@ -645,14 +664,14 @@ class ClassicOptimizer(Optimizer):
         sigma_v = 1
         size = 1 if size is None else size
 
-        u = self.generator.normal(0, sigma_u, size)
-        v = self.generator.normal(0, sigma_v, size)
+        u = self.__generator.normal(0, sigma_u, size)
+        v = self.__generator.normal(0, sigma_v, size)
         s = u / np.power(np.abs(v) + self.EPSILON, 1 / beta)
 
         if case == 0:
-            step = multiplier * s * self.generator.uniform()
+            step = multiplier * s * self.__generator.uniform()
         elif case == 1:
-            step = multiplier * s * self.generator.normal(0, 1)
+            step = multiplier * s * self.__generator.normal(0, 1)
         else:
             step = multiplier * s
 
@@ -667,7 +686,7 @@ class ClassicOptimizer(Optimizer):
         Returns:
             The opposite solution
         """
-        pos_new = self.problem.lb + self.problem.ub - g_best.solution + self.generator.uniform() * (
+        pos_new = self.problem.lb + self.problem.ub - g_best.solution + self.__generator.uniform() * (
                 g_best.solution - agent.solution)
 
         return self.correct_solution(pos_new)
@@ -702,7 +721,7 @@ class ClassicOptimizer(Optimizer):
         Returns:
             list: position of 1st and 2nd child
         """
-        r = self.generator.uniform()  # w1 = w2 when r =0.5
+        r = self.__generator.uniform()  # w1 = w2 when r =0.5
         w1 = np.multiply(r, dad_pos) + np.multiply((1 - r), mom_pos)
         w2 = np.multiply(r, mom_pos) + np.multiply((1 - r), dad_pos)
 
@@ -726,7 +745,7 @@ class ClassicOptimizer(Optimizer):
 
         for idx in range(0, pop_len):
             agent = pop_s1[idx].copy()
-            pos_new = pop_s1[idx].solution * (1 + self.generator.normal(0, 1, self.problem.n_dims))
+            pos_new = pop_s1[idx].solution * (1 + self.__generator.normal(0, 1, self.problem.n_dims))
             agent.solution = self.correct_solution(pos_new)
             pop_new.append(agent)
 
@@ -741,8 +760,8 @@ class ClassicOptimizer(Optimizer):
 
         for idx in range(0, pop_len):
             agent = pop_s2[idx].copy()
-            pos_new = (g_best.solution - pos_s1_mean) - self.generator.random() * \
-                      (self.problem.lb + self.generator.random() * (self.problem.ub - self.problem.lb))
+            pos_new = (g_best.solution - pos_s1_mean) - self.__generator.random() * \
+                      (self.problem.lb + self.__generator.random() * (self.problem.ub - self.problem.lb))
             agent.solution = self.correct_solution(pos_new)
             pop_new.append(agent)
 
