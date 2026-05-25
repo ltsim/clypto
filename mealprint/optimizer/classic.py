@@ -14,7 +14,6 @@ import numpy.typing as npt
 
 from mealprint.optimizer.optimizer import Optimizer
 from mealprint.utils.agent import Agent
-from mealprint.utils.track import HistoryProtocol
 from mealprint.utils.history import TrackHistory
 from mealprint.utils.problem import Problem
 from mealprint.utils.target import Target
