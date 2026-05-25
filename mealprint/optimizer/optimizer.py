@@ -7,6 +7,7 @@ from mealprint.utils.agent import Agent
 from mealprint.utils.termination import Termination
 from mealprint.utils.problem import Problem
 from mealprint.utils.target import Target
+from mealprint.utils.track import HistoryProtocol
 
 
 class Optimizer(abc.ABC):
@@ -39,6 +40,11 @@ class Optimizer(abc.ABC):
         - The ``seed`` parameter in ``solve`` must be set explicitly to an int
           for reproducible runs.
     """
+
+    @property
+    @abc.abstractmethod
+    def history(self) -> HistoryProtocol:
+        ...
 
     @abc.abstractmethod
     def initialize_variables(self) -> None:

@@ -62,6 +62,10 @@ class ClassicOptimizer(Optimizer):
         self.rng = None
 
     @property
+    def history(self) -> TrackHistory:
+        return self.__history
+
+    @property
     def termination(self):
         return self.__termination
 
