@@ -15,7 +15,7 @@ class Agent:
     def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
         self.__solution = solution
         self.__target = target
-        self.__set_kwargs(kwargs)
+        self.__dict__.update(kwargs)
         self.__kwargs = kwargs
 
     @property
@@ -37,16 +37,13 @@ class Agent:
     def __getattr__(self, name: str) -> Any:
         return self.__dict__.get(name, None)
 
-    def __set_kwargs(self, kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
     def copy(self) -> 'Agent':
         agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
-        # Copy any changes made to the attributes
+
         for attr, value in vars(self).items():
             if attr not in ['target', 'solution', 'id', 'kwargs']:
                 setattr(agent, attr, value)
+
         return agent
 
     def update_agent(self, solution: np.ndarray, target: Target) -> None:
@@ -107,13 +104,14 @@ class Agent:
         """
         return self._compare_fitness(other, minmax) == -1
 
-    def __repr__(self):  # represent
-        return f"id: {self.id}, target: {self.target}, solution: {self.solution}"
+    def __repr__(self):
+        return f"Agent(target={self.target}, solution={self.solution})"
 
     def __eq__(self, other):
         """ Check if two agents are equal based on their solutions with a tolerance."""
         if not isinstance(other, Agent):
             return False
+
         return np.allclose(self.solution, other.solution, atol=1e-6)
 
     def __hash__(self):
