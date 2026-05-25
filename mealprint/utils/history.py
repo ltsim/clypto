@@ -3,13 +3,15 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
+import dataclasses
 
 import numpy as np
 
 from mealprint.utils.agent import Agent
 
 
-class History:
+@dataclasses.dataclass
+class TrackHistory:
     """
     A History class is responsible for saving each iteration's output.
 
@@ -31,31 +33,30 @@ class History:
             Better to set parameter 'save_population' to False in the input problem dictionary to not using it.
     """
 
-    def __init__(self, **kwargs):
-        self.list_global_best = []  # List of global best solution found so far in all previous generations
-        self.list_current_best = []  # List of current best solution in each previous generations
-        self.list_epoch_time = []  # List of runtime for each generation
-        self.list_global_best_fit = []  # List of global best fitness found so far in all previous generations
-        self.list_current_best_fit = []  # List of current best fitness in each previous generations
-        self.list_population = []  # List of population in each generation
-        self.list_diversity = []  # List of diversity of swarm in all generations
-        self.list_exploitation = []  # List of exploitation percentages for all generations
-        self.list_exploration = []  # List of exploration percentages for all generations
-        self.list_global_worst = []  # List of global worst solution found so far in all previous generations
-        self.list_current_worst = []  # List of current worst solution in each previous generations
-        self.epoch = None
+    global_best: list[Agent] = dataclasses.field(default_factory=list)
+    current_best: list[Agent] = dataclasses.field(default_factory=list)
+    epoch_time: list[Agent] = dataclasses.field(default_factory=list)
+    global_best_fit: list[Agent] = dataclasses.field(default_factory=list)
+    current_best_fit: list[Agent] = dataclasses.field(default_factory=list)
+    population: list[Agent] = dataclasses.field(default_factory=list)
+    diversity: list[Agent] = dataclasses.field(default_factory=list)
+    exploitation: list[Agent] = dataclasses.field(default_factory=list)
+    exploration: list[Agent] = dataclasses.field(default_factory=list)
+    global_worst: list[Agent] = dataclasses.field(default_factory=list)
+    current_worst: list[Agent] = dataclasses.field(default_factory=list)
+    epoch: int = 0
 
     def store_initial_best_worst(self, best_agent: Agent, worst_agent: Agent) -> None:
-        self.list_global_best = [best_agent.copy()]
-        self.list_current_best = [best_agent.copy()]
-        self.list_global_worst = [worst_agent.copy()]
-        self.list_current_worst = [worst_agent.copy()]
+        self.global_best = [best_agent.copy()]
+        self.current_best = [best_agent.copy()]
+        self.global_worst = [worst_agent.copy()]
+        self.current_worst = [worst_agent.copy()]
 
     def get_global_repeated_times(self, epsilon: float) -> int:
         count = 0
 
-        for idx in range(0, len(self.list_global_best) - 1):
-            temp = np.abs(self.list_global_best[idx].target.fitness - self.list_global_best[idx + 1].target.fitness)
+        for idx in range(0, len(self.global_best) - 1):
+            temp = np.abs(self.global_best[idx].target.fitness - self.global_best[idx + 1].target.fitness)
 
             if temp <= epsilon:
                 count += 1
