@@ -1,17 +1,18 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 04:18, 28/09/2023 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 04:18, 28/09/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 from typing import Any
 
 import numpy as np
 
+from mealprint.agents.agent import Agent
 from mealprint.utils.target import Target
 
 
-class Agent:
+class VirtualAgent(Agent):
     def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
         self.__solution = solution
         self.__target = target
@@ -41,8 +42,8 @@ class Agent:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
-    def copy(self) -> 'Agent':
-        agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
+    def copy(self) -> 'VirtualAgent':
+        agent = VirtualAgent(self.solution, self.target.copy(), **self.__kwargs)
         # Copy any changes made to the attributes
         for attr, value in vars(self).items():
             if attr not in ['target', 'solution', 'id', 'kwargs']:
@@ -57,7 +58,7 @@ class Agent:
         for attr, value in kwargs.items():
             setattr(self, attr, value)
 
-    def sync_if_duplicate(self, other: "Agent") -> bool:
+    def sync_if_duplicate(self, other: "VirtualAgent") -> bool:
         """
         Check if two agents are equal (using __eq__), and if so, synchronize the target from the other agent.
 
@@ -71,7 +72,7 @@ class Agent:
 
         return is_eq
 
-    def _compare_fitness(self, other: "Agent", minmax: str = "min") -> int:
+    def _compare_fitness(self, other: "VirtualAgent", minmax: str = "min") -> int:
         """
         Compare fitness between self and other.
 
@@ -87,7 +88,7 @@ class Agent:
         else:
             return -1 if self.target.fitness > other.target.fitness else 1
 
-    def get_better_solution(self, other: "Agent", minmax: str = "min") -> "Agent":
+    def get_better_solution(self, other: "VirtualAgent", minmax: str = "min") -> "VirtualAgent":
         """
         Return better solution
 
@@ -97,7 +98,7 @@ class Agent:
         """
         return self if self._compare_fitness(other, minmax) <= 0 else other
 
-    def is_better_than(self, other: "Agent", minmax: str = "min") -> bool:
+    def is_better_than(self, other: "VirtualAgent", minmax: str = "min") -> bool:
         """
         Compare the current agent with other agent. Return True if current agent is better and False otherwise
 
@@ -112,7 +113,7 @@ class Agent:
 
     def __eq__(self, other):
         """ Check if two agents are equal based on their solutions with a tolerance."""
-        if not isinstance(other, Agent):
+        if not isinstance(other, VirtualAgent):
             return False
         return np.allclose(self.solution, other.solution, atol=1e-6)
 
