@@ -5,7 +5,7 @@ import numpy.typing as npt
 
 from mealprint.utils.termination import Termination
 from mealprint.utils.problem import Problem
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 from mealprint.utils.target import Target
 
 
@@ -158,7 +158,7 @@ class Optimizer(abc.ABC):
         starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
         seed: int | None = None,
         track_optimize: bool = False,
-    ) -> Agent:
+    ) -> VirtualAgent:
         """
         Run the full optimization process end to end.
 
@@ -192,7 +192,7 @@ class Optimizer(abc.ABC):
     @abc.abstractmethod
     def track_optimize_step(
         self,
-        pop: list["Agent"] | None = None,
+        pop: list["VirtualAgent"] | None = None,
         epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
@@ -221,7 +221,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> VirtualAgent:
         """
         Create a new agent skeleton without evaluating its target.
 
@@ -239,7 +239,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_agent(self, solution: np.ndarray | None = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray | None = None) -> VirtualAgent:
         """
         Create a fully evaluated agent.
 
@@ -257,7 +257,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_population(self, pop_size: int | None = None) -> list[Agent]:
+    def generate_population(self, pop_size: int | None = None) -> list[VirtualAgent]:
         """
         Generate a population of fully evaluated agents.
 
@@ -311,7 +311,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def update_target_for_population(self, pop: list[Agent]) -> list[Agent]:
+    def update_target_for_population(self, pop: list[VirtualAgent]) -> list[VirtualAgent]:
         """
         Re-evaluate the objective value for every agent in a population.
 

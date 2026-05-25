@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class History:
@@ -45,7 +45,7 @@ class History:
         self.list_current_worst = []  # List of current worst solution in each previous generations
         self.epoch = None
 
-    def store_initial_best_worst(self, best_agent: Agent, worst_agent: Agent) -> None:
+    def store_initial_best_worst(self, best_agent: VirtualAgent, worst_agent: VirtualAgent) -> None:
         self.list_global_best = [best_agent.copy()]
         self.list_current_best = [best_agent.copy()]
         self.list_global_worst = [worst_agent.copy()]
