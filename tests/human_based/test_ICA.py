@@ -7,7 +7,8 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, ICA, Optimizer
+from mealprint import FloatVar, ClassicOptimizer
+from mealprint.collection.human_based import ICA
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -31,6 +32,6 @@ def test_ICA_results(problem):
     ]
     for model in models:
         g_best = model.solve(problem)
-        assert isinstance(model, Optimizer)
+        assert isinstance(model, ClassicOptimizer)
         assert isinstance(g_best.solution, np.ndarray)
         assert len(g_best.solution) == len(model.problem.lb)

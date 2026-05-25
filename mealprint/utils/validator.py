@@ -39,13 +39,14 @@ def is_str_in_list(value: str, my_list: list):
 
 class Validator:
     def __init__(self, **kwargs):
-        self.__set_keyword_arguments(kwargs)
+        def set_keyword_arguments(kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
 
-    def __set_keyword_arguments(self, kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        set_keyword_arguments(kwargs)
 
-    def check_int(self, name: str, value: int, bound=None):
+    @staticmethod
+    def check_int(name: str, value: int, bound=None):
         if isinstance(value, numbers.Number):
             if bound is None:
                 return int(value)
@@ -54,7 +55,8 @@ class Validator:
         bound = "" if bound is None else f"and value should be in range: {bound}"
         raise ValueError(f"'{name}' is an integer {bound}.")
 
-    def check_float(self, name: str, value: float, bound=None):
+    @staticmethod
+    def check_float(name: str, value: float, bound=None):
         if isinstance(value, numbers.Number):
             if bound is None:
                 return float(value)
@@ -63,21 +65,24 @@ class Validator:
         bound = "" if bound is None else f"and value should be in range: {bound}"
         raise ValueError(f"'{name}' is a float {bound}.")
 
-    def check_str(self, name: str, value: str, bound=None):
+    @staticmethod
+    def check_str(name: str, value: str, bound=None):
         if type(value) is str:
             if bound is None or is_str_in_list(value, bound):
                 return value
         bound = "" if bound is None else f"and value should be one of this: {bound}"
         raise ValueError(f"'{name}' is a string {bound}.")
 
-    def check_bool(self, name: str, value: bool, bound=(True, False)):
+    @staticmethod
+    def check_bool(name: str, value: bool, bound=(True, False)):
         if type(value) is bool:
             if value in bound:
                 return value
         bound = "" if bound is None else f"and value should be one of this: {bound}"
         raise ValueError(f"'{name}' is a boolean {bound}.")
 
-    def check_tuple_int(self, name: str, values: tuple, bounds=None):
+    @staticmethod
+    def check_tuple_int(name: str, values: tuple, bounds=None):
         if isinstance(values, SEQUENCE) and len(values) > 1:
             value_flag = [isinstance(item, DIGIT) for item in values]
             if np.all(value_flag):
@@ -90,7 +95,8 @@ class Validator:
         bounds = "" if bounds is None else f"and values should be in range: {bounds}"
         raise ValueError(f"'{name}' are integer {bounds}.")
 
-    def check_tuple_float(self, name: str, values: tuple, bounds=None):
+    @staticmethod
+    def check_tuple_float(name: str, values: tuple, bounds=None):
         if isinstance(values, SEQUENCE) and len(values) > 1:
             value_flag = [isinstance(item, numbers.Number) for item in values]
             if np.all(value_flag):
@@ -103,17 +109,20 @@ class Validator:
         bounds = "" if bounds is None else f"and values should be in range: {bounds}"
         raise ValueError(f"'{name}' are float {bounds}.")
 
-    def check_list_tuple(self, name: str, value: any, data_type: str):
+    @staticmethod
+    def check_list_tuple(name: str, value: any, data_type: str):
         if type(value) in (tuple, list) and len(value) >= 1:
             return list(value)
         raise ValueError(f"'{name}' should be a list or tuple of {data_type}, and length >= 1.")
 
-    def check_is_instance(self, name: str, value: any, class_type: any):
+    @staticmethod
+    def check_is_instance(name: str, value: any, class_type: any):
         if isinstance(value, class_type):
             return value
         raise ValueError(f"'{name}' should be an instance of {class_type} class.")
 
-    def check_is_int_and_float(self, name: str, value: any, bound_int=None, bound_float=None):
+    @staticmethod
+    def check_is_int_and_float(name: str, value: any, bound_int=None, bound_float=None):
         if type(value) is int:
             if bound_int is None or is_in_bound(value, bound_int):
                 return int(value)

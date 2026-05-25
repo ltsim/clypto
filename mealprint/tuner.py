@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from mealprint.optimizer import Optimizer
+from mealprint.optimizer.classic import ClassicOptimizer
 from mealprint.utils.agent import Agent
 from mealprint.utils.problem import Problem
 from mealprint.utils.termination import Termination
@@ -170,8 +170,8 @@ class Tuner:
 
     Examples
     --------
-    >>> from opfunu.cec_based.cec2017 import F52017
-    >>> from mealprint import FloatVar, BBO, Tuner
+    >>> from mealprint.collection.bio_based import BBO    >>> from opfunu.cec_based.cec2017 import F52017
+    >>> from mealprint import FloatVar,  Tuner
     >>>
     >>> f1 = F52017(30, f_bias=0)
     >>>
@@ -214,11 +214,11 @@ class Tuner:
     >>>     print(tuner.best_algorithm.get_name())
     """
 
-    def __init__(self, algorithm: Union[str, Optimizer] = None, param_grid: Union[Dict, List] = None,
+    def __init__(self, algorithm: Union[str, ClassicOptimizer] = None, param_grid: Union[Dict, List] = None,
                  **kwargs: object) -> None:
         self.__set_keyword_arguments(kwargs)
         self.validator = Validator(log_to="console", log_file=None)
-        self.algorithm = self.validator.check_is_instance("algorithm", algorithm, Optimizer)
+        self.algorithm = self.validator.check_is_instance("algorithm", algorithm, ClassicOptimizer)
         self.param_grid = self.validator.check_is_instance("param_grid", param_grid, dict)
         self.results, self._best_row, self._best_params, self._best_score, self._best_algorithm = None, None, None, None, None
 
@@ -341,10 +341,10 @@ class Tuner:
                         plt.show()
                     plt.close()
 
-    def __run__(self, id_trial, mode="single", n_workers=None, termination=None):
-        g_best = self.algorithm.solve(self.problem, mode=mode, n_workers=n_workers, termination=termination)
+    def __run__(self, id_trial, termination=None):
+        g_best = self.algorithm.solve(self.problem, termination=termination)
         self.problem = self.algorithm.problem
-        return id_trial, g_best, self.algorithm.history.list_global_best_fit
+        return id_trial, g_best, self.algorithm.__history.global_best_fit
 
     def __generate_dict_from_list(self, my_list):
         keys = np.arange(1, len(my_list) + 1)
@@ -390,7 +390,6 @@ class Tuner:
         best_fit_results = []
         loss_results = []
         for id_params, params in enumerate(list_params_grid):
-
             self.algorithm.set_parameters(params)
             best_fit_results.append({"params": params})
 
@@ -407,7 +406,7 @@ class Tuner:
                                 f"Algorithm: {self.algorithm.get_name()}, with params: {params}, trial: {idx + 1}, best fitness: {g_best.target.fitness}")
             else:
                 for idx in trial_list:
-                    idx, g_best, loss_epoch = self.__run__(idx, mode=mode, n_workers=n_workers, termination=termination)
+                    idx, g_best, loss_epoch = self.__run__(idx, termination=termination)
                     best_fit_results[-1][trial_columns[idx]] = g_best.target.fitness
                     loss_results.append(self.__generate_dict_result(params, idx, loss_epoch))
                     if verbose:
@@ -447,5 +446,5 @@ class Tuner:
             g_best: Agent, the best agent found
         """
         self.algorithm.set_parameters(self.best_params)
-        return self.algorithm.solve(problem=self.problem, mode=mode, n_workers=n_workers,
+        return self.algorithm.solve(problem=self.problem,
                                     starting_solutions=starting_solutions, termination=termination)

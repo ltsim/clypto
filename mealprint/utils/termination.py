@@ -32,8 +32,8 @@ class Termination:
 
     Examples
     ~~~~~~~~
-    >>> import numpy as np
-    >>> from mealprint import FloatVar, BBO
+    >>> from mealprint.collection.bio_based import BBO    >>> import numpy as np
+    >>> from mealprint import FloatVar
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
