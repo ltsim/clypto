@@ -9,7 +9,7 @@ from math import gamma
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalSLO(ClassicOptimizer):
@@ -140,14 +140,14 @@ class ModifiedSLO(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         local_pos = self.problem.lb + self.problem.ub - solution
         local_pos = self.correct_solution(local_pos)
-        return Agent(solution=solution, local_solution=local_pos)
+        return VirtualAgent(solution=solution, local_solution=local_pos)
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         agent = self.generate_empty_agent(solution)
         target = self.get_target(agent.solution)
         local_target = self.get_target(agent.local_solution)

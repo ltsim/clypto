@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalSRSR(ClassicOptimizer):
@@ -54,16 +54,16 @@ class OriginalSRSR(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         mu = 0
         sigma = 0
         x_new = solution.copy()
         target_move = 0
-        return Agent(solution=solution, mu=mu, sigma=sigma, solution_new=x_new, target_move=target_move)
+        return VirtualAgent(solution=solution, mu=mu, sigma=sigma, solution_new=x_new, target_move=target_move)
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.target_new = agent.target.copy()

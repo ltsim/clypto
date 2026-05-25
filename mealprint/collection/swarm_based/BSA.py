@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalBSA(ClassicOptimizer):
@@ -78,13 +78,13 @@ class OriginalBSA(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size", "ff", "pff", "c1", "c2", "a1", "a2", "fc"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         local_position = solution.copy()
-        return Agent(solution=solution, local_solution=local_position)
+        return VirtualAgent(solution=solution, local_solution=local_position)
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()

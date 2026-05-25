@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalEP(ClassicOptimizer):
@@ -64,12 +64,12 @@ class OriginalEP(ClassicOptimizer):
         self.n_bout_size = int(self.bout_size * self.pop_size)
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance, self.problem.n_dims)
         times_win = 0
-        return Agent(solution=solution, strategy=strategy, win=times_win)
+        return VirtualAgent(solution=solution, strategy=strategy, win=times_win)
 
     def evolve(self, epoch):
         """

@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalES(ClassicOptimizer):
@@ -62,11 +62,11 @@ class OriginalES(ClassicOptimizer):
     def initialize_variables(self):
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance)
-        return Agent(solution=solution, strategy=strategy)
+        return VirtualAgent(solution=solution, strategy=strategy)
 
     def evolve(self, epoch):
         """
@@ -224,11 +224,11 @@ class CMA_ES(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         step = self.generator.multivariate_normal(np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims))
-        return Agent(solution=solution, step=step)
+        return VirtualAgent(solution=solution, step=step)
 
     def before_main_loop(self):
         self.mu = int(np.round(self.pop_size / 2))

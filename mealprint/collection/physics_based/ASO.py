@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalASO(ClassicOptimizer):
@@ -64,12 +64,12 @@ class OriginalASO(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size", "alpha", "beta"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         mass = 0.0
-        return Agent(solution=solution, velocity=velocity, mass=mass)
+        return VirtualAgent(solution=solution, velocity=velocity, mass=mass)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)

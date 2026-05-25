@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalBA(ClassicOptimizer):
@@ -70,12 +70,12 @@ class OriginalBA(ClassicOptimizer):
         self.alpha = self.gamma = 0.9
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         pulse_frequency = self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
-        return Agent(solution=solution, velocity=velocity, pulse_frequency=pulse_frequency)
+        return VirtualAgent(solution=solution, velocity=velocity, pulse_frequency=pulse_frequency)
 
     def evolve(self, epoch):
         """
@@ -175,13 +175,13 @@ class AdaptiveBA(ClassicOptimizer):
             ["epoch", "pop_size", "loudness_min", "loudness_max", "pr_min", "pr_max", "pf_min", "pf_max"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
         pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
-        return Agent(solution=solution, velocity=velocity, loudness=loudness, pulse_rate=pulse_rate)
+        return VirtualAgent(solution=solution, velocity=velocity, loudness=loudness, pulse_rate=pulse_rate)
 
     def evolve(self, epoch):
         """

@@ -8,7 +8,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalSSpiderA(ClassicOptimizer):
@@ -69,7 +69,7 @@ class OriginalSSpiderA(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size", "r_a", "p_c", "p_m"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         """
         Overriding method in Optimizer class
             + x: The position of s on the web.
@@ -86,9 +86,9 @@ class OriginalSSpiderA(ClassicOptimizer):
         target_solution = solution.copy()
         local_vector = np.zeros(self.problem.n_dims)
         mask = np.zeros(self.problem.n_dims)
-        return Agent(solution=solution, target_solution=target_solution, local_vector=local_vector, mask=mask)
+        return VirtualAgent(solution=solution, target_solution=target_solution, local_vector=local_vector, mask=mask)
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         """
         Generate new agent with full information
 

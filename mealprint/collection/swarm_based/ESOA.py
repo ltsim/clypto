@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalESOA(ClassicOptimizer):
@@ -51,15 +51,15 @@ class OriginalESOA(ClassicOptimizer):
         self.is_parallelizable = False
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weights = self.generator.uniform(-1., 1., self.problem.n_dims)
         m = np.zeros(self.problem.n_dims)
         v = np.zeros(self.problem.n_dims)
-        return Agent(solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v)
+        return VirtualAgent(solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v)
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         """
             ID_WEI = 2
             ID_LOC_X = 3

@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalArchOA(ClassicOptimizer):
@@ -75,14 +75,14 @@ class OriginalArchOA(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size", "c1", "c2", "c3", "c4", "acc_max", "acc_min"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         den = self.generator.uniform(self.problem.lb, self.problem.ub)  # Density
         vol = self.generator.uniform(self.problem.lb, self.problem.ub)  # Volume
         acc = self.problem.lb + self.generator.uniform(self.problem.lb, self.problem.ub) * (
                 self.problem.ub - self.problem.lb)  # Acceleration
-        return Agent(solution=solution, den=den, vol=vol, acc=acc)
+        return VirtualAgent(solution=solution, den=den, vol=vol, acc=acc)
 
     def evolve(self, epoch):
         """

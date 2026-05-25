@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalMA(ClassicOptimizer):
@@ -76,11 +76,11 @@ class OriginalMA(ClassicOptimizer):
     def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = ''.join(["1" if self.generator.uniform() < 0.5 else "0" for _ in range(0, self.bits_total)])
-        return Agent(solution=solution, bitstring=bitstring)
+        return VirtualAgent(solution=solution, bitstring=bitstring)
 
     def decode__(self, bitstring: str = None) -> np.ndarray:
         """

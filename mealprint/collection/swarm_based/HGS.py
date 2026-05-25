@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalHGS(ClassicOptimizer):
@@ -63,11 +63,11 @@ class OriginalHGS(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size", "PUP", "LH"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         hunger = 1.0
-        return Agent(solution=solution, hunger=hunger)
+        return VirtualAgent(solution=solution, hunger=hunger)
 
     def sech__(self, x):
         if np.abs(x) > 50:

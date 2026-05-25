@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalCSO(ClassicOptimizer):
@@ -87,7 +87,7 @@ class OriginalCSO(ClassicOptimizer):
                              "selected_strategy"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         """
         + x: current position of cat
         + v: vector v of cat (same amount of dimension as x)
@@ -97,7 +97,7 @@ class OriginalCSO(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         flag = True if self.generator.uniform() < self.mixture_ratio else False
-        return Agent(solution=solution, velocity=velocity, flag=flag)
+        return VirtualAgent(solution=solution, velocity=velocity, flag=flag)
 
     def seeking_mode__(self, cat):
         candidate_cats = []

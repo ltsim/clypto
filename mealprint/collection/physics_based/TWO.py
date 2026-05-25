@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalTWO(ClassicOptimizer):
@@ -64,7 +64,7 @@ class OriginalTWO(ClassicOptimizer):
             self.pop = self.generate_population(self.pop_size)
         self.pop = self.update_weight__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         """
         Generate new agent with solution
 
@@ -73,7 +73,7 @@ class OriginalTWO(ClassicOptimizer):
         """
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        return Agent(solution=solution, weight=0.0)
+        return VirtualAgent(solution=solution, weight=0.0)
 
     def update_weight__(self, teams):
         list_fits = np.array([agent.target.fitness for agent in teams])

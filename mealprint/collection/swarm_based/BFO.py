@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 
 
 class OriginalBFO(ClassicOptimizer):
@@ -93,13 +93,13 @@ class OriginalBFO(ClassicOptimizer):
         self.is_parallelizable = False
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         cost = 0.0
         interaction = 0.0
         nutrients = 0.0
-        return Agent(solution=solution, cost=cost, interaction=interaction, nutrients=nutrients)
+        return VirtualAgent(solution=solution, cost=cost, interaction=interaction, nutrients=nutrients)
 
     def compute_cell_interaction__(self, cell, cells, d, w):
         sum_inter = 0.0
@@ -224,14 +224,14 @@ class ABFO(ClassicOptimizer):
         self.C_s = self.C_s * (self.problem.ub - self.problem.lb)
         self.C_e = self.C_e * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         nutrients = 0  # total nutrient gained by the bacterium in its whole searching process.(int number)
         local_solution = solution.copy()
-        return Agent(solution=solution, nutrients=nutrients, local_solution=local_solution)
+        return VirtualAgent(solution=solution, nutrients=nutrients, local_solution=local_solution)
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> VirtualAgent:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
