@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from mealprint.optimizer.classic import ClassicOptimizer
-from mealprint.utils.agent import Agent
+from mealprint.agents.virtual_agent import VirtualAgent
 from mealprint.utils.problem import Problem
 from mealprint.utils.termination import Termination
 from mealprint.utils.validator import Validator
@@ -426,7 +426,7 @@ class Tuner:
         self.df_loss = pd.DataFrame(loss_results)
 
     def resolve(self, mode: str = 'single', starting_solutions: Union[List, Tuple, np.ndarray] = None,
-                n_workers: int = None, termination: Union[Dict, Termination] = None) -> Agent:
+                n_workers: int = None, termination: Union[Dict, Termination] = None) -> VirtualAgent:
         """
         Resolving the problem with the best parameters
 
