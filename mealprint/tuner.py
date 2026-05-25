@@ -344,7 +344,7 @@ class Tuner:
     def __run__(self, id_trial, termination=None):
         g_best = self.algorithm.solve(self.problem, termination=termination)
         self.problem = self.algorithm.problem
-        return id_trial, g_best, self.algorithm.__history.list_global_best_fit
+        return id_trial, g_best, self.algorithm.__history.global_best_fit
 
     def __generate_dict_from_list(self, my_list):
         keys = np.arange(1, len(my_list) + 1)
