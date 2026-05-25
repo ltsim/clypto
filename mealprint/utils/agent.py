@@ -37,7 +37,6 @@ class Agent:
     def __getattr__(self, name: str) -> Any:
         return self.__dict__.get(name, None)
 
-
     def copy(self) -> 'Agent':
         agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
 
@@ -105,8 +104,8 @@ class Agent:
         """
         return self._compare_fitness(other, minmax) == -1
 
-    def __repr__(self):  # represent
-        return f"id: {self.id}, target: {self.target}, solution: {self.solution}"
+    def __repr__(self):
+        return f"Agent(target={self.target}, solution={self.solution})"
 
     def __eq__(self, other):
         """ Check if two agents are equal based on their solutions with a tolerance."""
