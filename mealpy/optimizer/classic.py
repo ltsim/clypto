@@ -134,14 +134,7 @@ class ClassicOptimizer(Optimizer):
         return self.name
 
     def __str__(self):
-        temp = ""
-
-        for key in self.__params_name_ordered:
-            temp += f"{key}={self.parameters[key]}, "
-
-        temp = temp[:-2]
-
-        return f"{self.__class__.__name__}({temp})"
+        return f"{self.__class__.__name__}"
 
     def initialize_variables(self):
         pass
