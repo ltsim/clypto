@@ -3,53 +3,35 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-#
-# Examples:
-# >>>
-# >>> from mealpy import FloatVar, PSO
-# >>> import numpy as np
-# >>>
-# >>> def objective_function(solution):
-# >>>     return np.sum(solution ** 2)
-# >>>
-# >>> p1 = {
-# >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-# >>>     "minmax": "min",
-# >>>     "obj_func": objective_function,
-# >>>     "save_population": True,  # To be able to draw the trajectory figure
-# >>>     "log_to": "file",
-# >>>     "log_file": "mealpy.log",
-# >>>     "name": "Square"
-# >>> }
-# >>>
-# >>> ## Run the algorithm
-# >>> model = PSO.C_PSO(epoch=5, pop_size=50, name="C-PSO")
-# >>> g_best = model.solve(problem)
-# >>> print(f"Best solution: {g_best.solution}, Best fitness: {g_best.target.fitness}")
 
-__version__ = "3.0.4.1"
+__version__ = "2026"
 
 import inspect
 import sys
 
-from .bio_based import (BBO, BBOA, BMO, EOA, IWO, SBO, SMA, SOA, SOS, TPO, TSA, VCS, WHO, BCO, EAO, SFOA)
-from .evolutionary_based import (BWO, CRO, DE, EP, ES, FPA, GA, MA, SHADE)
-from .game_based import THRO
-from .human_based import (BRO, BSO, CA, CHIO, FBIO, GSKA, HBO, HCO, ICA, LCO, QSA, SARO, SPBO, SSDO, TLO, TOA, WarSO,
-                          AFT, CDDO, DOA)
-from .math_based import (AOA, CEM, CGO, CircleSA, GBO, HC, INFO, PSS, RUN, SCA, SHIO, TS)
-from .multitask import Multitask
-from .music_based import HS
-from .optimizer import Optimizer
-from .physics_based import (ArchOA, ASO, CDO, EFO, EO, EVO, FLA, HGSO, MVO, NRO, RIME, SA, TWO, WDO, ESO, SOO, MSO)
-from .sota_based import LSHADEcnEpSin, IMODE
-from .swarm_based import (ABC, ACOR, AGTO, ALO, AO, ARO, AVOA, BA, BeesA, BES, BFO, BSA, COA, CoatiOA, CSA, CSO,
-                          DMOA, DO, EHO, ESOA, FA, FFA, FFO, FOA, FOX, GJO, GOA, GTO, GWO, HBA, HGS, HHO, JA,
-                          MFO, MGO, MPA, MRFO, MSA, MShOA, NGO, NMRA, OOA, PFA, POA, PSO, SCSO, SeaHO, ServalOA, SFO,
-                          SHO, SLO, SRSR, SSA, SSO, SSpiderA, SSpiderO, STO, TDO, TSO, WaOA, WOA, ZOA,
-                          EPC, SMO, SquirrelSA, FDO)
-from .system_based import AEO, GCO, WCA
-from .tuner import Tuner, ParameterGrid
+from mealpy.collection.bio_based import (BBO, BBOA, BMO, EOA, SBO, SMA, SOA, SOS, TPO, TSA, VCS, WHO, BCO, EAO, SFOA)
+from mealpy.collection.evolutionary_based import (FPA)
+from mealpy.collection.game_based import THRO
+from mealpy.collection.math_based import (AOA, CEM, CGO, GBO, HC, INFO, PSS, RUN, SCA, SHIO, TS)
+from mealpy.collection.music_based import HS
+from mealpy.collection.physics_based import (ArchOA, EFO, EO, EVO, FLA, HGSO, MVO, NRO, SA, TWO, WDO, ESO, SOO, MSO)
+from mealpy.collection.sota_based import LSHADEcnEpSin, IMODE
+from mealpy.collection.swarm_based import (ABC, ACOR, AVOA, BES, BFO, COA, DMOA, DO, FA, GJO, GWO, HBA, MPA, MSA, MShOA,
+                                           NGO,
+                                           OOA, PFA, SCSO, SeaHO, ServalOA, SHO, SRSR, SSpiderO, STO, TDO, WaOA, ZOA,
+                                           FDO)
+from mealpy.collection.system_based import AEO, GCO
+from mealpy.optimizer.classic import ClassicOptimizer
+from .collection.bio_based import IWO
+from .collection.evolutionary_based import ES, DE, SHADE, MA, EP, GA, BWO, CRO
+from .collection.human_based import SSDO, CA, ICA, AFT, CHIO, SARO, BSO, HBO, CDDO, GSKA, SPBO, HCO, QSA, WarSO, BRO, \
+    TLO, TOA, FBIO, DOA, LCO
+from .collection.math_based import CircleSA
+from .collection.physics_based import RIME, ASO, CDO
+from .collection.swarm_based import AO, JA, EHO, NMRA, PSO, CoatiOA, BA, TSO, GOA, MFO, SLO, ARO, SquirrelSA, FFA, POA, \
+    ESOA, GTO, CSO, SSO, FOA, HHO, SFO, WOA, ALO, CSA, MGO, FOX, FFO, MRFO, SMO, SSpiderA, BSA, HGS, BeesA, EPC, AGTO, \
+    SSA
+from .collection.system_based import WCA
 from .utils.problem import Problem
 from .utils.space import (IntegerVar, FloatVar, StringVar, BinaryVar, BoolVar, CategoricalVar,
                           SequenceVar, PermutationVar, TransferBinaryVar, TransferBoolVar)
@@ -72,7 +54,7 @@ def get_all_optimizers(verbose=True):
     for name, obj in inspect.getmembers(sys.modules[__name__]):
         if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES):
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, Optimizer):
+                if inspect.isclass(cls_obj) and issubclass(cls_obj, ClassicOptimizer):
                     cls[cls_name] = cls_obj
     del cls['Optimizer']
     if verbose:
@@ -96,7 +78,7 @@ def get_optimizer_by_class(class_name, verbose=False):
         all_optimizers = get_all_optimizers(verbose=verbose)
         return all_optimizers[class_name]
     except KeyError:
-        print(f"Mealpy doesn't support optimizer named: {class_name}.\n"
+        print(f"MealPrint doesn't support optimizer named: {class_name}.\n"
               f"Please see the supported Optimizer name from here: https://mealpy.readthedocs.io/en/latest/pages/support.html#classification-table")
         return None
 
@@ -118,11 +100,11 @@ def get_optimizer_by_name(name, verbose=False):
         if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES) and (module_name == name):
             flag = True
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, Optimizer):
+                if inspect.isclass(cls_obj) and issubclass(cls_obj, ClassicOptimizer):
                     cls[cls_name] = cls_obj
     if verbose:
         if not flag:
-            print(f"Mealpy doesn't support optimizer named: {name}.\n"
+            print(f"MealPrint doesn't support optimizer named: {name}.\n"
                   f"Please see the supported Optimizer name from here: https://mealpy.readthedocs.io/en/latest/pages/support.html#classification-table")
             return None
         del cls['Optimizer']

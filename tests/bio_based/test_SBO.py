@@ -7,7 +7,8 @@
 import numpy as np
 import pytest
 
-from mealpy import FloatVar, SBO, Optimizer
+from mealpy import FloatVar, ClassicOptimizer
+from mealpy.collection.bio_based import SBO
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -31,7 +32,7 @@ def test_OriginalSBO_results(problem):
     psw = 0.02
     model = SBO.OriginalSBO(epoch, pop_size, alpha, p_m, psw)
     g_best = model.solve(problem)
-    assert isinstance(model, Optimizer)
+    assert isinstance(model, ClassicOptimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 
@@ -44,7 +45,7 @@ def test_DevSBO_results(problem):
     psw = 0.02
     model = SBO.DevSBO(epoch, pop_size, alpha, p_m, psw)
     g_best = model.solve(problem)
-    assert isinstance(model, Optimizer)
+    assert isinstance(model, ClassicOptimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

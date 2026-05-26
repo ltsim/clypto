@@ -7,7 +7,8 @@
 import numpy as np
 import pytest
 
-from mealpy import FloatVar, IWO, Optimizer
+from mealpy import FloatVar, ClassicOptimizer
+from mealpy.collection.bio_based import IWO
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -34,7 +35,7 @@ def test_OriginalIWO_results(problem):
 
     model = IWO.OriginalIWO(epoch, pop_size, seed_min, seed_max, exponent, sigma_start, sigma_end)
     g_best = model.solve(problem)
-    assert isinstance(model, Optimizer)
+    assert isinstance(model, ClassicOptimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

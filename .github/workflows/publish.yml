@@ -38,7 +38,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/mealpy-lts
+      url: https://pypi.org/p/mealpy-legacy-collection
 
     steps:
       - name: Retrieve release distributions

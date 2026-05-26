@@ -7,7 +7,8 @@
 import numpy as np
 import pytest
 
-from mealpy import FloatVar, BWO, Optimizer
+from mealpy import FloatVar, ClassicOptimizer
+from mealpy.collection.evolutionary_based import BWO
 
 
 @pytest.fixture(scope="module")
@@ -28,6 +29,6 @@ def test_BWO_results(problem):
     ]
     for model in models:
         g_best = model.solve(problem)
-        assert isinstance(model, Optimizer)
+        assert isinstance(model, ClassicOptimizer)
         assert isinstance(g_best.solution, np.ndarray)
         assert len(g_best.solution) == len(model.problem.lb)

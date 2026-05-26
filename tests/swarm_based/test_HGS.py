@@ -7,7 +7,8 @@
 import numpy as np
 import pytest
 
-from mealpy import FloatVar, HGS, Optimizer
+from mealpy import FloatVar, ClassicOptimizer
+from mealpy.collection.swarm_based import HGS
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -30,6 +31,6 @@ def test_HGS_results(problem):
     ]
     for model in models:
         g_best = model.solve(problem)
-        assert isinstance(model, Optimizer)
+        assert isinstance(model, ClassicOptimizer)
         assert isinstance(g_best.solution, np.ndarray)
         assert len(g_best.solution) == len(model.problem.lb)
