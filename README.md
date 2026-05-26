@@ -1,15 +1,15 @@
-# MealPrint
+# mealpy-legacy-collection
 
-**MealPrint** is a lightweight, heavily refactored fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core. It serves as a pure, bloat-free collection of population-based metaheuristic algorithms (PBM) and acts as an architectural blueprint for educational purposes, clean research, and rapid prototyping.
+Is a lightweight, heavily refactored fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core. It serves as a pure, bloat-free repository that preserves the historical collection of population-based metaheuristic algorithms (PBM), acting as an open architectural catalog for educational purposes, clean research, and rapid prototyping within our ecosystem.
 
-Unlike monolithic optimization frameworks, **MealPrint** cuts out all secondary overhead—such as visualization tools, complex logging, and heavy external dependencies—focusing strictly on the algorithmic logic and mathematical transition operators.
+Unlike monolithic optimization frameworks, **mealpy-legacy-collection** cuts out all secondary overhead—such as visualization tools, complex logging, and heavy external dependencies—focusing strictly on the raw algorithmic logic and mathematical transition operators of these legacy implementations. This ensures a clean, decoupled foundation for developers to study, test, and benchmark classic metaheuristics without the friction of modern software bloat.
 
-## Why MealPrint?
+## Why?
 
-*   **Lean Core & Zero Bloat:** Amputated all UI, plotting, and file-writing features to create an ultra-lightweight library, making it ideal to be consumed as a clean, plug-and-play mathematical dependency.
-*   **Aggressive Agent Refactoring:** Redesigned the original agent state model to eliminate heavy Python object/dictionary overhead, shifting towards a streamlined, flat population structure that maximizes data locality.
-*   **Didactic Blueprint Architecture:** Re-engineered with a highly pedagogical layout. Students and researchers can open any algorithm, understand its transition rules in pure Python/NumPy in just a few lines of code, and easily use the structure as a mold to implement new metaheuristics.
-*   **Ecosystem Ready:** Built to operate as a decoupled engine, making it perfectly tailored to be driven by external benchmarking and evaluation frameworks.
+* **Lean Core & Zero Bloat:** Amputated all UI, plotting, and file-writing features to create an ultra-lightweight library, making this massive historical catalog ideal to be consumed as a clean, plug-and-play mathematical dependency.
+* **Aggressive Agent Refactoring:** Redesigned the original agent state model to eliminate heavy Python object/dictionary overhead, shifting towards a streamlined, flat population structure that maximizes data locality.
+* **Didactic Catalog Architecture:** Re-engineered with a highly pedagogical layout. Students and researchers can open any legacy algorithm, understand its transition rules in pure Python/NumPy in just a few lines of code, and easily use the structure as a mold to study or adapt classic metaheuristics.
+* **Ecosystem Ready:** Built to operate as a decoupled, standardized engine, making this collection perfectly tailored to be driven by external benchmarking, evaluation frameworks, and modern optimization wrappers.
 
 ## Credits & Citation Request
 
@@ -55,37 +55,34 @@ To honor the individual authors who contributed each method to the field of appr
 You can find the complete list of original scientific papers and their corresponding citations in our dedicated [REFERENCES.md](REFERENCES.md) file included within this repository.
 
 ## Goals
+The sole purpose of this repository is to preserve a clean, decoupled collection of both classical and state-of-the-art nature-inspired metaheuristic algorithms. By stripping away all monolithic overhead, our goal is to provide a standardized, raw algorithmic library that can be effortlessly integrated, embedded, and reused across any Python environment—whether for academic research, proprietary commercial software, or high-performance computing clusters. 
 
-Our goals are to implement all classical as well as the state-of-the-art nature-inspired algorithms, create a simple interface that helps researchers access optimization algorithms as quickly as possible, and share knowledge of the optimization field with everyone without a fee. What you can do with mealpy:
+What you can do with mealpy-legacy-collection:
 
-- Analyse parameters of meta-heuristic algorithms.
-- Perform Qualitative and Quantitative Analysis of algorithms.
-- Analyse rate of convergence of algorithms.
-- Test and Analyse the scalability and the robustness of algorithms.
-- Save results in various formats (csv, json, pickle, png, pdf, jpeg)
-- Export and import models can also be done with Mealpy.
-- **Solve any optimization problem**
-
+- **Universal Reusability:** Import and execute any metaheuristic algorithm across any third-party framework or custom pipeline without dependency conflicts.
+- **Pure Logic Inspection:** Open and study the raw mathematical transition operators of a massive catalog of population-based algorithms.
+- **Zero-Friction Integration:** Consume the entire collection as a lightweight, plug-and-play mathematical engine.
+- **Benchmark-Ready Sourcing:** Use these legacy implementations as standardized baselines for modern benchmarking and comparative evaluation suites.
 
 # Usage
 
 ## Installation
 
-* Install the stable (latest) version from [PyPI release](https://pypi.python.org/pypi/mealprint):
+* Install the stable (latest) version from [PyPI release](https://pypi.python.org/pypi/mealpy-legacy-collection):
 ```bash
-$ pip install mealprint --upgrade
+$ pip install mealpy-legacy-collection --upgrade
 ```
 
 * Install the pre-release version directly from the source code:
 ```bash
-$ git clone https://github.com/ltsim/mealprint.git
-$ cd mealprint
-$ python setup.py install
+$ git clone https://github.com/ltsim/mealpy-legacy-collection.git
+$ cd mealpy-legacy-collection
+$ python -m pip install .
 ```
 
 * In case, you want to install the development version from Github:
 ```bash
-$ pip install git+https://github.com/ltsim/mealprint 
+$ pip install git+https://github.com/ltsim/mealpy-legacy-collection.git 
 ```
 
 ## Optimizer Classification Table
@@ -106,8 +103,8 @@ $ pip install git+https://github.com/ltsim/mealprint
     + Medium: more equations than Easy level, SLOC longer than Easy level
     + Hard: Lots of equations, SLOC longer than Medium level, the paper hard to read.
     + Hard* - Very hard: Lots of equations, SLOC too long, the paper is very hard to read.
-    
-** For newbie, we recommend to read the paper of algorithms which difficulty is "easy" or "medium" difficulty level.
+
+For newbie, we recommend to read the paper of algorithms which difficulty is "easy" or "medium" difficulty level.
 
 ### Warning: Algorithms Suspected of Plagiarism
 
