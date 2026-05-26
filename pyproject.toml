@@ -73,13 +73,13 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/ltsim/mealprint"
-"Source Code" = "https://github.com/ltsim/mealprint"
-"Bug Tracker" = "https://github.com/ltsim/mealprint/issues"
-"Change Log" = "https://github.com/ltsim/mealprint/blob/master/CHANGELOG.md"
+"Homepage" = "https://github.com/ltsim/mealpy-legacy-collection"
+"Source Code" = "https://github.com/ltsim/mealpy-legacy-collection"
+"Bug Tracker" = "https://github.com/ltsim/mealpy-legacy-collection/issues"
+"Change Log" = "https://github.com/ltsim/mealpy-legacy-collection/blob/master/CHANGELOG.md"
 
 [tool.setuptools.dynamic]
-version = { attr = "mealprint.__version__" }
+version = { attr = "mealpy.__version__" }
 
 [tool.setuptools.packages.find]
 exclude = ["tests*", "examples*"]
@@ -95,8 +95,8 @@ python_functions = ["test_*"]
 addopts = "-v --tb=short --strict-markers"
 
 [tool.mypy]
-files = ["mealprint"]
-exclude = ["tests/", "docs/", "examples/", "mealprint/collection"]
+files = ["mealpy"]
+exclude = ["tests/", "docs/", "examples/", "mealpy/collection"]
 python_version = "3.10"
 warn_unused_ignores = true
 warn_redundant_casts = true
