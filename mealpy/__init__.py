@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-__version__ = "2026"
+__version__ = "2026.1"
 
 import inspect
 import sys
