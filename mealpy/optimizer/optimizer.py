@@ -2,7 +2,6 @@ import abc
 import typing
 
 import numpy as np
-import numpy.typing as npt
 
 from mealpy.utils.agent import Agent
 from mealpy.utils.problem import Problem

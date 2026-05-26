@@ -10,7 +10,6 @@ import typing
 
 import math
 import numpy as np
-import numpy.typing as npt
 
 from mealpy.optimizer.optimizer import Optimizer
 from mealpy.utils.agent import Agent
