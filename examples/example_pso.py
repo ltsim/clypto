@@ -1,7 +1,7 @@
 from opfunu.name_based.a_func import Ackley01
 
-from mealprint.collection.swarm_based import PSO
-from mealprint import FloatVar
+from mealpy.collection.swarm_based import PSO
+from mealpy import FloatVar
 
 # 1. Define the benchmark function from Opfunu
 # We'll use F3 from the CEC 2017 competition with 30 dimensions

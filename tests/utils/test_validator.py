@@ -6,7 +6,7 @@
 
 import pytest
 
-from mealprint.utils import validator
+from mealpy.utils import validator
 
 
 @pytest.mark.parametrize("value, bound, output",

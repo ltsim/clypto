@@ -7,8 +7,8 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, ClassicOptimizer
-from mealprint.collection.physics_based import NRO
+from mealpy import FloatVar, ClassicOptimizer
+from mealpy.collection.physics_based import NRO
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning

@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from mealprint import get_all_optimizers, get_optimizer_by_class, get_optimizer_by_name
+from mealpy import get_all_optimizers, get_optimizer_by_class, get_optimizer_by_name
 
 get_all_optimizers(verbose=True)
 

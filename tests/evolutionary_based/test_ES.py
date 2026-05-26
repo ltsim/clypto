@@ -7,8 +7,8 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, ClassicOptimizer
-from mealprint.collection.evolutionary_based import ES
+from mealpy import FloatVar, ClassicOptimizer
+from mealpy.collection.evolutionary_based import ES
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
