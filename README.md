@@ -63,7 +63,7 @@ If you use this library, its restructured architecture, or the underlying algori
 ## Algorithmic Citations
 To honor the individual authors who contributed each method to the field of approximate optimization, we strongly encourage you to cite the specific foundational papers for the algorithms used in your experiments.
 
-You can find the complete list of original scientific papers and their corresponding citations in our dedicated [REFERENCES.md](REFERENCES.md) file included within this repository.
+You can find the complete list of original scientific papers and their corresponding citations in our dedicated [REFERENCES.md](/REFERENCES.md) file included within this repository.
 
 ## Goals
 The sole purpose of this repository is to preserve a clean, decoupled collection of both classical and state-of-the-art nature-inspired metaheuristic algorithms. By stripping away all monolithic overhead, our goal is to provide a standardized, raw algorithmic library that can be effortlessly integrated, embedded, and reused across any Python environment—whether for academic research, proprietary commercial software, or high-performance computing clusters. 
