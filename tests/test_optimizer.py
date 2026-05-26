@@ -64,10 +64,32 @@ def test_generate_population(model):
     assert len(agent.solution) == model.problem.n_dims
 
 
-def test_update_target_for_population(model):
+def test_update_target_for_population_thread(model):
     pop = model.generate_population(5)
     list_targets = [model.get_target(agent.solution) for agent in pop]
     model.mode = "thread"
+    with pytest.raises(ValueError):
+        pop = model.update_target_for_population(pop)
+        for idx, agent in enumerate(pop):
+            assert agent.target is not None
+            assert agent.target.fitness == list_targets[idx].fitness
+
+
+def test_update_target_for_population_process(model):
+    pop = model.generate_population(5)
+    list_targets = [model.get_target(agent.solution) for agent in pop]
+    model.mode = "process"
+    with pytest.raises(ValueError):
+        pop = model.update_target_for_population(pop)
+        for idx, agent in enumerate(pop):
+            assert agent.target is not None
+            assert agent.target.fitness == list_targets[idx].fitness
+
+
+def test_update_target_for_population_swarm(model):
+    pop = model.generate_population(5)
+    list_targets = [model.get_target(agent.solution) for agent in pop]
+    model.mode = "swarm"
     pop = model.update_target_for_population(pop)
     for idx, agent in enumerate(pop):
         assert agent.target is not None

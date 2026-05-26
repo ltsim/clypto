@@ -36,8 +36,9 @@ class ClassicOptimizer(Optimizer):
     """
 
     EPSILON: typing.Final[float] = 10E-10
-    AVAILABLE_MODES: typing.Final[tuple[str]] = ("",)
+    AVAILABLE_MODES: typing.Final[tuple[typing.Literal['swarm', 'process', 'thread']]] = ('swarm',)
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
+    
 
     def __init__(self, **kwargs):
         self.__history = TrackHistory()
@@ -48,9 +49,9 @@ class ClassicOptimizer(Optimizer):
         self.__generator = None
         self.__termination: Termination | None = None
 
+        self.mode: typing.Literal['swarm', 'process', 'thread'] | None = None
         self.epoch: int | None = None
         self.pop_size: int | None = None
-        self.mode: str | None = None
         self.n_workers: int | None = None
         self.pop: list[Agent] | None = None
         self.g_best: Agent | None = Agent()
@@ -332,6 +333,8 @@ class ClassicOptimizer(Optimizer):
         if self.mode == "swarm":
             for idx, pos in enumerate(pos_list):
                 pop[idx].target = self.get_target(pos, counted=False)
+        elif self.mode in ('thread', 'process'):
+            raise ValueError("The parallel agent update mode was removed because it was inefficient.")
         else:
             return pop
 
