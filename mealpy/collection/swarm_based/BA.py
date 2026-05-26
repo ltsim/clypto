@@ -6,8 +6,8 @@
 
 import numpy as np
 
+from mealpy.agents.virtual import BaseAgent, VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalBA(ClassicOptimizer):
@@ -70,7 +70,7 @@ class OriginalBA(ClassicOptimizer):
         self.alpha = self.gamma = 0.9
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
@@ -175,7 +175,7 @@ class AdaptiveBA(ClassicOptimizer):
             ["epoch", "pop_size", "loudness_min", "loudness_max", "pr_min", "pr_max", "pf_min", "pf_max"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)

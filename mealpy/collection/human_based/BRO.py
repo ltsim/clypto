@@ -7,8 +7,8 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
+from mealpy.agents.virtual import BaseAgent, VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class DevBRO(ClassicOptimizer):
@@ -62,7 +62,7 @@ class DevBRO(ClassicOptimizer):
         self.problem.lb_updated = self.problem.lb.copy()
         self.problem.ub_updated = self.problem.ub.copy()
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         damage = 0

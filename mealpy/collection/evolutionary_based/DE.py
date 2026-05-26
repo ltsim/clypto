@@ -7,8 +7,8 @@
 import numpy as np
 from scipy.stats import cauchy
 
+from mealpy.agents.virtual import BaseAgent, VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalDE(ClassicOptimizer):
@@ -468,7 +468,7 @@ class SAP_DE(ClassicOptimizer):
         self.fixed_pop_size = self.pop_size
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         crossover_rate = self.generator.uniform(0, 1)

@@ -7,8 +7,8 @@
 import numpy as np
 
 from mealpy.agents import VirtualAgent
+from mealpy.agents.virtual import BaseAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent
 
 
 class OriginalSSpiderO(ClassicOptimizer):
@@ -79,7 +79,7 @@ class OriginalSSpiderO(ClassicOptimizer):
         self.pop_females = [self.pop[idx] for idx in idx_females]
         self.pop = self.recalculate_weights__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weight = 0.0

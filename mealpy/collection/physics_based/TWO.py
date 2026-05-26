@@ -6,8 +6,8 @@
 
 import numpy as np
 
+from mealpy.agents.virtual import BaseAgent, VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalTWO(ClassicOptimizer):
@@ -64,7 +64,7 @@ class OriginalTWO(ClassicOptimizer):
             self.pop = self.generate_population(self.pop_size)
         self.pop = self.update_weight__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         """
         Generate new agent with solution
 

@@ -6,8 +6,8 @@
 
 import numpy as np
 
+from mealpy.agents.virtual import BaseAgent, VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalCOA(ClassicOptimizer):
@@ -68,7 +68,7 @@ class OriginalCOA(ClassicOptimizer):
         self.ps = 1. / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes ** 2)  # Probability of leaving a pack
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         age = 1

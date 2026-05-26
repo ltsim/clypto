@@ -7,7 +7,7 @@ import dataclasses
 
 import numpy as np
 
-from mealpy.agents.virtual import Agent
+from mealpy.agents.virtual import BaseAgent
 
 
 @dataclasses.dataclass
@@ -33,20 +33,20 @@ class TrackHistory:
             Better to set parameter 'save_population' to False in the input problem dictionary to not using it.
     """
 
-    global_best: list[Agent] = dataclasses.field(default_factory=list)
-    current_best: list[Agent] = dataclasses.field(default_factory=list)
-    epoch_time: list[Agent] = dataclasses.field(default_factory=list)
-    global_best_fit: list[Agent] = dataclasses.field(default_factory=list)
-    current_best_fit: list[Agent] = dataclasses.field(default_factory=list)
-    population: list[Agent] = dataclasses.field(default_factory=list)
-    diversity: list[Agent] = dataclasses.field(default_factory=list)
-    exploitation: list[Agent] = dataclasses.field(default_factory=list)
-    exploration: list[Agent] = dataclasses.field(default_factory=list)
-    global_worst: list[Agent] = dataclasses.field(default_factory=list)
-    current_worst: list[Agent] = dataclasses.field(default_factory=list)
+    global_best: list[BaseAgent] = dataclasses.field(default_factory=list)
+    current_best: list[BaseAgent] = dataclasses.field(default_factory=list)
+    epoch_time: list[BaseAgent] = dataclasses.field(default_factory=list)
+    global_best_fit: list[BaseAgent] = dataclasses.field(default_factory=list)
+    current_best_fit: list[BaseAgent] = dataclasses.field(default_factory=list)
+    population: list[BaseAgent] = dataclasses.field(default_factory=list)
+    diversity: list[BaseAgent] = dataclasses.field(default_factory=list)
+    exploitation: list[BaseAgent] = dataclasses.field(default_factory=list)
+    exploration: list[BaseAgent] = dataclasses.field(default_factory=list)
+    global_worst: list[BaseAgent] = dataclasses.field(default_factory=list)
+    current_worst: list[BaseAgent] = dataclasses.field(default_factory=list)
     epoch: int = 0
 
-    def store_initial_best_worst(self, best_agent: Agent, worst_agent: Agent) -> None:
+    def store_initial_best_worst(self, best_agent: BaseAgent, worst_agent: BaseAgent) -> None:
         self.global_best = [best_agent.copy()]
         self.current_best = [best_agent.copy()]
         self.global_worst = [worst_agent.copy()]

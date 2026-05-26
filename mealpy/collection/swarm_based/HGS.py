@@ -6,8 +6,8 @@
 
 import numpy as np
 
+from mealpy.agents.virtual import BaseAgent, VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalHGS(ClassicOptimizer):
@@ -63,7 +63,7 @@ class OriginalHGS(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size", "PUP", "LH"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         hunger = 1.0

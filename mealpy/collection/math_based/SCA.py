@@ -6,8 +6,8 @@
 
 import numpy as np
 
+from mealpy.agents.virtual import BaseAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent
 
 
 class DevSCA(ClassicOptimizer):
@@ -255,11 +255,11 @@ class QleSCA(DevSCA):
         self.sort_flag = False
         self.is_parallelizable = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
-        return Agent(solution=solution, q_table=q_table)
+        return BaseAgent(solution=solution, q_table=q_table)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)

@@ -6,8 +6,8 @@
 
 import numpy as np
 
+from mealpy.agents.virtual import BaseAgent, VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalSSDO(ClassicOptimizer):
@@ -55,7 +55,7 @@ class OriginalSSDO(ClassicOptimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)

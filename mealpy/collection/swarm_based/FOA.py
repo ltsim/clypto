@@ -6,8 +6,8 @@
 
 import numpy as np
 
+from mealpy.agents.virtual import BaseAgent, VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalFOA(ClassicOptimizer):
@@ -58,7 +58,7 @@ class OriginalFOA(ClassicOptimizer):
         return np.array([np.linalg.norm([position[x], position[x + 1]]) for x in range(0, self.problem.n_dims - 1)] + \
                         [np.linalg.norm([position[-1], position[0]])])
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         solution = self.norm_consecutive_adjacent__(solution)
