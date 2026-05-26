@@ -78,7 +78,7 @@ def get_optimizer_by_class(class_name, verbose=False):
         all_optimizers = get_all_optimizers(verbose=verbose)
         return all_optimizers[class_name]
     except KeyError:
-        print(f"MealPrint doesn't support optimizer named: {class_name}.\n"
+        print(f"Mealpy doesn't support optimizer named: {class_name}.\n"
               f"Please see the supported Optimizer name from here: https://mealpy.readthedocs.io/en/latest/pages/support.html#classification-table")
         return None
 
@@ -104,7 +104,7 @@ def get_optimizer_by_name(name, verbose=False):
                     cls[cls_name] = cls_obj
     if verbose:
         if not flag:
-            print(f"MealPrint doesn't support optimizer named: {name}.\n"
+            print(f"Mealpy doesn't support optimizer named: {name}.\n"
                   f"Please see the supported Optimizer name from here: https://mealpy.readthedocs.io/en/latest/pages/support.html#classification-table")
             return None
         del cls['Optimizer']
