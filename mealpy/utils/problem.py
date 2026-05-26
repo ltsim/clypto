@@ -15,7 +15,8 @@ from mealpy.utils.target import Target
 
 
 class Problem:
-    SUPPORTED_VARS: typing.Final[tuple[type]] = IntegerVar, FloatVar, StringVar, BinaryVar, BoolVar, PermutationVar, CategoricalVar, SequenceVar, TransferBinaryVar, TransferBoolVar
+    SUPPORTED_VARS: typing.Final[tuple[
+        type]] = IntegerVar, FloatVar, StringVar, BinaryVar, BoolVar, PermutationVar, CategoricalVar, SequenceVar, TransferBinaryVar, TransferBoolVar
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, bounds: list | tuple | np.ndarray | BaseVar, minmax: str = "min", **kwargs) -> None:
@@ -186,7 +187,7 @@ class Problem:
 
         return x
 
-    def encode_solution(self, x: list |  tuple| np.ndarray) -> np.ndarray:
+    def encode_solution(self, x: list | tuple | np.ndarray) -> np.ndarray:
         """
         Encode the real-world solution to optimized solution (real-value solution)
 

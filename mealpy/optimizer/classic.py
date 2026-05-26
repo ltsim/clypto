@@ -146,7 +146,8 @@ class ClassicOptimizer(Optimizer):
         pass
 
     def before_initialization(self,
-                              starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None) -> None:
+                              starting_solutions: typing.Sequence[float] | npt.NDArray[
+                                  np.float64] | None = None) -> None:
         """
         Args:
             starting_solutions: The starting solutions (not recommended)
@@ -210,7 +211,7 @@ class ClassicOptimizer(Optimizer):
                     self.__termination = termination
                 elif type(termination) == dict:
                     self.__termination = Termination(log_to=self.problem.log_to, log_file=self.problem.log_file,
-                                                   **termination)
+                                                     **termination)
                 else:
                     raise ValueError("Termination needs to be a dict or an instance of Termination class.")
 

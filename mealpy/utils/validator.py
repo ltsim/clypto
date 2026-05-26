@@ -4,8 +4,8 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-import operator
 import numbers
+import operator
 
 import numpy as np
 

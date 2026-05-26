@@ -1,12 +1,13 @@
 import abc
 import typing
+
 import numpy as np
 import numpy.typing as npt
 
 from mealpy.utils.agent import Agent
-from mealpy.utils.termination import Termination
 from mealpy.utils.problem import Problem
 from mealpy.utils.target import Target
+from mealpy.utils.termination import Termination
 from mealpy.utils.track import HistoryProtocol
 
 
@@ -60,8 +61,8 @@ class Optimizer(abc.ABC):
 
     @abc.abstractmethod
     def before_initialization(
-        self,
-        starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
+            self,
+            starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
     ) -> None:
         """
         Hook executed immediately before population initialization.
@@ -158,12 +159,12 @@ class Optimizer(abc.ABC):
 
     @abc.abstractmethod
     def solve(
-        self,
-        problem: dict | Problem,
-        termination: typing.Optional[dict | Termination] = None,
-        starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
-        seed: int | None = None,
-        track_optimize: bool = False,
+            self,
+            problem: dict | Problem,
+            termination: typing.Optional[dict | Termination] = None,
+            starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
+            seed: int | None = None,
+            track_optimize: bool = False,
     ) -> "Agent":
         """
         Run the full optimization process end to end.
@@ -197,10 +198,10 @@ class Optimizer(abc.ABC):
 
     @abc.abstractmethod
     def track_optimize_step(
-        self,
-        pop: list["Agent"] | None = None,
-        epoch: int | None = None,
-        runtime: float | None = None,
+            self,
+            pop: list["Agent"] | None = None,
+            epoch: int | None = None,
+            runtime: float | None = None,
     ) -> None:
         """
         Record per-epoch history and optionally print training details.

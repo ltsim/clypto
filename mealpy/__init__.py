@@ -10,26 +10,27 @@ import inspect
 import sys
 
 from mealpy.collection.bio_based import (BBO, BBOA, BMO, EOA, SBO, SMA, SOA, SOS, TPO, TSA, VCS, WHO, BCO, EAO, SFOA)
-from .collection.bio_based import IWO
 from mealpy.collection.evolutionary_based import (FPA)
-from .collection.evolutionary_based import ES, DE, SHADE, MA, EP, GA, BWO, CRO
 from mealpy.collection.game_based import THRO
-from .collection.human_based import SSDO, CA, ICA, AFT, CHIO, SARO, BSO, HBO, CDDO, GSKA, SPBO, HCO, QSA, WarSO, BRO, \
-    TLO, TOA, FBIO, DOA, LCO
 from mealpy.collection.math_based import (AOA, CEM, CGO, GBO, HC, INFO, PSS, RUN, SCA, SHIO, TS)
-from .collection.math_based import CircleSA
 from mealpy.collection.music_based import HS
-from mealpy.optimizer.classic import ClassicOptimizer
 from mealpy.collection.physics_based import (ArchOA, EFO, EO, EVO, FLA, HGSO, MVO, NRO, SA, TWO, WDO, ESO, SOO, MSO)
-from .collection.physics_based import RIME, ASO, CDO
 from mealpy.collection.sota_based import LSHADEcnEpSin, IMODE
-from mealpy.collection.swarm_based import (ABC, ACOR, AVOA, BES, BFO, COA, DMOA, DO, FA, GJO, GWO, HBA, MPA, MSA, MShOA, NGO,
+from mealpy.collection.swarm_based import (ABC, ACOR, AVOA, BES, BFO, COA, DMOA, DO, FA, GJO, GWO, HBA, MPA, MSA, MShOA,
+                                           NGO,
                                            OOA, PFA, SCSO, SeaHO, ServalOA, SHO, SRSR, SSpiderO, STO, TDO, WaOA, ZOA,
                                            FDO)
+from mealpy.collection.system_based import AEO, GCO
+from mealpy.optimizer.classic import ClassicOptimizer
+from .collection.bio_based import IWO
+from .collection.evolutionary_based import ES, DE, SHADE, MA, EP, GA, BWO, CRO
+from .collection.human_based import SSDO, CA, ICA, AFT, CHIO, SARO, BSO, HBO, CDDO, GSKA, SPBO, HCO, QSA, WarSO, BRO, \
+    TLO, TOA, FBIO, DOA, LCO
+from .collection.math_based import CircleSA
+from .collection.physics_based import RIME, ASO, CDO
 from .collection.swarm_based import AO, JA, EHO, NMRA, PSO, CoatiOA, BA, TSO, GOA, MFO, SLO, ARO, SquirrelSA, FFA, POA, \
     ESOA, GTO, CSO, SSO, FOA, HHO, SFO, WOA, ALO, CSA, MGO, FOX, FFO, MRFO, SMO, SSpiderA, BSA, HGS, BeesA, EPC, AGTO, \
     SSA
-from mealpy.collection.system_based import AEO, GCO
 from .collection.system_based import WCA
 from .utils.problem import Problem
 from .utils.space import (IntegerVar, FloatVar, StringVar, BinaryVar, BoolVar, CategoricalVar,

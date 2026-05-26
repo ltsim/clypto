@@ -4,9 +4,8 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from math import gamma
-
 import numpy as np
+from math import gamma
 
 from mealpy.optimizer.classic import ClassicOptimizer
 
