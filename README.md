@@ -57,7 +57,7 @@ You can find the complete list of original scientific papers and their correspon
 ## Goals
 The sole purpose of this repository is to preserve a clean, decoupled collection of both classical and state-of-the-art nature-inspired metaheuristic algorithms. By stripping away all monolithic overhead, our goal is to provide a standardized, raw algorithmic library that can be effortlessly integrated, embedded, and reused across any Python environment—whether for academic research, proprietary commercial software, or high-performance computing clusters. 
 
-What you can do with mealpy-legacy-collection:
+### What you can do
 
 - **Universal Reusability:** Import and execute any metaheuristic algorithm across any third-party framework or custom pipeline without dependency conflicts.
 - **Pure Logic Inspection:** Open and study the raw mathematical transition operators of a massive catalog of population-based algorithms.
