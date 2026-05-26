@@ -6,8 +6,9 @@
 
 import numpy as np
 
+from mealpy.agents import VirtualAgent
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent
 
 
 class OriginalSSpiderO(ClassicOptimizer):
@@ -82,7 +83,7 @@ class OriginalSSpiderO(ClassicOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weight = 0.0
-        return Agent(solution=solution, weight=weight)
+        return VirtualAgent(solution=solution, weight=weight)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         rd = self.generator.uniform(self.problem.lb, self.problem.ub)

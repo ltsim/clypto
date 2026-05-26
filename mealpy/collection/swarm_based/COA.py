@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalCOA(ClassicOptimizer):
@@ -72,7 +72,7 @@ class OriginalCOA(ClassicOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         age = 1
-        return Agent(solution=solution, age=age)
+        return VirtualAgent(solution=solution, age=age)
 
     def evolve(self, epoch):
         """

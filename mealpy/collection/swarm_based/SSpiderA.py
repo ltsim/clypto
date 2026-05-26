@@ -8,7 +8,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalSSpiderA(ClassicOptimizer):
@@ -86,7 +86,7 @@ class OriginalSSpiderA(ClassicOptimizer):
         target_solution = solution.copy()
         local_vector = np.zeros(self.problem.n_dims)
         mask = np.zeros(self.problem.n_dims)
-        return Agent(solution=solution, target_solution=target_solution, local_vector=local_vector, mask=mask)
+        return VirtualAgent(solution=solution, target_solution=target_solution, local_vector=local_vector, mask=mask)
 
     def generate_agent(self, solution: np.ndarray = None) -> Agent:
         """

@@ -8,7 +8,7 @@ import numpy as np
 from math import gamma
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalSLO(ClassicOptimizer):
@@ -144,7 +144,7 @@ class ModifiedSLO(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         local_pos = self.problem.lb + self.problem.ub - solution
         local_pos = self.correct_solution(local_pos)
-        return Agent(solution=solution, local_solution=local_pos)
+        return VirtualAgent(solution=solution, local_solution=local_pos)
 
     def generate_agent(self, solution: np.ndarray = None) -> Agent:
         agent = self.generate_empty_agent(solution)

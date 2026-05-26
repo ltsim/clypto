@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalMA(ClassicOptimizer):
@@ -80,7 +80,7 @@ class OriginalMA(ClassicOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = ''.join(["1" if self.generator.uniform() < 0.5 else "0" for _ in range(0, self.bits_total)])
-        return Agent(solution=solution, bitstring=bitstring)
+        return VirtualAgent(solution=solution, bitstring=bitstring)
 
     def decode__(self, bitstring: str = None) -> np.ndarray:
         """

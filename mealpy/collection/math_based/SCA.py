@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent
 
 
 class DevSCA(ClassicOptimizer):

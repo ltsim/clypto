@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalSRSR(ClassicOptimizer):
@@ -61,7 +61,7 @@ class OriginalSRSR(ClassicOptimizer):
         sigma = 0
         x_new = solution.copy()
         target_move = 0
-        return Agent(solution=solution, mu=mu, sigma=sigma, solution_new=x_new, target_move=target_move)
+        return VirtualAgent(solution=solution, mu=mu, sigma=sigma, solution_new=x_new, target_move=target_move)
 
     def generate_agent(self, solution: np.ndarray = None) -> Agent:
         agent = self.generate_empty_agent(solution)

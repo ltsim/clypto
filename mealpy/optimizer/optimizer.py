@@ -2,8 +2,9 @@ import abc
 import typing
 
 import numpy as np
+import numpy.typing as npt
 
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent
 from mealpy.utils.problem import Problem
 from mealpy.utils.target import Target
 from mealpy.utils.termination import Termination

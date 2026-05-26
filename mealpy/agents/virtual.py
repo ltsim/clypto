@@ -8,12 +8,8 @@ from typing import Any
 
 import numpy as np
 
-<<<<<<<< HEAD:mealprint/agents/virtual_agent.py
 from mealpy.agents.agent import Agent
-from mealprint.utils.target import Target
-========
 from mealpy.utils.target import Target
->>>>>>>> origin/dev/v2026.2:mealpy/utils/agent.py
 
 
 class VirtualAgent(Agent):
@@ -42,19 +38,9 @@ class VirtualAgent(Agent):
     def __getattr__(self, name: str) -> Any:
         return self.__dict__.get(name, None)
 
-<<<<<<<< HEAD:mealprint/agents/virtual_agent.py
-    def __set_kwargs(self, kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-
-    def copy(self) -> 'VirtualAgent':
-        agent = VirtualAgent(self.solution, self.target.copy(), **self.__kwargs)
-        # Copy any changes made to the attributes
-========
     def copy(self) -> 'Agent':
-        agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
+        agent = VirtualAgent(self.solution, self.target.copy(), **self.__kwargs)
 
->>>>>>>> origin/dev/v2026.2:mealpy/utils/agent.py
         for attr, value in vars(self).items():
             if attr not in ['target', 'solution', 'id', 'kwargs']:
                 setattr(agent, attr, value)

@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalFOA(ClassicOptimizer):
@@ -62,7 +62,7 @@ class OriginalFOA(ClassicOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         solution = self.norm_consecutive_adjacent__(solution)
-        return Agent(solution=solution)
+        return VirtualAgent(solution=solution)
 
     def evolve(self, epoch):
         """

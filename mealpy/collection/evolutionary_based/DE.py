@@ -8,7 +8,7 @@ import numpy as np
 from scipy.stats import cauchy
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalDE(ClassicOptimizer):
@@ -477,7 +477,7 @@ class SAP_DE(ClassicOptimizer):
             pop_size = int(10 * self.problem.n_dims + self.generator.normal(0, 1))
         else:  # elif self.branch == "REL":
             pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
-        return Agent(solution=solution, crossover=crossover_rate, mutation=mutation_rate, pop_size=pop_size)
+        return VirtualAgent(solution=solution, crossover=crossover_rate, mutation=mutation_rate, pop_size=pop_size)
 
     def edit_to_range__(self, var=None, lower=0, upper=1, func_value=None):
         while var <= lower or var >= upper:

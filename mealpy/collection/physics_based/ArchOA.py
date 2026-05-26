@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalArchOA(ClassicOptimizer):
@@ -82,7 +82,7 @@ class OriginalArchOA(ClassicOptimizer):
         vol = self.generator.uniform(self.problem.lb, self.problem.ub)  # Volume
         acc = self.problem.lb + self.generator.uniform(self.problem.lb, self.problem.ub) * (
                 self.problem.ub - self.problem.lb)  # Acceleration
-        return Agent(solution=solution, den=den, vol=vol, acc=acc)
+        return VirtualAgent(solution=solution, den=den, vol=vol, acc=acc)
 
     def evolve(self, epoch):
         """

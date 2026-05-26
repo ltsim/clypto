@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalTWO(ClassicOptimizer):
@@ -73,7 +73,7 @@ class OriginalTWO(ClassicOptimizer):
         """
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        return Agent(solution=solution, weight=0.0)
+        return VirtualAgent(solution=solution, weight=0.0)
 
     def update_weight__(self, teams):
         list_fits = np.array([agent.target.fitness for agent in teams])

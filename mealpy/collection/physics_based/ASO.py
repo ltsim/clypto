@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalASO(ClassicOptimizer):
@@ -69,7 +69,7 @@ class OriginalASO(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         mass = 0.0
-        return Agent(solution=solution, velocity=velocity, mass=mass)
+        return VirtualAgent(solution=solution, velocity=velocity, mass=mass)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)

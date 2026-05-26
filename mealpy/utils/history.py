@@ -7,7 +7,7 @@ import dataclasses
 
 import numpy as np
 
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent
 
 
 @dataclasses.dataclass

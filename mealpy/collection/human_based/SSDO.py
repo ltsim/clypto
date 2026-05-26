@@ -7,7 +7,7 @@
 import numpy as np
 
 from mealpy.optimizer.classic import ClassicOptimizer
-from mealpy.utils.agent import Agent
+from mealpy.agents.virtual import Agent, VirtualAgent
 
 
 class OriginalSSDO(ClassicOptimizer):
@@ -60,7 +60,7 @@ class OriginalSSDO(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         pos_local = solution.copy()
-        return Agent(solution=solution, velocity=velocity, local_solution=pos_local)
+        return VirtualAgent(solution=solution, velocity=velocity, local_solution=pos_local)
 
     def evolve(self, epoch):
         """
