@@ -7,8 +7,8 @@
 import numpy as np
 import pytest
 
-from mealprint import FloatVar, ClassicOptimizer
-from mealprint.collection.music_based import HS
+from mealpy import FloatVar, ClassicOptimizer
+from mealpy.collection.music_based import HS
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning

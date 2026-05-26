@@ -6,7 +6,7 @@
 
 import pytest
 
-from mealprint import Termination
+from mealpy import Termination
 
 
 @pytest.mark.parametrize("max_epoch, system_code",
