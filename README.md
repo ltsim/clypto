@@ -2,7 +2,7 @@
 
 Is a lightweight, heavily refactored fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core. It serves as a pure, bloat-free repository that preserves the historical collection of population-based metaheuristic algorithms (PBM), acting as an open architectural catalog for educational purposes, clean research, and rapid prototyping within our ecosystem.
 
-Unlike monolithic optimization frameworks, **mealpy-legacy-collection** cuts out all secondary overhead—such as visualization tools, complex logging, and heavy external dependencies—focusing strictly on the raw algorithmic logic and mathematical transition operators of these legacy implementations. This ensures a clean, decoupled foundation for developers to study, test, and benchmark classic metaheuristics without the friction of modern software bloat.
+Unlike monolithic optimization frameworks, **mealpy-legacy-collection** cuts out all secondary overhead such as visualization tools, complex logging, and heavy external dependencies focusing strictly on the raw algorithmic logic and mathematical transition operators of these legacy implementations. This ensures a clean, decoupled foundation for developers to study, test, and benchmark classic metaheuristics without the friction of modern software bloat.
 
 ## Why?
 
