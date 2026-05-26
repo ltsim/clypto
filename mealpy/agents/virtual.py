@@ -14,9 +14,9 @@ from mealpy.utils.target import Target
 
 class VirtualAgent(BaseAgent):
     def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
+        self.__dict__.update(kwargs)
         self.__solution = solution
         self.__target = target
-        self.__dict__.update(kwargs)
         self.__kwargs = kwargs
 
     @property
