@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from mealpy.agents.virtual import BaseAgent, VirtualAgent
+from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer.classic import ClassicOptimizer
 
 
@@ -73,7 +73,7 @@ class OriginalPSO(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.v_min, self.v_max)
         local_pos = solution.copy()
-        return VirtualAgent(solution=solution, velocity=velocity, local_solution=local_pos)
+        return Agent(solution=solution, velocity=velocity, local_solution=local_pos)
 
     def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
         agent = self.generate_empty_agent(solution)
@@ -369,7 +369,7 @@ class P_PSO(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(-self.v_max, self.v_max)
         local_pos = solution.copy()
-        return VirtualAgent(solution=solution, velocity=velocity, local_solution=local_pos)
+        return Agent(solution=solution, velocity=velocity, local_solution=local_pos)
 
     def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
         agent = self.generate_empty_agent(solution)
@@ -677,7 +677,7 @@ class CL_PSO(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(-self.v_max, self.v_max)
         local_pos = solution.copy()
-        return VirtualAgent(solution=solution, velocity=velocity, local_solution=local_pos)
+        return Agent(solution=solution, velocity=velocity, local_solution=local_pos)
 
     def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
         agent = self.generate_empty_agent(solution)

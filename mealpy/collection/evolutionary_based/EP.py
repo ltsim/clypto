@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from mealpy.agents.virtual import BaseAgent, VirtualAgent
+from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer.classic import ClassicOptimizer
 
 
@@ -69,7 +69,7 @@ class OriginalEP(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance, self.problem.n_dims)
         times_win = 0
-        return VirtualAgent(solution=solution, strategy=strategy, win=times_win)
+        return Agent(solution=solution, strategy=strategy, win=times_win)
 
     def evolve(self, epoch):
         """

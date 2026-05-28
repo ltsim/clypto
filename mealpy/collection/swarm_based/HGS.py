@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from mealpy.agents.virtual import BaseAgent, VirtualAgent
+from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer.classic import ClassicOptimizer
 
 
@@ -67,7 +67,7 @@ class OriginalHGS(ClassicOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         hunger = 1.0
-        return VirtualAgent(solution=solution, hunger=hunger)
+        return Agent(solution=solution, hunger=hunger)
 
     def sech__(self, x):
         if np.abs(x) > 50:

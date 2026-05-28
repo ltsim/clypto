@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from mealpy.agents.virtual import BaseAgent, VirtualAgent
+from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer.classic import ClassicOptimizer
 
 
@@ -99,7 +99,7 @@ class OriginalBFO(ClassicOptimizer):
         cost = 0.0
         interaction = 0.0
         nutrients = 0.0
-        return VirtualAgent(solution=solution, cost=cost, interaction=interaction, nutrients=nutrients)
+        return Agent(solution=solution, cost=cost, interaction=interaction, nutrients=nutrients)
 
     def compute_cell_interaction__(self, cell, cells, d, w):
         sum_inter = 0.0
@@ -229,7 +229,7 @@ class ABFO(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         nutrients = 0  # total nutrient gained by the bacterium in its whole searching process.(int number)
         local_solution = solution.copy()
-        return VirtualAgent(solution=solution, nutrients=nutrients, local_solution=local_solution)
+        return Agent(solution=solution, nutrients=nutrients, local_solution=local_solution)
 
     def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
         agent = self.generate_empty_agent(solution)

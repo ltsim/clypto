@@ -7,7 +7,7 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from mealpy.agents.virtual import BaseAgent, VirtualAgent
+from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer.classic import ClassicOptimizer
 
 
@@ -66,7 +66,7 @@ class DevBRO(ClassicOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         damage = 0
-        return VirtualAgent(solution=solution, damage=damage)
+        return Agent(solution=solution, damage=damage)
 
     def get_idx_min__(self, data):
         k_zero = np.count_nonzero(data == 0)

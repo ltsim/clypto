@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from mealpy.agents.virtual import BaseAgent, VirtualAgent
+from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer.classic import ClassicOptimizer
 
 
@@ -82,7 +82,7 @@ class OriginalBSA(ClassicOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         local_position = solution.copy()
-        return VirtualAgent(solution=solution, local_solution=local_position)
+        return Agent(solution=solution, local_solution=local_position)
 
     def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
         agent = self.generate_empty_agent(solution)

@@ -1,3 +1,3 @@
-from mealpy.agents.virtual import VirtualAgent
+from mealpy.agents.virtual import Agent
 
-__all__ = ["VirtualAgent"]
+__all__ = ["Agent"]

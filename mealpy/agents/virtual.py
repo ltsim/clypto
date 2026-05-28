@@ -12,7 +12,7 @@ from mealpy.agents.base import BaseAgent
 from mealpy.utils.target import Target
 
 
-class VirtualAgent(BaseAgent):
+class Agent(BaseAgent):
     def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
         self.__dict__.update(kwargs)
         self.__solution = solution
@@ -39,7 +39,7 @@ class VirtualAgent(BaseAgent):
         return self.__dict__.get(name, None)
 
     def copy(self) -> 'BaseAgent':
-        agent = VirtualAgent(self.solution, self.target.copy(), **self.__kwargs)
+        agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
 
         for attr, value in vars(self).items():
             if attr not in ['target', 'solution', 'id', 'kwargs']:
@@ -55,7 +55,7 @@ class VirtualAgent(BaseAgent):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
 
-    def sync_if_duplicate(self, other: "VirtualAgent") -> bool:
+    def sync_if_duplicate(self, other: "Agent") -> bool:
         """
         Check if two agents are equal (using __eq__), and if so, synchronize the target from the other agent.
 
@@ -69,7 +69,7 @@ class VirtualAgent(BaseAgent):
 
         return is_eq
 
-    def _compare_fitness(self, other: "VirtualAgent", minmax: str = "min") -> int:
+    def _compare_fitness(self, other: "Agent", minmax: str = "min") -> int:
         """
         Compare fitness between self and other.
 
@@ -85,7 +85,7 @@ class VirtualAgent(BaseAgent):
         else:
             return -1 if self.target.fitness > other.target.fitness else 1
 
-    def get_better_solution(self, other: "VirtualAgent", minmax: str = "min") -> "VirtualAgent":
+    def get_better_solution(self, other: "Agent", minmax: str = "min") -> "Agent":
         """
         Return better solution
 
@@ -95,7 +95,7 @@ class VirtualAgent(BaseAgent):
         """
         return self if self._compare_fitness(other, minmax) <= 0 else other
 
-    def is_better_than(self, other: "VirtualAgent", minmax: str = "min") -> bool:
+    def is_better_than(self, other: "Agent", minmax: str = "min") -> bool:
         """
         Compare the current agent with other agent. Return True if current agent is better and False otherwise
 
@@ -110,7 +110,7 @@ class VirtualAgent(BaseAgent):
 
     def __eq__(self, other):
         """ Check if two agents are equal based on their solutions with a tolerance."""
-        if not isinstance(other, VirtualAgent):
+        if not isinstance(other, Agent):
             return False
 
         return np.allclose(self.solution, other.solution, atol=1e-6)
@@ -119,3 +119,9 @@ class VirtualAgent(BaseAgent):
         """ Generate a hash based on the solution of the agent.
             This is useful for using agents in sets or as dictionary keys."""
         return hash(tuple(np.round(self.solution, 6)))
+
+    def __float__(self) -> float:
+        if self.target is None:
+            raise ValueError("Agent cannot generate a value from fitness")
+
+        return self.target.fitness

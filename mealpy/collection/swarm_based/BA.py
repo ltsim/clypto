@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from mealpy.agents.virtual import BaseAgent, VirtualAgent
+from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer.classic import ClassicOptimizer
 
 
@@ -75,7 +75,7 @@ class OriginalBA(ClassicOptimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         pulse_frequency = self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
-        return VirtualAgent(solution=solution, velocity=velocity, pulse_frequency=pulse_frequency)
+        return Agent(solution=solution, velocity=velocity, pulse_frequency=pulse_frequency)
 
     def evolve(self, epoch):
         """
@@ -181,7 +181,7 @@ class AdaptiveBA(ClassicOptimizer):
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
         pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
-        return VirtualAgent(solution=solution, velocity=velocity, loudness=loudness, pulse_rate=pulse_rate)
+        return Agent(solution=solution, velocity=velocity, loudness=loudness, pulse_rate=pulse_rate)
 
     def evolve(self, epoch):
         """
