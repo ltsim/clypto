@@ -3,7 +3,7 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-
+import functools
 import random
 import time
 import typing
@@ -12,13 +12,26 @@ import math
 import numpy as np
 import numpy.typing as npt
 
-from mealpy.agents import Agent
+from mealpy.agents import Agent, BaseAgent
 from mealpy.utils.history import TrackHistory
 from mealpy.utils.problem import Problem
 from mealpy.utils.target import Target
 from mealpy.utils.termination import Termination
 from mealpy.utils.validator import Validator
 from mealpy.optimizer.optimizer import Optimizer
+
+
+def define_agent_generator(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs) -> Agent:
+        agent = func(self, *args, **kwargs)
+
+        if isinstance(agent, dict):
+            return Agent(**agent)
+
+        return agent
+
+    return wrapper
 
 
 class ClassicOptimizer(Optimizer):
@@ -294,15 +307,20 @@ class ClassicOptimizer(Optimizer):
         self.__history.global_worst = self.__history.global_worst[1:]
         self.__history.current_worst = self.__history.current_worst[1:]
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> Agent:
+    @define_agent_generator
+    def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
-        return Agent(solution=solution)
+        # return dict(solution=solution)
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> Agent:
+        return {
+            "solution": solution,
+        }
+
+    def generate_agent(self, solution: np.ndarray | None = None):
         agent = self.generate_empty_agent(solution)
-        agent.target = self.get_target(agent.solution)
+        agent["target"] = self.get_target(agent.solution)
 
         return agent
 

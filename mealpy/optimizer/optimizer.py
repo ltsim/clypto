@@ -228,7 +228,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> "BaseAgent":
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> typing.Union["BaseAgent",  dict]:
         """
         Create a new agent skeleton without evaluating its target.
 
@@ -246,7 +246,7 @@ class Optimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_agent(self, solution: np.ndarray | None = None) -> "BaseAgent":
+    def generate_agent(self, solution: np.ndarray | None = None) -> typing.Union["BaseAgent",  dict]:
         """
         Create a fully evaluated agent.
 

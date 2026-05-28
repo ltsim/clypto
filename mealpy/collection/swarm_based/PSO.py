@@ -5,9 +5,16 @@
 # --------------------------------------------------%
 
 import numpy as np
+import numpy.typing as npt
 
 from mealpy.agents.virtual import BaseAgent, Agent
-from mealpy.optimizer.classic import ClassicOptimizer
+from mealpy.optimizer import ClassicOptimizer, define_agent_generator
+
+
+@dataclasses.dataclass
+class PSOAgent:
+    solution: npt.NDArray[np.float64]
+    fitness: float
 
 
 class OriginalPSO(ClassicOptimizer):
@@ -68,6 +75,7 @@ class OriginalPSO(ClassicOptimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.v_min = -self.v_max
 
+    @define_agent_generator
     def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
