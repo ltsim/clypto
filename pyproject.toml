@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mealpy-legacy-collection"
-dynamic = ["version"]
+dynamic = ["version", "ext_modules"]
 description = "An Open-source Library for Latest Meta-heuristic Algorithms in Python"
 readme = "README.md"
 license = { text = "MIT" }
