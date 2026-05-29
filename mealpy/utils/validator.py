@@ -16,10 +16,12 @@ REAL = float, np.floating
 
 def is_in_bound(value, bound):
     ops = None
+
     if type(bound) is tuple:
         ops = operator.lt
     elif type(bound) is list:
         ops = operator.le
+
     if bound[0] == float("-inf") and bound[1] == float("inf"):
         return True
     elif bound[0] == float("-inf") and ops(value, bound[1]):
@@ -28,6 +30,7 @@ def is_in_bound(value, bound):
         return True
     elif ops(bound[0], value) and ops(value, bound[1]):
         return True
+
     return False
 
 
@@ -53,7 +56,7 @@ class Validator:
             elif is_in_bound(value, bound):
                 return int(value)
         bound = "" if bound is None else f"and value should be in range: {bound}"
-        raise ValueError(f"'{name}' is an integer {bound}.")
+        raise TypeError(f"'{name}' is an integer {bound}.")
 
     @staticmethod
     def check_float(name: str, value: float, bound=None):
@@ -63,7 +66,7 @@ class Validator:
             elif is_in_bound(value, bound):
                 return float(value)
         bound = "" if bound is None else f"and value should be in range: {bound}"
-        raise ValueError(f"'{name}' is a float {bound}.")
+        raise TypeError(f"'{name}' is a float {bound}.")
 
     @staticmethod
     def check_str(name: str, value: str, bound=None):
@@ -71,7 +74,7 @@ class Validator:
             if bound is None or is_str_in_list(value, bound):
                 return value
         bound = "" if bound is None else f"and value should be one of this: {bound}"
-        raise ValueError(f"'{name}' is a string {bound}.")
+        raise TypeError(f"'{name}' is a string {bound}.")
 
     @staticmethod
     def check_bool(name: str, value: bool, bound=(True, False)):
@@ -79,7 +82,7 @@ class Validator:
             if value in bound:
                 return value
         bound = "" if bound is None else f"and value should be one of this: {bound}"
-        raise ValueError(f"'{name}' is a boolean {bound}.")
+        raise TypeError(f"'{name}' is a boolean {bound}.")
 
     @staticmethod
     def check_tuple_int(name: str, values: tuple, bounds=None):
@@ -93,7 +96,7 @@ class Validator:
                 else:
                     return values
         bounds = "" if bounds is None else f"and values should be in range: {bounds}"
-        raise ValueError(f"'{name}' are integer {bounds}.")
+        raise TypeError(f"'{name}' are integer {bounds}.")
 
     @staticmethod
     def check_tuple_float(name: str, values: tuple, bounds=None):
@@ -107,19 +110,19 @@ class Validator:
                 else:
                     return values
         bounds = "" if bounds is None else f"and values should be in range: {bounds}"
-        raise ValueError(f"'{name}' are float {bounds}.")
+        raise TypeError(f"'{name}' are float {bounds}.")
 
     @staticmethod
     def check_list_tuple(name: str, value: any, data_type: str):
         if type(value) in (tuple, list) and len(value) >= 1:
             return list(value)
-        raise ValueError(f"'{name}' should be a list or tuple of {data_type}, and length >= 1.")
+        raise TypeError(f"'{name}' should be a list or tuple of {data_type}, and length >= 1.")
 
     @staticmethod
     def check_is_instance(name: str, value: any, class_type: any):
         if isinstance(value, class_type):
             return value
-        raise ValueError(f"'{name}' should be an instance of {class_type} class.")
+        raise TypeError(f"'{name}' should be an instance of {class_type} class.")
 
     @staticmethod
     def check_is_int_and_float(name: str, value: any, bound_int=None, bound_float=None):
@@ -131,4 +134,4 @@ class Validator:
             if bound_float is None or is_in_bound(value, bound_float):
                 return float(value)
         bound_float_str = "" if bound_float is None else f"and value in range: {bound_float}"
-        raise ValueError(f"'{name}' can be int {bound_int_str}, or float {bound_float_str}.")
+        raise TypeError(f"'{name}' can be int {bound_int_str}, or float {bound_float_str}.")
