@@ -96,7 +96,7 @@ addopts = "-v --tb=short --strict-markers"
 
 [tool.mypy]
 files = ["mealpy"]
-exclude = ["tests/", "docs/", "examples/", "mealpy/collection"]
+exclude = ["tests/", "docs/", "examples/", "mealpy/collection/"]
 python_version = "3.10"
 warn_unused_ignores = true
 warn_redundant_casts = true
@@ -120,5 +120,6 @@ error_summary = true
 module = [
     "numpy",
     "numpy.*",
+    "cython.*"
 ]
 ignore_missing_imports = true
