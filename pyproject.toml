@@ -8,7 +8,6 @@ dynamic = ["version"]
 description = "An Open-source Library for Latest Meta-heuristic Algorithms in Python"
 readme = "README.md"
 license = { text = "MIT" }
-dynamic = ["ext_modules"]
 
 authors = [
     { name = "Thieu", email = "nguyenthieu2102@gmail.com" }
@@ -97,7 +96,7 @@ addopts = "-v --tb=short --strict-markers"
 
 [tool.mypy]
 files = ["mealpy"]
-exclude = ["tests/", "docs/", "examples/", "mealpy/collection"]
+exclude = ["tests/", "docs/", "examples/", "mealpy/collection/"]
 python_version = "3.10"
 warn_unused_ignores = true
 warn_redundant_casts = true
@@ -121,5 +120,6 @@ error_summary = true
 module = [
     "numpy",
     "numpy.*",
+    "cython.*"
 ]
 ignore_missing_imports = true
