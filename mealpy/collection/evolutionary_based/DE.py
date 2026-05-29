@@ -3,12 +3,29 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
+import dataclasses
 
 import numpy as np
+import numpy.typing as npt
+
 from scipy.stats import cauchy
 
 from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer.classic import ClassicOptimizer
+
+
+class AgentDE(Agent):
+    def __iter__(
+        self,
+        crossover: npt.NDArray[np.number],
+        mutation: npt.NDArray[np.number],
+        pop_size: int,
+        *args, **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.crossover = crossover
+        self.mutation = mutation
+        self.pop_size = pop_size
 
 
 class OriginalDE(ClassicOptimizer):
@@ -468,7 +485,7 @@ class SAP_DE(ClassicOptimizer):
         self.fixed_pop_size = self.pop_size
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         crossover_rate = self.generator.uniform(0, 1)
@@ -477,7 +494,13 @@ class SAP_DE(ClassicOptimizer):
             pop_size = int(10 * self.problem.n_dims + self.generator.normal(0, 1))
         else:  # elif self.branch == "REL":
             pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
-        return Agent(solution=solution, crossover=crossover_rate, mutation=mutation_rate, pop_size=pop_size)
+
+        return AgentDE(
+            solution=solution,
+            crossover=crossover_rate,
+            mutation=mutation_rate,
+            pop_size=pop_size
+        )
 
     def edit_to_range__(self, var=None, lower=0, upper=1, func_value=None):
         while var <= lower or var >= upper:
