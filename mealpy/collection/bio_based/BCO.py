@@ -98,6 +98,7 @@ class OriginalBCO(ClassicOptimizer):
             epoch: The current iteration
         """
         # Normalize fitness to [0, 1]
+        pop_elites = []
         _, best, worst = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
         fits = np.array([agent.target.fitness for agent in self.pop])
         energy = self.get_energy(best[0], worst[0], fits)
