@@ -1,4 +1,5 @@
 import abc
+import typing
 
 import numpy as np
 import numpy.typing as npt
@@ -6,23 +7,28 @@ import numpy.typing as npt
 from mealpy.utils.target import Target
 
 
-class BaseAgent(abc.ABC):
-    @property
-    @abc.abstractmethod
-    def target(self) -> Target | None:
-        ...
+class BaseAgent(typing.Protocol):
+    solution: npt.NDArray[np.number] | None
+    target: Target | None
 
-    @target.setter
-    @abc.abstractmethod
-    def target(self, target: Target | None) -> None:
-        ...
+    def copy(self): ...
 
-    @property
-    @abc.abstractmethod
-    def solution(self) -> npt.NDArray[np.number] | None:
-        ...
+    def update_agent(self, solution: np.ndarray, target: Target): ...
 
-    @solution.setter
-    @abc.abstractmethod
-    def solution(self, solution: npt.NDArray[np.number]):
-        ...
+    def update(self, **kwargs) -> None: ...
+
+    def sync_if_duplicate(self, other: "Agent") -> bool: ...
+
+    def _compare_fitness(self, other: "Agent", minmax: str = "min") -> int: ...
+
+    def get_better_solution(self, other: "Agent", minmax: str = "min") -> "Agent": ...
+
+    def is_better_than(self, other: "Agent", minmax: str = "min") -> bool: ...
+
+    def __repr__(self): ...
+
+    def __eq__(self, other): ...
+
+    def __hash__(self): ...
+
+    def __float__(self) -> float: ...
