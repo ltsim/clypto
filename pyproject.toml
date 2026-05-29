@@ -8,6 +8,7 @@ dynamic = ["version"]
 description = "An Open-source Library for Latest Meta-heuristic Algorithms in Python"
 readme = "README.md"
 license = { text = "MIT" }
+dynamic = ["ext_modules"]
 
 authors = [
     { name = "Thieu", email = "nguyenthieu2102@gmail.com" }
