@@ -12,29 +12,7 @@ from mealpy.agents.base import BaseAgent
 from mealpy.utils.target import Target
 
 
-class DictNamespace(dict[str, Any]):
-    """Dict whose keys are accessible as attributes."""
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(kwargs)
-
-    def __getattr__(self, key: str) -> Any:
-        try:
-            return self[key]
-        except KeyError:
-            raise AttributeError(key)
-
-    def __setattr__(self, key: str, value: Any) -> None:
-        self[key] = value
-
-    def __delattr__(self, key: str) -> None:
-        try:
-            del self[key]
-        except KeyError:
-            raise AttributeError(key)
-
-
-class Agent(BaseAgent):
+class Agent:
     def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
         self.__solution = solution
         self.__target = target
