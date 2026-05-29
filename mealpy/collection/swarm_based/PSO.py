@@ -3,12 +3,13 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
+import dataclasses
 
 import numpy as np
 import numpy.typing as npt
 
 from mealpy.agents.virtual import BaseAgent, Agent
-from mealpy.optimizer import ClassicOptimizer, define_agent_generator
+from mealpy.optimizer import ClassicOptimizer
 
 
 @dataclasses.dataclass
@@ -75,7 +76,6 @@ class OriginalPSO(ClassicOptimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.v_min = -self.v_max
 
-    @define_agent_generator
     def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
