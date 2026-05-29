@@ -21,7 +21,7 @@ def get_ext_modules():
 
     extensions = [
         Extension(
-            name=None,
+            name="mealpy",
             sources=["mealpy/**/*.py"],
             extra_compile_args=extra_compile_args,
             extra_link_args=extra_link_args,
