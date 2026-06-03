@@ -224,7 +224,7 @@ class ClassicOptimizer(Optimizer):
     def solve(self, problem: dict | Problem,
               termination: dict | Termination | None = None,
               starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
-              seed: int | None = None, track_optimize: bool = False) -> Agent:
+              seed: int | None = None, debug: bool = False) -> Agent:
         self.check_problem(problem, seed)
         self.check_termination("start", termination, None)
         self.initialize_variables()
@@ -259,13 +259,13 @@ class ClassicOptimizer(Optimizer):
 
             time_epoch = time.perf_counter() - time_epoch
 
-            if track_optimize:
+            if debug:
                 self.track_optimize_step(self.pop, epoch, time_epoch)
 
             if self.check_termination("end", None, epoch):
                 break
 
-        if track_optimize:
+        if debug:
             self.track_optimize_process()
 
         if self.g_best is None:

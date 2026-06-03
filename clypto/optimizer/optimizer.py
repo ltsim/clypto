@@ -164,7 +164,7 @@ class Optimizer(abc.ABC):
             termination: typing.Optional[dict | Termination] = None,
             starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
             seed: int | None = None,
-            track_optimize: bool = False,
+            debug: bool = False,
     ) -> "BaseAgent":
         """
         Run the full optimization process end to end.
@@ -185,7 +185,7 @@ class Optimizer(abc.ABC):
                 Use with care — it can bias the search.
             seed: Integer seed for the random number generator. Must be set
                 **explicitly** to an int for reproducible results.
-            track_optimize: If ``True``, the optimizer records detailed
+            debug: If ``True``, the optimizer records detailed
                 history of each epoch (best fitness, diversity metrics,
                 runtime, etc.) for later inspection.
 
