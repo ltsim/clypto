@@ -3,7 +3,7 @@ from pathlib import Path
 from Cython.Build import cythonize
 from setuptools import setup, find_packages
 
-init_path = Path(__file__).parent / "mealpy" / "__init__.py"
+init_path = Path(__file__).parent / "clypto" / "__init__.py"
 init_content = init_path.read_text(encoding="utf-8")
 
 _VERSION = "0.0.0"
@@ -18,9 +18,9 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 def get_ext_modules():
     return cythonize(
-        "mealpy/**/*.py",
+        "clypto/**/*.py",
         exclude=[
-            "mealpy/**/__init__.py",
+            "clypto/**/__init__.py",
         ],
         compiler_directives={
             "language_level": "3",

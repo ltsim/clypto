@@ -11,10 +11,10 @@ clean-build:
 	find . -name '*.egg' -exec rm -f {} +
 
 clean-cython:
-	find mealpy -name '*.c' -exec rm -f {} +
-	find mealpy -name '*.so' -exec rm -f {} +
-	find mealpy -name '*.pyd' -exec rm -f {} +
-	find mealpy -name '*.html' -exec rm -f {} +
+	find clypto -name '*.c' -exec rm -f {} +
+	find clypto -name '*.so' -exec rm -f {} +
+	find clypto -name '*.pyd' -exec rm -f {} +
+	find clypto -name '*.html' -exec rm -f {} +
 
 clean-pyc:
 	find . -name '*.pyc' -exec rm -f {} +

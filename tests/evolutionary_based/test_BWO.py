@@ -7,8 +7,8 @@
 import numpy as np
 import pytest
 
-from mealpy import FloatVar, ClassicOptimizer
-from mealpy.collection.evolutionary_based import BWO
+from clypto import FloatVar, ClassicOptimizer
+from clypto.collection.evolutionary_based import BWO
 
 
 @pytest.fixture(scope="module")

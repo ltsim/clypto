@@ -1,13 +1,13 @@
 from opfunu.name_based.a_func import Ackley01
 
-from mealpy.collection.swarm_based import PSO
-from mealpy import FloatVar
+from clypto.collection.swarm_based import PSO
+from clypto import FloatVar
 
 # 1. Define the benchmark function from Opfunu
 # We'll use F3 from the CEC 2017 competition with 30 dimensions
 ackley_f = Ackley01(ndim=30)
 
-# 2. Define the problem dictionary for MealPrint
+# 2. Define the problem dictionary for Clypto
 # 'obj_func' is the evaluation method from Opfunu
 # 'bounds' uses the lb (lower bound) and ub (upper bound) from the Opfunu object
 problem_dict = {

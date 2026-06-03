@@ -1,0 +1,23 @@
+from clypto.collection.bio_based import (IWO, BBO, BBOA, BMO, EOA, SBO, SMA, SOA, SOS, TPO, TSA, VCS, WHO, BCO, EAO,
+                                         SFOA)
+from clypto.collection.evolutionary_based import FPA, ES, DE, SHADE, MA, EP, GA, BWO, CRO
+from clypto.collection.game_based import THRO
+from clypto.collection.human_based import SSDO, CA, ICA, AFT, CHIO, SARO, BSO, HBO, CDDO, GSKA, SPBO, HCO, QSA, WarSO, \
+    BRO, \
+    TLO, TOA, FBIO, DOA, LCO
+from clypto.collection.math_based import (CircleSA, AOA, CEM, CGO, GBO, HC, INFO, PSS, RUN, SCA, SHIO, TS)
+from clypto.collection.music_based import HS
+from clypto.collection.physics_based import RIME, ASO, CDO
+from clypto.collection.physics_based import (RIME, ASO, CDO, ArchOA, EFO, EO, EVO, FLA, HGSO, MVO, NRO, SA, TWO, WDO,
+                                             ESO, SOO, MSO)
+from clypto.collection.sota_based import LSHADEcnEpSin, IMODE
+from clypto.collection.swarm_based import (ABC, ACOR, AVOA, BES, BFO, COA, DMOA, DO, FA, GJO, GWO, HBA, MPA, MSA, MShOA,
+                                           NGO,
+                                           OOA, PFA, SCSO, SeaHO, ServalOA, SHO, SRSR, SSpiderO, STO, TDO, WaOA, ZOA,
+                                           FDO, AO, JA, EHO, NMRA, PSO, CoatiOA, BA, TSO, GOA, MFO, SLO, ARO,
+                                           SquirrelSA, FFA, \
+                                           POA, \
+                                           ESOA, GTO, CSO, SSO, FOA, HHO, SFO, WOA, ALO, CSA, MGO, FOX, FFO, MRFO, SMO,
+                                           SSpiderA, BSA, HGS, BeesA, EPC, AGTO, \
+                                           SSA)
+from clypto.collection.system_based import WCA, AEO, GCO

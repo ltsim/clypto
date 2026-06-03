@@ -6,7 +6,7 @@
 
 import pytest
 
-from mealpy.utils import validator
+from clypto.utils import validator
 
 
 @pytest.mark.parametrize("value, bound, output",

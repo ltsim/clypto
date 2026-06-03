@@ -4,7 +4,7 @@
 + **Flat Population Structure:** Deleted the broken and inefficient parallel agents model to maximize data locality.
 + **Benchmark Removal:** Eliminated the vast majority of the original benchmark suite, delegating evaluation to external tools.
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
-
++ Reimplementation in Cython, compile in C
 
 ---
 

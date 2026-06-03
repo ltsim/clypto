@@ -7,8 +7,8 @@
 import numpy as np
 import pytest
 
-from mealpy import FloatVar, ClassicOptimizer
-from mealpy.collection.evolutionary_based import EP
+from clypto import FloatVar, ClassicOptimizer
+from clypto.collection.evolutionary_based import EP
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning

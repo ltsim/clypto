@@ -7,8 +7,8 @@
 import numpy as np
 import pytest
 
-from mealpy import FloatVar, ClassicOptimizer
-from mealpy.collection.swarm_based import SSO
+from clypto import FloatVar, ClassicOptimizer
+from clypto.collection.swarm_based import SSO
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
