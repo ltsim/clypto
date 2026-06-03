@@ -41,14 +41,12 @@ def get_ext_modules():
 setup(
     name="clypto",
     version=_VERSION,
-    description="An Open-source Library for Latest Meta-heuristic Algorithms in Python",
+    description="An Open-source Library for Latest Meta-heuristic Algorithms in Cython",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
-    author="Thieu",
-    author_email="nguyenthieu2102@gmail.com",
-    maintainer="ltsim",
-    maintainer_email="tsim@cucei.udg.mx",
+    author="Thieu, LTSIM",
+    author_email="nguyenthieu2102@gmail.com, tsim@cucei.udg.mx",
     url="https://github.com/ltsim/clypto",
     project_urls={
         "Homepage": "https://github.com/ltsim/clypto",
