@@ -420,7 +420,7 @@ class Optimizer(AbstractOtimizer):
         return [agent.copy() for agent in pop]
 
     @staticmethod
-    def get_sorted_population(pop: list[Agent], minmax: str = "min") -> list[BaseAgent]:
+    def get_sorted_population(pop: list[Agent], minmax: str = "min") -> list[Agent]:
         """
         Get sorted population based on type (minmax) of problem
 
@@ -619,7 +619,7 @@ class Optimizer(AbstractOtimizer):
 
     def update_global_best_agent(
         self, pop: list[Agent], save: bool = False
-    ) -> tuple[list[BaseAgent], BaseAgent]:
+    ) -> tuple[list[Agent], Agent]:
         """
         Update global best and current best solutions in history object.
         Also update global worst and current worst solutions in history object.
@@ -635,38 +635,59 @@ class Optimizer(AbstractOtimizer):
 
         c_best, c_worst = sorted_pop[0], sorted_pop[-1]
 
+        return sorted_pop, c_best
+
         """
         if save:
             ## Save current best
             self.__history.current_best.append(c_best)
-            better = self.get_better_agent(c_best, self.__history.global_best[-1], self.problem.minmax)
+            better = self.get_better_agent(
+                c_best, self.__history.global_best[-1], self.problem.minmax
+            )
 
             self.__history.global_best.append(better)
 
             ## Save current worst
             self.__history.current_worst.append(c_worst)
 
-            worse = self.get_better_agent(c_worst, self.__history.global_worst[-1], self.problem.minmax,
-                                          reverse=True)
+            worse = self.get_better_agent(
+                c_worst,
+                self.__history.global_worst[-1],
+                self.problem.minmax,
+                reverse=True,
+            )
             self.__history.global_worst.append(worse)
+
             return sorted_pop, better
         else:
             ## Handle current best
-            local_better = self.get_better_agent(c_best, self.__history.current_best[-1], self.problem.minmax)
+            local_better = self.get_better_agent(
+                c_best, self.__history.current_best[-1], self.problem.minmax
+            )
             self.__history.current_best[-1] = local_better
-            global_better = self.get_better_agent(c_best, self.__history.global_best[-1], self.problem.minmax)
+            global_better = self.get_better_agent(
+                c_best, self.__history.global_best[-1], self.problem.minmax
+            )
             self.__history.global_best[-1] = global_better
-            ## Handle current worst
-            local_worst = self.get_better_agent(c_worst, self.__history.current_worst[-1], self.problem.minmax,
-                                                reverse=True)
-            self.__history.current_worst[-1] = local_worst
-            global_worst = self.get_better_agent(c_worst, self.__history.global_worst[-1], self.problem.minmax,
-                                                 reverse=True)
-            self.__history.global_worst[-1] = global_worst
-            return sorted_pop, global_better
-        """
 
-        return sorted_pop, c_best
+            ## Handle current worst
+            local_worst = self.get_better_agent(
+                c_worst,
+                self.__history.current_worst[-1],
+                self.problem.minmax,
+                reverse=True,
+            )
+            self.__history.current_worst[-1] = local_worst
+            global_worst = self.get_better_agent(
+                c_worst,
+                self.__history.global_worst[-1],
+                self.problem.minmax,
+                reverse=True,
+            )
+            self.__history.global_worst[-1] = global_worst
+
+            return sorted_pop, global_better
+    """
 
     ## Selection techniques
     def get_index_roulette_wheel_selection(self, list_fitness: np.array):

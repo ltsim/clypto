@@ -7,7 +7,7 @@ import dataclasses
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent
+from clypto.agents import Agent
 
 
 @dataclasses.dataclass
@@ -34,19 +34,19 @@ class TrackHistory:
     """
 
     epoch: int = 0
-    global_best: list[BaseAgent] = dataclasses.field(default_factory=list)
-    current_best: list[BaseAgent] = dataclasses.field(default_factory=list)
-    epoch_time: list[BaseAgent] = dataclasses.field(default_factory=list)
-    global_best_fit: list[BaseAgent] = dataclasses.field(default_factory=list)
-    current_best_fit: list[BaseAgent] = dataclasses.field(default_factory=list)
-    population: list[BaseAgent] = dataclasses.field(default_factory=list)
-    diversity: list[BaseAgent] = dataclasses.field(default_factory=list)
-    exploitation: list[BaseAgent] = dataclasses.field(default_factory=list)
-    exploration: list[BaseAgent] = dataclasses.field(default_factory=list)
-    global_worst: list[BaseAgent] = dataclasses.field(default_factory=list)
-    current_worst: list[BaseAgent] = dataclasses.field(default_factory=list)
+    global_best: list[Agent] = dataclasses.field(default_factory=list)
+    current_best: list[Agent] = dataclasses.field(default_factory=list)
+    epoch_time: list[Agent] = dataclasses.field(default_factory=list)
+    global_best_fit: list[Agent] = dataclasses.field(default_factory=list)
+    current_best_fit: list[Agent] = dataclasses.field(default_factory=list)
+    population: list[Agent] = dataclasses.field(default_factory=list)
+    diversity: list[Agent] = dataclasses.field(default_factory=list)
+    exploitation: list[Agent] = dataclasses.field(default_factory=list)
+    exploration: list[Agent] = dataclasses.field(default_factory=list)
+    global_worst: list[Agent] = dataclasses.field(default_factory=list)
+    current_worst: list[Agent] = dataclasses.field(default_factory=list)
 
-    def store_initial_best_worst(self, best_agent: BaseAgent, worst_agent: BaseAgent) -> None:
+    def store_initial_best_worst(self, best_agent: Agent, worst_agent: Agent) -> None:
         self.global_best = [best_agent.copy()]
         self.current_best = [best_agent.copy()]
         self.global_worst = [worst_agent.copy()]
@@ -56,7 +56,10 @@ class TrackHistory:
         count = 0
 
         for idx in range(0, len(self.global_best) - 1):
-            temp = np.abs(self.global_best[idx].target.fitness - self.global_best[idx + 1].target.fitness)
+            temp = np.abs(
+                self.global_best[idx].target.fitness
+                - self.global_best[idx + 1].target.fitness
+            )
 
             if temp <= epsilon:
                 count += 1

@@ -19,7 +19,7 @@ problem_dict = {
 # 3. Initialize and run the PSO algorithm
 # epoch: number of iterations, pop_size: number of particles
 model = PSO.OriginalPSO(epoch=150, pop_size=75)
-g_best = model.solve(problem_dict)
+g_best = model.solve(problem_dict, debug=False)
 
 # 4. Access the results
 print(f"Best solution: {g_best.solution}")
