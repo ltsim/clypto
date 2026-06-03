@@ -1,7 +1,16 @@
+from pathlib import Path
+
 from Cython.Build import cythonize
 from setuptools import setup, find_packages
 
-_VERSION = "2026.2"
+init_path = Path(__file__).parent / "mealpy" / "__init__.py"
+init_content = init_path.read_text(encoding="utf-8")
+
+_VERSION = "0.0.0"
+for line in init_content.splitlines():
+    if line.startswith("__version__"):
+        _VERSION = line.split("=")[1].strip().strip("\"'")
+        break
 
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
