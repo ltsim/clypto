@@ -548,10 +548,8 @@ class ClassicOptimizer(Optimizer):
 
         c_best, c_worst = sorted_pop[0], sorted_pop[-1]
 
-        return sorted_pop, c_best
         """
         if save:
-            print("Save current best...")
             ## Save current best
             self.__history.current_best.append(c_best)
             better = self.get_better_agent(c_best, self.__history.global_best[-1], self.problem.minmax)
@@ -566,7 +564,6 @@ class ClassicOptimizer(Optimizer):
             self.__history.global_worst.append(worse)
             return sorted_pop, better
         else:
-            print("Handle current best...")
             ## Handle current best
             local_better = self.get_better_agent(c_best, self.__history.current_best[-1], self.problem.minmax)
             self.__history.current_best[-1] = local_better
@@ -581,6 +578,8 @@ class ClassicOptimizer(Optimizer):
             self.__history.global_worst[-1] = global_worst
             return sorted_pop, global_better
         """
+
+        return sorted_pop, c_best
 
     ## Selection techniques
     def get_index_roulette_wheel_selection(self, list_fitness: np.array):
