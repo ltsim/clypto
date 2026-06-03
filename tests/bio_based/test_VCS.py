@@ -62,9 +62,9 @@ def test_epoch_VCS(problem, epoch, system_code):
     pop_size = 50
     algorithms = [VCS.OriginalVCS, VCS.DevVCS]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, pop_size, system_code",
@@ -81,9 +81,9 @@ def test_pop_size_VCS(problem, pop_size, system_code):
     epoch = 10
     algorithms = [VCS.OriginalVCS, VCS.DevVCS]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, lamda, system_code",
@@ -103,6 +103,6 @@ def test_lamda_VCS(problem, lamda, system_code):
     pop_size = 50
     algorithms = [VCS.OriginalVCS, VCS.DevVCS]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size, lamda=lamda)
-        assert e.type == ValueError
+        assert e.type == TypeError

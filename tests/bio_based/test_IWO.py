@@ -54,9 +54,9 @@ def test_epoch_IWO(problem, epoch, system_code):
     pop_size = 50
     algorithms = [IWO.OriginalIWO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, pop_size, system_code",
@@ -73,9 +73,9 @@ def test_pop_size_IWO(problem, pop_size, system_code):
     epoch = 10
     algorithms = [IWO.OriginalIWO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, exponent, system_code",
@@ -93,6 +93,6 @@ def test_pop_size_IWO(problem, pop_size, system_code):
 def test_exponent_IWO(problem, exponent, system_code):
     algorithms = [IWO.OriginalIWO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(10, 50, exponent=exponent)
-        assert e.type == ValueError
+        assert e.type == TypeError

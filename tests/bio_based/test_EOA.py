@@ -55,9 +55,9 @@ def test_epoch_EOA(problem, epoch, system_code):
     pop_size = 50
     algorithms = [EOA.OriginalEOA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, pop_size, system_code",
@@ -74,9 +74,9 @@ def test_pop_size_EOA(problem, pop_size, system_code):
     epoch = 10
     algorithms = [EOA.OriginalEOA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, p_c, system_code",
@@ -94,9 +94,9 @@ def test_pop_size_EOA(problem, pop_size, system_code):
 def test_p_c_EOA(problem, p_c, system_code):
     algorithms = [EOA.OriginalEOA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(10, 50, p_c=p_c)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, p_m, system_code",
@@ -114,9 +114,9 @@ def test_p_c_EOA(problem, p_c, system_code):
 def test_p_m_EOA(problem, p_m, system_code):
     algorithms = [EOA.OriginalEOA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(10, 50, p_m=p_m)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, n_best, system_code",
@@ -134,9 +134,9 @@ def test_p_m_EOA(problem, p_m, system_code):
 def test_n_best_EOA(problem, n_best, system_code):
     algorithms = [EOA.OriginalEOA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(10, 50, n_best=n_best)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, alpha, system_code",
@@ -154,9 +154,9 @@ def test_n_best_EOA(problem, n_best, system_code):
 def test_alpha_EOA(problem, alpha, system_code):
     algorithms = [EOA.OriginalEOA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(10, 50, alpha=alpha)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, beta, system_code",
@@ -174,9 +174,9 @@ def test_alpha_EOA(problem, alpha, system_code):
 def test_beta_EOA(problem, beta, system_code):
     algorithms = [EOA.OriginalEOA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(10, 50, beta=beta)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, gama, system_code",
@@ -194,6 +194,6 @@ def test_beta_EOA(problem, beta, system_code):
 def test_gama_EOA(problem, gama, system_code):
     algorithms = [EOA.OriginalEOA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(10, 50, gama=gama)
-        assert e.type == ValueError
+        assert e.type == TypeError

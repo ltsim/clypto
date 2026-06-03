@@ -67,7 +67,7 @@ def test_epoch_BBO(problem, epoch, system_code):
     for algorithm in algorithms:
         with pytest.raises(Exception) as e:
             algorithm(epoch, pop_size, p_m, n_elites)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, pop_size, system_code",
@@ -86,9 +86,9 @@ def test_pop_size_BBO(problem, pop_size, system_code):
     n_elites = 2
     algorithms = [BBO.OriginalBBO, BBO.DevBBO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size, p_m, n_elites)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, p_m, system_code",
@@ -109,9 +109,9 @@ def test_p_m_BBO(problem, p_m, system_code):
     n_elites = 2
     algorithms = [BBO.OriginalBBO, BBO.DevBBO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size, p_m, n_elites)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, n_elites, system_code",
@@ -132,6 +132,6 @@ def test_n_elites_BBO(problem, n_elites, system_code):
     p_m = 0.01
     algorithms = [BBO.OriginalBBO, BBO.DevBBO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size, p_m, n_elites)
-        assert e.type == ValueError
+        assert e.type == TypeError

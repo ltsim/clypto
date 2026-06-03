@@ -60,9 +60,9 @@ def test_epoch_SMA(problem, epoch, system_code):
     pop_size = 50
     algorithms = [SMA.OriginalSMA, SMA.DevSMA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, pop_size, system_code",
@@ -79,9 +79,9 @@ def test_pop_size_SMA(problem, pop_size, system_code):
     epoch = 10
     algorithms = [SMA.OriginalSMA, SMA.DevSMA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, p_t, system_code",
@@ -101,6 +101,6 @@ def test_p_t_SMA(problem, p_t, system_code):
     pop_size = 50
     algorithms = [SMA.OriginalSMA, SMA.DevSMA]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size, p_t=p_t)
-        assert e.type == ValueError
+        assert e.type == TypeError

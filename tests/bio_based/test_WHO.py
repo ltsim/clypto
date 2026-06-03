@@ -48,9 +48,9 @@ def test_epoch_WHO(problem, epoch, system_code):
     pop_size = 50
     algorithms = [WHO.OriginalWHO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, pop_size, system_code",
@@ -67,9 +67,9 @@ def test_pop_size_WHO(problem, pop_size, system_code):
     epoch = 10
     algorithms = [WHO.OriginalWHO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, p_hi, system_code",
@@ -87,9 +87,9 @@ def test_pop_size_WHO(problem, pop_size, system_code):
 def test_p_hi_WHO(problem, p_hi, system_code):
     algorithms = [WHO.OriginalWHO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(50, p_hi=p_hi)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, eta, system_code",
@@ -107,9 +107,9 @@ def test_p_hi_WHO(problem, p_hi, system_code):
 def test_eta_WHO(problem, eta, system_code):
     algorithms = [WHO.OriginalWHO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(50, eta=eta)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, n_explore_step, system_code",
@@ -126,9 +126,9 @@ def test_eta_WHO(problem, eta, system_code):
 def test_n_s_WHO(problem, n_explore_step, system_code):
     algorithms = [WHO.OriginalWHO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(50, n_explore_step=n_explore_step)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, n_exploit_step, system_code",
@@ -146,6 +146,6 @@ def test_n_s_WHO(problem, n_explore_step, system_code):
 def test_n_e_WHO(problem, n_exploit_step, system_code):
     algorithms = [WHO.OriginalWHO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(50, n_exploit_step=n_exploit_step)
-        assert e.type == ValueError
+        assert e.type == TypeError

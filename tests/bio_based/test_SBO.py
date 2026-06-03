@@ -64,9 +64,9 @@ def test_epoch_SBO(problem, epoch, system_code):
     pop_size = 50
     algorithms = [SBO.OriginalSBO, SBO.DevSBO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, pop_size, system_code",
@@ -83,9 +83,9 @@ def test_pop_size_SBO(problem, pop_size, system_code):
     epoch = 10
     algorithms = [SBO.OriginalSBO, SBO.DevSBO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, alpha, system_code",
@@ -102,9 +102,9 @@ def test_alpha_SBO(problem, alpha, system_code):
     pop_size = 50
     algorithms = [SBO.OriginalSBO, SBO.DevSBO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size, alpha=alpha)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, p_m, system_code",
@@ -124,9 +124,9 @@ def test_p_m_SBO(problem, p_m, system_code):
     pop_size = 50
     algorithms = [SBO.OriginalSBO, SBO.DevSBO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size, p_m=p_m)
-        assert e.type == ValueError
+        assert e.type == TypeError
 
 
 @pytest.mark.parametrize("problem, psw, system_code",
@@ -146,6 +146,6 @@ def test_psw_SBO(problem, psw, system_code):
     pop_size = 50
     algorithms = [SBO.OriginalSBO, SBO.DevSBO]
     for algorithm in algorithms:
-        with pytest.raises(ValueError) as e:
+        with pytest.raises(TypeError) as e:
             algorithm(epoch, pop_size, psw=psw)
-        assert e.type == ValueError
+        assert e.type == TypeError

@@ -57,7 +57,7 @@ def test_check_bound(value, bound, output):
                              ((4, 2), [0.3, 2], 0),
                          ])
 def test_check_float(value, bound, output):
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(TypeError) as e:
         valid_model = validator.Validator()
         valid_model.check_float("value", value, bound)
-    assert e.type == ValueError
+    assert e.type == TypeError
