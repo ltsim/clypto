@@ -50,7 +50,7 @@ class ClassicOptimizer(Optimizer):
         self.__generator = None
         self.__termination: Termination | None = None
 
-        self.mode: typing.Literal['swarm', 'process', 'thread'] | None = None
+        self.mode: typing.Optional[typing.Literal['swarm', 'process', 'thread']] = None
         self.epoch: typing.Optional[int] = None
         self.pop_size: typing.Optional[int] = None
         self.n_workers: typing.Optional[int] = None
