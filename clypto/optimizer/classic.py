@@ -7,10 +7,12 @@ import math
 import random
 import time
 import typing
+import collections
 
 import numpy as np
 import numpy.typing as npt
 
+from clypto import collection
 from clypto.agents import Agent
 from clypto.agents.base import BaseAgent
 from clypto.optimizer.optimizer import Optimizer
@@ -46,7 +48,7 @@ class ClassicOptimizer(Optimizer):
         self.__name: str = kwargs.get("name", self.__class__.__name__)
         self.__params_name_ordered = None
         self.__generator = None
-        self.__termination: Termination | None = None
+        self.__termination: typing.Optional[Termination] = None
 
         self.mode: typing.Optional[typing.Literal['swarm', 'process', 'thread']] = None
         self.epoch: typing.Optional[int] = None
@@ -172,7 +174,7 @@ class ClassicOptimizer(Optimizer):
             self.pop = pop_temp
 
         ## Store initial best and worst solutions
-        self.__history.store_initial_best_worst(self.g_best, self.g_worst)
+        # self.__history.store_initial_best_worst(self.g_best, self.g_worst)
 
     def before_main_loop(self):
         pass
