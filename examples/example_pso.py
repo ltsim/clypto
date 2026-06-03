@@ -11,14 +11,14 @@ ackley_f = Ackley01(ndim=5)
 # 'obj_func' is the evaluation method from Opfunu
 # 'bounds' uses the lb (lower bound) and ub (upper bound) from the Opfunu object
 problem_dict = {
-    "obj_func": ackley_f.evaluate,
+    "obj_func": evaluate,
     "bounds": FloatVar(lb=ackley_f.lb, ub=ackley_f.ub),
     "minmax": "min",
 }
 
 # 3. Initialize and run the PSO algorithm
 # epoch: number of iterations, pop_size: number of particles
-model = PSO.OriginalPSO(epoch=150, pop_size=100)
+model = PSO.OriginalPSO(epoch=1, pop_size=5)
 g_best = model.solve(problem_dict)
 
 # 4. Access the results

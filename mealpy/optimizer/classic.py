@@ -13,6 +13,7 @@ import numpy as np
 import numpy.typing as npt
 
 from mealpy.agents import Agent
+from mealpy.agents.base import BaseAgent
 from mealpy.utils.history import TrackHistory
 from mealpy.utils.problem import Problem
 from mealpy.utils.target import Target
@@ -50,13 +51,13 @@ class ClassicOptimizer(Optimizer):
         self.__termination: Termination | None = None
 
         self.mode: typing.Literal['swarm', 'process', 'thread'] | None = None
-        self.epoch: int | None = None
-        self.pop_size: int | None = None
-        self.n_workers: int | None = None
-        self.pop: list[Agent] | None = None
-        self.g_best: Agent | None = Agent()
-        self.g_worst: Agent | None = None
-        self.problem: Problem | None = None
+        self.epoch: typing.Optional[int] = None
+        self.pop_size: typing.Optional[int] = None
+        self.n_workers: typing.Optional[int] = None
+        self.pop: typing.Optional[list[Agent]]  = None
+        self.g_best: typing.Optional[Agent] = Agent()
+        self.g_worst: typing.Optional[Agent] = None
+        self.problem: typing.Optional[Problem] = None
         self.sort_flag: bool = False
         self.parameters: dict = {}
         self.is_parallelizable: bool = True
@@ -244,8 +245,16 @@ class ClassicOptimizer(Optimizer):
             ## Evolve method will be called in child class
             self.evolve(epoch)
 
+            """
             # Update global best solution, the population is sorted or not depended on algorithm's strategy
             pop_temp, self.g_best = self.update_global_best_agent(self.pop)
+
+            if self.sort_flag:
+                self.pop = pop_temp
+            """
+
+            pop_temp = self.get_sorted_population(self.pop, self.problem.minmax)
+            self.g_best = pop_temp[0]
 
             if self.sort_flag:
                 self.pop = pop_temp
@@ -360,18 +369,16 @@ class ClassicOptimizer(Optimizer):
         return [agent.copy() for agent in pop]
 
     @staticmethod
-    def get_sorted_population(pop: list[Agent], minmax: str = "min", return_index: bool = False):
+    def get_sorted_population(pop: list[Agent], minmax: str = "min") -> list[BaseAgent]:
         """
         Get sorted population based on type (minmax) of problem
 
         Args:
             pop: The population
             minmax: The type of the problem
-            return_index: Return the sorted index or not
 
         Returns:
             Sorted population (1st agent is the best, last agent is the worst
-            Sorted index (Optional)
         """
 
         list_fits = [agent.target.fitness for agent in pop]
@@ -382,10 +389,7 @@ class ClassicOptimizer(Optimizer):
 
         pop_new = [pop[idx] for idx in indices]
 
-        if return_index:
-            return pop_new, indices
-        else:
-            return pop_new
+        return pop_new
 
     @staticmethod
     def get_best_agent(pop: list[Agent], minmax: str = "min") -> Agent:
@@ -530,7 +534,7 @@ class ClassicOptimizer(Optimizer):
 
         return pop[:pop_size]
 
-    def update_global_best_agent(self, pop: list[Agent], save: bool = True) -> list | tuple:
+    def update_global_best_agent(self, pop: list[Agent], save: bool = False) -> tuple[list[BaseAgent], BaseAgent]:
         """
         Update global best and current best solutions in history object.
         Also update global worst and current worst solutions in history object.
@@ -543,9 +547,13 @@ class ClassicOptimizer(Optimizer):
             list: Sorted population and the global best solution
         """
         sorted_pop = self.get_sorted_population(pop, self.problem.minmax)
+
         c_best, c_worst = sorted_pop[0], sorted_pop[-1]
 
+        return sorted_pop, c_best
+        """
         if save:
+            print("Save current best...")
             ## Save current best
             self.__history.current_best.append(c_best)
             better = self.get_better_agent(c_best, self.__history.global_best[-1], self.problem.minmax)
@@ -560,6 +568,7 @@ class ClassicOptimizer(Optimizer):
             self.__history.global_worst.append(worse)
             return sorted_pop, better
         else:
+            print("Handle current best...")
             ## Handle current best
             local_better = self.get_better_agent(c_best, self.__history.current_best[-1], self.problem.minmax)
             self.__history.current_best[-1] = local_better
@@ -573,6 +582,7 @@ class ClassicOptimizer(Optimizer):
                                                  reverse=True)
             self.__history.global_worst[-1] = global_worst
             return sorted_pop, global_better
+        """
 
     ## Selection techniques
     def get_index_roulette_wheel_selection(self, list_fitness: np.array):
