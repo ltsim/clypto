@@ -12,7 +12,6 @@ import collections
 import numpy as np
 import numpy.typing as npt
 
-from clypto import collection
 from clypto.agents import Agent
 from clypto.agents.base import BaseAgent
 from clypto.optimizer.optimizer import Optimizer
