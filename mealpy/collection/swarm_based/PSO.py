@@ -3,10 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-import dataclasses
-
+import cython
 import numpy as np
-import numpy.typing as npt
 
 from mealpy.agents.virtual import BaseAgent, Agent
 from mealpy.optimizer import ClassicOptimizer

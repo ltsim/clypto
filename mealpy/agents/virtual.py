@@ -6,6 +6,7 @@
 
 from typing import Any
 
+import cython
 import numpy as np
 
 from mealpy.agents.base import BaseAgent
