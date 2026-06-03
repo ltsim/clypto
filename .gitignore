@@ -1,9 +1,5 @@
 ### Cython ###
-mealpy/**/*.c
-
-### Mealpy ###
-# History
-history*
+clypto/**/*.c
 
 ### C ###
 # Prerequisites
