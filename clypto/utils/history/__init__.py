@@ -33,6 +33,7 @@ class TrackHistory:
             Better to set parameter 'save_population' to False in the input problem dictionary to not using it.
     """
 
+    epoch: int = 0
     global_best: list[BaseAgent] = dataclasses.field(default_factory=list)
     current_best: list[BaseAgent] = dataclasses.field(default_factory=list)
     epoch_time: list[BaseAgent] = dataclasses.field(default_factory=list)
@@ -44,7 +45,6 @@ class TrackHistory:
     exploration: list[BaseAgent] = dataclasses.field(default_factory=list)
     global_worst: list[BaseAgent] = dataclasses.field(default_factory=list)
     current_worst: list[BaseAgent] = dataclasses.field(default_factory=list)
-    epoch: int = 0
 
     def store_initial_best_worst(self, best_agent: BaseAgent, worst_agent: BaseAgent) -> None:
         self.global_best = [best_agent.copy()]
