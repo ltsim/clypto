@@ -1,19 +1,19 @@
-# mealpy-legacy-collection
+# clypto
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
-![PyPI - Version](https://img.shields.io/pypi/v/mealpy-legacy-collection?style=flat-square)
-![PyPI - Implementation](https://img.shields.io/pypi/implementation/mealpy-legacy-collection?style=flat-square)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mealpy-legacy-collection?style=flat-square)
-![PyPI - Wheel](https://img.shields.io/pypi/wheel/mealpy-legacy-collection?style=flat-square)
-![GitHub Release Date](https://img.shields.io/github/release-date/ltsim/mealpy-legacy-collection.svg?style=flat-square)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/mealpy-legacy-collection?style=flat-square)
+![PyPI - Version](https://img.shields.io/pypi/v/clypto?style=flat-square)
+![PyPI - Implementation](https://img.shields.io/pypi/implementation/clypto?style=flat-square)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/clypto?style=flat-square)
+![PyPI - Wheel](https://img.shields.io/pypi/wheel/clypto?style=flat-square)
+![GitHub Release Date](https://img.shields.io/github/release-date/ltsim/clypto.svg?style=flat-square)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/clypto?style=flat-square)
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/mealpy-legacy-collection/publish.yml?style=flat-square&logo=pypi&label=Publish)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/mealpy-legacy-collection/test.yml?style=flat-square&logo=pytest&label=Testing)
 
 Is a lightweight, heavily refactored fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core. It serves as a pure, bloat-free repository that preserves the historical collection of population-based metaheuristic algorithms (PBM), acting as an open architectural catalog for educational purposes, clean research, and rapid prototyping within our ecosystem.
 
-Unlike monolithic optimization frameworks, **mealpy-legacy-collection** cuts out all secondary overhead such as visualization tools, complex logging, and heavy external dependencies focusing strictly on the raw algorithmic logic and mathematical transition operators of these legacy implementations. This ensures a clean, decoupled foundation for developers to study, test, and benchmark classic metaheuristics without the friction of modern software bloat.
+Unlike monolithic optimization frameworks, **clypto** cuts out all secondary overhead such as visualization tools, complex logging, and heavy external dependencies focusing strictly on the raw algorithmic logic and mathematical transition operators of these legacy implementations. This ensures a clean, decoupled foundation for developers to study, test, and benchmark classic metaheuristics without the friction of modern software bloat.
 
 ## Why?
 
@@ -79,21 +79,21 @@ The sole purpose of this repository is to preserve a clean, decoupled collection
 
 ## Installation
 
-* Install the stable (latest) version from [PyPI release](https://pypi.python.org/pypi/mealpy-legacy-collection):
+* Install the stable (latest) version from [PyPI release](https://pypi.python.org/pypi/clypto):
 ```bash
-$ pip install mealpy-legacy-collection --upgrade
+$ pip install clypto --upgrade
 ```
 
 * Install the pre-release version directly from the source code:
 ```bash
-$ git clone https://github.com/ltsim/mealpy-legacy-collection.git
-$ cd mealpy-legacy-collection
+$ git clone https://github.com/ltsim/clypto.git
+$ cd clypto
 $ python -m pip install .
 ```
 
 * In case, you want to install the development version from Github:
 ```bash
-$ pip install git+https://github.com/ltsim/mealpy-legacy-collection.git 
+$ pip install git+https://github.com/ltsim/clypto.git 
 ```
 
 ## Optimizer Classification Table

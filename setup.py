@@ -30,7 +30,7 @@ def get_ext_modules():
 
 
 setup(
-    name="mealpy-legacy-collection",
+    name="clypto",
     version=_VERSION,
     description="An Open-source Library for Latest Meta-heuristic Algorithms in Python",
     long_description=long_description,
@@ -40,12 +40,12 @@ setup(
     author_email="nguyenthieu2102@gmail.com",
     maintainer="ltsim",
     maintainer_email="tsim@cucei.udg.mx",
-    url="https://github.com/ltsim/mealpy-legacy-collection",
+    url="https://github.com/ltsim/clypto",
     project_urls={
-        "Homepage": "https://github.com/ltsim/mealpy-legacy-collection",
-        "Source Code": "https://github.com/ltsim/mealpy-legacy-collection",
-        "Bug Tracker": "https://github.com/ltsim/mealpy-legacy-collection/issues",
-        "Change Log": "https://github.com/ltsim/mealpy-legacy-collection/blob/master/CHANGELOG.md",
+        "Homepage": "https://github.com/ltsim/clypto",
+        "Source Code": "https://github.com/ltsim/clypto",
+        "Bug Tracker": "https://github.com/ltsim/clypto/issues",
+        "Change Log": "https://github.com/ltsim/clypto/blob/master/CHANGELOG.md",
     },
     keywords=[
         "optimization", "metaheuristics", "MHA", "mathematical optimization",
@@ -59,7 +59,7 @@ setup(
         "Simulations", "Algorithm selection",
     ],
     classifiers=[
-        "Development Status :: 5 - Production/Stable",
+        "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
