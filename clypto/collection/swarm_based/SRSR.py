@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent, Agent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSRSR(ClassicOptimizer):
+class OriginalSRSR(Optimizer):
     """
     The original version of: Swarm Robotics Search And Rescue (SRSR)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalAFT(ClassicOptimizer):
+class OriginalAFT(Optimizer):
     """
     The original version of: Ali baba and the Forty Thieves (AFT) optimizer
 

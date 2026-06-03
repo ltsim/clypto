@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSCSO(ClassicOptimizer):
+class OriginalSCSO(Optimizer):
     """
     The original version of: Sand Cat Swarm Optimization (SCSO)
 

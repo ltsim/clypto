@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalBWO(ClassicOptimizer):
+class OriginalBWO(Optimizer):
     """
     The original version of: Black Widow Optimization (BWO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalHBA(ClassicOptimizer):
+class OriginalHBA(Optimizer):
     """
     The original version of: Honey Badger Algorithm (HBA)
 

@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from clypto import Problem, ClassicOptimizer, FloatVar
+from clypto import Problem, Optimizer, FloatVar
 
 
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
@@ -21,7 +21,7 @@ def model():
         "minmax": "min",
         "log_to": None,
     }
-    model = ClassicOptimizer()
+    model = Optimizer()
     model.problem = Problem(**problem)
     return model
 

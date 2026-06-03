@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalWaOA(ClassicOptimizer):
+class OriginalWaOA(Optimizer):
     """
     The original version of: Walrus Optimization Algorithm (WaOA)
 

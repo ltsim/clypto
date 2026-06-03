@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from clypto import FloatVar, ClassicOptimizer
+from clypto import FloatVar, Optimizer
 from clypto.collection.bio_based import SMA
 
 
@@ -30,7 +30,7 @@ def test_OriginalSMA_results(problem):
     p_t = 0.05
     model = SMA.OriginalSMA(epoch, pop_size, p_t)
     g_best = model.solve(problem)
-    assert isinstance(model, ClassicOptimizer)
+    assert isinstance(model, Optimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 
@@ -41,7 +41,7 @@ def test_DevSMA_results(problem):
     p_t = 0.05
     model = SMA.DevSMA(epoch, pop_size, p_t)
     g_best = model.solve(problem)
-    assert isinstance(model, ClassicOptimizer)
+    assert isinstance(model, Optimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

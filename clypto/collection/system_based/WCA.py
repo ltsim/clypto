@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalWCA(ClassicOptimizer):
+class OriginalWCA(Optimizer):
     """
     The original version of: Water Cycle Algorithm (WCA)
 

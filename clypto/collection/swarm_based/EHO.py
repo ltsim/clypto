@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalEHO(ClassicOptimizer):
+class OriginalEHO(Optimizer):
     """
     The original version of: Elephant Herding Optimization (EHO)
 

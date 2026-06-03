@@ -11,7 +11,7 @@ from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 
 
-class Optimizer(abc.ABC):
+class AbstractOtimizer(abc.ABC):
     """
     Abstract base class that defines the contract for metaheuristic optimization
     algorithms.

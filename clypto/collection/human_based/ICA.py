@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalICA(ClassicOptimizer):
+class OriginalICA(Optimizer):
     """
     The original version of: Imperialist Competitive Algorithm (ICA)
 

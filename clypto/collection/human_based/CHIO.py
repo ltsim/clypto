@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalCHIO(ClassicOptimizer):
+class OriginalCHIO(Optimizer):
     """
     The original version of: Coronavirus Herd Immunity Optimization (CHIO)
 

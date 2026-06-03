@@ -8,10 +8,10 @@ from typing import Tuple, List
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalIMODE(ClassicOptimizer):
+class OriginalIMODE(Optimizer):
     """
     The original version of: Improved Multi-operator Differential Evolution Algorithm (IMODE)
 

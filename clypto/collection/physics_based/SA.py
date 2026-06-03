@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSA(ClassicOptimizer):
+class OriginalSA(Optimizer):
     """
     The original version of: Simulated Annealing (SA)
 
@@ -87,7 +87,7 @@ class OriginalSA(ClassicOptimizer):
         self.pop = [self.g_best.copy(), self.agent_current.copy()]
 
 
-class GaussianSA(ClassicOptimizer):
+class GaussianSA(Optimizer):
     """
     The developed version of: Gaussian Simulated Annealing (GaussianSA)
 
@@ -167,7 +167,7 @@ class GaussianSA(ClassicOptimizer):
         self.pop = [self.g_best.copy(), self.agent_current.copy()]
 
 
-class SwarmSA(ClassicOptimizer):
+class SwarmSA(Optimizer):
     """
     The swarm version of: Simulated Annealing (SwarmSA)
 

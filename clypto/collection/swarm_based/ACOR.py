@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalACOR(ClassicOptimizer):
+class OriginalACOR(Optimizer):
     """
     The original version of: Ant Colony Optimization Continuous (ACOR)
 

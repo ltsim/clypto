@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevSSA(ClassicOptimizer):
+class DevSSA(Optimizer):
     """
     The developed version: Sparrow Search Algorithm (SSA)
 

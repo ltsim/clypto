@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalCDDO(ClassicOptimizer):
+class OriginalCDDO(Optimizer):
     """
     The original version of: Child Drawing Development Optimization (CCDO)
 

@@ -7,7 +7,7 @@ import cython
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent, Agent
-from clypto.optimizer import ClassicOptimizer
+from clypto.optimizer import Optimizer
 
 
 class PSOAgent(Agent):
@@ -17,7 +17,7 @@ class PSOAgent(Agent):
         self.local_solution = local_solution
 
 
-class OriginalPSO(ClassicOptimizer):
+class OriginalPSO(Optimizer):
     """
     The original version of: Particle Swarm Optimization (PSO)
 
@@ -116,7 +116,7 @@ class OriginalPSO(ClassicOptimizer):
                 self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
 
 
-class AIW_PSO(ClassicOptimizer):
+class AIW_PSO(Optimizer):
     """
     The original version of: Adaptive Inertia Weight Particle Swarm Optimization (AIW-PSO)
 
@@ -221,7 +221,7 @@ class AIW_PSO(ClassicOptimizer):
                 self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
 
 
-class LDW_PSO(ClassicOptimizer):
+class LDW_PSO(Optimizer):
     """
     The original version of: Linearly Decreasing inertia Weight Particle Swarm Optimization (LDW-PSO)
 
@@ -325,7 +325,7 @@ class LDW_PSO(ClassicOptimizer):
                 self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
 
 
-class P_PSO(ClassicOptimizer):
+class P_PSO(Optimizer):
     """
     The original version of: Phasor Particle Swarm Optimization (P-PSO)
 
@@ -617,7 +617,7 @@ class C_PSO(P_PSO):
         self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new_child, self.pop_size, self.problem.minmax)
 
 
-class CL_PSO(ClassicOptimizer):
+class CL_PSO(Optimizer):
     """
     The original version of: Comprehensive Learning Particle Swarm Optimization (CL-PSO)
 

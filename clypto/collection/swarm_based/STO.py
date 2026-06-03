@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSTO(ClassicOptimizer):
+class OriginalSTO(Optimizer):
     """
     The original version of: Siberian Tiger Optimization (STO)
 

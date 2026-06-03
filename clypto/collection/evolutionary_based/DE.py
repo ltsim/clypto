@@ -10,7 +10,7 @@ import numpy.typing as npt
 from scipy.stats import cauchy
 
 from clypto.agents.virtual import Agent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
 class AgentDE(Agent):
@@ -27,7 +27,7 @@ class AgentDE(Agent):
         self.pop_size = pop_size
 
 
-class OriginalDE(ClassicOptimizer):
+class OriginalDE(Optimizer):
     """
     The original version of: Differential Evolution (DE)
 
@@ -176,7 +176,7 @@ class OriginalDE(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
 
 
-class JADE(ClassicOptimizer):
+class JADE(Optimizer):
     """
     The original version of: Differential Evolution (JADE)
 
@@ -316,7 +316,7 @@ class JADE(ClassicOptimizer):
             self.dyn_miu_f = (1 - self.ap) * self.dyn_miu_f + self.ap * self.lehmer_mean(np.array(list_f))
 
 
-class SADE(ClassicOptimizer):
+class SADE(Optimizer):
     """
     The original version of: Self-Adaptive Differential Evolution (SADE)
 
@@ -435,7 +435,7 @@ class SADE(ClassicOptimizer):
             self.ns1 = self.ns2 = self.nf1 = self.nf2 = 0
 
 
-class SAP_DE(ClassicOptimizer):
+class SAP_DE(Optimizer):
     """
     The original version of: Differential Evolution with Self-Adaptive Populations (SAP_DE)
 

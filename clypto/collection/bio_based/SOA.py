@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevSOA(ClassicOptimizer):
+class DevSOA(Optimizer):
     """
     The developed version: Seagull Optimization Algorithm (SOA)
 
@@ -84,7 +84,7 @@ class DevSOA(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class OriginalSOA(ClassicOptimizer):
+class OriginalSOA(Optimizer):
     """
     The original version: Seagull Optimization Algorithm (SOA)
 

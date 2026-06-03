@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalINFO(ClassicOptimizer):
+class OriginalINFO(Optimizer):
     """
     The original version of: weIghted meaN oF vectOrs (INFO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalTOA(ClassicOptimizer):
+class OriginalTOA(Optimizer):
     """
     The original version of: Teamwork Optimization Algorithm (TOA)
 

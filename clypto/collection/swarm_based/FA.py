@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalFA(ClassicOptimizer):
+class OriginalFA(Optimizer):
     """
     The original version of: Fireworks Algorithm (FA)
 

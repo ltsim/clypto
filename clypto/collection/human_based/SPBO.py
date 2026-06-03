@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSPBO(ClassicOptimizer):
+class OriginalSPBO(Optimizer):
     """
     The original version of: Student Psychology Based Optimization (SPBO)
 

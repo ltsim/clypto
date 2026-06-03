@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalCDO(ClassicOptimizer):
+class OriginalCDO(Optimizer):
     """
     The original version of: Chernobyl Disaster Optimizer (CDO)
 

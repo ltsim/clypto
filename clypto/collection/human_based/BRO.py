@@ -8,10 +8,10 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 from clypto.agents.virtual import BaseAgent, Agent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevBRO(ClassicOptimizer):
+class DevBRO(Optimizer):
     """
     The developed version: Battle Royale Optimization (BRO)
 

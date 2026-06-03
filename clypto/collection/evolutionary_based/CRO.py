@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalCRO(ClassicOptimizer):
+class OriginalCRO(Optimizer):
     """
     The original version of: Coral Reefs Optimization (CRO)
 

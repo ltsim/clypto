@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalHBO(ClassicOptimizer):
+class OriginalHBO(Optimizer):
     """
     The original version of: Heap-based optimizer (HBO)
 

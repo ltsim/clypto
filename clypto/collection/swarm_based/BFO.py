@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent, Agent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalBFO(ClassicOptimizer):
+class OriginalBFO(Optimizer):
     """
     The original version of: Bacterial Foraging Optimization (BFO)
 
@@ -155,7 +155,7 @@ class OriginalBFO(ClassicOptimizer):
                     self.pop[idc] = self.generate_agent()
 
 
-class ABFO(ClassicOptimizer):
+class ABFO(Optimizer):
     """
     The original version of: Adaptive Bacterial Foraging Optimization (ABFO)
 

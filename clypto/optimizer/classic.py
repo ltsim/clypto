@@ -14,7 +14,7 @@ import numpy.typing as npt
 
 from clypto.agents import Agent
 from clypto.agents.base import BaseAgent
-from clypto.optimizer.optimizer import Optimizer
+from clypto.optimizer.optimizer import AbstractOtimizer
 from clypto.utils.history import TrackHistory
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
@@ -22,7 +22,7 @@ from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
 
 
-class ClassicOptimizer(Optimizer):
+class Optimizer(AbstractOtimizer):
     """
     The base class of all classic algorithms. All methods in this class will be inherited
 
@@ -278,7 +278,7 @@ class ClassicOptimizer(Optimizer):
                             runtime: float | None = None) -> None:
         ## Save history data
         if self.problem.save_population:
-            self.__history.population.append(ClassicOptimizer.duplicate_pop(pop))
+            self.__history.population.append(Optimizer.duplicate_pop(pop))
 
         self.__history.epoch_time.append(runtime)
         self.__history.global_best_fit.append(self.__history.global_best[-1].target.fitness)
@@ -400,7 +400,7 @@ class ClassicOptimizer(Optimizer):
         Returns:
             The best agent
         """
-        pop = ClassicOptimizer.get_sorted_population(pop, minmax)
+        pop = Optimizer.get_sorted_population(pop, minmax)
         return pop[0].copy()
 
     @staticmethod
@@ -421,7 +421,7 @@ class ClassicOptimizer(Optimizer):
         Returns:
             The worst agent
         """
-        pop = ClassicOptimizer.get_sorted_population(pop, minmax)
+        pop = Optimizer.get_sorted_population(pop, minmax)
         return pop[-1].copy()
 
     @staticmethod
@@ -440,7 +440,7 @@ class ClassicOptimizer(Optimizer):
         Returns:
             The sorted_population, n1 best agents and n2 worst agents
         """
-        pop = ClassicOptimizer.get_sorted_population(pop, minmax)
+        pop = Optimizer.get_sorted_population(pop, minmax)
 
         if n_best is None:
             if n_worst is None:
@@ -467,7 +467,7 @@ class ClassicOptimizer(Optimizer):
             The total fitness, the best fitness, and the worst fitness
         """
         total_fitness = np.sum([agent.target.fitness for agent in pop])
-        pop = ClassicOptimizer.get_sorted_population(pop, minmax)
+        pop = Optimizer.get_sorted_population(pop, minmax)
         return total_fitness, pop[0].target.fitness, pop[-1].target.fitness
 
     @staticmethod
@@ -529,7 +529,7 @@ class ClassicOptimizer(Optimizer):
         Returns:
             The sorted and trimmed population with pop_size size
         """
-        pop = ClassicOptimizer.get_sorted_population(pop, minmax)
+        pop = Optimizer.get_sorted_population(pop, minmax)
 
         return pop[:pop_size]
 

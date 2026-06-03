@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalRIME(ClassicOptimizer):
+class OriginalRIME(Optimizer):
     """
     The original version of: physical phenomenon of RIME-ice  (RIME)
 

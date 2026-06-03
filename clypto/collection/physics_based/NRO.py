@@ -8,10 +8,10 @@ import math
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalNRO(ClassicOptimizer):
+class OriginalNRO(Optimizer):
     """
     The original version of: Nuclear Reaction Optimization (NRO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalHCO(ClassicOptimizer):
+class OriginalHCO(Optimizer):
     """
     The original version of: Human Conception Optimizer (HCO)
 

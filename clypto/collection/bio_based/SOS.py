@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSOS(ClassicOptimizer):
+class OriginalSOS(Optimizer):
     """
     The original version: Symbiotic Organisms Search (SOS)
 

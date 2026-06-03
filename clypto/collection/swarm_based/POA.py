@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalPOA(ClassicOptimizer):
+class OriginalPOA(Optimizer):
     """
     The original version of: Pelican Optimization Algorithm (POA)
 

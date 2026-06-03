@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalAEO(ClassicOptimizer):
+class OriginalAEO(Optimizer):
     """
     The original version of: Artificial Ecosystem-based Optimization (AEO)
 
@@ -233,7 +233,7 @@ class ImprovedAEO(OriginalAEO):
             self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
 
 
-class EnhancedAEO(ClassicOptimizer):
+class EnhancedAEO(Optimizer):
     """
     The original version of: Enhanced Artificial Ecosystem-Based Optimization (EAEO)
 
@@ -365,7 +365,7 @@ class EnhancedAEO(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
 
 
-class ModifiedAEO(ClassicOptimizer):
+class ModifiedAEO(Optimizer):
     """
     The original version of: Modified Artificial Ecosystem-Based Optimization (MAEO)
 
@@ -485,7 +485,7 @@ class ModifiedAEO(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
 
 
-class AugmentedAEO(ClassicOptimizer):
+class AugmentedAEO(Optimizer):
     """
     The original version of: Augmented Artificial Ecosystem Optimization (AAEO)
 

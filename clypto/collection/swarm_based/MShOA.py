@@ -18,10 +18,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalMShOA(ClassicOptimizer):
+class OriginalMShOA(Optimizer):
     """
     The original version of: Mantis Shrimp Optimization Algorithm (MShOA)
     

@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent, Agent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalBA(ClassicOptimizer):
+class OriginalBA(Optimizer):
     """
     The original version of: Bat-inspired Algorithm (BA)
 
@@ -106,7 +106,7 @@ class OriginalBA(ClassicOptimizer):
                 self.pop[idx].update(solution=pop_new[idx].solution, target=pop_new[idx].target)
 
 
-class AdaptiveBA(ClassicOptimizer):
+class AdaptiveBA(Optimizer):
     """
     The original version of: Adaptive Bat-inspired Algorithm (ABA)
 
@@ -217,7 +217,7 @@ class AdaptiveBA(ClassicOptimizer):
                                      pulse_rate=pulse_rate)
 
 
-class DevBA(ClassicOptimizer):
+class DevBA(Optimizer):
     """
     The original version of: Developed Bat-inspired Algorithm (DBA)
 

@@ -8,10 +8,10 @@ from math import gamma
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalMSA(ClassicOptimizer):
+class OriginalMSA(Optimizer):
     """
     The original version: Moth Search Algorithm (MSA)
 

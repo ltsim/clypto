@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevEFO(ClassicOptimizer):
+class DevEFO(Optimizer):
     """
     The developed version: Electromagnetic Field Optimization (EFO)
 

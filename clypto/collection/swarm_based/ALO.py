@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalALO(ClassicOptimizer):
+class OriginalALO(Optimizer):
     """
     The original version of: Ant Lion Optimizer (ALO)
 

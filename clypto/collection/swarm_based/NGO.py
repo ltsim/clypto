@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %                         
 # --------------------------------------------------%
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalNGO(ClassicOptimizer):
+class OriginalNGO(Optimizer):
     """
     The original version of: Northern Goshawk Optimization (NGO)
 

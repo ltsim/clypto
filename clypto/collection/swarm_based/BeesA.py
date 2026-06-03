@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class CleverBookBeesA(ClassicOptimizer):
+class CleverBookBeesA(Optimizer):
     """
     The original version of: Bees Algorithm (CB-BeesA)
 
@@ -121,7 +121,7 @@ class CleverBookBeesA(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class OriginalBeesA(ClassicOptimizer):
+class OriginalBeesA(Optimizer):
     """
     The original version of: Bees Algorithm (BeesA)
 
@@ -246,7 +246,7 @@ class OriginalBeesA(ClassicOptimizer):
         self.dyn_radius = self.dance_reduction * self.dance_radius
 
 
-class ProbBeesA(ClassicOptimizer):
+class ProbBeesA(Optimizer):
     """
     The original version of: Probabilistic Bees Algorithm (P-BeesA)
 
