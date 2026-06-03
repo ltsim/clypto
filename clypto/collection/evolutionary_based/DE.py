@@ -7,20 +7,19 @@ import dataclasses
 
 import numpy as np
 import numpy.typing as npt
-
 from scipy.stats import cauchy
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import ClassicOptimizer
 
 
 class AgentDE(Agent):
     def __iter__(
-        self,
-        crossover: npt.NDArray[np.number],
-        mutation: npt.NDArray[np.number],
-        pop_size: int,
-        *args, **kwargs
+            self,
+            crossover: npt.NDArray[np.number],
+            mutation: npt.NDArray[np.number],
+            pop_size: int,
+            *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.crossover = crossover

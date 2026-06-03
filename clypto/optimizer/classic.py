@@ -3,25 +3,22 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-import functools
+import math
 import random
 import time
 import typing
 
-import math
-
-import cython
 import numpy as np
 import numpy.typing as npt
 
 from clypto.agents import Agent
 from clypto.agents.base import BaseAgent
+from clypto.optimizer.optimizer import Optimizer
 from clypto.utils.history import TrackHistory
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
-from clypto.optimizer.optimizer import Optimizer
 
 
 class ClassicOptimizer(Optimizer):
@@ -41,7 +38,6 @@ class ClassicOptimizer(Optimizer):
     EPSILON: typing.Final[float] = 10E-10
     AVAILABLE_MODES: typing.Final[tuple[typing.Literal['swarm', 'process', 'thread']]] = ('swarm',)
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
-    
 
     def __init__(self, **kwargs):
         self.__history = TrackHistory()
@@ -56,7 +52,7 @@ class ClassicOptimizer(Optimizer):
         self.epoch: typing.Optional[int] = None
         self.pop_size: typing.Optional[int] = None
         self.n_workers: typing.Optional[int] = None
-        self.pop: typing.Optional[list[Agent]]  = None
+        self.pop: typing.Optional[list[Agent]] = None
         self.g_best: typing.Optional[Agent] = Agent()
         self.g_worst: typing.Optional[Agent] = None
         self.problem: typing.Optional[Problem] = None

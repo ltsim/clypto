@@ -6,7 +6,6 @@
 
 from typing import Any
 
-import cython
 import numpy as np
 
 from clypto.agents.base import BaseAgent

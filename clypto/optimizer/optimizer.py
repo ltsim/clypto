@@ -1,7 +1,6 @@
 import abc
 import typing
 
-import cython
 import numpy as np
 import numpy.typing as npt
 
