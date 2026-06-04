@@ -6,7 +6,7 @@
 import cython
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer import Optimizer
 
 
@@ -51,8 +51,15 @@ class OriginalPSO(Optimizer):
     ICNN'95-international conference on neural networks (Vol. 4, pp. 1942-1948). IEEE.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c1: float = 2.05, c2: float = 2.05, w: float = 0.4,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c1: float = 2.05,
+        c2: float = 2.05,
+        w: float = 0.4,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -75,21 +82,23 @@ class OriginalPSO(Optimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.v_min = -self.v_max
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.v_min, self.v_max)
         local_pos = solution.copy()
         return PSOAgent(solution=solution, velocity=velocity, local_solution=local_pos)
 
-    def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_agent(self, solution: np.ndarray = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
         return agent
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
+        condition = np.logical_and(
+            self.problem.lb <= solution, solution <= self.problem.ub
+        )
         pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
         return np.where(condition, solution, pos_rand)
 
@@ -102,18 +111,30 @@ class OriginalPSO(Optimizer):
         """
         # Update weight after each move count  (weight down)
         for idx in range(0, self.pop_size):
-            cognitive = self.c1 * self.generator.random(self.problem.n_dims) * (
-                    self.pop[idx].local_solution - self.pop[idx].solution)
-            social = self.c2 * self.generator.random(self.problem.n_dims) * (
-                    self.g_best.solution - self.pop[idx].solution)
-            self.pop[idx].velocity = self.w * self.pop[idx].velocity + cognitive + social
+            cognitive = (
+                self.c1
+                * self.generator.random(self.problem.n_dims)
+                * (self.pop[idx].local_solution - self.pop[idx].solution)
+            )
+            social = (
+                self.c2
+                * self.generator.random(self.problem.n_dims)
+                * (self.g_best.solution - self.pop[idx].solution)
+            )
+            self.pop[idx].velocity = (
+                self.w * self.pop[idx].velocity + cognitive + social
+            )
             pos_new = self.pop[idx].solution + self.pop[idx].velocity
             pos_new = self.correct_solution(pos_new)
             target = self.get_target(pos_new)
             if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(target, self.pop[idx].local_target, self.problem.minmax):
-                self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
+            if self.compare_target(
+                target, self.pop[idx].local_target, self.problem.minmax
+            ):
+                self.pop[idx].update(
+                    local_solution=pos_new.copy(), local_target=target.copy()
+                )
 
 
 class AIW_PSO(Optimizer):
@@ -151,8 +172,15 @@ class AIW_PSO(Optimizer):
     Lecture Notes in Computer Science(), vol 4029. Springer, Berlin, Heidelberg. https://doi.org/10.1007/11785231_48
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c1: float = 2.05, c2: float = 2.05, alpha: float = 0.4,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c1: float = 2.05,
+        c2: float = 2.05,
+        alpha: float = 0.4,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -166,7 +194,7 @@ class AIW_PSO(Optimizer):
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.c1 = self.validator.check_float("c1", c1, (0, 5.0))
         self.c2 = self.validator.check_float("c2", c2, (0, 5.0))
-        self.alpha = self.validator.check_float("alpha", alpha, [0., 1.0])
+        self.alpha = self.validator.check_float("alpha", alpha, [0.0, 1.0])
         self.set_parameters(["epoch", "pop_size", "c1", "c2", "alpha"])
         self.sort_flag = False
         self.is_parallelizable = False
@@ -175,21 +203,23 @@ class AIW_PSO(Optimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.v_min = -self.v_max
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.v_min, self.v_max)
         local_pos = solution.copy()
-        return BaseAgent(solution=solution, velocity=velocity, local_solution=local_pos)
+        return PSOAgent(solution=solution, velocity=velocity, local_solution=local_pos)
 
-    def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_agent(self, solution: np.ndarray = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
         return agent
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
+        condition = np.logical_and(
+            self.problem.lb <= solution, solution <= self.problem.ub
+        )
         pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
         return np.where(condition, solution, pos_rand)
 
@@ -204,12 +234,20 @@ class AIW_PSO(Optimizer):
         for idx in range(0, self.pop_size):
             denom = np.abs(self.pop[idx].local_solution - current_best.solution)
             denom = np.where(denom == 0, 1e-6, denom)
-            isa = np.abs(self.pop[idx].solution - self.pop[idx].local_solution) / denom  # individual search ability
+            isa = (
+                np.abs(self.pop[idx].solution - self.pop[idx].local_solution) / denom
+            )  # individual search ability
             w = 1 - self.alpha * (1.0 / (1.0 + np.exp(-isa)))
-            cognitive = self.c1 * self.generator.random(self.problem.n_dims) * (
-                    self.pop[idx].local_solution - self.pop[idx].solution)
-            social = self.c2 * self.generator.random(self.problem.n_dims) * (
-                    self.g_best.solution - self.pop[idx].solution)
+            cognitive = (
+                self.c1
+                * self.generator.random(self.problem.n_dims)
+                * (self.pop[idx].local_solution - self.pop[idx].solution)
+            )
+            social = (
+                self.c2
+                * self.generator.random(self.problem.n_dims)
+                * (self.g_best.solution - self.pop[idx].solution)
+            )
             velocity = w * self.pop[idx].velocity + cognitive + social
             self.pop[idx].velocity = np.clip(velocity, self.v_min, self.v_max)
             pos_new = self.pop[idx].solution + self.pop[idx].velocity
@@ -217,8 +255,12 @@ class AIW_PSO(Optimizer):
             target = self.get_target(pos_new)
             if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(target, self.pop[idx].local_target, self.problem.minmax):
-                self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
+            if self.compare_target(
+                target, self.pop[idx].local_target, self.problem.minmax
+            ):
+                self.pop[idx].update(
+                    local_solution=pos_new.copy(), local_target=target.copy()
+                )
 
 
 class LDW_PSO(Optimizer):
@@ -256,8 +298,16 @@ class LDW_PSO(Optimizer):
     evolutionary computation proceedings. IEEE world congress on computational intelligence (Cat. No. 98TH8360), pp. 69-73. IEEE, 1998.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c1: float = 2.05, c2: float = 2.05,
-                 w_min: float = 0.4, w_max: float = 0.9, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c1: float = 2.05,
+        c2: float = 2.05,
+        w_min: float = 0.4,
+        w_max: float = 0.9,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -282,21 +332,23 @@ class LDW_PSO(Optimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.v_min = -self.v_max
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.v_min, self.v_max)
         local_pos = solution.copy()
         return PSOAgent(solution=solution, velocity=velocity, local_solution=local_pos)
 
-    def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_agent(self, solution: np.ndarray = None) -> Agent:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
         return agent
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
+        condition = np.logical_and(
+            self.problem.lb <= solution, solution <= self.problem.ub
+        )
         pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
         return np.where(condition, solution, pos_rand)
 
@@ -310,10 +362,16 @@ class LDW_PSO(Optimizer):
         # Update weight after each move count  (weight down)
         w = (self.epoch - epoch) / self.epoch * (self.w_max - self.w_min) + self.w_min
         for idx in range(0, self.pop_size):
-            cognitive = self.c1 * self.generator.random(self.problem.n_dims) * (
-                    self.pop[idx].local_solution - self.pop[idx].solution)
-            social = self.c2 * self.generator.random(self.problem.n_dims) * (
-                    self.g_best.solution - self.pop[idx].solution)
+            cognitive = (
+                self.c1
+                * self.generator.random(self.problem.n_dims)
+                * (self.pop[idx].local_solution - self.pop[idx].solution)
+            )
+            social = (
+                self.c2
+                * self.generator.random(self.problem.n_dims)
+                * (self.g_best.solution - self.pop[idx].solution)
+            )
             velocity = w * self.pop[idx].velocity + cognitive + social
             self.pop[idx].velocity = np.clip(velocity, self.v_min, self.v_max)
             pos_new = self.pop[idx].solution + self.pop[idx].velocity
@@ -321,8 +379,12 @@ class LDW_PSO(Optimizer):
             target = self.get_target(pos_new)
             if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(target, self.pop[idx].local_target, self.problem.minmax):
-                self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
+            if self.compare_target(
+                target, self.pop[idx].local_target, self.problem.minmax
+            ):
+                self.pop[idx].update(
+                    local_solution=pos_new.copy(), local_target=target.copy()
+                )
 
 
 class P_PSO(Optimizer):
@@ -354,7 +416,9 @@ class P_PSO(Optimizer):
     Phasor particle swarm optimization: a simple and efficient variant of PSO. Soft Computing, 23(19), pp.9701-9718.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -371,14 +435,14 @@ class P_PSO(Optimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.dyn_delta_list = self.generator.uniform(0, 2 * np.pi, self.pop_size)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(-self.v_max, self.v_max)
         local_pos = solution.copy()
         return PSOAgent(solution=solution, velocity=velocity, local_solution=local_pos)
 
-    def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_agent(self, solution: np.ndarray = None) -> Agent:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
@@ -396,19 +460,26 @@ class P_PSO(Optimizer):
             bb = 2 * (np.cos(self.dyn_delta_list[idx]))
             ee = np.abs(np.cos(self.dyn_delta_list[idx])) ** aa
             tt = np.abs(np.sin(self.dyn_delta_list[idx])) ** bb
-            v_new = ee * (self.pop[idx].local_solution - self.pop[idx].solution) + tt * (
-                    self.g_best.solution - self.pop[idx].solution)
+            v_new = ee * (
+                self.pop[idx].local_solution - self.pop[idx].solution
+            ) + tt * (self.g_best.solution - self.pop[idx].solution)
             v_new = np.minimum(np.maximum(v_new, -self.v_max), self.v_max)
             self.pop[idx].velocity = v_new
             pos_new = self.pop[idx].solution + v_new
             pos_new = self.correct_solution(pos_new)
             self.dyn_delta_list[idx] += np.abs(aa + bb) * (2 * np.pi)
-            self.v_max = (np.abs(np.cos(self.dyn_delta_list[idx])) ** 2) * (self.problem.ub - self.problem.lb)
+            self.v_max = (np.abs(np.cos(self.dyn_delta_list[idx])) ** 2) * (
+                self.problem.ub - self.problem.lb
+            )
             target = self.get_target(pos_new)
             if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(target, self.pop[idx].local_target, self.problem.minmax):
-                self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
+            if self.compare_target(
+                target, self.pop[idx].local_target, self.problem.minmax
+            ):
+                self.pop[idx].update(
+                    local_solution=pos_new.copy(), local_target=target.copy()
+                )
 
 
 class HPSO_TVAC(P_PSO):
@@ -478,11 +549,19 @@ class HPSO_TVAC(P_PSO):
             c2_it = np.abs(1 - w) ** (c_it / (1 - w))
             #################### HPSO
             v_new = c1_it * self.generator.uniform(0, 1, self.problem.n_dims) * (
-                    self.pop[idx].local_solution - self.pop[idx].solution) + \
-                    c2_it * self.generator.uniform(0, 1, self.problem.n_dims) * \
-                    (self.g_best.solution + self.pop[idx_k].local_solution - 2 * self.pop[idx].solution)
-            v_new = np.where(v_new == 0,
-                             np.sign(0.5 - self.generator.uniform()) * self.generator.uniform() * self.v_max, v_new)
+                self.pop[idx].local_solution - self.pop[idx].solution
+            ) + c2_it * self.generator.uniform(0, 1, self.problem.n_dims) * (
+                self.g_best.solution
+                + self.pop[idx_k].local_solution
+                - 2 * self.pop[idx].solution
+            )
+            v_new = np.where(
+                v_new == 0,
+                np.sign(0.5 - self.generator.uniform())
+                * self.generator.uniform()
+                * self.v_max,
+                v_new,
+            )
             v_new = np.sign(v_new) * np.minimum(np.abs(v_new), self.v_max)
             #########################
             v_new = np.minimum(np.maximum(v_new, -self.v_max), self.v_max)
@@ -492,8 +571,12 @@ class HPSO_TVAC(P_PSO):
             target = self.get_target(pos_new)
             if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(target, self.pop[idx].local_target, self.problem.minmax):
-                self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
+            if self.compare_target(
+                target, self.pop[idx].local_target, self.problem.minmax
+            ):
+                self.pop[idx].update(
+                    local_solution=pos_new.copy(), local_target=target.copy()
+                )
 
 
 class C_PSO(P_PSO):
@@ -531,8 +614,16 @@ class C_PSO(P_PSO):
     combined with chaos. Chaos, Solitons & Fractals, 25(5), pp.1261-1271.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c1: float = 2.05, c2: float = 2.05,
-                 w_min: float = 0.4, w_max: float = 0.9, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c1: float = 2.05,
+        c2: float = 2.05,
+        w_min: float = 0.4,
+        w_max: float = 0.9,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -561,7 +652,9 @@ class C_PSO(P_PSO):
         self.dyn_ub = self.problem.ub.copy()
 
     def get_weights__(self, fit, fit_avg, fit_min):
-        temp1 = self.w_min + (self.w_max - self.w_min) * (fit - fit_min) / (fit_avg - fit_min)
+        temp1 = self.w_min + (self.w_max - self.w_min) * (fit - fit_min) / (
+            fit_avg - fit_min
+        )
         if self.problem.minmax == "min":
             output = temp1 if fit <= fit_avg else self.w_max
         else:
@@ -583,9 +676,15 @@ class C_PSO(P_PSO):
         fit_min = np.min(list_fits)
         for idx in range(self.pop_size):
             w = self.get_weights__(self.pop[idx].target.fitness, fit_avg, fit_min)
-            v_new = w * self.pop[idx].velocity + self.c1 * self.generator.random() * (
-                    self.pop[idx].local_solution - self.pop[idx].solution) + \
-                    self.c2 * self.generator.random() * (self.g_best.solution - self.pop[idx].solution)
+            v_new = (
+                w * self.pop[idx].velocity
+                + self.c1
+                * self.generator.random()
+                * (self.pop[idx].local_solution - self.pop[idx].solution)
+                + self.c2
+                * self.generator.random()
+                * (self.g_best.solution - self.pop[idx].solution)
+            )
             v_new = np.clip(v_new, self.v_min, self.v_max)
             x_new = self.pop[idx].solution + v_new
             self.pop[idx].velocity = v_new
@@ -594,27 +693,41 @@ class C_PSO(P_PSO):
             target = self.get_target(pos_new)
             if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(target, self.pop[idx].local_target, self.problem.minmax):
-                self.pop[idx].update(local_solution=pos_new.copy(), local_target=target.copy())
+            if self.compare_target(
+                target, self.pop[idx].local_target, self.problem.minmax
+            ):
+                self.pop[idx].update(
+                    local_solution=pos_new.copy(), local_target=target.copy()
+                )
 
         ## Implement chaostic local search for the best solution
         g_best = self.g_best.copy()
-        cx_best_0 = (self.g_best.solution - self.problem.lb) / (self.problem.ub - self.problem.lb)  # Eq. 7
+        cx_best_0 = (self.g_best.solution - self.problem.lb) / (
+            self.problem.ub - self.problem.lb
+        )  # Eq. 7
         cx_best_1 = 4 * cx_best_0 * (1 - cx_best_0)  # Eq. 6
-        x_best = self.problem.lb + cx_best_1 * (self.problem.ub - self.problem.lb)  # Eq. 8
+        x_best = self.problem.lb + cx_best_1 * (
+            self.problem.ub - self.problem.lb
+        )  # Eq. 8
         x_best = self.correct_solution(x_best)
         target_best = self.get_target(x_best)
         if self.compare_target(target_best, self.g_best.target):
             g_best.update(solution=x_best, target=target_best)
 
         r = self.generator.random()
-        bound_min = np.stack([self.dyn_lb, g_best.solution - r * (self.dyn_ub - self.dyn_lb)])
+        bound_min = np.stack(
+            [self.dyn_lb, g_best.solution - r * (self.dyn_ub - self.dyn_lb)]
+        )
         self.dyn_lb = np.max(bound_min, axis=0)
-        bound_max = np.stack([self.dyn_ub, g_best.solution + r * (self.dyn_ub - self.dyn_lb)])
+        bound_max = np.stack(
+            [self.dyn_ub, g_best.solution + r * (self.dyn_ub - self.dyn_lb)]
+        )
         self.dyn_ub = np.min(bound_max, axis=0)
 
         pop_new_child = self.generate_population(self.pop_size - self.N_CLS)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new_child, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new_child, self.pop_size, self.problem.minmax
+        )
 
 
 class CL_PSO(Optimizer):
@@ -652,8 +765,16 @@ class CL_PSO(Optimizer):
     for global optimization of multimodal functions. IEEE transactions on evolutionary computation, 10(3), pp.281-295.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c_local: float = 1.2,
-                 w_min: float = 0.4, w_max: float = 0.9, max_flag: int = 7, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c_local: float = 1.2,
+        w_min: float = 0.4,
+        w_max: float = 0.9,
+        max_flag: int = 7,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -670,7 +791,9 @@ class CL_PSO(Optimizer):
         self.w_min = self.validator.check_float("w_min", w_min, (0, 0.5))
         self.w_max = self.validator.check_float("w_max", w_max, [0.5, 2.0])
         self.max_flag = self.validator.check_int("max_flag", max_flag, [2, 100])
-        self.set_parameters(["epoch", "pop_size", "c_local", "w_min", "w_max", "max_flag"])
+        self.set_parameters(
+            ["epoch", "pop_size", "c_local", "w_min", "w_max", "max_flag"]
+        )
         self.sort_flag = False
         self.is_parallelizable = True
 
@@ -679,14 +802,14 @@ class CL_PSO(Optimizer):
         self.v_min = -self.v_max
         self.flags = np.zeros(self.pop_size)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(-self.v_max, self.v_max)
         local_pos = solution.copy()
         return PSOAgent(solution=solution, velocity=velocity, local_solution=local_pos)
 
-    def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_agent(self, solution: np.ndarray = None) -> Agent:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
@@ -702,20 +825,37 @@ class CL_PSO(Optimizer):
         wk = self.w_max * (epoch / self.epoch) * (self.w_max - self.w_min)
         pop_new = []
         for idx in range(0, self.pop_size):
-            pci = 0.05 + 0.45 * (np.exp(10 * (idx + 1) / self.pop_size) - 1) / (np.exp(10) - 1)
+            pci = 0.05 + 0.45 * (np.exp(10 * (idx + 1) / self.pop_size) - 1) / (
+                np.exp(10) - 1
+            )
             vec_new = self.pop[idx].velocity.copy()
             for jdx in range(0, self.problem.n_dims):
                 if self.generator.random() > pci:
-                    vj = wk * self.pop[idx].velocity[jdx] + self.c_local * self.generator.random() * \
-                         (self.pop[idx].local_solution[jdx] - self.pop[idx].solution[jdx])
+                    vj = wk * self.pop[idx].velocity[
+                        jdx
+                    ] + self.c_local * self.generator.random() * (
+                        self.pop[idx].local_solution[jdx] - self.pop[idx].solution[jdx]
+                    )
                 else:
-                    id1, id2 = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 2, replace=False)
-                    if self.compare_target(self.pop[id1].target, self.pop[id2].target, self.problem.minmax):
-                        vj = wk * self.pop[idx].velocity[jdx] + self.c_local * self.generator.random() * \
-                             (self.pop[id1].local_solution[jdx] - self.pop[idx].solution[jdx])
+                    id1, id2 = self.generator.choice(
+                        list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+                    )
+                    if self.compare_target(
+                        self.pop[id1].target, self.pop[id2].target, self.problem.minmax
+                    ):
+                        vj = wk * self.pop[idx].velocity[
+                            jdx
+                        ] + self.c_local * self.generator.random() * (
+                            self.pop[id1].local_solution[jdx]
+                            - self.pop[idx].solution[jdx]
+                        )
                     else:
-                        vj = wk * self.pop[idx].velocity[jdx] + self.c_local * self.generator.random() * \
-                             (self.pop[id2].local_solution[jdx] - self.pop[idx].solution[jdx])
+                        vj = wk * self.pop[idx].velocity[
+                            jdx
+                        ] + self.c_local * self.generator.random() * (
+                            self.pop[id2].local_solution[jdx]
+                            - self.pop[idx].solution[jdx]
+                        )
                 vec_new[jdx] = vj
             vec_new = np.clip(vec_new, self.v_min, self.v_max)
             pos_new = self.pop[idx].solution + vec_new
@@ -727,9 +867,16 @@ class CL_PSO(Optimizer):
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
                 agent.local_target = agent.target.copy()
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
-                if self.compare_target(agent.target, self.pop[idx].local_target, self.problem.minmax):
-                    self.pop[idx].update(local_solution=agent.solution.copy(), local_target=agent.target.copy())
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
+                if self.compare_target(
+                    agent.target, self.pop[idx].local_target, self.problem.minmax
+                ):
+                    self.pop[idx].update(
+                        local_solution=agent.solution.copy(),
+                        local_target=agent.target.copy(),
+                    )
                     self.flags[idx] = 0
                 else:
                     self.flags[idx] += 1
@@ -737,11 +884,17 @@ class CL_PSO(Optimizer):
                         self.flags[idx] = 0
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            pop_child = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            pop_child = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
             for idx in range(0, self.pop_size):
-                if self.compare_target(pop_new[idx].target, self.pop[idx].local_target, self.problem.minmax):
-                    pop_child[idx].update(local_solution=pop_new[idx].solution.copy(),
-                                          local_target=pop_new[idx].target.copy())
+                if self.compare_target(
+                    pop_new[idx].target, self.pop[idx].local_target, self.problem.minmax
+                ):
+                    pop_child[idx].update(
+                        local_solution=pop_new[idx].solution.copy(),
+                        local_target=pop_new[idx].target.copy(),
+                    )
                     self.flags[idx] = 0
                 else:
                     self.flags[idx] += 1

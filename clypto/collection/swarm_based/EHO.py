@@ -46,8 +46,15 @@ class OriginalEHO(Optimizer):
     In 2015 3rd international symposium on computational and business intelligence (ISCBI) (pp. 1-5). IEEE.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, alpha: float = 0.5, beta: float = 0.5, n_clans: int = 5,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        alpha: float = 0.5,
+        beta: float = 0.5,
+        n_clans: int = 5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -61,7 +68,9 @@ class OriginalEHO(Optimizer):
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.alpha = self.validator.check_float("alpha", alpha, (0, 3.0))
         self.beta = self.validator.check_float("beta", beta, (0, 1.0))
-        self.n_clans = self.validator.check_int("n_clans", n_clans, [2, int(self.pop_size / 5)])
+        self.n_clans = self.validator.check_int(
+            "n_clans", n_clans, [2, int(self.pop_size / 5)]
+        )
         self.set_parameters(["epoch", "pop_size", "alpha", "beta", "n_clans"])
         self.n_individuals = int(self.pop_size / self.n_clans)
         self.sort_flag = False
@@ -69,7 +78,9 @@ class OriginalEHO(Optimizer):
     def initialization(self):
         if self.pop is None:
             self.pop = self.generate_population(self.pop_size)
-        self.pop_group = self.generate_group_population(self.pop, self.n_clans, self.n_individuals)
+        self.pop_group = self.generate_group_population(
+            self.pop, self.n_clans, self.n_individuals
+        )
 
     def evolve(self, epoch):
         """
@@ -83,24 +94,41 @@ class OriginalEHO(Optimizer):
         for idx in range(0, self.pop_size):
             clan_idx = int(idx / self.n_individuals)
             pos_clan_idx = int(idx % self.n_individuals)
-            if pos_clan_idx == 0:  # The best in clan, because all clans are sorted based on fitness
-                center = np.mean(np.array([agent.solution for agent in self.pop_group[clan_idx]]), axis=0)
+            if (
+                pos_clan_idx == 0
+            ):  # The best in clan, because all clans are sorted based on fitness
+                center = np.mean(
+                    np.array([agent.solution for agent in self.pop_group[clan_idx]]),
+                    axis=0,
+                )
                 pos_new = self.beta * center
             else:
-                pos_new = self.pop_group[clan_idx][pos_clan_idx].solution + self.alpha * self.generator.random() * \
-                          (self.pop_group[clan_idx][0].solution - self.pop_group[clan_idx][pos_clan_idx].solution)
+                pos_new = self.pop_group[clan_idx][
+                    pos_clan_idx
+                ].solution + self.alpha * self.generator.random() * (
+                    self.pop_group[clan_idx][0].solution
+                    - self.pop_group[clan_idx][pos_clan_idx].solution
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
-        self.pop_group = self.generate_group_population(self.pop, self.n_clans, self.n_individuals)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
+        self.pop_group = self.generate_group_population(
+            self.pop, self.n_clans, self.n_individuals
+        )
         # Separating operator
         for idx in range(0, self.n_clans):
-            self.pop_group[idx] = self.get_sorted_population(self.pop_group[idx], self.problem.minmax)
+            self.pop_group[idx] = self.get_sorted_population(
+                self.pop_group[idx], self.problem.minmax
+            )
             self.pop_group[idx][-1] = self.generate_agent()
         self.pop = [agent for pack in self.pop_group for agent in pack]

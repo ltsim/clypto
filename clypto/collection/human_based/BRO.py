@@ -7,7 +7,7 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -41,7 +41,13 @@ class DevBRO(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, threshold: float = 3, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        threshold: float = 3,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -62,7 +68,7 @@ class DevBRO(Optimizer):
         self.problem.lb_updated = self.problem.lb.copy()
         self.problem.ub_updated = self.problem.ub.copy()
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         damage = 0
@@ -80,7 +86,7 @@ class DevBRO(Optimizer):
     def find_idx_min_distance__(self, target_pos=None, pop=None):
         list_pos = np.array([pop[idx].solution for idx in range(0, self.pop_size)])
         target_pos = np.reshape(target_pos, (1, -1))
-        dist_list = cdist(list_pos, target_pos, 'euclidean')
+        dist_list = cdist(list_pos, target_pos, "euclidean")
         dist_list = np.reshape(dist_list, (-1))
         return self.get_idx_min__(dist_list)
 
@@ -94,25 +100,36 @@ class DevBRO(Optimizer):
         for idx in range(self.pop_size):
             # Compare ith soldier with nearest one (jth)
             jdx = self.find_idx_min_distance__(self.pop[idx].solution, self.pop)
-            if self.compare_target(self.pop[idx].target, self.pop[jdx].target, self.problem.minmax):
+            if self.compare_target(
+                self.pop[idx].target, self.pop[jdx].target, self.problem.minmax
+            ):
                 ## Update Winner based on global best solution
-                pos_new = self.pop[idx].solution + self.generator.normal(0, 1) * \
-                          np.mean(np.array([self.pop[idx].solution, self.g_best.solution]), axis=0)
+                pos_new = self.pop[idx].solution + self.generator.normal(
+                    0, 1
+                ) * np.mean(
+                    np.array([self.pop[idx].solution, self.g_best.solution]), axis=0
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
-                dam_new = self.pop[idx].damage - 1  ## Substract damaged hurt -1 to go next battle
+                dam_new = (
+                    self.pop[idx].damage - 1
+                )  ## Substract damaged hurt -1 to go next battle
                 agent.damage = dam_new
                 self.pop[idx] = agent
                 ## Update Loser
-                if self.pop[jdx].damage < self.threshold:  ## If loser not dead yet, move it based on general
-                    pos_new = self.generator.uniform() * (np.maximum(self.pop[jdx].solution, self.g_best.solution) -
-                                                          np.minimum(self.pop[jdx].solution,
-                                                                     self.g_best.solution)) + np.maximum(
-                        self.pop[jdx].solution, self.g_best.solution)
+                if (
+                    self.pop[jdx].damage < self.threshold
+                ):  ## If loser not dead yet, move it based on general
+                    pos_new = self.generator.uniform() * (
+                        np.maximum(self.pop[jdx].solution, self.g_best.solution)
+                        - np.minimum(self.pop[jdx].solution, self.g_best.solution)
+                    ) + np.maximum(self.pop[jdx].solution, self.g_best.solution)
                     dam_new = self.pop[jdx].damage + 1
                     self.pop[jdx].target = self.get_target(self.pop[jdx].solution)
                 else:  ## Loser dead and respawn again
-                    pos_new = self.generator.uniform(self.problem.lb_updated, self.problem.ub_updated)
+                    pos_new = self.generator.uniform(
+                        self.problem.lb_updated, self.problem.ub_updated
+                    )
                     dam_new = 0
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
@@ -123,18 +140,25 @@ class DevBRO(Optimizer):
                 self.pop[idx] = self.pop[jdx].copy()
                 ## Update Winner by following position of General to protect the King and General
                 pos_new = self.pop[jdx].solution + self.generator.uniform() * (
-                        self.g_best.solution - self.pop[jdx].solution)
+                    self.g_best.solution - self.pop[jdx].solution
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 agent.damage = 0
                 self.pop[jdx] = agent
         if epoch >= self.dyn_delta:  # max_epoch = 1000 -> delta = 300, 450, >500,....
-            pos_list = np.array([self.pop[idx].solution for idx in range(0, self.pop_size)])
+            pos_list = np.array(
+                [self.pop[idx].solution for idx in range(0, self.pop_size)]
+            )
             pos_std = np.std(pos_list, axis=0)
             lb = self.g_best.solution - pos_std
             ub = self.g_best.solution + pos_std
-            self.problem.lb_updated = np.clip(lb, self.problem.lb_updated, self.problem.ub_updated)
-            self.problem.ub_updated = np.clip(ub, self.problem.lb_updated, self.problem.ub_updated)
+            self.problem.lb_updated = np.clip(
+                lb, self.problem.lb_updated, self.problem.ub_updated
+            )
+            self.problem.ub_updated = np.clip(
+                ub, self.problem.lb_updated, self.problem.ub_updated
+            )
             self.dyn_delta += np.round(self.dyn_delta / 2)
 
 
@@ -172,7 +196,13 @@ class OriginalBRO(DevBRO):
     [1] Rahkar Farshi, T., 2021. Battle royale optimization algorithm. Neural Computing and Applications, 33(4), pp.1139-1157.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, threshold: float = 3, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        threshold: float = 3,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -193,28 +223,41 @@ class OriginalBRO(DevBRO):
         for idx in range(self.pop_size):
             # Compare ith soldier with nearest one (jth)
             jdx = self.find_idx_min_distance__(self.pop[idx].solution, self.pop)
-            dam, vic = idx, jdx  ## This error in the algorithm's flow in the paper, But in the matlab code, he changed.
-            if self.compare_target(self.pop[idx].target, self.pop[jdx].target, self.problem.minmax):
+            dam, vic = (
+                idx,
+                jdx,
+            )  ## This error in the algorithm's flow in the paper, But in the matlab code, he changed.
+            if self.compare_target(
+                self.pop[idx].target, self.pop[jdx].target, self.problem.minmax
+            ):
                 dam, vic = jdx, idx  ## The mistake also here in the paper.
             if self.pop[dam].damage < self.threshold:
                 pos_new = self.generator.uniform(0, 1, self.problem.n_dims) * (
-                        np.maximum(self.pop[dam].solution, self.g_best.solution) -
-                        np.minimum(self.pop[dam].solution, self.g_best.solution)) + np.maximum(
-                    self.pop[dam].solution, self.g_best.solution)
+                    np.maximum(self.pop[dam].solution, self.g_best.solution)
+                    - np.minimum(self.pop[dam].solution, self.g_best.solution)
+                ) + np.maximum(self.pop[dam].solution, self.g_best.solution)
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 agent.damage = self.pop[dam].damage + 1
                 self.pop[dam] = agent
                 self.pop[vic].damage = 0
             else:
-                pos_new = self.generator.uniform(self.problem.lb_updated, self.problem.ub_updated)
+                pos_new = self.generator.uniform(
+                    self.problem.lb_updated, self.problem.ub_updated
+                )
                 agent = self.generate_agent(pos_new)
                 self.pop[dam] = agent
         if epoch >= self.dyn_delta:
-            pos_list = np.array([self.pop[idx].solution for idx in range(0, self.pop_size)])
+            pos_list = np.array(
+                [self.pop[idx].solution for idx in range(0, self.pop_size)]
+            )
             pos_std = np.std(pos_list, axis=0)
             lb = self.g_best.solution - pos_std
             ub = self.g_best.solution + pos_std
-            self.problem.lb_updated = np.clip(lb, self.problem.lb_updated, self.problem.ub_updated)
-            self.problem.ub_updated = np.clip(ub, self.problem.lb_updated, self.problem.ub_updated)
+            self.problem.lb_updated = np.clip(
+                lb, self.problem.lb_updated, self.problem.ub_updated
+            )
+            self.problem.ub_updated = np.clip(
+                ub, self.problem.lb_updated, self.problem.ub_updated
+            )
             self.dyn_delta += round(self.dyn_delta / 2)

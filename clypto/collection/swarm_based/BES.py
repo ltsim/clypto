@@ -48,8 +48,17 @@ class OriginalBES(Optimizer):
     search optimisation algorithm. Artificial Intelligence Review, 53(3), pp.2237-2264.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, a_factor: int = 10, R_factor: float = 1.5,
-                 alpha: float = 2.0, c1: float = 2.0, c2: float = 2.0, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        a_factor: int = 10,
+        R_factor: float = 1.5,
+        alpha: float = 2.0,
+        c1: float = 2.0,
+        c2: float = 2.0,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -68,11 +77,13 @@ class OriginalBES(Optimizer):
         self.alpha = self.validator.check_float("alpha", alpha, [0.5, 3.0])
         self.c1 = self.validator.check_float("c1", c1, (0, 4.0))
         self.c2 = self.validator.check_float("c2", c2, (0, 4.0))
-        self.set_parameters(["epoch", "pop_size", "a_factor", "R_factor", "alpha", "c1", "c2"])
+        self.set_parameters(
+            ["epoch", "pop_size", "a_factor", "R_factor", "alpha", "c1", "c2"]
+        )
         self.sort_flag = False
 
     def create_x_y_x1_y1__(self):
-        """ Using numpy vector for faster computational time """
+        """Using numpy vector for faster computational time"""
         ## Eq. 2
         phi = self.a_factor * np.pi * self.generator.uniform(0, 1, self.pop_size)
         r = phi + self.R_factor * self.generator.uniform(0, 1, self.pop_size)
@@ -103,16 +114,22 @@ class OriginalBES(Optimizer):
 
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.g_best.solution + self.alpha * self.generator.uniform() * (pos_mean - self.pop[idx].solution)
+            pos_new = self.g_best.solution + self.alpha * self.generator.uniform() * (
+                pos_mean - self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
         ## 2. Search in space
         pos_list = np.array([agent.solution for agent in self.pop])
@@ -120,32 +137,46 @@ class OriginalBES(Optimizer):
         pop_child = []
         for idx in range(0, self.pop_size):
             idx_rand = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            pos_new = self.pop[idx].solution + y_list[idx] * (self.pop[idx].solution - self.pop[idx_rand].solution) + \
-                      x_list[idx] * (self.pop[idx].solution - pos_mean)
+            pos_new = (
+                self.pop[idx].solution
+                + y_list[idx] * (self.pop[idx].solution - self.pop[idx_rand].solution)
+                + x_list[idx] * (self.pop[idx].solution - pos_mean)
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_child, self.problem.minmax
+            )
 
         ## 3. Swoop
         pos_list = np.array([agent.solution for agent in self.pop])
         pos_mean = np.mean(pos_list, axis=0)
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.generator.uniform() * self.g_best.solution + x1_list[idx] * (
-                    self.pop[idx].solution - self.c1 * pos_mean) \
-                      + y1_list[idx] * (self.pop[idx].solution - self.c2 * self.g_best.solution)
+            pos_new = (
+                self.generator.uniform() * self.g_best.solution
+                + x1_list[idx] * (self.pop[idx].solution - self.c1 * pos_mean)
+                + y1_list[idx]
+                * (self.pop[idx].solution - self.c2 * self.g_best.solution)
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

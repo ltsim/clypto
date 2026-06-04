@@ -41,7 +41,9 @@ class OriginalPFA(Optimizer):
     Applied soft computing, 78, pp.545-568.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -61,26 +63,48 @@ class OriginalPFA(Optimizer):
             epoch (int): The current iteration
         """
         alpha, beta = self.generator.uniform(1, 2, 2)
-        A = self.generator.uniform(self.problem.lb, self.problem.ub) * np.exp(-2 * epoch / self.epoch)
-        t = 1. - epoch * 1.0 / self.epoch
+        A = self.generator.uniform(self.problem.lb, self.problem.ub) * np.exp(
+            -2 * epoch / self.epoch
+        )
+        t = 1.0 - epoch * 1.0 / self.epoch
         space = self.problem.ub - self.problem.lb
         ## Update the position of pathfinder and check the bound
-        pos_new = self.pop[0].solution + 2 * self.generator.uniform() * (
-                self.g_best.solution - self.pop[0].solution) + A
+        pos_new = (
+            self.pop[0].solution
+            + 2
+            * self.generator.uniform()
+            * (self.g_best.solution - self.pop[0].solution)
+            + A
+        )
         pos_new = self.correct_solution(pos_new)
         agent = self.generate_agent(pos_new)
-        pop_new = [agent, ]
+        pop_new = [
+            agent,
+        ]
         ## Update positions of members, check the bound and calculate new fitness
         for idx in range(1, self.pop_size):
             pos_new = self.pop[idx].solution.copy().astype(float)
             for k in range(1, self.pop_size):
-                dist = np.sqrt(np.sum((self.pop[k].solution - self.pop[idx].solution) ** 2)) / self.problem.n_dims
-                t2 = alpha * self.generator.uniform() * (self.pop[k].solution - self.pop[idx].solution)
+                dist = (
+                    np.sqrt(
+                        np.sum((self.pop[k].solution - self.pop[idx].solution) ** 2)
+                    )
+                    / self.problem.n_dims
+                )
+                t2 = (
+                    alpha
+                    * self.generator.uniform()
+                    * (self.pop[k].solution - self.pop[idx].solution)
+                )
                 ## First stabilize the distance
                 t3 = self.generator.uniform() * t * (dist / space)
                 pos_new += t2 + t3
             ## Second stabilize the population size
-            t1 = beta * self.generator.uniform() * (self.g_best.solution - self.pop[idx].solution)
+            t1 = (
+                beta
+                * self.generator.uniform()
+                * (self.g_best.solution - self.pop[idx].solution)
+            )
             pos_new = (pos_new + t1) / self.pop_size
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -89,4 +113,6 @@ class OriginalPFA(Optimizer):
                 pop_new[-1].target = self.get_target(pos_new)
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+        self.pop = self.greedy_selection_population(
+            self.pop, pop_new, self.problem.minmax
+        )

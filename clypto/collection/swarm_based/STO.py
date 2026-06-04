@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Created by "Thieu" at 22:00, 11/03/2023 ----------%
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -48,7 +48,9 @@ class OriginalSTO(Optimizer):
     Metaheuristic Algorithm for Solving Engineering Optimization Problems. IEEE Access, 10, 132396-132431.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -89,16 +91,23 @@ class OriginalSTO(Optimizer):
                     sf = self.pop[kk]
             r1 = self.generator.integers(1, 3)
             pos_new = self.pop[idx].solution + self.generator.random() * (
-                    sf.solution - r1 * self.pop[idx].solution)  # Eq. 5
+                sf.solution - r1 * self.pop[idx].solution
+            )  # Eq. 5
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
 
             # PHASE 2: CARRYING THE FISH TO THE SUITABLE POSITION (EXPLOITATION)
-            pos_new = self.pop[idx].solution + self.generator.random() * (
-                    self.problem.ub - self.problem.lb) / epoch  # Eq. 7
+            pos_new = (
+                self.pop[idx].solution
+                + self.generator.random() * (self.problem.ub - self.problem.lb) / epoch
+            )  # Eq. 7
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent

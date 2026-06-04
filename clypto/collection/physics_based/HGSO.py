@@ -44,7 +44,13 @@ class OriginalHGSO(Optimizer):
     optimization: A novel physics-based algorithm. Future Generation Computer Systems, 101, pp.646-667.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, n_clusters: int = 2, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        n_clusters: int = 2,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -54,7 +60,9 @@ class OriginalHGSO(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.n_clusters = self.validator.check_int("n_clusters", n_clusters, [2, int(self.pop_size / 5)])
+        self.n_clusters = self.validator.check_int(
+            "n_clusters", n_clusters, [2, int(self.pop_size / 5)]
+        )
         self.set_parameters(["epoch", "pop_size", "n_clusters"])
         self.n_elements = int(self.pop_size / self.n_clusters)
         self.sort_flag = False
@@ -63,9 +71,9 @@ class OriginalHGSO(Optimizer):
         self.beta = 1.0
         self.alpha = 1
         self.epsilon = 0.05
-        self.l1 = 5E-2
+        self.l1 = 5e-2
         self.l2 = 100.0
-        self.l3 = 1E-2
+        self.l3 = 1e-2
 
     def initialize_variables(self):
         self.H_j = self.l1 * self.generator.uniform()
@@ -76,8 +84,12 @@ class OriginalHGSO(Optimizer):
     def initialization(self):
         if self.pop is None:
             self.pop = self.generate_population(self.pop_size)
-        self.pop_group = self.generate_group_population(self.pop, self.n_clusters, self.n_elements)
-        self.p_best = self.get_best_solution_in_team__(self.pop_group)  # multiple element
+        self.pop_group = self.generate_group_population(
+            self.pop, self.n_clusters, self.n_elements
+        )
+        self.p_best = self.get_best_solution_in_team__(
+            self.pop_group
+        )  # multiple element
 
     def flatten_group__(self, group):
         pop = []
@@ -106,14 +118,27 @@ class OriginalHGSO(Optimizer):
             for jdx in range(self.n_elements):
                 F = -1.0 if self.generator.uniform() < 0.5 else 1.0
                 ##### Based on Eq. 8, 9, 10
-                self.H_j = self.H_j * np.exp(-self.C_j * (1.0 / np.exp(-epoch / self.epoch) - 1.0 / self.T0))
+                self.H_j = self.H_j * np.exp(
+                    -self.C_j * (1.0 / np.exp(-epoch / self.epoch) - 1.0 / self.T0)
+                )
                 S_ij = self.K * self.H_j * self.P_ij
-                gama = self.beta * np.exp(- ((self.p_best[idx].target.fitness + self.epsilon) / (
-                        self.pop_group[idx][jdx].target.fitness + self.epsilon)))
-                pos_new = self.pop_group[idx][jdx].solution + F * self.generator.uniform() * gama * (
-                        self.p_best[idx].solution - self.pop_group[idx][jdx].solution) + \
-                          F * self.generator.uniform() * self.alpha * (
-                                  S_ij * self.g_best.solution - self.pop_group[idx][jdx].solution)
+                gama = self.beta * np.exp(
+                    -(
+                        (self.p_best[idx].target.fitness + self.epsilon)
+                        / (self.pop_group[idx][jdx].target.fitness + self.epsilon)
+                    )
+                )
+                pos_new = (
+                    self.pop_group[idx][jdx].solution
+                    + F
+                    * self.generator.uniform()
+                    * gama
+                    * (self.p_best[idx].solution - self.pop_group[idx][jdx].solution)
+                    + F
+                    * self.generator.uniform()
+                    * self.alpha
+                    * (S_ij * self.g_best.solution - self.pop_group[idx][jdx].solution)
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
@@ -124,7 +149,9 @@ class OriginalHGSO(Optimizer):
         self.pop = self.flatten_group__(self.pop_group)
 
         ## Update Henry's coefficient using Eq.8
-        self.H_j = self.H_j * np.exp(-self.C_j * (1.0 / np.exp(-epoch / self.epoch) - 1.0 / self.T0))
+        self.H_j = self.H_j * np.exp(
+            -self.C_j * (1.0 / np.exp(-epoch / self.epoch) - 1.0 / self.T0)
+        )
         ## Update the solubility of each gas using Eq.9
         S_ij = self.K * self.H_j * self.P_ij
         ## Rank and select the number of worst agents using Eq. 11
@@ -146,5 +173,7 @@ class OriginalHGSO(Optimizer):
         pop_new = self.update_target_for_population(pop_new)
         for idx, id_selected in enumerate(pop_idx):
             self.pop[id_selected] = pop_new[idx].copy()
-        self.pop_group = self.generate_group_population(self.pop, self.n_clusters, self.n_elements)
+        self.pop_group = self.generate_group_population(
+            self.pop, self.n_clusters, self.n_elements
+        )
         self.p_best = self.get_best_solution_in_team__(self.pop_group)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 00:08, 27/10/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 00:08, 27/10/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -42,7 +42,9 @@ class OriginalGJO(Optimizer):
     optimizer for engineering applications. Expert Systems with Applications, 198, 116924.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -61,9 +63,16 @@ class OriginalGJO(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        E1 = 1.5 * (1. - (epoch / self.epoch))
-        RL = self.get_levy_flight_step(beta=1.5, multiplier=0.05, size=(self.pop_size, self.problem.n_dims), case=-1)
-        _, (male, female), _ = self.get_special_agents(self.pop, n_best=2, n_worst=1, minmax=self.problem.minmax)
+        E1 = 1.5 * (1.0 - (epoch / self.epoch))
+        RL = self.get_levy_flight_step(
+            beta=1.5,
+            multiplier=0.05,
+            size=(self.pop_size, self.problem.n_dims),
+            case=-1,
+        )
+        _, (male, female), _ = self.get_special_agents(
+            self.pop, n_best=2, n_worst=1, minmax=self.problem.minmax
+        )
         pop_new = []
         for idx in range(0, self.pop_size):
             male_pos = male.solution.copy()
@@ -73,14 +82,34 @@ class OriginalGJO(Optimizer):
                 E0 = 2 * r1 - 1
                 E = E1 * E0
                 if np.abs(E) < 1:  # EXPLOITATION
-                    t1 = np.abs((RL[idx, jdx] * male.solution[jdx] - self.pop[idx].solution[jdx]))
+                    t1 = np.abs(
+                        (
+                            RL[idx, jdx] * male.solution[jdx]
+                            - self.pop[idx].solution[jdx]
+                        )
+                    )
                     male_pos[jdx] = male.solution[jdx] - E * t1
-                    t2 = np.abs((RL[idx, jdx] * female.solution[jdx] - self.pop[idx].solution[jdx]))
+                    t2 = np.abs(
+                        (
+                            RL[idx, jdx] * female.solution[jdx]
+                            - self.pop[idx].solution[jdx]
+                        )
+                    )
                     female_pos[jdx] = female.solution[jdx] - E * t2
                 else:  # EXPLORATION
-                    t1 = np.abs((male.solution[jdx] - RL[idx, jdx] * self.pop[idx].solution[jdx]))
+                    t1 = np.abs(
+                        (
+                            male.solution[jdx]
+                            - RL[idx, jdx] * self.pop[idx].solution[jdx]
+                        )
+                    )
                     male_pos[jdx] = male.solution[jdx] - E * t1
-                    t2 = np.abs((female.solution[jdx] - RL[idx, jdx] * self.pop[idx].solution[jdx]))
+                    t2 = np.abs(
+                        (
+                            female.solution[jdx]
+                            - RL[idx, jdx] * self.pop[idx].solution[jdx]
+                        )
+                    )
                     female_pos[jdx] = female.solution[jdx] - E * t2
             pos_new = (male_pos + female_pos) / 2
             pos_new = self.correct_solution(pos_new)

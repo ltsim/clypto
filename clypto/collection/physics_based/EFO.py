@@ -39,8 +39,16 @@ class DevEFO(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, r_rate: float = 0.3,
-                 ps_rate: float = 0.85, p_field: float = 0.1, n_field: float = 0.45, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        r_rate: float = 0.3,
+        ps_rate: float = 0.85,
+        p_field: float = 0.1,
+        n_field: float = 0.45,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -57,7 +65,9 @@ class DevEFO(Optimizer):
         self.ps_rate = self.validator.check_float("ps_rate", ps_rate, (0, 1.0))
         self.p_field = self.validator.check_float("p_field", p_field, (0, 1.0))
         self.n_field = self.validator.check_float("n_field", n_field, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "r_rate", "ps_rate", "p_field", "n_field"])
+        self.set_parameters(
+            ["epoch", "pop_size", "r_rate", "ps_rate", "p_field", "n_field"]
+        )
         self.phi = (1 + np.sqrt(5)) / 2  # golden ratio
         self.sort_flag = True
 
@@ -70,32 +80,48 @@ class DevEFO(Optimizer):
         """
         pop_new = []
         for idx in range(0, self.pop_size):
-            r_idx1 = self.generator.integers(0, int(self.pop_size * self.p_field))  # top
-            r_idx2 = self.generator.integers(int(self.pop_size * (1 - self.n_field)), self.pop_size)  # bottom
-            r_idx3 = self.generator.integers(int((self.pop_size * self.p_field) + 1),
-                                             int(self.pop_size * (1 - self.n_field)))  # middle
+            r_idx1 = self.generator.integers(
+                0, int(self.pop_size * self.p_field)
+            )  # top
+            r_idx2 = self.generator.integers(
+                int(self.pop_size * (1 - self.n_field)), self.pop_size
+            )  # bottom
+            r_idx3 = self.generator.integers(
+                int((self.pop_size * self.p_field) + 1),
+                int(self.pop_size * (1 - self.n_field)),
+            )  # middle
             if self.generator.random() < self.ps_rate:
-                pos_new = self.pop[r_idx1].solution + self.phi * self.generator.random() * (
-                        self.g_best.solution - self.pop[r_idx3].solution) \
-                          + self.generator.random() * (self.g_best.solution - self.pop[r_idx2].solution)
+                pos_new = (
+                    self.pop[r_idx1].solution
+                    + self.phi
+                    * self.generator.random()
+                    * (self.g_best.solution - self.pop[r_idx3].solution)
+                    + self.generator.random()
+                    * (self.g_best.solution - self.pop[r_idx2].solution)
+                )
             else:
                 pos_new = self.problem.generate_solution()
             # replacement of one electromagnet of generated particle with a random number
             # (only for some generated particles) to bring diversity to the population
             if self.generator.random() < self.r_rate:
                 RI = self.generator.integers(0, self.problem.n_dims)
-                pos_new[self.generator.integers(0, self.problem.n_dims)] = self.generator.uniform(self.problem.lb[RI],
-                                                                                                  self.problem.ub[RI])
+                pos_new[self.generator.integers(0, self.problem.n_dims)] = (
+                    self.generator.uniform(self.problem.lb[RI], self.problem.ub[RI])
+                )
             # checking whether the generated number is inside boundary or not
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class OriginalEFO(DevEFO):
@@ -137,8 +163,16 @@ class OriginalEFO(DevEFO):
     Swarm and Evolutionary Computation, 26, pp.8-22.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, r_rate: float = 0.3,
-                 ps_rate: float = 0.85, p_field: float = 0.1, n_field: float = 0.45, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        r_rate: float = 0.3,
+        ps_rate: float = 0.85,
+        p_field: float = 0.1,
+        n_field: float = 0.45,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -153,7 +187,9 @@ class OriginalEFO(DevEFO):
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         rd = self.generator.uniform(self.problem.lb, self.problem.ub)
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
+        condition = np.logical_and(
+            self.problem.lb <= solution, solution <= self.problem.ub
+        )
         return np.where(condition, solution, rd)
 
     def initialization(self):
@@ -161,14 +197,21 @@ class OriginalEFO(DevEFO):
             self.pop = self.generate_population(self.pop_size)
         # %random vectors (this is to increase the calculation speed instead of determining the random values in each
         # iteration we allocate them in the beginning before algorithm start
-        self.r_index1 = self.generator.integers(0, int(self.pop_size * self.p_field), (self.problem.n_dims, self.epoch))
+        self.r_index1 = self.generator.integers(
+            0, int(self.pop_size * self.p_field), (self.problem.n_dims, self.epoch)
+        )
         # random particles from positive field
-        self.r_index2 = self.generator.integers(int(self.pop_size * (1 - self.n_field)), self.pop_size,
-                                                (self.problem.n_dims, self.epoch))
+        self.r_index2 = self.generator.integers(
+            int(self.pop_size * (1 - self.n_field)),
+            self.pop_size,
+            (self.problem.n_dims, self.epoch),
+        )
         # random particles from negative field
-        self.r_index3 = self.generator.integers(int((self.pop_size * self.p_field) + 1),
-                                                int(self.pop_size * (1 - self.n_field)),
-                                                (self.problem.n_dims, self.epoch))
+        self.r_index3 = self.generator.integers(
+            int((self.pop_size * self.p_field) + 1),
+            int(self.pop_size * (1 - self.n_field)),
+            (self.problem.n_dims, self.epoch),
+        )
         # random particles from neutral field
         self.ps = self.generator.uniform(0, 1, (self.problem.n_dims, self.epoch))
         # Probability of selecting electromagnets of generated particle from the positive field
@@ -190,20 +233,34 @@ class OriginalEFO(DevEFO):
         """
         iter01 = epoch - 1
         r = self.r_force[iter01]
-        x_new = np.zeros(self.problem.n_dims)  # temporary array to store generated particle
+        x_new = np.zeros(
+            self.problem.n_dims
+        )  # temporary array to store generated particle
         for idx in range(0, self.problem.n_dims):
             if self.ps[idx, iter01] > self.ps_rate:
-                x_new[idx] = self.pop[self.r_index3[idx, iter01]].solution[idx] + \
-                             self.phi * r * (self.pop[self.r_index1[idx, iter01]].solution[idx] -
-                                             self.pop[self.r_index3[idx, iter01]].solution[idx]) + \
-                             r * (self.pop[self.r_index3[idx, iter01]].solution[idx] -
-                                  self.pop[self.r_index2[idx, iter01]].solution[idx])
+                x_new[idx] = (
+                    self.pop[self.r_index3[idx, iter01]].solution[idx]
+                    + self.phi
+                    * r
+                    * (
+                        self.pop[self.r_index1[idx, iter01]].solution[idx]
+                        - self.pop[self.r_index3[idx, iter01]].solution[idx]
+                    )
+                    + r
+                    * (
+                        self.pop[self.r_index3[idx, iter01]].solution[idx]
+                        - self.pop[self.r_index2[idx, iter01]].solution[idx]
+                    )
+                )
             else:
                 x_new[idx] = self.pop[self.r_index1[idx, iter01]].solution[idx]
         # replacement of one electromagnet of generated particle with a random number (only for some generated particles) to bring diversity to the population
         if self.rp[iter01] < self.r_rate:
-            x_new[self.RI] = self.problem.lb[self.RI] + (self.problem.ub[self.RI] - self.problem.lb[self.RI]) * \
-                             self.randomization[iter01]
+            x_new[self.RI] = (
+                self.problem.lb[self.RI]
+                + (self.problem.ub[self.RI] - self.problem.lb[self.RI])
+                * self.randomization[iter01]
+            )
             RI = self.RI + 1
             if RI >= self.problem.n_dims:
                 self.RI = 0

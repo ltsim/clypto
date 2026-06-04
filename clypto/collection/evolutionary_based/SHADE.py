@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 08:37, 17/06/2023 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 08:37, 17/06/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -46,8 +46,14 @@ class OriginalSHADE(Optimizer):
     differential evolution. In 2013 IEEE congress on evolutionary computation (pp. 71-78). IEEE.
     """
 
-    def __init__(self, epoch: int = 750, pop_size: int = 100, miu_f: float = 0.5, miu_cr: float = 0.5,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 750,
+        pop_size: int = 100,
+        miu_f: float = 0.5,
+        miu_cr: float = 0.5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -73,7 +79,7 @@ class OriginalSHADE(Optimizer):
 
     ### Survivor Selection
     def weighted_lehmer_mean(self, list_objects, list_weights):
-        up = list_weights * list_objects ** 2
+        up = list_weights * list_objects**2
         down = list_weights * list_objects
         return np.sum(up) / np.sum(down)
 
@@ -112,10 +118,16 @@ class OriginalSHADE(Optimizer):
             x_best = pop_sorted[self.generator.integers(0, top)]
             r1_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
             new_pop = self.pop + self.dyn_pop_archive
-            r2_idx = self.generator.choice(list(set(range(0, len(new_pop))) - {idx, r1_idx}))
+            r2_idx = self.generator.choice(
+                list(set(range(0, len(new_pop))) - {idx, r1_idx})
+            )
             x_r1 = self.pop[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
-            x_new = self.pop[idx].solution + f * (x_best.solution - self.pop[idx].solution) + f * (x_r1 - x_r2)
+            x_new = (
+                self.pop[idx].solution
+                + f * (x_best.solution - self.pop[idx].solution)
+                + f * (x_r1 - x_r2)
+            )
             condition = self.generator.random(self.problem.n_dims) < cr
             pos_new = np.where(condition, x_new, self.pop[idx].solution)
             j_rand = self.generator.integers(0, self.problem.n_dims)
@@ -127,7 +139,9 @@ class OriginalSHADE(Optimizer):
                 pop[-1].target = self.get_target(pos_new)
         pop = self.update_target_for_population(pop)
         for idx in range(0, self.pop_size):
-            if self.compare_target(pop[idx].target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                pop[idx].target, self.pop[idx].target, self.problem.minmax
+            ):
                 list_cr.append(list_cr_new[idx])
                 list_f.append(list_f_new[idx])
                 list_f_index.append(idx)
@@ -137,7 +151,9 @@ class OriginalSHADE(Optimizer):
         # Randomly remove solution
         temp = len(self.dyn_pop_archive) - self.pop_size
         if temp > 0:
-            idx_list = self.generator.choice(range(0, len(self.dyn_pop_archive)), temp, replace=False)
+            idx_list = self.generator.choice(
+                range(0, len(self.dyn_pop_archive)), temp, replace=False
+            )
             archive_pop_new = []
             for idx, agent in enumerate(self.dyn_pop_archive):
                 if idx not in idx_list:
@@ -161,7 +177,9 @@ class OriginalSHADE(Optimizer):
             else:
                 list_weights = np.abs(list_fit_new - list_fit_old) / temp
             self.dyn_miu_cr[self.k_counter] = np.sum(list_weights * np.array(list_cr))
-            self.dyn_miu_f[self.k_counter] = self.weighted_lehmer_mean(np.array(list_f), list_weights)
+            self.dyn_miu_f[self.k_counter] = self.weighted_lehmer_mean(
+                np.array(list_f), list_weights
+            )
             self.k_counter += 1
             if self.k_counter >= self.pop_size:
                 self.k_counter = 0
@@ -203,8 +221,14 @@ class L_SHADE(Optimizer):
     linear population size reduction. In 2014 IEEE congress on evolutionary computation (CEC) (pp. 1658-1665). IEEE.
     """
 
-    def __init__(self, epoch: int = 750, pop_size: int = 100, miu_f: float = 0.5, miu_cr: float = 0.5,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 750,
+        pop_size: int = 100,
+        miu_f: float = 0.5,
+        miu_cr: float = 0.5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -231,7 +255,7 @@ class L_SHADE(Optimizer):
 
     ### Survivor Selection
     def weighted_lehmer_mean(self, list_objects, list_weights):
-        up = np.sum(list_weights * list_objects ** 2)
+        up = np.sum(list_weights * list_objects**2)
         down = np.sum(list_weights * list_objects)
         return up / down if down != 0 else 0.5
 
@@ -270,11 +294,21 @@ class L_SHADE(Optimizer):
             x_best = pop_sorted[self.generator.integers(0, top)]
             r1_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
             new_pop = self.pop + self.dyn_pop_archive
-            r2_idx = self.generator.choice(list(set(range(0, len(new_pop))) - {idx, r1_idx}))
+            r2_idx = self.generator.choice(
+                list(set(range(0, len(new_pop))) - {idx, r1_idx})
+            )
             x_r1 = self.pop[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
-            x_new = self.pop[idx].solution + f * (x_best.solution - self.pop[idx].solution) + f * (x_r1 - x_r2)
-            pos_new = np.where(self.generator.random(self.problem.n_dims) < cr, x_new, self.pop[idx].solution)
+            x_new = (
+                self.pop[idx].solution
+                + f * (x_best.solution - self.pop[idx].solution)
+                + f * (x_r1 - x_r2)
+            )
+            pos_new = np.where(
+                self.generator.random(self.problem.n_dims) < cr,
+                x_new,
+                self.pop[idx].solution,
+            )
             j_rand = self.generator.integers(0, self.problem.n_dims)
             pos_new[j_rand] = x_new[j_rand]
             pos_new = self.correct_solution(pos_new)
@@ -284,7 +318,9 @@ class L_SHADE(Optimizer):
                 pop[-1].target = self.get_target(pos_new)
         pop = self.update_target_for_population(pop)
         for idx in range(0, self.pop_size):
-            if self.compare_target(pop[idx].target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                pop[idx].target, self.pop[idx].target, self.problem.minmax
+            ):
                 list_cr.append(list_cr_new[idx])
                 list_f.append(list_f_new[idx])
                 list_f_index.append(idx)
@@ -294,7 +330,9 @@ class L_SHADE(Optimizer):
         # Randomly remove solution
         temp = len(self.dyn_pop_archive) - self.pop_size
         if temp > 0:
-            idx_list = self.generator.choice(range(0, len(self.dyn_pop_archive)), temp, replace=False)
+            idx_list = self.generator.choice(
+                range(0, len(self.dyn_pop_archive)), temp, replace=False
+            )
             archive_pop_new = []
             for idx, agent in enumerate(self.dyn_pop_archive):
                 if idx not in idx_list:
@@ -312,11 +350,17 @@ class L_SHADE(Optimizer):
                     list_fit_new[idx_increase] = self.pop[idx].target.fitness
                     idx_increase += 1
             total_fit = np.sum(np.abs(list_fit_new - list_fit_old))
-            list_weights = 0 if total_fit == 0 else np.abs(list_fit_new - list_fit_old) / total_fit
+            list_weights = (
+                0 if total_fit == 0 else np.abs(list_fit_new - list_fit_old) / total_fit
+            )
             self.dyn_miu_cr[self.k_counter] = np.sum(list_weights * np.array(list_cr))
-            self.dyn_miu_f[self.k_counter] = self.weighted_lehmer_mean(np.array(list_f), list_weights)
+            self.dyn_miu_f[self.k_counter] = self.weighted_lehmer_mean(
+                np.array(list_f), list_weights
+            )
             self.k_counter += 1
             if self.k_counter >= self.dyn_pop_size:
                 self.k_counter = 0
         # Linear Population Size Reduction
-        self.dyn_pop_size = round(self.pop_size + epoch * ((self.n_min - self.pop_size) / self.epoch))
+        self.dyn_pop_size = round(
+            self.pop_size + epoch * ((self.n_min - self.pop_size) / self.epoch)
+        )

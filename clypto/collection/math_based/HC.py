@@ -46,7 +46,13 @@ class OriginalHC(Optimizer):
     outperform hill climbing. Advances in neural information processing systems, 6.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 2, neighbour_size: int = 50, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 2,
+        neighbour_size: int = 50,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -56,7 +62,9 @@ class OriginalHC(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
-        self.neighbour_size = self.validator.check_int("neighbour_size", neighbour_size, [2, 1000])
+        self.neighbour_size = self.validator.check_int(
+            "neighbour_size", neighbour_size, [2, 1000]
+        )
         self.set_parameters(["epoch", "pop_size", "neighbour_size"])
         self.sort_flag = False
 
@@ -70,7 +78,10 @@ class OriginalHC(Optimizer):
         step_size = np.exp(-2 * epoch / self.epoch)
         pop_neighbours = []
         for idx in range(0, self.neighbour_size):
-            pos_new = self.g_best.solution + self.generator.uniform(self.problem.lb, self.problem.ub) * step_size
+            pos_new = (
+                self.g_best.solution
+                + self.generator.uniform(self.problem.lb, self.problem.ub) * step_size
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_neighbours.append(agent)
@@ -125,7 +136,9 @@ class SwarmHC(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.neighbour_size = self.validator.check_int("neighbour_size", neighbour_size, [2, int(self.pop_size / 2)])
+        self.neighbour_size = self.validator.check_int(
+            "neighbour_size", neighbour_size, [2, int(self.pop_size / 2)]
+        )
         self.set_parameters(["epoch", "pop_size", "neighbour_size"])
         self.sort_flag = False
 
@@ -136,13 +149,18 @@ class SwarmHC(Optimizer):
         """
         ranks = np.array(list(range(1, self.pop_size + 1)))
         ranks = ranks / np.sum(ranks)
-        step_size = np.mean(self.problem.ub - self.problem.lb) * np.exp(-2 * epoch / self.epoch)
+        step_size = np.mean(self.problem.ub - self.problem.lb) * np.exp(
+            -2 * epoch / self.epoch
+        )
         ss = step_size * ranks
         pop = []
         for idx in range(0, self.pop_size):
             pop_neighbours = []
             for jdx in range(0, self.neighbour_size):
-                pos_new = self.pop[idx].solution + self.generator.normal(0, 1, self.problem.n_dims) * ss[idx]
+                pos_new = (
+                    self.pop[idx].solution
+                    + self.generator.normal(0, 1, self.problem.n_dims) * ss[idx]
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_neighbours.append(agent)
@@ -152,6 +170,10 @@ class SwarmHC(Optimizer):
             best_local = self.get_best_agent(pop_neighbours, self.problem.minmax)
             pop.append(best_local)
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop[idx] = self.get_better_agent(best_local, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    best_local, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )

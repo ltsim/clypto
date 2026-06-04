@@ -41,7 +41,9 @@ class OriginalSSO(Optimizer):
     Salp Swarm Algorithm: A bio-inspired optimizer for engineering design problems. Advances in Engineering Software, 114, pp.163-191.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -68,9 +70,11 @@ class OriginalSSO(Optimizer):
                 c2_list = self.generator.random(self.problem.n_dims)
                 c3_list = self.generator.random(self.problem.n_dims)
                 pos_new_1 = self.g_best.solution + c1 * (
-                        (self.problem.ub - self.problem.lb) * c2_list + self.problem.lb)
+                    (self.problem.ub - self.problem.lb) * c2_list + self.problem.lb
+                )
                 pos_new_2 = self.g_best.solution - c1 * (
-                        (self.problem.ub - self.problem.lb) * c2_list + self.problem.lb)
+                    (self.problem.ub - self.problem.lb) * c2_list + self.problem.lb
+                )
                 pos_new = np.where(c3_list < 0.5, pos_new_1, pos_new_2)
             else:
                 # Eq. (3.4) in the paper
@@ -81,7 +85,11 @@ class OriginalSSO(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

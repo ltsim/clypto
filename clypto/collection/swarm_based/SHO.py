@@ -45,8 +45,14 @@ class OriginalSHO(Optimizer):
     technique for engineering applications. Advances in Engineering Software, 114, pp.48-70.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, h_factor: float = 5., n_trials: int = 10,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        h_factor: float = 5.0,
+        n_trials: int = 10,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -58,7 +64,9 @@ class OriginalSHO(Optimizer):
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.h_factor = self.validator.check_float("h_factor", h_factor, (0.5, 10.0))
-        self.n_trials = self.validator.check_int("n_trials", n_trials, (1, float("inf")))
+        self.n_trials = self.validator.check_int(
+            "n_trials", n_trials, (1, float("inf"))
+        )
         self.set_parameters(["epoch", "pop_size", "h_factor", "n_trials"])
         self.sort_flag = False
 
@@ -83,18 +91,25 @@ class OriginalSHO(Optimizer):
             else:
                 N = 1
                 for _ in range(0, self.n_trials):
-                    pos_temp = self.g_best.solution + self.generator.normal(0, 1, self.problem.n_dims) * \
-                               self.generator.uniform(self.problem.lb, self.problem.ub)
+                    pos_temp = self.g_best.solution + self.generator.normal(
+                        0, 1, self.problem.n_dims
+                    ) * self.generator.uniform(self.problem.lb, self.problem.ub)
                     pos_new = self.correct_solution(pos_temp)
                     agent = self.generate_agent(pos_new)
-                    if self.compare_target(agent.target, self.g_best.target, self.problem.minmax):
+                    if self.compare_target(
+                        agent.target, self.g_best.target, self.problem.minmax
+                    ):
                         N += 1
                         break
                     N += 1
                 circle_list = []
-                idx_list = self.generator.choice(range(0, self.pop_size), N, replace=False)
+                idx_list = self.generator.choice(
+                    range(0, self.pop_size), N, replace=False
+                )
                 for j in range(0, N):
-                    D_h = np.abs(np.dot(B, self.g_best.solution) - self.pop[idx_list[j]].solution)
+                    D_h = np.abs(
+                        np.dot(B, self.g_best.solution) - self.pop[idx_list[j]].solution
+                    )
                     p_k = self.g_best.solution - np.dot(E, D_h)
                     circle_list.append(p_k)
                 pos_new = np.mean(np.array(circle_list), axis=0)
@@ -103,7 +118,11 @@ class OriginalSHO(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

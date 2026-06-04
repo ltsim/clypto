@@ -42,7 +42,9 @@ class OriginalBBOA(Optimizer):
     Energy System Operation and Management (pp. 137-164). River Publishers.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -68,41 +70,64 @@ class OriginalBBOA(Optimizer):
         for idx in range(0, self.pop_size):
             if pp <= 1 / 3:  # Gait while walking
                 pos_new = self.pop[idx].solution + (
-                        -pp * self.generator.random(self.problem.n_dims) * self.pop[idx].solution)
+                    -pp
+                    * self.generator.random(self.problem.n_dims)
+                    * self.pop[idx].solution
+                )
             elif 1 / 3 < pp <= 2 / 3:  # Careful Stepping
                 qq = pp * self.generator.random(self.problem.n_dims)
                 pos_new = self.pop[idx].solution + (
-                        qq * (self.g_best.solution - self.generator.integers(1, 3) * self.g_worst.solution))
+                    qq
+                    * (
+                        self.g_best.solution
+                        - self.generator.integers(1, 3) * self.g_worst.solution
+                    )
+                )
             else:
                 ww = 2 * pp * np.pi * self.generator.random(self.problem.n_dims)
-                pos_new = self.pop[idx].solution + (ww * self.g_best.solution - np.abs(self.pop[idx].solution)) - (
-                        ww * self.g_worst.solution - np.abs(self.pop[idx].solution))
+                pos_new = (
+                    self.pop[idx].solution
+                    + (ww * self.g_best.solution - np.abs(self.pop[idx].solution))
+                    - (ww * self.g_worst.solution - np.abs(self.pop[idx].solution))
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
         ## Sniffing of pedal marks
         pop_new = []
         for idx in range(0, self.pop_size):
             kk = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            if self.compare_target(self.pop[idx].target, self.pop[kk].target, self.problem.minmax):
+            if self.compare_target(
+                self.pop[idx].target, self.pop[kk].target, self.problem.minmax
+            ):
                 pos_new = self.pop[idx].solution + self.generator.random() * (
-                        self.pop[idx].solution - self.pop[kk].solution)
+                    self.pop[idx].solution - self.pop[kk].solution
+                )
             else:
                 pos_new = self.pop[idx].solution + self.generator.random() * (
-                        self.pop[kk].solution - self.pop[idx].solution)
+                    self.pop[kk].solution - self.pop[idx].solution
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

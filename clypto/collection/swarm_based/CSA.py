@@ -44,7 +44,13 @@ class OriginalCSA(Optimizer):
     congress on nature & biologically inspired computing (NaBIC) (pp. 210-214). Ieee.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, p_a: float = 0.3, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        p_a: float = 0.3,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -70,20 +76,27 @@ class OriginalCSA(Optimizer):
         for idx in range(0, self.pop_size):
             ## Generate levy-flight solution
             levy_step = self.get_levy_flight_step(multiplier=0.001, case=-1)
-            pos_new = self.pop[idx].solution + 1.0 / np.sqrt(epoch) * np.sign(self.generator.random() - 0.5) * \
-                      levy_step * (self.pop[idx].solution - self.g_best.solution)
+            pos_new = self.pop[idx].solution + 1.0 / np.sqrt(epoch) * np.sign(
+                self.generator.random() - 0.5
+            ) * levy_step * (self.pop[idx].solution - self.g_best.solution)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
         ## Abandoned some worst nests
-        pop = self.get_sorted_and_trimmed_population(self.pop, self.pop_size, self.problem.minmax)
+        pop = self.get_sorted_and_trimmed_population(
+            self.pop, self.pop_size, self.problem.minmax
+        )
         pop_new = []
         for idx in range(0, self.n_cut):
             pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
@@ -92,4 +105,4 @@ class OriginalCSA(Optimizer):
             if self.mode not in self.AVAILABLE_MODES:
                 pop_new[-1].target = self.get_target(pos_new)
         pop_new = self.update_target_for_population(pop_new)
-        self.pop = pop[:(self.pop_size - self.n_cut)] + pop_new
+        self.pop = pop[: (self.pop_size - self.n_cut)] + pop_new

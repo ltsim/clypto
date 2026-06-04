@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 19:38, 10/03/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 19:38, 10/03/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -46,8 +46,14 @@ class OriginalPSS(Optimizer):
     [1] Shaqfa, M. and Beyer, K., 2021. Pareto-like sequential sampling heuristic for global optimisation. Soft Computing, 25(14), pp.9077-9096.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, acceptance_rate: float = 0.9,
-                 sampling_method: str = "LHS", **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        acceptance_rate: float = 0.9,
+        sampling_method: str = "LHS",
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -58,8 +64,12 @@ class OriginalPSS(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.acceptance_rate = self.validator.check_float("acceptance_rate", acceptance_rate, (0, 1.0))
-        self.sampling_method = self.validator.check_str("sampling_method", sampling_method, ["MC", "LHS"])
+        self.acceptance_rate = self.validator.check_float(
+            "acceptance_rate", acceptance_rate, (0, 1.0)
+        )
+        self.sampling_method = self.validator.check_str(
+            "sampling_method", sampling_method, ["MC", "LHS"]
+        )
         self.set_parameters(["epoch", "pop_size", "acceptance_rate", "sampling_method"])
         self.sort_flag = False
 
@@ -81,7 +91,9 @@ class OriginalPSS(Optimizer):
         ub_pop = np.repeat(np.reshape(self.problem.ub, (1, -1)), self.pop_size, axis=0)
         steps_mat = np.repeat(np.reshape(self.steps, (1, -1)), self.pop_size, axis=0)
         random_pop = self.create_population(self.pop_size)
-        pop = np.round((lb_pop + random_pop * (ub_pop - lb_pop)) / steps_mat) * steps_mat
+        pop = (
+            np.round((lb_pop + random_pop * (ub_pop - lb_pop)) / steps_mat) * steps_mat
+        )
         self.pop = []
         for pos in pop:
             pos_new = self.correct_solution(pos)
@@ -101,22 +113,31 @@ class OriginalPSS(Optimizer):
             pos_new = self.pop[idx].solution.copy()
             for k in range(self.problem.n_dims):
                 # Update the ranges
-                deviation = self.generator.uniform(min(0, self.g_best.solution[k]), max(0, self.g_best.solution[k]))
+                deviation = self.generator.uniform(
+                    min(0, self.g_best.solution[k]), max(0, self.g_best.solution[k])
+                )
                 if self.new_solution:
                     # The deviation is positive dynamic real number
-                    deviation = abs(0.5 * (1. - self.acceptance_rate) * (self.problem.ub[k] - self.problem.lb[k])) * (
-                            1 - (epoch / self.epoch))
+                    deviation = abs(
+                        0.5
+                        * (1.0 - self.acceptance_rate)
+                        * (self.problem.ub[k] - self.problem.lb[k])
+                    ) * (1 - (epoch / self.epoch))
                 reduced_lb = self.g_best.solution[k] - deviation
                 reduced_lb = np.amax([reduced_lb, self.problem.lb[k]])
-                reduced_ub = reduced_lb + deviation * 2.
+                reduced_ub = reduced_lb + deviation * 2.0
                 reduced_ub = np.amin([reduced_ub, self.problem.ub[k]])
                 # Choose new solution
                 if self.generator.random() <= self.acceptance_rate:
                     # choose a solution from the prominent domain
-                    pos_new[k] = reduced_lb + pop_rand[idx, k] * (reduced_ub - reduced_lb)
+                    pos_new[k] = reduced_lb + pop_rand[idx, k] * (
+                        reduced_ub - reduced_lb
+                    )
                 else:
                     # choose a solution from the overall domain
-                    pos_new[k] = self.problem.lb[k] + pop_rand[idx, k] * (self.problem.ub[k] - self.problem.lb[k])
+                    pos_new[k] = self.problem.lb[k] + pop_rand[idx, k] * (
+                        self.problem.ub[k] - self.problem.lb[k]
+                    )
                 # Round for the step size
                 pos_new = np.round(pos_new / self.steps) * self.steps
             # Check the bound
@@ -127,7 +148,9 @@ class OriginalPSS(Optimizer):
                 pop_new[-1].target = self.get_target(pos_new)
         self.pop = self.update_target_for_population(pop_new)
         current_best = self.get_best_agent(pop_new, self.problem.minmax)
-        if self.compare_target(current_best.target, self.g_best.target, self.problem.minmax):
+        if self.compare_target(
+            current_best.target, self.g_best.target, self.problem.minmax
+        ):
             self.new_solution = True
         else:
             self.new_solution = False

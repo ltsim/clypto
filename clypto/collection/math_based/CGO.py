@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 22:24, 02/03/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 22:24, 02/03/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 from clypto.optimizer.classic import Optimizer
@@ -45,7 +45,9 @@ class OriginalCGO(Optimizer):
     Artificial Intelligence Review, 54(2), pp.917-1004.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -67,8 +69,12 @@ class OriginalCGO(Optimizer):
         """
         pop_new = []
         for idx in range(0, self.pop_size):
-            s1, s2, s3 = self.generator.choice(range(0, self.pop_size), 3, replace=False)
-            MG = (self.pop[s1].solution + self.pop[s2].solution + self.pop[s3].solution) / 3
+            s1, s2, s3 = self.generator.choice(
+                range(0, self.pop_size), 3, replace=False
+            )
+            MG = (
+                self.pop[s1].solution + self.pop[s2].solution + self.pop[s3].solution
+            ) / 3
             ## Calculating alpha based on Eq. 7
             alpha1 = self.generator.random()
             alpha2 = 2 * self.generator.random()
@@ -81,10 +87,18 @@ class OriginalCGO(Optimizer):
             ## The seed4 is mutation process, but not sure k is multiple variables or 1 variable.
             ## In the text said, multiple variables, but the defination of k is 1 variable. So confused
             k = self.generator.integers(0, self.problem.n_dims)
-            k_idx = self.generator.choice(range(0, self.problem.n_dims), k, replace=False)
-            seed1 = self.pop[idx].solution + alpha1 * (beta[0] * self.g_best.solution - gama[0] * MG)  # Eq. 3
-            seed2 = self.g_best.solution + alpha2 * (beta[1] * self.pop[idx].solution - gama[1] * MG)  # Eq. 4
-            seed3 = MG + alpha3 * (beta[2] * self.pop[idx].solution - gama[2] * self.g_best.solution)  # Eq. 5
+            k_idx = self.generator.choice(
+                range(0, self.problem.n_dims), k, replace=False
+            )
+            seed1 = self.pop[idx].solution + alpha1 * (
+                beta[0] * self.g_best.solution - gama[0] * MG
+            )  # Eq. 3
+            seed2 = self.g_best.solution + alpha2 * (
+                beta[1] * self.pop[idx].solution - gama[1] * MG
+            )  # Eq. 4
+            seed3 = MG + alpha3 * (
+                beta[2] * self.pop[idx].solution - gama[2] * self.g_best.solution
+            )  # Eq. 5
             seed4 = self.pop[idx].solution.copy().astype(float)
             seed4[k_idx] += self.generator.uniform(0, 1, k)
             # Check if solutions go outside the search space and bring them back
@@ -97,5 +111,9 @@ class OriginalCGO(Optimizer):
             agent3 = self.generate_agent(seed3)
             agent4 = self.generate_agent(seed4)
             ## Lots of grammar errors in this section, so confused to understand which strategy they are using
-            best_seed = self.get_best_agent([agent1, agent2, agent3, agent4], self.problem.minmax)
-            self.pop[idx] = self.get_better_agent(best_seed, self.pop[idx], self.problem.minmax)
+            best_seed = self.get_best_agent(
+                [agent1, agent2, agent3, agent4], self.problem.minmax
+            )
+            self.pop[idx] = self.get_better_agent(
+                best_seed, self.pop[idx], self.problem.minmax
+            )

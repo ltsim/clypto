@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent
+from clypto.agents import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -38,7 +38,9 @@ class DevSCA(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -61,26 +63,34 @@ class DevSCA(Optimizer):
         for idx in range(0, self.pop_size):
             # Eq 3.4, r1 decreases linearly from a to 0
             a = 2.0
-            r1 = a * (1. - epoch / self.epoch)
+            r1 = a * (1.0 - epoch / self.epoch)
             # Update r2, r3, and r4 for Eq. (3.3), remove third loop here
             r2 = 2 * np.pi * self.generator.uniform(0, 1, self.problem.n_dims)
             r3 = 2 * self.generator.uniform(0, 1, self.problem.n_dims)
             # Eq. 3.3, 3.1 and 3.2
             pos_new1 = self.pop[idx].solution + r1 * np.sin(r2) * np.abs(
-                r3 * self.g_best.solution - self.pop[idx].solution)
+                r3 * self.g_best.solution - self.pop[idx].solution
+            )
             pos_new2 = self.pop[idx].solution + r1 * np.cos(r2) * np.abs(
-                r3 * self.g_best.solution - self.pop[idx].solution)
-            pos_new = np.where(self.generator.random(self.problem.n_dims) < 0.5, pos_new1, pos_new2)
+                r3 * self.g_best.solution - self.pop[idx].solution
+            )
+            pos_new = np.where(
+                self.generator.random(self.problem.n_dims) < 0.5, pos_new1, pos_new2
+            )
             # Check the bound
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class OriginalSCA(DevSCA):
@@ -115,7 +125,9 @@ class OriginalSCA(DevSCA):
     [1] Mirjalili, S., 2016. SCA: a sine cosine algorithm for solving optimization problems. Knowledge-based systems, 96, pp.120-133.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -126,7 +138,11 @@ class OriginalSCA(DevSCA):
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
-        return np.where(np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub), solution, rand_pos)
+        return np.where(
+            np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub),
+            solution,
+            rand_pos,
+        )
 
     def evolve(self, epoch):
         """
@@ -139,7 +155,7 @@ class OriginalSCA(DevSCA):
         for idx in range(0, self.pop_size):
             # Eq 3.4, r1 decreases linearly from a to 0
             a = 2.0
-            r1 = a * (1. - epoch / self.epoch)
+            r1 = a * (1.0 - epoch / self.epoch)
             pos_new = self.pop[idx].solution.copy()
             for jdx in range(self.problem.n_dims):  # j-th dimension
                 # Update r2, r3, and r4 for Eq. (3.3)
@@ -149,20 +165,26 @@ class OriginalSCA(DevSCA):
                 # Eq. 3.3, 3.1 and 3.2
                 if r4 < 0.5:
                     pos_new[jdx] = pos_new[jdx] + r1 * np.sin(r2) * np.abs(
-                        r3 * self.g_best.solution[jdx] - pos_new[jdx])
+                        r3 * self.g_best.solution[jdx] - pos_new[jdx]
+                    )
                 else:
                     pos_new[jdx] = pos_new[jdx] + r1 * np.cos(r2) * np.abs(
-                        r3 * self.g_best.solution[jdx] - pos_new[jdx])
+                        r3 * self.g_best.solution[jdx] - pos_new[jdx]
+                    )
             # Check the bound
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class QTable:
@@ -181,8 +203,12 @@ class QTable:
         self.epsilon = 0.1
 
     def get_state(self, density, distance):
-        density_range = next(i for i, r in enumerate(self.density_ranges) if density <= r[1])
-        distance_range = next(i for i, r in enumerate(self.distance_ranges) if distance <= r[1])
+        density_range = next(
+            i for i, r in enumerate(self.density_ranges) if density <= r[1]
+        )
+        distance_range = next(
+            i for i, r in enumerate(self.distance_ranges) if distance <= r[1]
+        )
         return density_range * 3 + distance_range
 
     def get_action(self, state):
@@ -200,7 +226,9 @@ class QTable:
         return r1_range, r3_range
 
     def update(self, state, action, reward, alpha=0.1, gama=0.9):
-        self.table[state][action] += alpha * (reward + gama * np.max(self.table[state]) - self.table[state][action])
+        self.table[state][action] += alpha * (
+            reward + gama * np.max(self.table[state]) - self.table[state][action]
+        )
 
 
 class QleSCA(DevSCA):
@@ -239,8 +267,14 @@ class QleSCA(DevSCA):
     algorithm (QLESCA). Expert Systems with Applications, 193, 116417.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, alpha: float = 0.1, gama: float = 0.9,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        alpha: float = 0.1,
+        gama: float = 0.9,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -255,15 +289,19 @@ class QleSCA(DevSCA):
         self.sort_flag = False
         self.is_parallelizable = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
-        return BaseAgent(solution=solution, q_table=q_table)
+        return Agent(solution=solution, q_table=q_table)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
-        return np.where(np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub), solution, rand_pos)
+        return np.where(
+            np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub),
+            solution,
+            rand_pos,
+        )
 
     def density__(self, pop):
         agents = np.array([agent.solution for agent in pop])
@@ -280,7 +318,9 @@ class QleSCA(DevSCA):
         # calculate the numerator of the distance
         numerator = np.sum(np.sqrt(np.sum((best.solution - agents) ** 2, axis=1)))
         # calculate the denominator of the distance
-        denominator = np.sum([np.sqrt(np.sum((ub - lb) ** 2)) for _ in range(0, len(pop))])
+        denominator = np.sum(
+            [np.sqrt(np.sum((ub - lb) ** 2)) for _ in range(0, len(pop))]
+        )
         # calculate the distance
         return numerator / denominator
 
@@ -295,7 +335,9 @@ class QleSCA(DevSCA):
             agent = self.pop[idx].copy()
             ## Step 3: State computation
             den = self.density__(self.pop)
-            dis = self.distance__(self.g_best, self.pop, self.problem.lb, self.problem.ub)
+            dis = self.distance__(
+                self.g_best, self.pop, self.problem.lb, self.problem.ub
+            )
             ## Step 4: Action execution
             state = self.pop[idx].q_table.get_state(density=den, distance=dis)
             action = self.pop[idx].q_table.get_action(state=state)
@@ -306,16 +348,24 @@ class QleSCA(DevSCA):
             r4 = self.generator.uniform()
             if r4 < 0.5:
                 pos_new = self.pop[idx].solution + r1 * np.sin(r2) * (
-                        r3 * self.g_best.solution - self.pop[idx].solution)
+                    r3 * self.g_best.solution - self.pop[idx].solution
+                )
             else:
                 pos_new = self.pop[idx].solution + r1 * np.cos(r2) * (
-                        r3 * self.g_best.solution - self.pop[idx].solution)
+                    r3 * self.g_best.solution - self.pop[idx].solution
+                )
             # Check the bound
             pos_new = self.correct_solution(pos_new)
             agent.solution = pos_new
             agent.target = self.get_target(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
-                self.pop[idx].q_table.update(state, action, reward=1, alpha=self.alpha, gama=self.gama)
+                self.pop[idx].q_table.update(
+                    state, action, reward=1, alpha=self.alpha, gama=self.gama
+                )
             else:
-                self.pop[idx].q_table.update(state, action, reward=-1, alpha=self.alpha, gama=self.gama)
+                self.pop[idx].q_table.update(
+                    state, action, reward=-1, alpha=self.alpha, gama=self.gama
+                )

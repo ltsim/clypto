@@ -44,7 +44,13 @@ class OriginalABC(Optimizer):
     in: IEEE Swarm Intelligence Symposium 2006, May 12–14, Indianapolis, IN, USA, 2006.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, n_limits: int = 25, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        n_limits: int = 25,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -74,10 +80,14 @@ class OriginalABC(Optimizer):
             rdx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
             # Generate a new solution by the equation x_{ij} = x_{ij} + phi_{ij} * (x_{tj} - x_{ij})
             phi = self.generator.uniform(low=-1, high=1, size=self.problem.n_dims)
-            pos_new = self.pop[idx].solution + phi * (self.pop[rdx].solution - self.pop[idx].solution)
+            pos_new = self.pop[idx].solution + phi * (
+                self.pop[rdx].solution - self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
                 self.trials[idx] = 0
             else:
@@ -90,13 +100,19 @@ class OriginalABC(Optimizer):
             # Select an employed bee using roulette wheel selection
             selected_bee = self.get_index_roulette_wheel_selection(employed_fits)
             # Choose a random employed bee to generate a new solution
-            rdx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx, selected_bee}))
+            rdx = self.generator.choice(
+                list(set(range(0, self.pop_size)) - {idx, selected_bee})
+            )
             # Generate a new solution by the equation x_{ij} = x_{ij} + phi_{ij} * (x_{tj} - x_{ij})
             phi = self.generator.uniform(low=-1, high=1, size=self.problem.n_dims)
-            pos_new = self.pop[selected_bee].solution + phi * (self.pop[rdx].solution - self.pop[selected_bee].solution)
+            pos_new = self.pop[selected_bee].solution + phi * (
+                self.pop[rdx].solution - self.pop[selected_bee].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[selected_bee].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[selected_bee].target, self.problem.minmax
+            ):
                 self.pop[selected_bee] = agent
                 self.trials[selected_bee] = 0
             else:

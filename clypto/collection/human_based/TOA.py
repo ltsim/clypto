@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Created by "Thieu" at 18:22, 11/03/2023 ----------%
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -54,7 +54,9 @@ class OriginalTOA(Optimizer):
     approach for function minimization/maximization. Sensors, 21(13), 4567.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -85,10 +87,14 @@ class OriginalTOA(Optimizer):
         for idx in range(0, self.pop_size):
             # Stage 1: Supervisor guidance
             pos_new = self.pop[idx].solution + self.generator.random() * (
-                    self.g_best.solution - self.generator.integers(1, 3) * self.pop[idx].solution)
+                self.g_best.solution
+                - self.generator.integers(1, 3) * self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
             # Stage 2: Information sharing
             idxs = self.get_indexes_better__(self.pop, idx)
@@ -98,16 +104,23 @@ class OriginalTOA(Optimizer):
                 sf_pos = np.array([self.pop[jdx].solution for jdx in idxs])
                 sf_pos = self.correct_solution(np.mean(sf_pos, axis=0))
                 sf = self.generate_agent(sf_pos)
-            pos_new = self.pop[idx].solution + self.generator.random() * (sf.solution - self.generator.integers(1, 3) *
-                                                                          self.pop[idx].solution) * np.sign(
-                self.pop[idx].target.fitness - sf.target.fitness)
+            pos_new = self.pop[idx].solution + self.generator.random() * (
+                sf.solution - self.generator.integers(1, 3) * self.pop[idx].solution
+            ) * np.sign(self.pop[idx].target.fitness - sf.target.fitness)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
             # Stage 3: Individual activity
-            pos_new = self.pop[idx].solution + (-0.01 + self.generator.random() * 0.02) * self.pop[idx].solution
+            pos_new = (
+                self.pop[idx].solution
+                + (-0.01 + self.generator.random() * 0.02) * self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent

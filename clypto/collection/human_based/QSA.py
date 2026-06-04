@@ -37,7 +37,9 @@ class DevQSA(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -88,14 +90,17 @@ class DevQSA(Optimizer):
             beta = np.power(current_epoch, np.power(current_epoch / self.epoch, 0.5))
             alpha = self.generator.uniform(-1, 1)
             E = self.generator.exponential(0.5, self.problem.n_dims)
-            F1 = beta * alpha * (E * np.abs(A - pop[idx].solution)) + self.generator.exponential(0.5) * (
-                    A - pop[idx].solution)
+            F1 = beta * alpha * (
+                E * np.abs(A - pop[idx].solution)
+            ) + self.generator.exponential(0.5) * (A - pop[idx].solution)
             F2 = beta * alpha * (E * np.abs(A - pop[idx].solution))
             if case == 1:
                 pos_new = A + F1
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
-                if self.compare_target(agent.target, pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    agent.target, pop[idx].target, self.problem.minmax
+                ):
                     pop[idx] = agent
                 else:
                     case = 2
@@ -103,7 +108,9 @@ class DevQSA(Optimizer):
                 pos_new = pop[idx].solution + F2
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
-                if self.compare_target(agent.target, pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    agent.target, pop[idx].target, self.problem.minmax
+                ):
                     pop[idx] = agent
                 else:
                     case = 1
@@ -129,9 +136,13 @@ class DevQSA(Optimizer):
             if self.generator.random() < pr[idx]:
                 i1, i2 = self.generator.choice(self.pop_size, 2, replace=False)
                 if self.generator.random() < cv:
-                    X_new = pop[idx].solution + self.generator.exponential(0.5) * (pop[i1].solution - pop[i2].solution)
+                    X_new = pop[idx].solution + self.generator.exponential(0.5) * (
+                        pop[i1].solution - pop[i2].solution
+                    )
                 else:
-                    X_new = pop[idx].solution + self.generator.exponential(0.5) * (A - pop[i1].solution)
+                    X_new = pop[idx].solution + self.generator.exponential(0.5) * (
+                        A - pop[i1].solution
+                    )
             else:
                 X_new = self.problem.generate_solution()
             pos_new = self.correct_solution(X_new)
@@ -139,11 +150,17 @@ class DevQSA(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                pop_new[-1] = self.get_better_agent(agent, pop[idx], self.problem.minmax)
+                pop_new[-1] = self.get_better_agent(
+                    agent, pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            pop_new = self.greedy_selection_population(pop, pop_new, self.problem.minmax)
-        return self.get_sorted_and_trimmed_population(pop_new, self.pop_size, self.problem.minmax)
+            pop_new = self.greedy_selection_population(
+                pop, pop_new, self.problem.minmax
+            )
+        return self.get_sorted_and_trimmed_population(
+            pop_new, self.pop_size, self.problem.minmax
+        )
 
     def update_business_3__(self, pop, g_best):
         pr = np.array([idx / self.pop_size for idx in range(1, self.pop_size + 1)])
@@ -151,18 +168,25 @@ class DevQSA(Optimizer):
         for idx in range(self.pop_size):
             X_new = pop[idx].solution.copy()
             id1 = self.generator.choice(self.pop_size)
-            temp = g_best.solution + self.generator.exponential(0.5, self.problem.n_dims) * (
-                    pop[id1].solution - pop[idx].solution)
-            X_new = np.where(self.generator.random(self.problem.n_dims) > pr[idx], temp, X_new)
+            temp = g_best.solution + self.generator.exponential(
+                0.5, self.problem.n_dims
+            ) * (pop[id1].solution - pop[idx].solution)
+            X_new = np.where(
+                self.generator.random(self.problem.n_dims) > pr[idx], temp, X_new
+            )
             pos_new = self.correct_solution(X_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                pop_new[-1] = self.get_better_agent(agent, pop[idx], self.problem.minmax)
+                pop_new[-1] = self.get_better_agent(
+                    agent, pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            pop_new = self.greedy_selection_population(pop, pop_new, self.problem.minmax)
+            pop_new = self.greedy_selection_population(
+                pop, pop_new, self.problem.minmax
+            )
         return pop_new
 
     def evolve(self, epoch):
@@ -201,7 +225,9 @@ class OppoQSA(DevQSA):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -220,10 +246,14 @@ class OppoQSA(DevQSA):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                pop_new[-1] = self.get_better_agent(agent, pop[idx], self.problem.minmax)
+                pop_new[-1] = self.get_better_agent(
+                    agent, pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            pop_new = self.greedy_selection_population(pop, pop_new, self.problem.minmax)
+            pop_new = self.greedy_selection_population(
+                pop, pop_new, self.problem.minmax
+            )
         return pop_new
 
     def evolve(self, epoch):
@@ -263,7 +293,9 @@ class LevyQSA(DevQSA):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -292,10 +324,17 @@ class LevyQSA(DevQSA):
             if self.generator.random() < pr[idx]:
                 id1 = self.generator.choice(self.pop_size)
                 if self.generator.random() < cv:
-                    levy_step = self.get_levy_flight_step(beta=1.0, multiplier=0.001, case=-1)
-                    X_new = pop[idx].solution + self.generator.normal(0, 1, self.problem.n_dims) * levy_step
+                    levy_step = self.get_levy_flight_step(
+                        beta=1.0, multiplier=0.001, case=-1
+                    )
+                    X_new = (
+                        pop[idx].solution
+                        + self.generator.normal(0, 1, self.problem.n_dims) * levy_step
+                    )
                 else:
-                    X_new = pop[idx].solution + self.generator.exponential(0.5) * (A - pop[id1].solution)
+                    X_new = pop[idx].solution + self.generator.exponential(0.5) * (
+                        A - pop[id1].solution
+                    )
                 pos_new = self.correct_solution(X_new)
             else:
                 pos_new = self.problem.generate_solution()
@@ -304,11 +343,17 @@ class LevyQSA(DevQSA):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                pop_new[-1] = self.get_better_agent(agent, pop[idx], self.problem.minmax)
+                pop_new[-1] = self.get_better_agent(
+                    agent, pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            pop_new = self.greedy_selection_population(pop, pop_new, self.problem.minmax)
-        return self.get_sorted_and_trimmed_population(pop_new, self.pop_size, self.problem.minmax)
+            pop_new = self.greedy_selection_population(
+                pop, pop_new, self.problem.minmax
+            )
+        return self.get_sorted_and_trimmed_population(
+            pop_new, self.pop_size, self.problem.minmax
+        )
 
     def evolve(self, epoch):
         """
@@ -354,7 +399,9 @@ class ImprovedQSA(OppoQSA, LevyQSA):
     global space search and workload modeling. Journal of Ambient Intelligence and Humanized Computing, 12(1), pp.27-46.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -408,7 +455,9 @@ class OriginalQSA(DevQSA):
     for solving engineering optimization problems. Applied Mathematical Modelling, 63, pp.464-490.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -434,10 +483,14 @@ class OriginalQSA(DevQSA):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                pop_new[-1] = self.get_better_agent(agent, pop[idx], self.problem.minmax)
+                pop_new[-1] = self.get_better_agent(
+                    agent, pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            pop_new = self.greedy_selection_population(pop, pop_new, self.problem.minmax)
+            pop_new = self.greedy_selection_population(
+                pop, pop_new, self.problem.minmax
+            )
         return pop_new
 
     def evolve(self, epoch):

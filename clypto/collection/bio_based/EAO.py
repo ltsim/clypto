@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 23:50, 28/08/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 23:50, 28/08/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -44,7 +44,9 @@ class OriginalEAO(Optimizer):
     Enzyme action optimizer: a novel bio-inspired optimization algorithm. The Journal of Supercomputing, 81(5), 686.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, ec: float = 0.1, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, ec: float = 0.1, **kwargs: object
+    ) -> None:
         """
         Initialize the algorithm components.
 
@@ -56,7 +58,7 @@ class OriginalEAO(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.ec = self.validator.check_float("ec", ec, [0., 100])
+        self.ec = self.validator.check_float("ec", ec, [0.0, 100])
         self.set_parameters(["epoch", "pop_size", "ec"])
         self.sort_flag = False
         self.is_parallelizable = False
@@ -75,26 +77,41 @@ class OriginalEAO(Optimizer):
         for idx in range(self.pop_size):
             # 1. Update FirstSubstratePosition
             r1 = self.generator.random(size=self.problem.n_dims)
-            pos1 = (self.g_best.solution - self.pop[idx].solution) + r1 * np.sin(AF * self.pop[idx].solution)
+            pos1 = (self.g_best.solution - self.pop[idx].solution) + r1 * np.sin(
+                AF * self.pop[idx].solution
+            )
             pos1 = self.correct_solution(pos1)
             agent1 = self.generate_agent(pos1)
 
             # 2. Select 2 randoms
-            j1, j2 = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), size=2, replace=False)
+            j1, j2 = self.generator.choice(
+                list(set(range(0, self.pop_size)) - {idx}), size=2, replace=False
+            )
 
             ## Candidate A: vector-valued random factors
-            scA1 = self.ec + (1 - self.ec) * self.generator.random(size=self.problem.n_dims)
-            exA = AF * (self.ec + (1 - self.ec) * self.generator.random(size=self.problem.n_dims))
-            posA = self.pop[idx].solution + scA1 * (self.pop[j1].solution - self.pop[j2].solution) + exA * (
-                    self.g_best.solution - self.pop[idx].solution)
+            scA1 = self.ec + (1 - self.ec) * self.generator.random(
+                size=self.problem.n_dims
+            )
+            exA = AF * (
+                self.ec
+                + (1 - self.ec) * self.generator.random(size=self.problem.n_dims)
+            )
+            posA = (
+                self.pop[idx].solution
+                + scA1 * (self.pop[j1].solution - self.pop[j2].solution)
+                + exA * (self.g_best.solution - self.pop[idx].solution)
+            )
             posA = self.correct_solution(posA)
             agentA = self.generate_agent(posA)
 
             ## Candidate B: scalar random factors
             scB1 = self.ec + (1 - self.ec) * self.generator.random()
             exB = AF * (self.ec + (1 - self.ec) * self.generator.random())
-            posB = self.pop[idx].solution + scB1 * (self.pop[j1].solution - self.pop[j2].solution) + exB * (
-                    self.g_best.solution - self.pop[idx].solution)
+            posB = (
+                self.pop[idx].solution
+                + scB1 * (self.pop[j1].solution - self.pop[j2].solution)
+                + exB * (self.g_best.solution - self.pop[idx].solution)
+            )
             posB = self.correct_solution(posB)
             agentB = self.generate_agent(posB)
 

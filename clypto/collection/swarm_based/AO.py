@@ -72,36 +72,59 @@ class OriginalAO(Optimizer):
         phi = -w * dim_list + phi0
         x = r * np.sin(phi)  # Eq.(9)
         y = r * np.cos(phi)  # Eq.(10)
-        QF = epoch ** ((2 * self.generator.random() - 1) / (1 - self.epoch) ** 2)  # Eq.(15)        Quality function
+        QF = epoch ** (
+            (2 * self.generator.random() - 1) / (1 - self.epoch) ** 2
+        )  # Eq.(15)        Quality function
         pop_new = []
         for idx in range(0, self.pop_size):
             x_mean = np.mean(np.array([agent.solution for agent in self.pop]), axis=0)
             levy_step = self.get_levy_flight_step(beta=1.5, multiplier=1.0, case=-1)
             if epoch <= (2 / 3) * self.epoch:  # Eq. 3, 4
                 if self.generator.random() < 0.5:
-                    pos_new = self.g_best.solution * (1 - epoch / self.epoch) + self.generator.random() * (
-                            x_mean - self.g_best.solution)
+                    pos_new = self.g_best.solution * (
+                        1 - epoch / self.epoch
+                    ) + self.generator.random() * (x_mean - self.g_best.solution)
                 else:
-                    idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                    pos_new = self.g_best.solution * levy_step + self.pop[idx].solution + self.generator.random() * (
-                            y - x)  # Eq. 5
+                    idx = self.generator.choice(
+                        list(set(range(0, self.pop_size)) - {idx})
+                    )
+                    pos_new = (
+                        self.g_best.solution * levy_step
+                        + self.pop[idx].solution
+                        + self.generator.random() * (y - x)
+                    )  # Eq. 5
             else:
                 if self.generator.random() < 0.5:
-                    pos_new = alpha * (self.g_best.solution - x_mean) - self.generator.random() * \
-                              (self.generator.random() * (
-                                      self.problem.ub - self.problem.lb) + self.problem.lb) * delta  # Eq. 13
+                    pos_new = (
+                        alpha * (self.g_best.solution - x_mean)
+                        - self.generator.random()
+                        * (
+                            self.generator.random()
+                            * (self.problem.ub - self.problem.lb)
+                            + self.problem.lb
+                        )
+                        * delta
+                    )  # Eq. 13
                 else:
-                    pos_new = QF * self.g_best.solution - (g2 * self.pop[idx].solution * self.generator.random()) - \
-                              g2 * levy_step + self.generator.random() * g1  # Eq. 14
+                    pos_new = (
+                        QF * self.g_best.solution
+                        - (g2 * self.pop[idx].solution * self.generator.random())
+                        - g2 * levy_step
+                        + self.generator.random() * g1
+                    )  # Eq. 14
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class AAO(Optimizer):
@@ -136,7 +159,9 @@ class AAO(Optimizer):
     Smart grid stability prediction using adaptive aquila optimizer and ensemble stacked bilstm. Results in Engineering, 24, 103261.
     """
 
-    def __init__(self, epoch=10000, pop_size=100, sharpness=10.0, sigmoid_midpoint=0.5, **kwargs):
+    def __init__(
+        self, epoch=10000, pop_size=100, sharpness=10.0, sigmoid_midpoint=0.5, **kwargs
+    ):
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -147,8 +172,12 @@ class AAO(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.sharpness = self.validator.check_float("sharpness", sharpness, [0.1, 10000.0])
-        self.sigmoid_midpoint = self.validator.check_float("sigmoid_midpoint", sigmoid_midpoint, [0.0, 1.0])
+        self.sharpness = self.validator.check_float(
+            "sharpness", sharpness, [0.1, 10000.0]
+        )
+        self.sigmoid_midpoint = self.validator.check_float(
+            "sigmoid_midpoint", sigmoid_midpoint, [0.0, 1.0]
+        )
         self.set_parameters(["epoch", "pop_size", "sharpness", "sigmoid_midpoint"])
         self.sort_flag = False
 
@@ -172,7 +201,9 @@ class AAO(Optimizer):
         phi = -w * dim_list + phi0
         x = r * np.sin(phi)  # Eq.(9)
         y = r * np.cos(phi)  # Eq.(10)
-        QF = epoch ** ((2 * self.generator.random() - 1) / (1 - self.epoch) ** 2)  # Eq.(15)        Quality function
+        QF = epoch ** (
+            (2 * self.generator.random() - 1) / (1 - self.epoch) ** 2
+        )  # Eq.(15)        Quality function
         pop_new = []
 
         for idx in range(0, self.pop_size):
@@ -180,30 +211,56 @@ class AAO(Optimizer):
             levy_step = self.get_levy_flight_step(beta=1.5, multiplier=1.0, case=-1)
 
             # Dynamically balance the exploration and exploitation phases
-            sigmoid_factor = 1 / (1 + np.exp(-self.sharpness * (epoch / self.epoch - self.sigmoid_midpoint)))
+            sigmoid_factor = 1 / (
+                1
+                + np.exp(-self.sharpness * (epoch / self.epoch - self.sigmoid_midpoint))
+            )
 
             if np.random.rand() <= (1 - sigmoid_factor):
                 if self.generator.random() < 0.5:
-                    pos_new = (self.g_best.solution * (1 - epoch / self.epoch) +
-                               self.generator.random() * (x_mean - self.g_best.solution))  # Eq. (3) and Eq. (4)
+                    pos_new = self.g_best.solution * (
+                        1 - epoch / self.epoch
+                    ) + self.generator.random() * (
+                        x_mean - self.g_best.solution
+                    )  # Eq. (3) and Eq. (4)
                 else:
-                    idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                    pos_new = self.g_best.solution * levy_step + self.pop[idx].solution + self.generator.random() * (
-                            y - x)  # Eq. 5
+                    idx = self.generator.choice(
+                        list(set(range(0, self.pop_size)) - {idx})
+                    )
+                    pos_new = (
+                        self.g_best.solution * levy_step
+                        + self.pop[idx].solution
+                        + self.generator.random() * (y - x)
+                    )  # Eq. 5
             else:
                 if self.generator.random() < 0.5:
-                    pos_new = (alpha * (self.g_best.solution - x_mean) - self.generator.random() *
-                               (self.generator.random() * (
-                                       self.problem.ub - self.problem.lb) + self.problem.lb) * delta)  # Eq. 13
+                    pos_new = (
+                        alpha * (self.g_best.solution - x_mean)
+                        - self.generator.random()
+                        * (
+                            self.generator.random()
+                            * (self.problem.ub - self.problem.lb)
+                            + self.problem.lb
+                        )
+                        * delta
+                    )  # Eq. 13
                 else:
-                    pos_new = (QF * self.g_best.solution - (g2 * self.pop[idx].solution * self.generator.random()) -
-                               g2 * levy_step + self.generator.random() * g1)  # Eq. 14
+                    pos_new = (
+                        QF * self.g_best.solution
+                        - (g2 * self.pop[idx].solution * self.generator.random())
+                        - g2 * levy_step
+                        + self.generator.random() * g1
+                    )  # Eq. 14
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

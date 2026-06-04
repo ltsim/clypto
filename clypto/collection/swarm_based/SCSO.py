@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 17:36, 21/05/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 17:36, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -42,7 +42,9 @@ class OriginalSCSO(Optimizer):
     solve global optimization problems. Engineering with Computers, 1-25.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -74,17 +76,26 @@ class OriginalSCSO(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             r = self.generator.random() * guides_r
-            R = (2 * guides_r) * self.generator.random() - guides_r  # controls to transition phases
+            R = (
+                2 * guides_r
+            ) * self.generator.random() - guides_r  # controls to transition phases
             pos_new = self.pop[idx].solution.copy()
             for jdx in range(0, self.problem.n_dims):
                 teta = self.get_index_roulette_wheel_selection__(self.pp)
                 if -1 <= R <= 1:
-                    rand_pos = np.abs(self.generator.random() * self.g_best.solution[jdx] - self.pop[idx].solution[jdx])
-                    pos_new[jdx] = self.g_best.solution[jdx] - r * rand_pos * np.cos(teta)
+                    rand_pos = np.abs(
+                        self.generator.random() * self.g_best.solution[jdx]
+                        - self.pop[idx].solution[jdx]
+                    )
+                    pos_new[jdx] = self.g_best.solution[jdx] - r * rand_pos * np.cos(
+                        teta
+                    )
                 else:
                     cp = int(self.generator.random() * self.pop_size)
                     pos_new[jdx] = r * (
-                            self.pop[cp].solution[jdx] - self.generator.random() * self.pop[idx].solution[jdx])
+                        self.pop[cp].solution[jdx]
+                        - self.generator.random() * self.pop[idx].solution[jdx]
+                    )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)

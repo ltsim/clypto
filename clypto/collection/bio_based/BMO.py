@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 11:10, 15/10/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 11:10, 15/10/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -66,7 +66,10 @@ class OriginalBMO(Optimizer):
         for idx in range(0, self.pop_size):
             if temp[idx] <= self.pl:
                 p = self.generator.uniform(0, 1)
-                pos_new = p * self.pop[k1[idx]].solution + (1 - p) * self.pop[k2[idx]].solution
+                pos_new = (
+                    p * self.pop[k1[idx]].solution
+                    + (1 - p) * self.pop[k2[idx]].solution
+                )
             else:
                 pos_new = self.generator.uniform(0, 1) * self.pop[k2[idx]].solution
             pos_new = self.correct_solution(pos_new)

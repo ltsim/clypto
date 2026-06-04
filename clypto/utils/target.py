@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 15:51, 05/10/2023 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 15:51, 05/10/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numbers
@@ -12,8 +12,11 @@ import numpy as np
 class Target:
     SUPPORTED_ARRAY = tuple, list, np.ndarray
 
-    def __init__(self, objectives: list | tuple | np.ndarray | int | float | None = None,
-                 weights: list | tuple | np.ndarray | None = None) -> None:
+    def __init__(
+        self,
+        objectives: list | tuple | np.ndarray | int | float | None = None,
+        weights: list | tuple | np.ndarray | None = None,
+    ) -> None:
         """
         Initialize the Target with a list of objectives and a fitness value.
 
@@ -24,13 +27,17 @@ class Target:
 
         def set_objectives(objs):
             if objs is None:
-                raise ValueError(f"Invalid objectives. It should be a list, tuple, np.ndarray, int or float.")
+                raise ValueError(
+                    f"Invalid objectives. It should be a list, tuple, np.ndarray, int or float."
+                )
             else:
                 if type(objs) not in self.SUPPORTED_ARRAY:
                     if isinstance(objs, numbers.Number):
                         objs = [objs]
                     else:
-                        raise ValueError(f"Invalid objectives. It should be a list, tuple, np.ndarray, int or float.")
+                        raise ValueError(
+                            f"Invalid objectives. It should be a list, tuple, np.ndarray, int or float."
+                        )
                 objs = np.array(objs).flatten()
             self.__objectives = objs
 
@@ -40,15 +47,22 @@ class Target:
             else:
                 if type(weights) not in self.SUPPORTED_ARRAY:
                     if isinstance(weights, numbers.Number):
-                        weights = [weights, ] * len(self.objectives)
+                        weights = [
+                            weights,
+                        ] * len(self.objectives)
                     else:
-                        raise ValueError(f"Invalid weights. It should be a list, tuple, np.ndarray.")
+                        raise ValueError(
+                            f"Invalid weights. It should be a list, tuple, np.ndarray."
+                        )
                 weights = np.array(weights).flatten()
             self.__weights = weights
 
         def calculate_fitness(weights):
-            if not (type(weights) in self.SUPPORTED_ARRAY and len(weights) == len(self.objectives)):
-                weights = len(self.objectives) * (1.,)
+            if not (
+                type(weights) in self.SUPPORTED_ARRAY
+                and len(weights) == len(self.objectives)
+            ):
+                weights = len(self.objectives) * (1.0,)
             self.__fitness = np.dot(weights, self.objectives)
 
         self.__objectives = None
@@ -59,7 +73,7 @@ class Target:
         set_weights(weights)
         calculate_fitness(self.weights)
 
-    def copy(self) -> 'Target':
+    def copy(self) -> "Target":
         return Target(self.objectives, self.weights)
 
     @property

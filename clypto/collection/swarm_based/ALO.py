@@ -41,7 +41,9 @@ class OriginalALO(Optimizer):
     [1] Mirjalili, S., 2015. The ant lion optimizer. Advances in engineering software, 83, pp.80-98.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -110,7 +112,9 @@ class OriginalALO(Optimizer):
             RA = self.random_walk_antlion__(self.pop[rolette_index].solution, epoch)
             # RE is the random walk around the elite (the best antlion so far)
             RE = self.random_walk_antlion__(self.g_best.solution, epoch)
-            temp = (RA[:, epoch - 1] + RE[:, epoch - 1]) / 2  # Equation(2.13) in the paper
+            temp = (
+                RA[:, epoch - 1] + RE[:, epoch - 1]
+            ) / 2  # Equation(2.13) in the paper
             # Bound checking (bring back the antlions of ants inside search space if they go beyonds the boundaries
             pos_new = self.correct_solution(temp)
             agent = self.generate_empty_agent(pos_new)
@@ -120,7 +124,9 @@ class OriginalALO(Optimizer):
         pop_new = self.update_target_for_population(pop_new)
         # Update antlion positions and fitnesses based on the ants (if an ant becomes fitter than an antlion
         # we assume it was caught by the antlion and the antlion update goes to its position to build the trap)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, self.problem.minmax
+        )
         # Keep the elite in the population
         self.pop[-1] = self.g_best.copy()
 
@@ -152,7 +158,9 @@ class DevALO(OriginalALO):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -181,7 +189,11 @@ class DevALO(OriginalALO):
         # This function creates n random walks and normalize according to lb and ub vectors,
         ## Using matrix and vector for better performance
         X = np.array(
-            [np.cumsum(2 * (self.generator.random(self.pop_size) > 0.5) - 1) for _ in range(0, self.problem.n_dims)])
+            [
+                np.cumsum(2 * (self.generator.random(self.pop_size) > 0.5) - 1)
+                for _ in range(0, self.problem.n_dims)
+            ]
+        )
         a = np.min(X, axis=1)
         b = np.max(X, axis=1)
         temp1 = np.reshape((ub - lb) / (b - a), (self.problem.n_dims, 1))
@@ -216,6 +228,8 @@ class DevALO(OriginalALO):
         pop_new = self.update_target_for_population(pop_new)
         # Update antlion positions and fitnesses based on the ants (if an ant becomes fitter than an antlion
         # we assume it was caught by the antlion and the antlion update goes to its position to build the trap)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, self.problem.minmax
+        )
         # Keep the elite in the population
         self.pop[-1] = self.g_best.copy()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 19:18, 15/08/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 19:18, 15/08/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -42,8 +42,17 @@ class OriginalSquirrelSA(Optimizer):
     Swarm and evolutionary computation, 44, 148-175.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, n_food_sources=4, predator_prob=0.1,
-                 gliding_constant=1.9, scaling_factor=18, beta=1.5, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        n_food_sources=4,
+        predator_prob=0.1,
+        gliding_constant=1.9,
+        scaling_factor=18,
+        beta=1.5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -57,13 +66,30 @@ class OriginalSquirrelSA(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.n_food_sources = self.validator.check_int("n_food_sources", n_food_sources, [1, 10])
-        self.predator_prob = self.validator.check_float("predator_prob", predator_prob, [0.0, 1.0])
-        self.gliding_constant = self.validator.check_float("gliding_constant", gliding_constant, [0.0, 10.0])
-        self.scaling_factor = self.validator.check_float("scaling_factor", scaling_factor, [1, 100])
+        self.n_food_sources = self.validator.check_int(
+            "n_food_sources", n_food_sources, [1, 10]
+        )
+        self.predator_prob = self.validator.check_float(
+            "predator_prob", predator_prob, [0.0, 1.0]
+        )
+        self.gliding_constant = self.validator.check_float(
+            "gliding_constant", gliding_constant, [0.0, 10.0]
+        )
+        self.scaling_factor = self.validator.check_float(
+            "scaling_factor", scaling_factor, [1, 100]
+        )
         self.beta = self.validator.check_float("beta", beta, [0.0, 10.0])
         self.set_parameters(
-            ["epoch", "pop_size", "n_food_sources", "predator_prob", "gliding_constant", "scaling_factor", "beta"])
+            [
+                "epoch",
+                "pop_size",
+                "n_food_sources",
+                "predator_prob",
+                "gliding_constant",
+                "scaling_factor",
+                "beta",
+            ]
+        )
         self.sort_flag = True
 
     def initialize_variables(self):
@@ -82,8 +108,8 @@ class OriginalSquirrelSA(Optimizer):
         C_D = 0.60  # Fixed drag coefficient
 
         # Calculate lift and drag forces
-        lift = 0.5 * self.rho * (self.velocity ** 2) * self.surface_area * C_L
-        drag = 0.5 * self.rho * (self.velocity ** 2) * self.surface_area * C_D
+        lift = 0.5 * self.rho * (self.velocity**2) * self.surface_area * C_L
+        drag = 0.5 * self.rho * (self.velocity**2) * self.surface_area * C_D
 
         # Calculate glide angle
         glide_angle = np.arctan(drag / lift)
@@ -109,10 +135,13 @@ class OriginalSquirrelSA(Optimizer):
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward hickory
                 pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                        self.g_best.solution - self.pop[idx].solution)
+                    self.g_best.solution - self.pop[idx].solution
+                )
             else:
                 # Predator present: random location
-                pos_new = self.generator.uniform(self.problem.lb, self.problem.ub, self.problem.n_dims)
+                pos_new = self.generator.uniform(
+                    self.problem.lb, self.problem.ub, self.problem.n_dims
+                )
             # Apply boundary constraints
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -122,7 +151,9 @@ class OriginalSquirrelSA(Optimizer):
         # Case 2: Normal squirrels move toward acorn trees
         indices_random = np.array(list(range(self.pop_size - self.n_food_sources)))
         self.generator.shuffle(indices_random)
-        indices_random = indices_random + self.n_food_sources  # True indices of normal squirrels
+        indices_random = (
+            indices_random + self.n_food_sources
+        )  # True indices of normal squirrels
         n_cut = self.generator.integers(1, self.pop_size - self.n_food_sources - 1)
         for idx in indices_random[n_cut:]:
             # Select random acorn tree
@@ -131,10 +162,13 @@ class OriginalSquirrelSA(Optimizer):
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward acorn
                 pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                        self.pop[jdx].solution - self.pop[idx].solution)
+                    self.pop[jdx].solution - self.pop[idx].solution
+                )
             else:
                 # Predator present: random location
-                pos_new = self.generator.uniform(self.problem.lb, self.problem.ub, self.problem.n_dims)
+                pos_new = self.generator.uniform(
+                    self.problem.lb, self.problem.ub, self.problem.n_dims
+                )
             # Apply boundary constraints
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -147,10 +181,13 @@ class OriginalSquirrelSA(Optimizer):
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward hickory
                 pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                        self.pop[0].solution - self.pop[idx].solution)
+                    self.pop[0].solution - self.pop[idx].solution
+                )
             else:
                 # Predator present: random location
-                pos_new = self.generator.uniform(self.problem.lb, self.problem.ub, self.problem.n_dims)
+                pos_new = self.generator.uniform(
+                    self.problem.lb, self.problem.ub, self.problem.n_dims
+                )
             # Apply boundary constraints
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -158,17 +195,25 @@ class OriginalSquirrelSA(Optimizer):
             pop_new[idx] = agent
 
         # Seasonal monitoring condition
-        S_c = np.mean([np.sqrt(np.sum((self.pop[idx].solution - self.pop[0].solution) ** 2)) for idx in
-                       range(1, self.n_food_sources)])
+        S_c = np.mean(
+            [
+                np.sqrt(np.sum((self.pop[idx].solution - self.pop[0].solution) ** 2))
+                for idx in range(1, self.n_food_sources)
+            ]
+        )
         # Calculate minimum seasonal constant
         S_min = (10e-6 / 365) * (epoch / (self.epoch / 2.5))
 
         if S_c < S_min:
             # Winter season is over: randomly relocate some squirrels
             n_relocate = max(1, len(self.pop_size - self.n_food_sources) // 4)
-            relocate_indices = self.generator.choice(indices_random, n_relocate, replace=False)
+            relocate_indices = self.generator.choice(
+                indices_random, n_relocate, replace=False
+            )
             for idx in relocate_indices:
-                levy = self.get_levy_flight_step(beta=self.beta, multiplier=0.01, size=self.problem.n_dims, case=-1)
+                levy = self.get_levy_flight_step(
+                    beta=self.beta, multiplier=0.01, size=self.problem.n_dims, case=-1
+                )
                 pos_new = self.problem.lb + levy * (self.problem.ub - self.problem.lb)
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)

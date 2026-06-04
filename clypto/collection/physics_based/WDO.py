@@ -53,8 +53,17 @@ class OriginalWDO(Optimizer):
     propagation, 61(5), pp.2745-2757.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, RT: int = 3, g_c: float = 0.2,
-                 alp: float = 0.4, c_e: float = 0.4, max_v: float = 0.3, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        RT: int = 3,
+        g_c: float = 0.2,
+        alp: float = 0.4,
+        c_e: float = 0.4,
+        max_v: float = 0.3,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -77,8 +86,9 @@ class OriginalWDO(Optimizer):
         self.sort_flag = False
 
     def initialize_variables(self):
-        self.dyn_list_velocity = self.max_v * self.generator.uniform(self.problem.lb, self.problem.ub,
-                                                                     (self.pop_size, self.problem.n_dims))
+        self.dyn_list_velocity = self.max_v * self.generator.uniform(
+            self.problem.lb, self.problem.ub, (self.pop_size, self.problem.n_dims)
+        )
 
     def evolve(self, epoch):
         """
@@ -91,9 +101,14 @@ class OriginalWDO(Optimizer):
         for idx in range(0, self.pop_size):
             rand_dim = self.generator.integers(0, self.problem.n_dims)
             temp = self.dyn_list_velocity[idx][rand_dim] * np.ones(self.problem.n_dims)
-            vel = (1 - self.alp) * self.dyn_list_velocity[idx] - self.g_c * self.pop[idx].solution + \
-                  (1 - 1.0 / (idx + 1)) * self.RT * (
-                          self.g_best.solution - self.pop[idx].solution) + self.c_e * temp / (idx + 1)
+            vel = (
+                (1 - self.alp) * self.dyn_list_velocity[idx]
+                - self.g_c * self.pop[idx].solution
+                + (1 - 1.0 / (idx + 1))
+                * self.RT
+                * (self.g_best.solution - self.pop[idx].solution)
+                + self.c_e * temp / (idx + 1)
+            )
             vel = np.clip(vel, -self.max_v, self.max_v)
             # Update air parcel positions, check the bound and calculate pressure (fitness)
             self.dyn_list_velocity[idx] = vel
@@ -103,7 +118,11 @@ class OriginalWDO(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

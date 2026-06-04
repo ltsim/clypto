@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 09:16, 15/08/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 09:16, 15/08/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -49,8 +49,16 @@ class DevEPC(Optimizer):
     Emperor Penguins Colony: a new metaheuristic algorithm for optimization. Evolutionary intelligence, 12(2), pp.211-226.
     """
 
-    def __init__(self, epoch=10000, pop_size=100, heat_damping_factor: float = 0.95,
-                 mutation_factor: float = 0.5, spiral_a: float = 1.0, spiral_b: float = 0.5, **kwargs):
+    def __init__(
+        self,
+        epoch=10000,
+        pop_size=100,
+        heat_damping_factor: float = 0.95,
+        mutation_factor: float = 0.5,
+        spiral_a: float = 1.0,
+        spiral_b: float = 0.5,
+        **kwargs
+    ):
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -63,11 +71,24 @@ class DevEPC(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.heat_damping_factor = self.validator.check_float("heat_damping_factor", heat_damping_factor, [0.0, 1.0])
-        self.mutation_factor = self.validator.check_float("mutation_factor", mutation_factor, [0.0, 1.0])
+        self.heat_damping_factor = self.validator.check_float(
+            "heat_damping_factor", heat_damping_factor, [0.0, 1.0]
+        )
+        self.mutation_factor = self.validator.check_float(
+            "mutation_factor", mutation_factor, [0.0, 1.0]
+        )
         self.spiral_a = self.validator.check_float("spiral_a", spiral_a, [0.0, 100.0])
         self.spiral_b = self.validator.check_float("spiral_b", spiral_b, [0.0, 100.0])
-        self.set_parameters(["epoch", "pop_size", "heat_damping_factor", "mutation_factor", "spiral_a", "spiral_b"])
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "heat_damping_factor",
+                "mutation_factor",
+                "spiral_a",
+                "spiral_b",
+            ]
+        )
         self.sort_flag = False
         self.is_parallelizable = False
 
@@ -80,7 +101,11 @@ class DevEPC(Optimizer):
         self.mu = 0.01  # Attenuation coefficient (can be tuned)
         # Calculate heat radiation using Stefan-Boltzmann law (Equation 6)
         self.heat_radiation = (
-                self.surface_area * self.emissivity * self.stefan_boltzmann * (self.body_temperature ** 4))
+            self.surface_area
+            * self.emissivity
+            * self.stefan_boltzmann
+            * (self.body_temperature**4)
+        )
 
     def calculate_attractiveness(self, heat_radiation: float, distance: float) -> float:
         """
@@ -104,7 +129,9 @@ class DevEPC(Optimizer):
             # Heat intensity with linear source and attenuation
             return heat_radiation * np.exp(-self.mu * distance) / distance
 
-    def spiral_movement(self, penguin_i: np.ndarray, penguin_j: np.ndarray, attractiveness: float) -> np.ndarray:
+    def spiral_movement(
+        self, penguin_i: np.ndarray, penguin_j: np.ndarray, attractiveness: float
+    ) -> np.ndarray:
         """
         Calculate spiral-like movement from penguin i towards penguin j
 
@@ -134,8 +161,9 @@ class DevEPC(Optimizer):
         move_distance = attractiveness * distance * self.spiral_a
         # Add spiral rotation effect
         theta = self.spiral_b * np.pi
-        rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],
-                                    [np.sin(theta), np.cos(theta)]])
+        rotation_matrix = np.array(
+            [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
+        )
         # Apply rotation to direction (for 2D, extend for higher dimensions)
         if self.problem.n_dims >= 2:
             rotated_dir = direction.copy()
@@ -143,8 +171,12 @@ class DevEPC(Optimizer):
         else:
             rotated_dir = direction
         # Calculate new position - Add random component (mutation) - Equation 19
-        new_position = (penguin_i + move_distance * rotated_dir +
-                        self.current_mutation_factor * self.generator.uniform(-1, 1, self.problem.n_dims))
+        new_position = (
+            penguin_i
+            + move_distance * rotated_dir
+            + self.current_mutation_factor
+            * self.generator.uniform(-1, 1, self.problem.n_dims)
+        )
         return new_position
 
     def evolve(self, epoch):
@@ -164,17 +196,27 @@ class DevEPC(Optimizer):
             # For each penguin j
             for jdx in range(self.pop_size):
                 # Move penguin i towards penguin j if j has better cost
-                if self.compare_target(self.pop[jdx].target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    self.pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                ):
                     # Calculate distance between penguins
-                    distance = np.linalg.norm(self.pop[jdx].solution - self.pop[idx].solution)
+                    distance = np.linalg.norm(
+                        self.pop[jdx].solution - self.pop[idx].solution
+                    )
                     # Calculate attractiveness
-                    attractiveness = self.calculate_attractiveness(self.heat_radiation, distance)
+                    attractiveness = self.calculate_attractiveness(
+                        self.heat_radiation, distance
+                    )
                     # Normalize attractiveness
                     if attractiveness > 1:
                         attractiveness = 1.0 / (1.0 + attractiveness)
                     # Perform spiral movement
-                    pos_new = self.spiral_movement(self.pop[idx].solution, self.pop[jdx].solution, attractiveness)
+                    pos_new = self.spiral_movement(
+                        self.pop[idx].solution, self.pop[jdx].solution, attractiveness
+                    )
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
-                    if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+                    if self.compare_target(
+                        agent.target, self.pop[idx].target, self.problem.minmax
+                    ):
                         self.pop[idx] = agent

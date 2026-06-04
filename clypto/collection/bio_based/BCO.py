@@ -44,9 +44,18 @@ class OriginalBCO(Optimizer):
     [1] Niu, B., & Wang, H. (2012). Bacterial colony optimization. Discrete dynamics in nature and society, 2012(1), 698057.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c_min: float = 0.01, c_max: float = 0.2,
-                 n_chemotaxis: int = 1, max_swim_steps: int = 4, energy_threshold: float = 0.5,
-                 migration_prob: float = 0.1, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c_min: float = 0.01,
+        c_max: float = 0.2,
+        n_chemotaxis: int = 1,
+        max_swim_steps: int = 4,
+        energy_threshold: float = 0.5,
+        migration_prob: float = 0.1,
+        **kwargs: object
+    ) -> None:
         """
         Initialize the algorithm components.
 
@@ -63,15 +72,32 @@ class OriginalBCO(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c_min = self.validator.check_float("c_min", c_min, (0., 1.0))
+        self.c_min = self.validator.check_float("c_min", c_min, (0.0, 1.0))
         self.c_max = self.validator.check_int("c_max", c_max, (c_min, 10.0))
-        self.n_chemotaxis = self.validator.check_int("n_chemotaxis", n_chemotaxis, (1, 5))
-        self.max_swim_steps = self.validator.check_int("max_swim_steps", max_swim_steps, (2, 10))
-        self.energy_threshold = self.validator.check_float("energy_threshold", energy_threshold, (0, 1.0))
-        self.migration_prob = self.validator.check_float("migration_prob", migration_prob, (0, 1.0))
+        self.n_chemotaxis = self.validator.check_int(
+            "n_chemotaxis", n_chemotaxis, (1, 5)
+        )
+        self.max_swim_steps = self.validator.check_int(
+            "max_swim_steps", max_swim_steps, (2, 10)
+        )
+        self.energy_threshold = self.validator.check_float(
+            "energy_threshold", energy_threshold, (0, 1.0)
+        )
+        self.migration_prob = self.validator.check_float(
+            "migration_prob", migration_prob, (0, 1.0)
+        )
         self.set_parameters(
-            ["epoch", "pop_size", "c_min", "c_max", "n_chemotaxis", "max_swim_steps", "energy_threshold",
-             "migration_prob"])
+            [
+                "epoch",
+                "pop_size",
+                "c_min",
+                "c_max",
+                "n_chemotaxis",
+                "max_swim_steps",
+                "energy_threshold",
+                "migration_prob",
+            ]
+        )
         self.sort_flag = False
 
     def initialize_variables(self):
@@ -86,7 +112,9 @@ class OriginalBCO(Optimizer):
         if best.target.fitness == worst.target.fitness:
             norm_fit = np.zeros(self.pop_size)
         else:
-            norm_fit = (fits - worst.target.fitness) / (best.target.fitness - worst.target.fitness)
+            norm_fit = (fits - worst.target.fitness) / (
+                best.target.fitness - worst.target.fitness
+            )
         # Energy inversely proportional to fitness (lower fitness = higher energy)
         return 1 - norm_fit
 
@@ -99,12 +127,17 @@ class OriginalBCO(Optimizer):
         """
         # Normalize fitness to [0, 1]
         pop_elites = []
-        _, best, worst = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
+        _, best, worst = self.get_special_agents(
+            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        )
         fits = np.array([agent.target.fitness for agent in self.pop])
         energy = self.get_energy(best[0], worst[0], fits)
 
         # Calculate adaptive chemotaxis step size
-        step = self.c_min + (self.c_max - self.c_min) * (1 - epoch / self.epoch) ** self.n_chemotaxis
+        step = (
+            self.c_min
+            + (self.c_max - self.c_min) * (1 - epoch / self.epoch) ** self.n_chemotaxis
+        )
         pop = []
         ## Perform chemotaxis and communication
         for idx in range(0, self.pop_size):
@@ -116,7 +149,9 @@ class OriginalBCO(Optimizer):
 
             # Tumbling (with random turbulence)
             turbulent = self.generator.normal(0, 0.1, self.problem.n_dims)
-            pos_new = f_i * global_direction + (1 - f_i) * personal_direction + turbulent
+            pos_new = (
+                f_i * global_direction + (1 - f_i) * personal_direction + turbulent
+            )
             for jdx in range(0, self.max_swim_steps):
                 # Swimming (no turbulence)
                 pos_new = f_i * global_direction + (1 - f_i) * personal_direction
@@ -126,15 +161,19 @@ class OriginalBCO(Optimizer):
             pop.append(agent_new)
             if self.mode not in self.AVAILABLE_MODES:
                 agent_new.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent_new, minmax=self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent_new, minmax=self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )
 
         ## Perform interactive exchange between bacteria
         for idx in range(0, self.pop_size):
-            exchange_type = self.generator.choice(['individual', 'group'])
-            if exchange_type == 'individual':
+            exchange_type = self.generator.choice(["individual", "group"])
+            if exchange_type == "individual":
                 if self.generator.random() < 0.5:
                     # Dynamic neighbor oriented
                     if idx == 0:
@@ -145,7 +184,9 @@ class OriginalBCO(Optimizer):
                         neighbor = idx + 1 if self.generator.random() < 0.5 else idx - 1
                 else:
                     # Random oriented
-                    neighbor = self.generator.choice(list(set(range(self.pop_size)) - {idx}))
+                    neighbor = self.generator.choice(
+                        list(set(range(self.pop_size)) - {idx})
+                    )
 
                 # Exchange information if neighbor is better
                 if self.compare_target(self.pop[neighbor].target, self.pop[idx].target):
@@ -154,7 +195,9 @@ class OriginalBCO(Optimizer):
                 # Group exchange
                 if self.compare_target(self.pop[idx].target, self.g_best.target):
                     # Move towards global best
-                    self.pop[idx].solution += 0.1 * (self.g_best.solution - self.pop[idx].solution)
+                    self.pop[idx].solution += 0.1 * (
+                        self.g_best.solution - self.pop[idx].solution
+                    )
         self.pop = self.update_target_for_population(self.pop)
 
         ## Reproduction and elimination
@@ -180,8 +223,9 @@ class OriginalBCO(Optimizer):
                 self.positions[child_idx] = self.positions[parent_idx] + mutation
 
                 # Boundary handling
-                self.positions[child_idx] = np.clip(self.positions[child_idx],
-                                                    self.bounds[0], self.bounds[1])
+                self.positions[child_idx] = np.clip(
+                    self.positions[child_idx], self.bounds[0], self.bounds[1]
+                )
 
             def migration(self):
                 """Perform migration for some bacteria"""
@@ -192,11 +236,15 @@ class OriginalBCO(Optimizer):
                 # Migrate if diversity is too low or randomly
                 if diversity < 0.01 or np.random.random() < self.migration_prob:
                     n_migrate = max(1, self.pop_size // 10)  # Migrate 10% of population
-                    migrate_indices = np.random.choice(self.pop_size, n_migrate, replace=False)
+                    migrate_indices = np.random.choice(
+                        self.pop_size, n_migrate, replace=False
+                    )
 
                     for idx in migrate_indices:
                         # Random migration
-                        self.positions[idx] = np.random.uniform(self.bounds[0], self.bounds[1], self.dim)
+                        self.positions[idx] = np.random.uniform(
+                            self.bounds[0], self.bounds[1], self.dim
+                        )
 
             # Probabilistic migration to the i-th position
             pos_new = self.pop[idx].solution.copy()
@@ -206,7 +254,9 @@ class OriginalBCO(Optimizer):
                     random_number = self.generator.random() * np.sum(self.mu)
                     select = self.mu[0]
                     select_index = 0
-                    while (random_number > select) and (select_index < self.pop_size - 1):
+                    while (random_number > select) and (
+                        select_index < self.pop_size - 1
+                    ):
                         select_index += 1
                         select += self.mu[select_index]
                     # this is the migration step
@@ -219,9 +269,15 @@ class OriginalBCO(Optimizer):
             pop.append(agent_new)
             if self.mode not in self.AVAILABLE_MODES:
                 agent_new.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent_new, minmax=self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent_new, minmax=self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )
         # replace the solutions with their new migrated and mutated versions then Merge Populations
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_elites, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_elites, self.pop_size, self.problem.minmax
+        )

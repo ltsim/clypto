@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 14:44, 16/08/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 14:44, 16/08/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -44,9 +44,19 @@ class OriginalLSHADEcnEpSin(Optimizer):
     In 2017 IEEE congress on evolutionary computation (CEC) (pp. 372-379). IEEE.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, miu_f: float = 0.5, miu_cr: float = 0.5,
-                 freq: float = 0.5, memory_size: int = 5, ps: float = 0.5, pc: float = 0.4,
-                 pop_size_min: int = 10, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        miu_f: float = 0.5,
+        miu_cr: float = 0.5,
+        freq: float = 0.5,
+        memory_size: int = 5,
+        ps: float = 0.5,
+        pc: float = 0.4,
+        pop_size_min: int = 10,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -65,11 +75,27 @@ class OriginalLSHADEcnEpSin(Optimizer):
         self.miu_f = self.validator.check_float("miu_f", miu_f, (0.1, 1.0))
         self.miu_cr = self.validator.check_float("miu_cr", miu_cr, (0.1, 1.0))
         self.freq = self.validator.check_float("freq", freq, (0.1, 2.0))
-        self.memory_size = self.validator.check_int("memory_size", memory_size, [1, 100])
+        self.memory_size = self.validator.check_int(
+            "memory_size", memory_size, [1, 100]
+        )
         self.ps = self.validator.check_float("ps", ps, (0.1, 1.0))
         self.pc = self.validator.check_float("pc", pc, (0.1, 1.0))
-        self.pop_size_min = self.validator.check_int("pop_size_min", pop_size_min, [4, 1000])
-        self.set_parameters(["epoch", "pop_size", "miu_f", "miu_cr", "freq", "memory_size", "ps", "pc", "pop_size_min"])
+        self.pop_size_min = self.validator.check_int(
+            "pop_size_min", pop_size_min, [4, 1000]
+        )
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "miu_f",
+                "miu_cr",
+                "freq",
+                "memory_size",
+                "ps",
+                "pc",
+                "pop_size_min",
+            ]
+        )
         self.sort_flag = False
 
     def initialize_variables(self):
@@ -131,7 +157,11 @@ class OriginalLSHADEcnEpSin(Optimizer):
         """
         if config_type == 1:
             # Non-adaptive sinusoidal decreasing adjustment (Eq. 4)
-            F = 0.5 * np.sin(2 * np.pi * self.freq_fixed * (max_epoch - epoch) / max_epoch) + 0.5
+            F = (
+                0.5
+                * np.sin(2 * np.pi * self.freq_fixed * (max_epoch - epoch) / max_epoch)
+                + 0.5
+            )
         else:
             # Adaptive sinusoidal increasing adjustment (Eq. 5)
             if freq is None:
@@ -153,8 +183,11 @@ class OriginalLSHADEcnEpSin(Optimizer):
         r2 = self.generator.choice(list(set(range(len(pop_combined))) - {idx, r1}))
 
         # Mutation
-        pos_new = self.pop[idx].solution + F * (pop_sorted[pbest_idx].solution - self.pop[idx].solution) + \
-                  F * (self.pop[r1].solution - pop_combined[r2].solution)
+        pos_new = (
+            self.pop[idx].solution
+            + F * (pop_sorted[pbest_idx].solution - self.pop[idx].solution)
+            + F * (self.pop[r1].solution - pop_combined[r2].solution)
+        )
         # Ensure the new position is within bounds
         pos_new = self.correct_solution(pos_new)
         return pos_new
@@ -165,7 +198,9 @@ class OriginalLSHADEcnEpSin(Optimizer):
             r_idx = self.generator.integers(0, self.H)
             CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1)
             CR = np.clip(CR, 0, 1)
-        trial = np.where(self.generator.uniform(0, 1, self.problem.n_dims) <= CR, mutant, target)
+        trial = np.where(
+            self.generator.uniform(0, 1, self.problem.n_dims) <= CR, mutant, target
+        )
         j_rand = self.generator.integers(0, self.problem.n_dims)
         trial[j_rand] = mutant[j_rand]  # Ensure at least one gene from mutant
         return trial
@@ -204,10 +239,15 @@ class OriginalLSHADEcnEpSin(Optimizer):
                 CR = np.clip(CR, 0, 1)
 
                 # Binomial crossover in eigen space
-                trial_prime = np.where(self.generator.uniform(0, 1, self.problem.n_dims) <= CR, mutant_prime,
-                                       target_prime)
+                trial_prime = np.where(
+                    self.generator.uniform(0, 1, self.problem.n_dims) <= CR,
+                    mutant_prime,
+                    target_prime,
+                )
                 j_rand = self.generator.integers(0, self.problem.n_dims)
-                trial_prime[j_rand] = mutant_prime[j_rand]  # Ensure at least one gene from mutant
+                trial_prime[j_rand] = mutant_prime[
+                    j_rand
+                ]  # Ensure at least one gene from mutant
                 # Transform back to original coordinate system
                 trial = B @ trial_prime
             except np.linalg.LinAlgError:
@@ -227,7 +267,7 @@ class OriginalLSHADEcnEpSin(Optimizer):
         # Avoid division by zero
         delta_f = np.maximum(delta_f, 1e-10)
         weights = delta_f / np.sum(delta_f)
-        numerator = np.sum(weights * S_values ** 2)
+        numerator = np.sum(weights * S_values**2)
         denominator = np.sum(weights * S_values)
         if denominator == 0:
             return 0.5
@@ -235,11 +275,15 @@ class OriginalLSHADEcnEpSin(Optimizer):
 
     def linear_population_reduction(self, epoch, max_epoch):
         """Linear population size reduction"""
-        new_NP = int(self.NP_min + (self.NP_init - self.NP_min) * (max_epoch - epoch) / max_epoch)
+        new_NP = int(
+            self.NP_min + (self.NP_init - self.NP_min) * (max_epoch - epoch) / max_epoch
+        )
         new_NP = max(self.NP_min, new_NP)
         if new_NP < self.NP:
             # Sort population by fitness and keep the best individuals
-            _, indices = self.get_sorted_population(self.pop, self.problem.minmax, return_index=True)
+            _, indices = self.get_sorted_population(
+                self.pop, self.problem.minmax, return_index=True
+            )
             tt = indices[:new_NP]
             self.generator.shuffle(tt)
             self.pop = [self.pop[idx] for idx in tt]
@@ -272,7 +316,9 @@ class OriginalLSHADEcnEpSin(Optimizer):
                     r_idx = self.generator.integers(0, self.H)
                     freq = cauchy.rvs(loc=self.M_freq[r_idx], scale=0.1)
                     freq = np.clip(freq, 0.1, 2.0)
-                    F = self.sinusoidal_adaptation(epoch, self.epoch, config_type=2, freq=freq)
+                    F = self.sinusoidal_adaptation(
+                        epoch, self.epoch, config_type=2, freq=freq
+                    )
                     config_used = 2
             else:
                 # Second half: standard LSHADE
@@ -291,7 +337,9 @@ class OriginalLSHADEcnEpSin(Optimizer):
 
             # Crossover
             if self.generator.random() < self.pc:
-                pos_new = self.covariance_matrix_crossover(self.pop[idx].solution, pos_new)
+                pos_new = self.covariance_matrix_crossover(
+                    self.pop[idx].solution, pos_new
+                )
             else:
                 pos_new = self.binomial_crossover(self.pop[idx].solution, pos_new, CR)
 
@@ -300,7 +348,9 @@ class OriginalLSHADEcnEpSin(Optimizer):
             agent = self.generate_agent(pos_new)
 
             # Selection
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):  # Success
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):  # Success
                 delta = abs(self.pop[idx].target.fitness - agent.target.fitness)
                 S_F.append(F)
                 S_CR.append(CR)
@@ -344,6 +394,8 @@ class OriginalLSHADEcnEpSin(Optimizer):
         if len(self.archive) > self.NP:
             # Randomly remove excess individuals from archive
             remove_count = len(self.archive) - self.NP
-            remove_indices = self.generator.choice(len(self.archive), remove_count, replace=False)
+            remove_indices = self.generator.choice(
+                len(self.archive), remove_count, replace=False
+            )
             keep_indices = list(set(range(len(self.archive))) - set(remove_indices))
             self.archive = [self.archive[idx] for idx in keep_indices]

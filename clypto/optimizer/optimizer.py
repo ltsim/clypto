@@ -4,14 +4,13 @@ import typing
 import numpy as np
 import numpy.typing as npt
 
-from clypto.agents.virtual import BaseAgent
-from clypto.utils.history import TrackHistory
+from clypto.agents import Agent
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 
 
-class AbstractOtimizer(abc.ABC):
+class AbstractOptimizer(abc.ABC):
     """
     Abstract base class that defines the contract for metaheuristic optimization
     algorithms.
@@ -42,11 +41,6 @@ class AbstractOtimizer(abc.ABC):
           for reproducible runs.
     """
 
-    @property
-    @abc.abstractmethod
-    def history(self) -> TrackHistory:
-        ...
-
     @abc.abstractmethod
     def initialize_variables(self) -> None:
         """
@@ -61,8 +55,10 @@ class AbstractOtimizer(abc.ABC):
 
     @abc.abstractmethod
     def before_initialization(
-            self,
-            starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
+        self,
+        starting_solutions: (
+            typing.Sequence[float] | npt.NDArray[np.float64] | None
+        ) = None,
     ) -> None:
         """
         Hook executed immediately before population initialization.
@@ -159,13 +155,15 @@ class AbstractOtimizer(abc.ABC):
 
     @abc.abstractmethod
     def solve(
-            self,
-            problem: dict | Problem,
-            termination: typing.Optional[dict | Termination] = None,
-            starting_solutions: typing.Sequence[float] | npt.NDArray[np.float64] | None = None,
-            seed: int | None = None,
-            debug: bool = False,
-    ) -> "BaseAgent":
+        self,
+        problem: dict | Problem,
+        termination: typing.Optional[dict | Termination] = None,
+        starting_solutions: (
+            typing.Sequence[float] | npt.NDArray[np.float64] | None
+        ) = None,
+        seed: int | None = None,
+        debug: bool = False,
+    ) -> "Agent":
         """
         Run the full optimization process end to end.
 
@@ -198,10 +196,10 @@ class AbstractOtimizer(abc.ABC):
 
     @abc.abstractmethod
     def track_optimize_step(
-            self,
-            pop: list["BaseAgent"] | None = None,
-            epoch: int | None = None,
-            runtime: float | None = None,
+        self,
+        pop: list["Agent"] | None = None,
+        epoch: int | None = None,
+        runtime: float | None = None,
     ) -> None:
         """
         Record per-epoch history and optionally print training details.
@@ -228,7 +226,7 @@ class AbstractOtimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> "BaseAgent":
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> "Agent":
         """
         Create a new agent skeleton without evaluating its target.
 
@@ -246,7 +244,7 @@ class AbstractOtimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_agent(self, solution: np.ndarray | None = None) -> "BaseAgent":
+    def generate_agent(self, solution: np.ndarray | None = None) -> "Agent":
         """
         Create a fully evaluated agent.
 
@@ -264,7 +262,7 @@ class AbstractOtimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_population(self, pop_size: int | None = None) -> list["BaseAgent"]:
+    def generate_population(self, pop_size: int | None = None) -> list["Agent"]:
         """
         Generate a population of fully evaluated agents.
 
@@ -318,7 +316,7 @@ class AbstractOtimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def update_target_for_population(self, pop: list["BaseAgent"]) -> list["BaseAgent"]:
+    def update_target_for_population(self, pop: list["Agent"]) -> list["Agent"]:
         """
         Re-evaluate the objective value for every agent in a population.
 

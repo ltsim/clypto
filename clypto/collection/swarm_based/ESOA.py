@@ -1,12 +1,12 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 17:48, 21/05/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 17:48, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -51,27 +51,31 @@ class OriginalESOA(Optimizer):
         self.is_parallelizable = False
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        weights = self.generator.uniform(-1., 1., self.problem.n_dims)
+        weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
         m = np.zeros(self.problem.n_dims)
         v = np.zeros(self.problem.n_dims)
-        return BaseAgent(solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v)
+        return Agent(
+            solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v
+        )
 
-    def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_agent(self, solution: np.ndarray = None) -> Agent:
         """
-            ID_WEI = 2
-            ID_LOC_X = 3
-            ID_LOC_Y = 4
-            ID_G = 5
-            ID_M = 6
-            ID_V = 7
+        ID_WEI = 2
+        ID_LOC_X = 3
+        ID_LOC_Y = 4
+        ID_G = 5
+        ID_M = 6
+        ID_V = 7
         """
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
-        agent.g = (np.sum(agent.weights * agent.solution) - agent.target.fitness) * agent.solution
+        agent.g = (
+            np.sum(agent.weights * agent.solution) - agent.target.fitness
+        ) * agent.solution
         return agent
 
     def initialize_variables(self):
@@ -89,7 +93,9 @@ class OriginalESOA(Optimizer):
         for idx in range(0, self.pop_size):
             # Individual Direction
             p_d = self.pop[idx].local_solution - self.pop[idx].solution
-            p_d = p_d * (self.pop[idx].local_target.fitness - self.pop[idx].target.fitness)
+            p_d = p_d * (
+                self.pop[idx].local_target.fitness - self.pop[idx].target.fitness
+            )
             p_d = p_d / (np.sum(p_d) ** 2 + self.EPSILON)
             d_p = p_d + self.pop[idx].g
 
@@ -106,11 +112,16 @@ class OriginalESOA(Optimizer):
             g = g / (np.sum(g) + self.EPSILON)
 
             self.pop[idx].m = self.beta1 * self.pop[idx].m + (1 - self.beta1) * g
-            self.pop[idx].v = self.beta2 * self.pop[idx].v + (1 - self.beta2) * g ** 2
-            self.pop[idx].weights -= self.pop[idx].m / (np.sqrt(self.pop[idx].v) + self.EPSILON)
+            self.pop[idx].v = self.beta2 * self.pop[idx].v + (1 - self.beta2) * g**2
+            self.pop[idx].weights -= self.pop[idx].m / (
+                np.sqrt(self.pop[idx].v) + self.EPSILON
+            )
 
             # Advice Forward
-            x_0 = self.pop[idx].solution + np.exp(-1.0 / (0.1 * self.epoch)) * 0.1 * hop * g
+            x_0 = (
+                self.pop[idx].solution
+                + np.exp(-1.0 / (0.1 * self.epoch)) * 0.1 * hop * g
+            )
             x_0 = self.correct_solution(x_0)
             y_0 = self.get_target(x_0)
 
@@ -145,11 +156,15 @@ class OriginalESOA(Optimizer):
             if self.compare_target(y_best, self.pop[idx].target, self.problem.minmax):
                 self.pop[idx].solution = x_best
                 self.pop[idx].target = y_best
-                if self.compare_target(y_best, self.pop[idx].local_target, self.problem.minmax):
+                if self.compare_target(
+                    y_best, self.pop[idx].local_target, self.problem.minmax
+                ):
                     self.pop[idx].local_solution = x_best
                     self.pop[idx].local_target = y_best
-                    self.pop[idx].g = (np.sum(self.pop[idx].weights * self.pop[idx].solution) - self.pop[
-                        idx].target.fitness) * self.pop[idx].solution
+                    self.pop[idx].g = (
+                        np.sum(self.pop[idx].weights * self.pop[idx].solution)
+                        - self.pop[idx].target.fitness
+                    ) * self.pop[idx].solution
             else:
                 if self.generator.random() < 0.3:
                     self.pop[idx].solution = x_best

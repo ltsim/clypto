@@ -46,7 +46,9 @@ class OriginalSHIO(Optimizer):
     [1] Fakhouri, H. N., Hamad, F., & Alawamrah, A. (2022). Success history intelligent optimizer. The Journal of Supercomputing, 1-42.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -65,17 +67,31 @@ class OriginalSHIO(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        _, (b1, b2, b3), _ = self.get_special_agents(self.pop, n_best=3, n_worst=1, minmax=self.problem.minmax)
+        _, (b1, b2, b3), _ = self.get_special_agents(
+            self.pop, n_best=3, n_worst=1, minmax=self.problem.minmax
+        )
         a = 1.5
         pop_new = []
         for idx in range(0, self.pop_size):
             a = a - 0.04
-            x1 = b1.solution + (a * 2 * self.generator.random(self.problem.n_dims) - a) * np.abs(
-                self.generator.random(self.problem.n_dims) * b1.solution - self.pop[idx].solution)
-            x2 = b2.solution + (a * 2 * self.generator.random(self.problem.n_dims) - a) * np.abs(
-                self.generator.random(self.problem.n_dims) * b2.solution - self.pop[idx].solution)
-            x3 = b3.solution + (a * 2 * self.generator.random(self.problem.n_dims) - a) * np.abs(
-                self.generator.random(self.problem.n_dims) * b3.solution - self.pop[idx].solution)
+            x1 = b1.solution + (
+                a * 2 * self.generator.random(self.problem.n_dims) - a
+            ) * np.abs(
+                self.generator.random(self.problem.n_dims) * b1.solution
+                - self.pop[idx].solution
+            )
+            x2 = b2.solution + (
+                a * 2 * self.generator.random(self.problem.n_dims) - a
+            ) * np.abs(
+                self.generator.random(self.problem.n_dims) * b2.solution
+                - self.pop[idx].solution
+            )
+            x3 = b3.solution + (
+                a * 2 * self.generator.random(self.problem.n_dims) - a
+            ) * np.abs(
+                self.generator.random(self.problem.n_dims) * b3.solution
+                - self.pop[idx].solution
+            )
             pos_new = (x1 + x2 + x3) / 3
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

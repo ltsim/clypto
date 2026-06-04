@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 22:47, 15/08/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 22:47, 15/08/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -41,7 +41,9 @@ class OriginalAFT(Optimizer):
     numerical optimization problems: Ali Baba and the forty thieves. Neural Computing and Applications, 34(1), 409-455.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -82,20 +84,37 @@ class OriginalAFT(Optimizer):
                 if self.generator.random() > Pp:
                     # Case 1: Follow global best with tracking distance
                     direction = np.sign(self.generator.random() - 0.5)
-                    movement = (Td * (self.pop_best[idx].solution - self.pop[idx].solution) * self.generator.random() +
-                                Td * (self.pop[idx].solution - self.pop_best[
-                                random_followers[idx]].solution) * self.generator.random())
+                    movement = (
+                        Td
+                        * (self.pop_best[idx].solution - self.pop[idx].solution)
+                        * self.generator.random()
+                        + Td
+                        * (
+                            self.pop[idx].solution
+                            - self.pop_best[random_followers[idx]].solution
+                        )
+                        * self.generator.random()
+                    )
                     pos_new = self.g_best.solution + movement * direction
                 else:
                     # Case 3: Random exploration within tracking distance
-                    pos_new = self.problem.lb + Td * (self.problem.ub - self.problem.lb) * self.generator.random(
-                        self.problem.n_dims)
+                    pos_new = self.problem.lb + Td * (
+                        self.problem.ub - self.problem.lb
+                    ) * self.generator.random(self.problem.n_dims)
             else:
                 # Thieves don't know where to search - opposite direction (Marjaneh's tricks)
                 direction = np.sign(self.generator.random() - 0.5)
-                movement = (Td * (self.pop_best[idx].solution - self.pop[idx].solution) * self.generator.random() +
-                            Td * (self.pop[idx].solution - self.pop_best[
-                            random_followers[idx]].solution) * self.generator.random())
+                movement = (
+                    Td
+                    * (self.pop_best[idx].solution - self.pop[idx].solution)
+                    * self.generator.random()
+                    + Td
+                    * (
+                        self.pop[idx].solution
+                        - self.pop_best[random_followers[idx]].solution
+                    )
+                    * self.generator.random()
+                )
                 pos_new = self.g_best.solution - movement * direction
             # Clip to bounds
             pos_new = self.correct_solution(pos_new)
@@ -107,4 +126,6 @@ class OriginalAFT(Optimizer):
                 self.pop[idx].target = self.get_target(pos_new)
         if self.mode in self.AVAILABLE_MODES:
             self.pop = self.update_target_for_population(self.pop)
-            self.pop_best = self.greedy_selection_population(self.pop_best, self.pop, self.problem.minmax)
+            self.pop_best = self.greedy_selection_population(
+                self.pop_best, self.pop, self.problem.minmax
+            )

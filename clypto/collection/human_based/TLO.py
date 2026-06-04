@@ -47,7 +47,9 @@ class DevTLO(Optimizer):
     complex constrained optimization problems. international journal of industrial engineering computations, 3(4), pp.535-560.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -72,37 +74,52 @@ class DevTLO(Optimizer):
             TF = self.generator.integers(1, 3)  # 1 or 2 (never 3)
             list_pos = np.array([agent.solution for agent in self.pop])
             DIFF_MEAN = self.generator.random(self.problem.n_dims) * (
-                    self.g_best.solution - TF * np.mean(list_pos, axis=0))
+                self.g_best.solution - TF * np.mean(list_pos, axis=0)
+            )
             pos_new = self.pop[idx].solution + DIFF_MEAN
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         pop_child = []
         for idx in range(0, self.pop_size):
             ## Learning Phrase
             pos_new = self.pop[idx].solution.copy().astype(float)
-            id_partner = self.generator.choice(np.setxor1d(np.array(range(self.pop_size)), np.array([idx])))
-            if self.compare_target(self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax):
+            id_partner = self.generator.choice(
+                np.setxor1d(np.array(range(self.pop_size)), np.array([idx]))
+            )
+            if self.compare_target(
+                self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax
+            ):
                 pos_new += self.generator.random(self.problem.n_dims) * (
-                        self.pop[idx].solution - self.pop[id_partner].solution)
+                    self.pop[idx].solution - self.pop[id_partner].solution
+                )
             else:
                 pos_new += self.generator.random(self.problem.n_dims) * (
-                        self.pop[id_partner].solution - self.pop[idx].solution)
+                    self.pop[id_partner].solution - self.pop[idx].solution
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_child, self.problem.minmax
+            )
 
 
 class OriginalTLO(DevTLO):
@@ -139,7 +156,9 @@ class OriginalTLO(DevTLO):
     for constrained mechanical design optimization problems. Computer-aided design, 43(3), pp.303-315.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -161,23 +180,35 @@ class OriginalTLO(DevTLO):
             TF = self.generator.integers(1, 3)  # 1 or 2 (never 3)
             #### Remove third loop here
             list_pos = np.array([agent.solution for agent in self.pop])
-            pos_new = self.pop[idx].solution + self.generator.uniform(0, 1, self.problem.n_dims) * \
-                      (self.g_best.solution - TF * np.mean(list_pos, axis=0))
+            pos_new = self.pop[idx].solution + self.generator.uniform(
+                0, 1, self.problem.n_dims
+            ) * (self.g_best.solution - TF * np.mean(list_pos, axis=0))
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
             ## Learning Phrase
-            id_partner = self.generator.choice(np.setxor1d(np.array(range(self.pop_size)), np.array([idx])))
+            id_partner = self.generator.choice(
+                np.setxor1d(np.array(range(self.pop_size)), np.array([idx]))
+            )
             #### Remove third loop here
-            if self.compare_target(self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax):
+            if self.compare_target(
+                self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax
+            ):
                 diff = self.pop[idx].solution - self.pop[id_partner].solution
             else:
                 diff = self.pop[id_partner].solution - self.pop[idx].solution
-            pos_new = self.pop[idx].solution + self.generator.uniform(0, 1, self.problem.n_dims) * diff
+            pos_new = (
+                self.pop[idx].solution
+                + self.generator.uniform(0, 1, self.problem.n_dims) * diff
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
 
 
@@ -216,7 +247,13 @@ class ImprovedTLO(DevTLO):
     for solving unconstrained optimization problems. Scientia Iranica, 20(3), pp.710-720.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, n_teachers: int = 5, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        n_teachers: int = 5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -224,7 +261,9 @@ class ImprovedTLO(DevTLO):
             n_teachers (int): number of teachers in class
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.n_teachers = self.validator.check_int("n_teachers", n_teachers, [2, int(np.sqrt(self.pop_size) - 1)])
+        self.n_teachers = self.validator.check_int(
+            "n_teachers", n_teachers, [2, int(np.sqrt(self.pop_size) - 1)]
+        )
         self.set_parameters(["epoch", "pop_size", "n_teachers"])
         self.n_students = self.pop_size - self.n_teachers
         self.n_students_in_team = int(self.n_students / self.n_teachers)
@@ -235,8 +274,8 @@ class ImprovedTLO(DevTLO):
             self.pop = self.generate_population(self.pop_size)
         sorted_pop = self.get_sorted_population(self.pop, self.problem.minmax)
         self.g_best = sorted_pop[0].copy()
-        self.teachers = sorted_pop[:self.n_teachers].copy()
-        sorted_pop = sorted_pop[self.n_teachers:]
+        self.teachers = sorted_pop[: self.n_teachers].copy()
+        sorted_pop = sorted_pop[self.n_teachers :]
         idx_list = self.generator.permutation(range(0, self.n_students))
         self.teams = []
         for id_teacher in range(0, self.n_teachers):
@@ -255,7 +294,9 @@ class ImprovedTLO(DevTLO):
         """
         for id_teach, teacher in enumerate(self.teachers):
             team = self.teams[id_teach]
-            list_pos = np.array([student.solution for student in self.teams[id_teach]])  # Step 7
+            list_pos = np.array(
+                [student.solution for student in self.teams[id_teach]]
+            )  # Step 7
             mean_team = np.mean(list_pos, axis=0)
             pop_new = []
             for id_stud, student in enumerate(team):
@@ -263,23 +304,39 @@ class ImprovedTLO(DevTLO):
                     TF = 1
                 else:
                     TF = student.target.fitness / teacher.target.fitness
-                diff_mean = self.generator.random() * (teacher.solution - TF * mean_team)  # Step 8
-                id2 = self.generator.choice(list(set(range(0, self.n_teachers)) - {id_teach}))
-                if self.compare_target(teacher.target, team[id2].target, self.problem.minmax):
-                    pos_new = (student.solution + diff_mean) + self.generator.random() * (
-                            team[id2].solution - student.solution)
+                diff_mean = self.generator.random() * (
+                    teacher.solution - TF * mean_team
+                )  # Step 8
+                id2 = self.generator.choice(
+                    list(set(range(0, self.n_teachers)) - {id_teach})
+                )
+                if self.compare_target(
+                    teacher.target, team[id2].target, self.problem.minmax
+                ):
+                    pos_new = (
+                        student.solution + diff_mean
+                    ) + self.generator.random() * (
+                        team[id2].solution - student.solution
+                    )
                 else:
-                    pos_new = (student.solution + diff_mean) + self.generator.random() * (
-                            student.solution - team[id2].solution)
+                    pos_new = (
+                        student.solution + diff_mean
+                    ) + self.generator.random() * (
+                        student.solution - team[id2].solution
+                    )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
                     agent.target = self.get_target(pos_new)
-                    pop_new[-1] = self.get_better_agent(agent, student, self.problem.minmax)
+                    pop_new[-1] = self.get_better_agent(
+                        agent, student, self.problem.minmax
+                    )
             if self.mode in self.AVAILABLE_MODES:
                 pop_new = self.update_target_for_population(pop_new)
-                pop_new = self.greedy_selection_population(team, pop_new, self.problem.minmax)
+                pop_new = self.greedy_selection_population(
+                    team, pop_new, self.problem.minmax
+                )
             self.teams[id_teach] = pop_new
 
         for id_teach, teacher in enumerate(self.teachers):
@@ -287,22 +344,40 @@ class ImprovedTLO(DevTLO):
             team = self.teams[id_teach]
             pop_new = []
             for id_stud, student in enumerate(team):
-                id2 = self.generator.choice(list(set(range(0, self.n_students_in_team)) - {id_stud}))
-                if self.compare_target(student.target, team[id2].target, self.problem.minmax):
-                    pos_new = student.solution + self.generator.random() * (student.solution - team[id2].solution) + \
-                              self.generator.random() * (teacher.solution - ef * team[id2].solution)
+                id2 = self.generator.choice(
+                    list(set(range(0, self.n_students_in_team)) - {id_stud})
+                )
+                if self.compare_target(
+                    student.target, team[id2].target, self.problem.minmax
+                ):
+                    pos_new = (
+                        student.solution
+                        + self.generator.random()
+                        * (student.solution - team[id2].solution)
+                        + self.generator.random()
+                        * (teacher.solution - ef * team[id2].solution)
+                    )
                 else:
-                    pos_new = student.solution + self.generator.random() * (team[id2].solution - student.solution) + \
-                              self.generator.random() * (teacher.solution - ef * student.solution)
+                    pos_new = (
+                        student.solution
+                        + self.generator.random()
+                        * (team[id2].solution - student.solution)
+                        + self.generator.random()
+                        * (teacher.solution - ef * student.solution)
+                    )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
                     agent.target = self.get_target(pos_new)
-                    pop_new[-1] = self.get_better_agent(agent, student, self.problem.minmax)
+                    pop_new[-1] = self.get_better_agent(
+                        agent, student, self.problem.minmax
+                    )
             if self.mode in self.AVAILABLE_MODES:
                 pop_new = self.update_target_for_population(pop_new)
-                pop_new = self.greedy_selection_population(team, pop_new, self.problem.minmax)
+                pop_new = self.greedy_selection_population(
+                    team, pop_new, self.problem.minmax
+                )
             self.teams[id_teach] = pop_new
         for id_teach, teacher in enumerate(self.teachers):
             team = self.teams[id_teach] + [teacher]

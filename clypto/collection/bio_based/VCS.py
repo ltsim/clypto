@@ -43,8 +43,14 @@ class DevVCS(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, lamda: float = 0.5, sigma: float = 1.5,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        lamda: float = 0.5,
+        sigma: float = 1.5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -73,8 +79,10 @@ class DevVCS(Optimizer):
         """
         ## Calculate the weighted mean of the λ best individuals by
         pop = self.get_sorted_population(pop, self.problem.minmax)
-        pos_list = [agent.solution for agent in pop[:self.n_best]]
-        factor_down = self.n_best * np.log1p(self.n_best + 1) - np.log1p(np.prod(range(1, self.n_best + 1)))
+        pos_list = [agent.solution for agent in pop[: self.n_best]]
+        factor_down = self.n_best * np.log1p(self.n_best + 1) - np.log1p(
+            np.prod(range(1, self.n_best + 1))
+        )
         weight = np.log1p(self.n_best + 1) / factor_down
         weight = weight / self.n_best
         x_mean = weight * np.sum(pos_list, axis=0)
@@ -90,19 +98,30 @@ class DevVCS(Optimizer):
         ## Viruses diffusion
         pop = []
         for idx in range(0, self.pop_size):
-            sigma = (np.log1p(epoch + 1) / self.epoch) * (self.pop[idx].solution - self.g_best.solution)
-            gauss = self.generator.normal(self.generator.normal(self.g_best.solution, np.abs(sigma)))
-            pos_new = gauss + self.generator.uniform() * self.g_best.solution - self.generator.uniform() * self.pop[
-                idx].solution
+            sigma = (np.log1p(epoch + 1) / self.epoch) * (
+                self.pop[idx].solution - self.g_best.solution
+            )
+            gauss = self.generator.normal(
+                self.generator.normal(self.g_best.solution, np.abs(sigma))
+            )
+            pos_new = (
+                gauss
+                + self.generator.uniform() * self.g_best.solution
+                - self.generator.uniform() * self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )
         ## Host cells infection
         x_mean = self.calculate_xmean__(self.pop)
         sigma = self.sigma * (1 - epoch / self.epoch)
@@ -115,18 +134,28 @@ class DevVCS(Optimizer):
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )
         ## Calculate the weighted mean of the λ best individuals by
         self.pop = self.get_sorted_population(self.pop, self.problem.minmax)
         ## Immune response
         pop = []
         for idx in range(0, self.pop_size):
             pr = (self.problem.n_dims - idx + 1) / self.problem.n_dims
-            id1, id2 = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 2, replace=False)
-            temp = self.pop[id1].solution - (self.pop[id2].solution - self.pop[idx].solution) * self.generator.uniform()
+            id1, id2 = self.generator.choice(
+                list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+            )
+            temp = (
+                self.pop[id1].solution
+                - (self.pop[id2].solution - self.pop[idx].solution)
+                * self.generator.uniform()
+            )
             condition = self.generator.random(self.problem.n_dims) < pr
             pos_new = np.where(condition, self.pop[idx].solution, temp)
             pos_new = self.correct_solution(pos_new)
@@ -134,10 +163,14 @@ class DevVCS(Optimizer):
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )
 
 
 class OriginalVCS(DevVCS):
@@ -176,8 +209,14 @@ class OriginalVCS(DevVCS):
     for optimization: Virus colony search. Advances in Engineering Software, 92, pp.65-88.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, lamda: float = 0.5, sigma: float = 1.5,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        lamda: float = 0.5,
+        sigma: float = 1.5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -202,20 +241,33 @@ class OriginalVCS(DevVCS):
         ## Viruses diffusion
         pop = []
         for idx in range(0, self.pop_size):
-            sigma = (np.log1p(epoch) / self.epoch) * (self.pop[idx].solution - self.g_best.solution)
-            gauss = np.array([self.generator.normal(self.g_best.solution[j], np.abs(sigma[j])) for j in
-                              range(0, self.problem.n_dims)])
-            pos_new = gauss + self.generator.uniform() * self.g_best.solution - self.generator.uniform() * self.pop[
-                idx].solution
+            sigma = (np.log1p(epoch) / self.epoch) * (
+                self.pop[idx].solution - self.g_best.solution
+            )
+            gauss = np.array(
+                [
+                    self.generator.normal(self.g_best.solution[j], np.abs(sigma[j]))
+                    for j in range(0, self.problem.n_dims)
+                ]
+            )
+            pos_new = (
+                gauss
+                + self.generator.uniform() * self.g_best.solution
+                - self.generator.uniform() * self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )
         ## Host cells infection
         x_mean = self.calculate_xmean__(self.pop)
         sigma = self.sigma * (1 - epoch / self.epoch)
@@ -228,10 +280,14 @@ class OriginalVCS(DevVCS):
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )
         ## Immune response
         pop = []
         for idx in range(0, self.pop_size):
@@ -239,15 +295,24 @@ class OriginalVCS(DevVCS):
             pos_new = self.pop[idx].solution.copy()
             for j in range(0, self.problem.n_dims):
                 if self.generator.uniform() > pr:
-                    id1, id2 = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 2, replace=False)
-                    pos_new[j] = self.pop[id1].solution[j] - (
-                            self.pop[id2].solution[j] - self.pop[idx].solution[j]) * self.generator.uniform()
+                    id1, id2 = self.generator.choice(
+                        list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+                    )
+                    pos_new[j] = (
+                        self.pop[id1].solution[j]
+                        - (self.pop[id2].solution[j] - self.pop[idx].solution[j])
+                        * self.generator.uniform()
+                    )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )

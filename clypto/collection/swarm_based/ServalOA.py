@@ -45,7 +45,9 @@ class OriginalServalOA(Optimizer):
     Approach for Solving Optimization Problems. Biomimetics, 7(4), 204.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -68,18 +70,30 @@ class OriginalServalOA(Optimizer):
         kk = self.generator.permutation(self.pop_size)[0]
         for idx in range(self.pop_size):
             # Phase 1: Prey Selection and Attacking (Exploration)
-            pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * \
-                      (self.pop[kk].solution - self.generator.integers(1, 3, self.problem.n_dims) * self.pop[
-                          idx].solution)
+            pos_new = self.pop[idx].solution + self.generator.random(
+                self.problem.n_dims
+            ) * (
+                self.pop[kk].solution
+                - self.generator.integers(1, 3, self.problem.n_dims)
+                * self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
 
             # Phase 2: Chase Process (Exploitation)
-            pos_new = self.pop[idx].solution + self.generator.integers(1, 3, self.problem.n_dims) * (
-                    self.problem.ub - self.problem.lb) / epoch  # Eq. 6
+            pos_new = (
+                self.pop[idx].solution
+                + self.generator.integers(1, 3, self.problem.n_dims)
+                * (self.problem.ub - self.problem.lb)
+                / epoch
+            )  # Eq. 6
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent

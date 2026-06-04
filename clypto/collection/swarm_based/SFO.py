@@ -46,8 +46,15 @@ class OriginalSFO(Optimizer):
     algorithm for solving constrained engineering optimization problems. Engineering Applications of Artificial Intelligence, 80, pp.20-34.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pp: float = 0.1, AP: float = 4.0,
-                 epsilon: float = 0.0001, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pp: float = 0.1,
+        AP: float = 4.0,
+        epsilon: float = 0.0001,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -70,7 +77,9 @@ class OriginalSFO(Optimizer):
         if self.pop is None:
             self.pop = self.generate_population(self.pop_size)  # pop = sailfish
         self.s_pop = self.generate_population(self.s_size)
-        self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)  # s_pop = sardines
+        self.s_gbest = self.get_best_agent(
+            self.s_pop, self.problem.minmax
+        )  # s_pop = sardines
 
     def evolve(self, epoch):
         """
@@ -85,20 +94,27 @@ class OriginalSFO(Optimizer):
         PD = 1 - self.pop_size / (self.pop_size + self.s_size)
         for idx in range(0, self.pop_size):
             lamda_i = 2 * self.generator.uniform() * PD - PD
-            pos_new = self.s_gbest.solution - lamda_i * \
-                      (self.generator.uniform() * (self.pop[idx].solution + self.s_gbest.solution) / 2 - self.pop[
-                          idx].solution)
+            pos_new = self.s_gbest.solution - lamda_i * (
+                self.generator.uniform()
+                * (self.pop[idx].solution + self.s_gbest.solution)
+                / 2
+                - self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         ## Calculate AttackPower using Eq.(10)
-        AP = self.AP * (1. - 2. * epoch * self.epsilon)
+        AP = self.AP * (1.0 - 2.0 * epoch * self.epsilon)
         if AP < 0.5:
             alpha = int(self.s_size * np.abs(AP))
             beta = int(self.problem.n_dims * np.abs(AP))
@@ -108,9 +124,13 @@ class OriginalSFO(Optimizer):
                 if idx in list1:
                     #### Random self.generator.choice number of dimensions in sardines updated, remove third loop by numpy vector computation
                     pos_new = self.s_pop[idx].solution.copy()
-                    list2 = self.generator.choice(range(0, self.problem.n_dims), beta, replace=False)
-                    pos_new[list2] = (self.generator.uniform(0, 1, self.problem.n_dims) * (
-                            self.s_gbest.solution - self.s_pop[idx].solution + AP))[list2]
+                    list2 = self.generator.choice(
+                        range(0, self.problem.n_dims), beta, replace=False
+                    )
+                    pos_new[list2] = (
+                        self.generator.uniform(0, 1, self.problem.n_dims)
+                        * (self.s_gbest.solution - self.s_pop[idx].solution + AP)
+                    )[list2]
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_empty_agent(pos_new)
                     if self.mode not in self.AVAILABLE_MODES:
@@ -119,7 +139,9 @@ class OriginalSFO(Optimizer):
         else:
             ### Update the position of all sardine using Eq.(9)
             for idx in range(0, self.s_size):
-                pos_new = self.generator.uniform() * (self.g_best.solution - self.s_pop[idx].solution + AP)
+                pos_new = self.generator.uniform() * (
+                    self.g_best.solution - self.s_pop[idx].solution + AP
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 if self.mode not in self.AVAILABLE_MODES:
@@ -128,12 +150,18 @@ class OriginalSFO(Optimizer):
         ## Recalculate the fitness of all sardine
         self.s_pop = self.update_target_for_population(self.s_pop)
         ## Sort the population of sailfish and sardine (for reducing computational cost)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop, self.pop_size, self.problem.minmax)
-        self.s_pop = self.get_sorted_and_trimmed_population(self.s_pop, len(self.s_pop), self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop, self.pop_size, self.problem.minmax
+        )
+        self.s_pop = self.get_sorted_and_trimmed_population(
+            self.s_pop, len(self.s_pop), self.problem.minmax
+        )
         for idx in range(0, self.pop_size):
             for jdx in range(0, self.s_size):
                 ### If there is a better position in sardine population.
-                if self.compare_target(self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                ):
                     self.pop[idx] = self.s_pop[jdx].copy()
                     del self.s_pop[jdx]
                 break  #### This simple keyword helped reducing ton of comparing operation.
@@ -142,7 +170,9 @@ class OriginalSFO(Optimizer):
         if temp == 1:
             self.s_pop = self.s_pop + [self.generate_agent()]
         else:
-            self.s_pop = self.s_pop + self.generate_population(self.s_size - len(self.s_pop))
+            self.s_pop = self.s_pop + self.generate_population(
+                self.s_size - len(self.s_pop)
+            )
         self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)
 
 
@@ -178,7 +208,9 @@ class ImprovedSFO(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pp: float = 0.1, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, pp: float = 0.1, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -212,26 +244,37 @@ class ImprovedSFO(Optimizer):
         for idx in range(0, self.pop_size):
             PD = 1 - len(self.pop) / (len(self.pop) + len(self.s_pop))
             lamda_i = 2 * self.generator.uniform() * PD - PD
-            pos_new = self.s_gbest.solution - \
-                      lamda_i * (self.generator.uniform() * (self.g_best.solution + self.s_gbest.solution) / 2 -
-                                 self.pop[idx].solution)
+            pos_new = self.s_gbest.solution - lamda_i * (
+                self.generator.uniform()
+                * (self.g_best.solution + self.s_gbest.solution)
+                / 2
+                - self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         ## ## Calculate AttackPower using my Eq.thieu
         #### This is our proposed, simple but effective, no need A and epsilon parameters
         AP = 1 - epoch * 1.0 / self.epoch
         if AP < 0.5:
             for idx in range(0, len(self.s_pop)):
                 temp = (self.g_best.solution + AP) / 2
-                pos_new = self.problem.lb + self.problem.ub - temp + self.generator.uniform() * (
-                        temp - self.s_pop[idx].solution)
+                pos_new = (
+                    self.problem.lb
+                    + self.problem.ub
+                    - temp
+                    + self.generator.uniform() * (temp - self.s_pop[idx].solution)
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 if self.mode not in self.AVAILABLE_MODES:
@@ -240,7 +283,9 @@ class ImprovedSFO(Optimizer):
         else:
             ### Update the position of all sardine using Eq.(9)
             for idx in range(0, len(self.s_pop)):
-                pos_new = self.generator.uniform() * (self.g_best.solution - self.s_pop[idx].solution + AP)
+                pos_new = self.generator.uniform() * (
+                    self.g_best.solution - self.s_pop[idx].solution + AP
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 if self.mode not in self.AVAILABLE_MODES:
@@ -249,15 +294,23 @@ class ImprovedSFO(Optimizer):
         ## Recalculate the fitness of all sardine
         self.s_pop = self.update_target_for_population(self.s_pop)
         ## Sort the population of sailfish and sardine (for reducing computational cost)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop, self.pop_size, self.problem.minmax)
-        self.s_pop = self.get_sorted_and_trimmed_population(self.s_pop, len(self.s_pop), self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop, self.pop_size, self.problem.minmax
+        )
+        self.s_pop = self.get_sorted_and_trimmed_population(
+            self.s_pop, len(self.s_pop), self.problem.minmax
+        )
         for idx in range(0, self.pop_size):
             for jdx in range(0, len(self.s_pop)):
                 ### If there is a better position in sardine population.
-                if self.compare_target(self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                ):
                     self.pop[idx] = self.s_pop[jdx].copy()
                     del self.s_pop[jdx]
                 break  #### This simple keyword helped reducing ton of comparing operation.
                 #### Especially when sardine pop size >> sailfish pop size
-        self.s_pop = self.s_pop + self.generate_population(self.s_size - len(self.s_pop))
+        self.s_pop = self.s_pop + self.generate_population(
+            self.s_size - len(self.s_pop)
+        )
         self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)

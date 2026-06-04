@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 00:08, 27/10/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 00:08, 27/10/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -42,7 +42,9 @@ class OriginalMGO(Optimizer):
     nature-inspired metaheuristic algorithm for global optimization problems. Advances in Engineering Software, 174, 103282.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -55,7 +57,7 @@ class OriginalMGO(Optimizer):
         self.sort_flag = True
 
     def coefficient_vector__(self, n_dims, epoch, max_epoch):
-        a2 = -1. + epoch * (-1. / max_epoch)
+        a2 = -1.0 + epoch * (-1.0 / max_epoch)
         u = self.generator.standard_normal(n_dims)
         v = self.generator.standard_normal(n_dims)
         cofi = np.zeros((4, n_dims))
@@ -74,27 +76,57 @@ class OriginalMGO(Optimizer):
         """
         pop_new = []
         for idx in range(0, self.pop_size):
-            idxs_rand = self.generator.permutation(self.pop_size)[:int(np.ceil(self.pop_size / 3))]
+            idxs_rand = self.generator.permutation(self.pop_size)[
+                : int(np.ceil(self.pop_size / 3))
+            ]
             pos_list = np.array([self.pop[mm].solution for mm in idxs_rand])
-            idx_rand = self.generator.integers(int(np.ceil(self.pop_size / 3)), self.pop_size)
-            M = self.pop[idx_rand].solution * np.floor(self.generator.normal()) + np.mean(pos_list, axis=0) * np.ceil(
-                self.generator.normal())
+            idx_rand = self.generator.integers(
+                int(np.ceil(self.pop_size / 3)), self.pop_size
+            )
+            M = self.pop[idx_rand].solution * np.floor(
+                self.generator.normal()
+            ) + np.mean(pos_list, axis=0) * np.ceil(self.generator.normal())
 
             # Calculate the vector of coefficients
             cofi = self.coefficient_vector__(self.problem.n_dims, epoch, self.epoch)
-            A = self.generator.standard_normal(self.problem.n_dims) * np.exp(2 - epoch * (2. / self.epoch))
-            D = (np.abs(self.pop[idx].solution) + np.abs(self.g_best.solution)) * (2 * self.generator.random() - 1)
+            A = self.generator.standard_normal(self.problem.n_dims) * np.exp(
+                2 - epoch * (2.0 / self.epoch)
+            )
+            D = (np.abs(self.pop[idx].solution) + np.abs(self.g_best.solution)) * (
+                2 * self.generator.random() - 1
+            )
 
             # Update the location
-            x2 = self.g_best.solution - np.abs(
-                (self.generator.integers(1, 3) * M - self.generator.integers(1, 3) * self.pop[idx].solution) * A) * \
-                 cofi[self.generator.integers(0, 4), :]
-            x3 = M + cofi[self.generator.integers(0, 4), :] + (
-                    self.generator.integers(1, 3) * self.g_best.solution - self.generator.integers(1, 3) * self.pop[
-                self.generator.integers(self.pop_size)].solution) * cofi[self.generator.integers(0, 4), :]
-            x4 = self.pop[idx].solution - D + (
-                    self.generator.integers(1, 3) * self.g_best.solution - self.generator.integers(1, 3) * M) * \
-                 cofi[self.generator.integers(0, 4), :]
+            x2 = (
+                self.g_best.solution
+                - np.abs(
+                    (
+                        self.generator.integers(1, 3) * M
+                        - self.generator.integers(1, 3) * self.pop[idx].solution
+                    )
+                    * A
+                )
+                * cofi[self.generator.integers(0, 4), :]
+            )
+            x3 = (
+                M
+                + cofi[self.generator.integers(0, 4), :]
+                + (
+                    self.generator.integers(1, 3) * self.g_best.solution
+                    - self.generator.integers(1, 3)
+                    * self.pop[self.generator.integers(self.pop_size)].solution
+                )
+                * cofi[self.generator.integers(0, 4), :]
+            )
+            x4 = (
+                self.pop[idx].solution
+                - D
+                + (
+                    self.generator.integers(1, 3) * self.g_best.solution
+                    - self.generator.integers(1, 3) * M
+                )
+                * cofi[self.generator.integers(0, 4), :]
+            )
 
             x1 = self.problem.generate_solution()
             x1 = self.correct_solution(x1)
@@ -113,4 +145,6 @@ class OriginalMGO(Optimizer):
                     pop_new[jdx].target = self.get_target(pop_new[jdx].solution)
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, self.problem.minmax
+        )

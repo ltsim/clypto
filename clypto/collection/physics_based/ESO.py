@@ -37,7 +37,9 @@ class OriginalESO(Optimizer):
     [1] Soto Calvo, Manuel, and Han Soo Lee. 2025. "Electrical Storm Optimization (ESO) Algorithm: Theoretical Foundations, Analysis, and Application to Engineering Problems" Machine Learning and Knowledge Extraction 7, no. 1: 24. https://doi.org/10.3390/make7010024
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -86,12 +88,15 @@ class OriginalESO(Optimizer):
             # Beta calculation (logistic function)
             try:
                 exp_term = np.exp(resistance) / resistance
-                log_term = np.log(1. - resistance) if resistance < 1 else 0
-                beta = 1. / (1. + np.exp(-exp_term) * (resistance - abs(log_term)))
+                log_term = np.log(1.0 - resistance) if resistance < 1 else 0
+                beta = 1.0 / (1.0 + np.exp(-exp_term) * (resistance - abs(log_term)))
             except (OverflowError, ValueError):
                 beta = 0.5
             try:
-                fc = (np.exp(resistance) + np.exp(1 - resistance) * abs(np.log(resistance)) * beta)
+                fc = (
+                    np.exp(resistance)
+                    + np.exp(1 - resistance) * abs(np.log(resistance)) * beta
+                )
             except (OverflowError, ValueError):
                 fc = 1.0
 
@@ -124,7 +129,9 @@ class OriginalESO(Optimizer):
             else:
                 # Initialize near ionized areas
                 alpha = ionized_pop[self.generator.integers(0, len(ionized_pop))]
-                perturbation = self.generator.normal(loc=0, scale=storm_power, size=self.problem.n_dims)
+                perturbation = self.generator.normal(
+                    loc=0, scale=storm_power, size=self.problem.n_dims
+                )
                 pos_new = alpha.solution + perturbation
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
@@ -145,13 +152,18 @@ class OriginalESO(Optimizer):
                 # Propagate towards ionized areas
                 if len(ionized_pop) > 0:
                     # Average position of ionized areas
-                    avg_ionized = np.mean([agent.solution for agent in ionized_pop], axis=0)
+                    avg_ionized = np.mean(
+                        [agent.solution for agent in ionized_pop], axis=0
+                    )
                     # Random perturbation
-                    pos_new = avg_ionized + storm_power * np.exp(fc) * self.generator.uniform(-fc, fc,
-                                                                                              self.problem.n_dims)
+                    pos_new = avg_ionized + storm_power * np.exp(
+                        fc
+                    ) * self.generator.uniform(-fc, fc, self.problem.n_dims)
                 else:
                     # Random search
-                    pos_new = self.generator.uniform(self.problem.lb, self.problem.ub, self.problem.n_dims)
+                    pos_new = self.generator.uniform(
+                        self.problem.lb, self.problem.ub, self.problem.n_dims
+                    )
             pos_new = self.correct_solution(pos_new)
             agent_new = self.generate_agent(pos_new)
 

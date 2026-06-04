@@ -7,7 +7,6 @@
 import numpy as np
 from scipy.special import erf
 
-
 # ________________________V-shaped transfer functions______________________
 
 
@@ -20,27 +19,27 @@ def vstf_02(x):
 
 
 def vstf_03(x):
-    return np.abs(x / np.sqrt(1. + np.square(x)))
+    return np.abs(x / np.sqrt(1.0 + np.square(x)))
 
 
 def vstf_04(x):
-    return np.abs((2. / np.pi) * np.arctan((np.pi / 2) * x))
+    return np.abs((2.0 / np.pi) * np.arctan((np.pi / 2) * x))
 
 
 ##______________________S-shaped transfer functions_______________________
 
 
 def sstf_01(x):
-    return 1 / (1 + np.exp(-2. * x))
+    return 1 / (1 + np.exp(-2.0 * x))
 
 
 def sstf_02(x):
-    return 1. / (1 + np.exp(-x))
+    return 1.0 / (1 + np.exp(-x))
 
 
 def sstf_03(x):
-    return 1. / (1 + np.exp(-x / 3.))
+    return 1.0 / (1 + np.exp(-x / 3.0))
 
 
 def sstf_04(x):
-    return 1. / (1 + np.exp(-x / 2.))
+    return 1.0 / (1 + np.exp(-x / 2.0))

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Created by "Thieu" at 17:28, 13/10/2021 ----------%
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numbers
@@ -9,17 +9,40 @@ import typing
 
 import numpy as np
 
-from clypto.utils.space import (BaseVar, IntegerVar, FloatVar, StringVar, BinaryVar, BoolVar,
-                                PermutationVar, CategoricalVar, SequenceVar, TransferBinaryVar, TransferBoolVar)
+from clypto.utils.space import (
+    BaseVar,
+    IntegerVar,
+    FloatVar,
+    StringVar,
+    BinaryVar,
+    BoolVar,
+    PermutationVar,
+    CategoricalVar,
+    SequenceVar,
+    TransferBinaryVar,
+    TransferBoolVar,
+)
 from clypto.utils.target import Target
 
 
 class Problem:
-    SUPPORTED_VARS: typing.Final[tuple[
-        type]] = IntegerVar, FloatVar, StringVar, BinaryVar, BoolVar, PermutationVar, CategoricalVar, SequenceVar, TransferBinaryVar, TransferBoolVar
+    SUPPORTED_VARS: typing.Final[tuple[type]] = (
+        IntegerVar,
+        FloatVar,
+        StringVar,
+        BinaryVar,
+        BoolVar,
+        PermutationVar,
+        CategoricalVar,
+        SequenceVar,
+        TransferBinaryVar,
+        TransferBoolVar,
+    )
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
-    def __init__(self, bounds: list | tuple | np.ndarray | BaseVar, minmax: str = "min", **kwargs) -> None:
+    def __init__(
+        self, bounds: list | tuple | np.ndarray | BaseVar, minmax: str = "min", **kwargs
+    ) -> None:
         self.__obj_func = kwargs.get("obj_func", lambda _: 0)
         self.__name = kwargs.get("name", "Problem")
         self.__bounds = None
@@ -81,7 +104,9 @@ class Problem:
             elif isinstance(result, numbers.Number):
                 self.__n_objs = 1
             else:
-                raise ValueError("`obj_func` must return a number, list, tuple or numpy array.")
+                raise ValueError(
+                    "`obj_func` must return a number, list, tuple or numpy array."
+                )
 
             if self.__obj_weights is None:
                 if self.__n_objs > 1:
@@ -91,7 +116,8 @@ class Problem:
 
             elif len(np.array(self.__obj_weights).ravel()) != self.__n_objs:
                 raise ValueError(
-                    f"`obj_weights` length {len(self.__obj_weights)} does not match number of objectives {self.__n_objs}.")
+                    f"`obj_weights` length {len(self.__obj_weights)} does not match number of objectives {self.__n_objs}."
+                )
 
         return self.__n_objs
 
@@ -99,7 +125,9 @@ class Problem:
         if isinstance(bounds, BaseVar):
             bounds.seed = self.seed
 
-            self.__bounds = [bounds, ]
+            self.__bounds = [
+                bounds,
+            ]
         elif type(bounds) in self.SUPPORTED_ARRAYS:
             self.__bounds = []
 
@@ -108,11 +136,13 @@ class Problem:
                     bound.seed = self.seed
                 else:
                     raise ValueError(
-                        f"Invalid bounds. All variables in bounds should be an instance of {self.SUPPORTED_VARS}")
+                        f"Invalid bounds. All variables in bounds should be an instance of {self.SUPPORTED_VARS}"
+                    )
                 self.__bounds.append(bound)
         else:
             raise TypeError(
-                f"Invalid bounds. It should be type of {self.SUPPORTED_ARRAYS} or an instance of {self.SUPPORTED_VARS}")
+                f"Invalid bounds. It should be type of {self.SUPPORTED_ARRAYS} or an instance of {self.SUPPORTED_VARS}"
+            )
 
         self.__lb = np.concatenate([bound.lb for bound in self.__bounds])
         self.__ub = np.concatenate([bound.ub for bound in self.__bounds])
@@ -157,7 +187,7 @@ class Problem:
         x_new, n_vars = {}, 0
 
         for idx, var in enumerate(bounds):
-            temp = var.decode(x[n_vars:n_vars + var.n_vars])
+            temp = var.decode(x[n_vars : n_vars + var.n_vars])
 
             if var.n_vars == 1:
                 x_new[var.__name] = temp[0]
@@ -169,17 +199,21 @@ class Problem:
         return x_new
 
     @staticmethod
-    def correct_solution_with_bounds(x: list | tuple | np.ndarray, bounds: list) -> np.ndarray:
+    def correct_solution_with_bounds(
+        x: list | tuple | np.ndarray, bounds: list
+    ) -> np.ndarray:
         x_new, n_vars = [], 0
 
         for idx, var in enumerate(bounds):
-            x_new += list(var.correct(x[n_vars:n_vars + var.n_vars]))
+            x_new += list(var.correct(x[n_vars : n_vars + var.n_vars]))
             n_vars += var.n_vars
 
         return np.array(x_new)
 
     @staticmethod
-    def generate_solution_with_bounds(bounds: list | tuple | np.ndarray, encoded: bool = True) -> list | np.ndarray:
+    def generate_solution_with_bounds(
+        bounds: list | tuple | np.ndarray, encoded: bool = True
+    ) -> list | np.ndarray:
         x = [var.generate() for var in bounds]
 
         if encoded:

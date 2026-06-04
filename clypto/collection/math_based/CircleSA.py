@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 17:38, 21/05/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 17:38, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -64,10 +64,13 @@ class OriginalCircleSA(Optimizer):
         for idx in range(0, self.pop_size):
             w = a * self.generator.random() - a
             if epoch > threshold:
-                x_new = self.g_best.solution + (self.g_best.solution - self.pop[idx].solution) * np.tan(
-                    w * self.generator.random())
+                x_new = self.g_best.solution + (
+                    self.g_best.solution - self.pop[idx].solution
+                ) * np.tan(w * self.generator.random())
             else:
-                x_new = self.g_best.solution - (self.g_best.solution - self.pop[idx].solution) * np.tan(w * p)
+                x_new = self.g_best.solution - (
+                    self.g_best.solution - self.pop[idx].solution
+                ) * np.tan(w * p)
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)

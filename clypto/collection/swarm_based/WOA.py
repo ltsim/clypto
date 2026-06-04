@@ -41,7 +41,9 @@ class OriginalWOA(Optimizer):
     [1] Mirjalili, S. and Lewis, A., 2016. The whale optimization algorithm. Advances in engineering software, 95, pp.51-67.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -75,15 +77,25 @@ class OriginalWOA(Optimizer):
             for jdx in range(0, self.problem.n_dims):
                 if p < 0.5:
                     if np.abs(A) >= 1:
-                        id_r = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                        D_X_rand = abs(C * self.pop[id_r].solution[jdx] - self.pop[idx].solution[jdx])
+                        id_r = self.generator.choice(
+                            list(set(range(0, self.pop_size)) - {idx})
+                        )
+                        D_X_rand = abs(
+                            C * self.pop[id_r].solution[jdx]
+                            - self.pop[idx].solution[jdx]
+                        )
                         pos_new[jdx] = self.pop[id_r].solution[jdx] - A * D_X_rand
                     else:
-                        D_Leader = abs(C * self.g_best.solution[jdx] - self.pop[idx].solution[jdx])
+                        D_Leader = abs(
+                            C * self.g_best.solution[jdx] - self.pop[idx].solution[jdx]
+                        )
                         pos_new[jdx] = self.g_best.solution[jdx] - A * D_Leader
                 else:
                     D1 = abs(self.g_best.solution[jdx] - self.pop[idx].solution[jdx])
-                    pos_new[jdx] = D1 * np.exp(b * l) * np.cos(l * 2 * np.pi) + self.g_best.solution[jdx]
+                    pos_new[jdx] = (
+                        D1 * np.exp(b * l) * np.cos(l * 2 * np.pi)
+                        + self.g_best.solution[jdx]
+                    )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
@@ -125,7 +137,9 @@ class DevWOA(Optimizer):
     [1] Mirjalili, S. and Lewis, A., 2016. The whale optimization algorithm. Advances in engineering software, 95, pp.51-67.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -155,11 +169,15 @@ class DevWOA(Optimizer):
             b = 1
 
             # Get pos1
-            pos1 = self.g_best.solution - A * np.abs(C * self.g_best.solution - self.pop[idx].solution)
+            pos1 = self.g_best.solution - A * np.abs(
+                C * self.g_best.solution - self.pop[idx].solution
+            )
 
             # Get pos2
             id_r2 = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            pos2 = self.pop[id_r2].solution - A * np.abs(C * self.pop[id_r2].solution - self.pop[idx].solution)
+            pos2 = self.pop[id_r2].solution - A * np.abs(
+                C * self.pop[id_r2].solution - self.pop[idx].solution
+            )
 
             # Get pos3
             D1 = np.abs(self.g_best.solution - self.pop[idx].solution)
@@ -167,7 +185,9 @@ class DevWOA(Optimizer):
 
             # Get final pos_new
             pos_new = pos1 if np.abs(A) < 1 else pos2
-            pos_new = np.where(self.generator.random(size=self.problem.n_dims) < p, pos_new, pos3)
+            pos_new = np.where(
+                self.generator.random(size=self.problem.n_dims) < p, pos_new, pos3
+            )
 
             # Correct solution
             pos_new = self.correct_solution(pos_new)
@@ -175,10 +195,14 @@ class DevWOA(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class HI_WOA(Optimizer):
@@ -216,7 +240,13 @@ class HI_WOA(Optimizer):
     In 2019 IEEE 15th International Conference on Control and Automation (ICCA) (pp. 362-367). IEEE.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, feedback_max: int = 10, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        feedback_max: int = 10,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -226,7 +256,9 @@ class HI_WOA(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.feedback_max = self.validator.check_int("feedback_max", feedback_max, [2, 2 + int(self.epoch / 2)])
+        self.feedback_max = self.validator.check_int(
+            "feedback_max", feedback_max, [2, 2 + int(self.epoch / 2)]
+        )
         # The maximum of times g_best doesn't change -> need to change half of population
         self.set_parameters(["epoch", "pop_size", "feedback_max"])
         self.sort_flag = True
@@ -262,16 +294,22 @@ class HI_WOA(Optimizer):
                     pos_new = x_rand - A * D
             else:
                 D1 = np.abs(self.g_best.solution - self.pop[idx].solution)
-                pos_new = self.g_best.solution + np.exp(b * l) * np.cos(2 * np.pi * l) * D1
+                pos_new = (
+                    self.g_best.solution + np.exp(b * l) * np.cos(2 * np.pi * l) * D1
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
         ## Feedback Mechanism
         current_best = self.get_best_agent(self.pop, self.problem.minmax)
@@ -281,7 +319,9 @@ class HI_WOA(Optimizer):
             self.dyn_feedback_count = 0
 
         if self.dyn_feedback_count >= self.feedback_max:
-            idx_list = self.generator.choice(range(0, self.pop_size), self.n_changes, replace=False)
+            idx_list = self.generator.choice(
+                range(0, self.pop_size), self.n_changes, replace=False
+            )
             pop_child = self.generate_population(self.n_changes)
             for idx_counter, idx in enumerate(idx_list):
                 self.pop[idx] = pop_child[idx_counter]

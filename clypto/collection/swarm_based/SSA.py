@@ -47,8 +47,15 @@ class DevSSA(Optimizer):
     sparrow search algorithm. Systems Science & Control Engineering, 8(1), pp.22-34.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, ST: float = 0.8, PD: float = 0.2, SD: float = 0.1,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        ST: float = 0.8,
+        PD: float = 0.2,
+        SD: float = 0.1,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -69,7 +76,9 @@ class DevSSA(Optimizer):
         self.sort_flag = True
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
+        condition = np.logical_and(
+            self.problem.lb <= solution, solution <= self.problem.ub
+        )
         pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
         return np.where(condition, solution, pos_rand)
 
@@ -91,37 +100,56 @@ class DevSSA(Optimizer):
                         des = self.generator.normal()
                     x_new = self.pop[idx].solution * np.exp(des)
                 else:
-                    x_new = self.pop[idx].solution + self.generator.normal() * np.ones(self.problem.n_dims)
+                    x_new = self.pop[idx].solution + self.generator.normal() * np.ones(
+                        self.problem.n_dims
+                    )
             else:
                 # Using equation (4) update the sparrow’s location;
-                _, (g_best,), (g_worst,) = self.get_special_agents(self.pop, n_best=1, n_worst=1,
-                                                                   minmax=self.problem.minmax)
+                _, (g_best,), (g_worst,) = self.get_special_agents(
+                    self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+                )
                 if idx > int(self.pop_size / 2):
                     x_new = self.generator.normal() * np.exp(
-                        (g_worst.solution - self.pop[idx].solution) / (idx + 1) ** 2)
+                        (g_worst.solution - self.pop[idx].solution) / (idx + 1) ** 2
+                    )
                 else:
-                    x_new = g_best.solution + np.abs(self.pop[idx].solution - g_best.solution) * self.generator.normal()
+                    x_new = (
+                        g_best.solution
+                        + np.abs(self.pop[idx].solution - g_best.solution)
+                        * self.generator.normal()
+                    )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
-        self.pop, best, worst = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
+        self.pop, best, worst = self.get_special_agents(
+            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        )
         g_best, g_worst = best[0], worst[0]
-        pop2 = [agent.copy() for agent in self.pop[self.n2:]]
+        pop2 = [agent.copy() for agent in self.pop[self.n2 :]]
         child = []
         for idx in range(0, len(pop2)):
             #  Using equation (5) update the sparrow’s location;
-            if self.compare_target(self.pop[idx].target, g_best.target, self.problem.minmax):
+            if self.compare_target(
+                self.pop[idx].target, g_best.target, self.problem.minmax
+            ):
                 x_new = pop2[idx].solution + self.generator.uniform(-1, 1) * (
-                        np.abs(pop2[idx].solution - g_worst.solution) /
-                        (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON))
+                    np.abs(pop2[idx].solution - g_worst.solution)
+                    / (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON)
+                )
             else:
-                x_new = g_best.solution + self.generator.normal() * np.abs(pop2[idx].solution - g_best.solution)
+                x_new = g_best.solution + self.generator.normal() * np.abs(
+                    pop2[idx].solution - g_best.solution
+                )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
             child.append(agent)
@@ -131,7 +159,7 @@ class DevSSA(Optimizer):
         if self.mode in self.AVAILABLE_MODES:
             child = self.update_target_for_population(child)
             pop2 = self.greedy_selection_population(pop2, child, self.problem.minmax)
-        self.pop = self.pop[:self.n2] + pop2
+        self.pop = self.pop[: self.n2] + pop2
 
 
 class OriginalSSA(DevSSA):
@@ -172,8 +200,15 @@ class OriginalSSA(DevSSA):
     sparrow search algorithm. Systems Science & Control Engineering, 8(1), pp.22-34.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, ST: float = 0.8, PD: float = 0.2, SD: float = 0.1,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        ST: float = 0.8,
+        PD: float = 0.2,
+        SD: float = 0.1,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -197,45 +232,65 @@ class OriginalSSA(DevSSA):
             # Using equation (3) update the sparrow’s location;
             if idx < self.n1:
                 if r2 < self.ST:
-                    des = (idx + 1) / (self.generator.uniform() * self.epoch + self.EPSILON)
+                    des = (idx + 1) / (
+                        self.generator.uniform() * self.epoch + self.EPSILON
+                    )
                     if des > 5:
                         des = self.generator.uniform()
                     x_new = self.pop[idx].solution * np.exp(des)
                 else:
-                    x_new = self.pop[idx].solution + self.generator.normal() * np.ones(self.problem.n_dims)
+                    x_new = self.pop[idx].solution + self.generator.normal() * np.ones(
+                        self.problem.n_dims
+                    )
             else:
                 # Using equation (4) update the sparrow’s location;
-                _, x_p, worst = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
+                _, x_p, worst = self.get_special_agents(
+                    self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+                )
                 g_best, g_worst = x_p[0], worst[0]
                 if idx > int(self.pop_size / 2):
                     x_new = self.generator.normal() * np.exp(
-                        (g_worst.solution - self.pop[idx].solution) / (idx + 1) ** 2)
+                        (g_worst.solution - self.pop[idx].solution) / (idx + 1) ** 2
+                    )
                 else:
                     L = np.ones((1, self.problem.n_dims))
                     A = np.sign(self.generator.uniform(-1, 1, (1, self.problem.n_dims)))
                     A1 = A.T * np.linalg.inv(np.matmul(A, A.T)) * L
-                    x_new = g_best.solution + np.matmul(np.abs(self.pop[idx].solution - g_best.solution), A1)
+                    x_new = g_best.solution + np.matmul(
+                        np.abs(self.pop[idx].solution - g_best.solution), A1
+                    )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
-        self.pop, best, worst = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
+        self.pop, best, worst = self.get_special_agents(
+            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        )
         g_best, g_worst = best[0], worst[0]
-        pop2 = [agent.copy() for agent in self.pop[self.n2:]]
+        pop2 = [agent.copy() for agent in self.pop[self.n2 :]]
         child = []
         for idx in range(0, len(pop2)):
             #  Using equation (5) update the sparrow’s location;
-            if self.compare_target(self.pop[idx].target, g_best.target, self.problem.minmax):
+            if self.compare_target(
+                self.pop[idx].target, g_best.target, self.problem.minmax
+            ):
                 x_new = pop2[idx].solution + self.generator.uniform(-1, 1) * (
-                        np.abs(pop2[idx].solution - g_worst.solution) /
-                        (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON))
+                    np.abs(pop2[idx].solution - g_worst.solution)
+                    / (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON)
+                )
             else:
-                x_new = g_best.solution + self.generator.normal() * np.abs(pop2[idx].solution - g_best.solution)
+                x_new = g_best.solution + self.generator.normal() * np.abs(
+                    pop2[idx].solution - g_best.solution
+                )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
             child.append(agent)
@@ -245,4 +300,4 @@ class OriginalSSA(DevSSA):
         if self.mode in self.AVAILABLE_MODES:
             child = self.update_target_for_population(child)
             pop2 = self.greedy_selection_population(pop2, child, self.problem.minmax)
-        self.pop = self.pop[:self.n2] + pop2
+        self.pop = self.pop[: self.n2] + pop2

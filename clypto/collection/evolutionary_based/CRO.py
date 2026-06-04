@@ -52,10 +52,21 @@ class OriginalCRO(Optimizer):
     The coral reefs optimization algorithm: a novel metaheuristic for efficiently solving optimization problems. The Scientific World Journal, 2014.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, po: float = 0.4, Fb: float = 0.9, Fa: float = 0.1,
-                 Fd: float = 0.1,
-                 Pd: float = 0.5, GCR: float = 0.1, gamma_min: float = 0.02, gamma_max: float = 0.2, n_trials: int = 3,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        po: float = 0.4,
+        Fb: float = 0.9,
+        Fa: float = 0.1,
+        Fd: float = 0.1,
+        Pd: float = 0.5,
+        GCR: float = 0.1,
+        gamma_min: float = 0.02,
+        gamma_max: float = 0.2,
+        n_trials: int = 3,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -72,7 +83,9 @@ class OriginalCRO(Optimizer):
         """
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])  # ~ number of space
+        self.pop_size = self.validator.check_int(
+            "pop_size", pop_size, [5, 10000]
+        )  # ~ number of space
         self.po = self.validator.check_float("po", po, (0, 1.0))
         self.Fb = self.validator.check_float("Fb", Fb, (0, 1.0))
         self.Fa = self.validator.check_float("Fa", Fa, (0, 1.0))
@@ -81,28 +94,48 @@ class OriginalCRO(Optimizer):
         self.GCR = self.validator.check_float("GCR", GCR, (0, 1.0))
         self.gamma_min = self.validator.check_float("gamma_min", gamma_min, (0, 0.15))
         self.gamma_max = self.validator.check_float("gamma_max", gamma_max, (0.15, 1.0))
-        self.n_trials = self.validator.check_int("n_trials", n_trials, [2, int(self.pop_size / 2)])
+        self.n_trials = self.validator.check_int(
+            "n_trials", n_trials, [2, int(self.pop_size / 2)]
+        )
         self.set_parameters(
-            ["epoch", "pop_size", "po", "Fb", "Fa", "Fd", "Pd", "GCR", "gamma_min", "gamma_max", "n_trials"])
+            [
+                "epoch",
+                "pop_size",
+                "po",
+                "Fb",
+                "Fa",
+                "Fd",
+                "Pd",
+                "GCR",
+                "gamma_min",
+                "gamma_max",
+                "n_trials",
+            ]
+        )
         self.sort_flag = False
 
     def initialization(self):
         if self.pop is None:
             self.pop = self.generate_population(self.pop_size)
         self.reef = np.array([])
-        self.occupied_position = []  # after a gen, you should update the occupied_position
+        self.occupied_position = (
+            []
+        )  # after a gen, you should update the occupied_position
         self.G1 = self.gamma_max
         self.alpha = 10 * self.Pd / self.epoch
         self.gama = 10 * (self.gamma_max - self.gamma_min) / self.epoch
         self.num_occupied = int(self.pop_size / (1 + self.po))
         self.dyn_Pd = 0
         self.occupied_list = np.zeros(self.pop_size)
-        self.occupied_idx_list = self.generator.choice(list(range(self.pop_size)), self.num_occupied, replace=False)
+        self.occupied_idx_list = self.generator.choice(
+            list(range(self.pop_size)), self.num_occupied, replace=False
+        )
         self.occupied_list[self.occupied_idx_list] = 1
 
     def gaussian_mutation__(self, position):
-        random_pos = position + self.G1 * (self.problem.ub - self.problem.lb) * self.generator.normal(0, 1,
-                                                                                                      self.problem.n_dims)
+        random_pos = position + self.G1 * (
+            self.problem.ub - self.problem.lb
+        ) * self.generator.normal(0, 1, self.problem.n_dims)
         condition = self.generator.random(self.problem.n_dims) < self.GCR
         pos_new = np.where(condition, random_pos, position)
         return self.correct_solution(pos_new)
@@ -121,11 +154,15 @@ class OriginalCRO(Optimizer):
                 pdx = self.generator.integers(0, self.pop_size - 1)
                 if self.occupied_list[pdx] == 0:
                     self.pop[pdx] = larva
-                    self.occupied_idx_list = np.append(self.occupied_idx_list, pdx)  # Update occupied id
+                    self.occupied_idx_list = np.append(
+                        self.occupied_idx_list, pdx
+                    )  # Update occupied id
                     self.occupied_list[pdx] = 1  # Update occupied list
                     break
                 else:
-                    if self.compare_target(larva.target, self.pop[pdx].target, self.problem.minmax):
+                    if self.compare_target(
+                        larva.target, self.pop[pdx].target, self.problem.minmax
+                    ):
                         self.pop[pdx] = larva
                         break
 
@@ -138,8 +175,11 @@ class OriginalCRO(Optimizer):
     def broadcast_spawning_brooding__(self):
         # Step 1a
         larvae = []
-        selected_corals = self.generator.choice(self.occupied_idx_list, int(len(self.occupied_idx_list) * self.Fb),
-                                                replace=False)
+        selected_corals = self.generator.choice(
+            self.occupied_idx_list,
+            int(len(self.occupied_idx_list) * self.Fb),
+            replace=False,
+        )
         for idx in self.occupied_idx_list:
             if idx not in selected_corals:
                 pos_new = self.gaussian_mutation__(self.pop[idx].solution)
@@ -149,9 +189,13 @@ class OriginalCRO(Optimizer):
                     larvae[-1].target = self.get_target(pos_new)
         # Step 1b
         while len(selected_corals) >= 2:
-            id1, id2 = self.generator.choice(range(len(selected_corals)), 2, replace=False)
-            pos_new = self.multi_point_cross__(self.pop[selected_corals[id1]].solution,
-                                               self.pop[selected_corals[id2]].solution)
+            id1, id2 = self.generator.choice(
+                range(len(selected_corals)), 2, replace=False
+            )
+            pos_new = self.multi_point_cross__(
+                self.pop[selected_corals[id1]].solution,
+                self.pop[selected_corals[id2]].solution,
+            )
             agent = self.generate_empty_agent(pos_new)
             larvae.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
@@ -172,14 +216,18 @@ class OriginalCRO(Optimizer):
         ## Asexual Reproduction
         num_duplicate = int(len(self.occupied_idx_list) * self.Fa)
         pop_best = [self.pop[idx] for idx in self.occupied_idx_list]
-        pop_best = self.get_sorted_and_trimmed_population(pop_best, num_duplicate, self.problem.minmax)
+        pop_best = self.get_sorted_and_trimmed_population(
+            pop_best, num_duplicate, self.problem.minmax
+        )
         self.larvae_setting__(pop_best)
         ## Depredation
         if self.generator.random() < self.dyn_Pd:
             num__depredation__ = int(len(self.occupied_idx_list) * self.Fd)
             idx_list_sorted = self.sort_occupied_reef__()
             selected_depredator = idx_list_sorted[-num__depredation__:]
-            self.occupied_idx_list = np.setdiff1d(self.occupied_idx_list, selected_depredator)
+            self.occupied_idx_list = np.setdiff1d(
+                self.occupied_idx_list, selected_depredator
+            )
             for idx in selected_depredator:
                 self.occupied_list[idx] = 0
         if self.dyn_Pd <= self.Pd:
@@ -233,10 +281,22 @@ class OCRO(OriginalCRO):
     Intelligence Systems, 12(2), p.1144.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, po: float = 0.4, Fb: float = 0.9, Fa: float = 0.1,
-                 Fd: float = 0.1, Pd: float = 0.5,
-                 GCR: float = 0.1, gamma_min: float = 0.02, gamma_max: float = 0.2, n_trials: int = 3,
-                 restart_count: int = 20, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        po: float = 0.4,
+        Fb: float = 0.9,
+        Fa: float = 0.1,
+        Fd: float = 0.1,
+        Pd: float = 0.5,
+        GCR: float = 0.1,
+        gamma_min: float = 0.02,
+        gamma_max: float = 0.2,
+        n_trials: int = 3,
+        restart_count: int = 20,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -252,11 +312,39 @@ class OCRO(OriginalCRO):
             n_trials (int): number of attempts for a larva to set in the reef.
             restart_count (int): reset the whole population after global best solution is not improved after restart_count times
         """
-        super().__init__(epoch, pop_size, po, Fb, Fa, Fd, Pd, GCR, gamma_min, gamma_max, n_trials, **kwargs)
-        self.restart_count = self.validator.check_int("restart_count", restart_count, [2, int(epoch / 2)])
+        super().__init__(
+            epoch,
+            pop_size,
+            po,
+            Fb,
+            Fa,
+            Fd,
+            Pd,
+            GCR,
+            gamma_min,
+            gamma_max,
+            n_trials,
+            **kwargs
+        )
+        self.restart_count = self.validator.check_int(
+            "restart_count", restart_count, [2, int(epoch / 2)]
+        )
         self.set_parameters(
-            ["epoch", "pop_size", "po", "Fb", "Fa", "Fd", "Pd", "GCR", "gamma_min", "gamma_max", "n_trials",
-             "restart_count"])
+            [
+                "epoch",
+                "pop_size",
+                "po",
+                "Fb",
+                "Fa",
+                "Fd",
+                "Pd",
+                "GCR",
+                "gamma_min",
+                "gamma_max",
+                "n_trials",
+                "restart_count",
+            ]
+        )
         self.sort_flag = False
 
     def initialize_variables(self):
@@ -288,7 +376,9 @@ class OCRO(OriginalCRO):
         ## Asexual Reproduction
         num_duplicate = int(len(self.occupied_idx_list) * self.Fa)
         pop_best = [self.pop[idx] for idx in self.occupied_idx_list]
-        pop_best = self.get_sorted_and_trimmed_population(pop_best, num_duplicate, self.problem.minmax)
+        pop_best = self.get_sorted_and_trimmed_population(
+            pop_best, num_duplicate, self.problem.minmax
+        )
         pop_local_search = self.local_search__(pop_best)
         self.larvae_setting__(pop_local_search)
         ## Depredation
@@ -300,10 +390,14 @@ class OCRO(OriginalCRO):
                 ### Using opposition-based leanring
                 pos_oppo = self.generate_opposition_solution(self.pop[idx], self.g_best)
                 agent = self.generate_agent(pos_oppo)
-                if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    agent.target, self.pop[idx].target, self.problem.minmax
+                ):
                     self.pop[idx] = agent
                 else:
-                    self.occupied_idx_list = self.occupied_idx_list[~np.isin(self.occupied_idx_list, [idx])]
+                    self.occupied_idx_list = self.occupied_idx_list[
+                        ~np.isin(self.occupied_idx_list, [idx])
+                    ]
                     self.occupied_list[idx] = 0
         if self.dyn_Pd <= self.Pd:
             self.dyn_Pd += self.alpha
@@ -311,11 +405,15 @@ class OCRO(OriginalCRO):
             self.G1 -= self.gama
         self.reset_count += 1
         local_best = self.get_best_agent(self.pop, self.problem.minmax)
-        if self.compare_target(local_best.target, self.g_best.target, self.problem.minmax):
+        if self.compare_target(
+            local_best.target, self.g_best.target, self.problem.minmax
+        ):
             self.reset_count = 0
         if self.reset_count == self.restart_count:
             self.pop = self.generate_population(self.pop_size)
             self.occupied_list = np.zeros(self.pop_size)
-            self.occupied_idx_list = self.generator.choice(range(self.pop_size), self.num_occupied, replace=False)
+            self.occupied_idx_list = self.generator.choice(
+                range(self.pop_size), self.num_occupied, replace=False
+            )
             self.occupied_list[self.occupied_idx_list] = 1
             self.reset_count = 0
