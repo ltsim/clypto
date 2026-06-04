@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 00:15, 15/03/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 00:15, 15/03/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -13,7 +13,7 @@ from clypto import Problem, Optimizer, FloatVar
 @pytest.fixture(scope="module")  # scope: Call only 1 time at the beginning
 def model():
     def objective_function(solution):
-        return np.sum(solution ** 2)
+        return np.sum(solution**2)
 
     problem = {
         "obj_func": objective_function,
@@ -42,7 +42,7 @@ def test_correct_solution(model):
 def test_get_target(model):
     pos = np.array([1, 2, 0, 2, 1])
     target = model.get_target(pos)
-    fit = np.sum(pos ** 2)
+    fit = np.sum(pos**2)
     assert target.fitness == fit
 
 
@@ -115,8 +115,12 @@ def test_compare_agent(model):
     agent_a = model.generate_agent(pos_a)
     agent_b = model.generate_agent(pos_b)
     if model.problem.minmax == "min":
-        flag = model.compare_target(agent_a.target, agent_b.target, model.problem.minmax)
+        flag = model.compare_target(
+            agent_a.target, agent_b.target, model.problem.minmax
+        )
         assert flag is False
     else:
-        flag = model.compare_target(agent_a.target, agent_b.target, model.problem.minmax)
+        flag = model.compare_target(
+            agent_a.target, agent_b.target, model.problem.minmax
+        )
         assert flag is True
