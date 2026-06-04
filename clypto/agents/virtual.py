@@ -14,7 +14,7 @@ from clypto.types.array import NDArrayType
 
 class Agent:
     def __init__(
-        self, solution: NDArrayType | None = None, target: Target | None = None, **kwargs
+        self, solution: typing.Optional[NDArrayType] = None, target: typing.Optional[Target] = None, **kwargs
     ) -> None:
         self.__solution = solution
         self.__target = target
