@@ -6,9 +6,9 @@
 import numpy as np
 import pytest
 
-import clypto as cl
+import clypto as cy
 
-all_optimizer = cl.get_all_optimizers()
+all_optimizer = cy.get_all_optimizers()
 
 
 @pytest.fixture(scope="module")
@@ -18,7 +18,7 @@ def problem():
 
     return {
         "obj_func": objective_function,
-        "bounds": cl.FloatVar(lb=[-1, -1, -1, -1, -1], ub=[1, 1, 1, 1, 1]),
+        "bounds": cy.FloatVar(lb=[-1, -1, -1, -1, -1], ub=[1, 1, 1, 1, 1]),
         "minmax": "min",
     }
 
@@ -30,5 +30,5 @@ def test_all_optimizer_test(optimizer, problem):
     model = optimizer(epoch=101, pop_size=25)
     g_best = model.solve(problem)
 
-    assert isinstance(model, cl.Optimizer)
+    assert isinstance(model, cy.Optimizer)
     assert isinstance(g_best.solution, np.ndarray)
