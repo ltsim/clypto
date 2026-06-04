@@ -94,7 +94,7 @@ class OriginalMSO(Optimizer):
         cv = int(
             np.ceil(
                 (self.pop_size * (2 / 3))
-                * ((self.epoch - self.nfe_counter + 1) / self.epoch)
+                * ((self.epoch - self.nf_counter + 1) / self.epoch)
             )
         )
 
@@ -107,7 +107,7 @@ class OriginalMSO(Optimizer):
                             self.g_best.solution[k] - self.pop[idx].solution[k]
                     ) * self.generator.random()
                 cmax = 1
-                hmax = 5 * self.atanh(-(self.nfe_counter / self.epoch) + 1) + cmax
+                hmax = 5 * self.atanh(-(self.nf_counter / self.epoch) + 1) + cmax
                 if h > hmax:
                     h = hmax
                 if h < cmax:

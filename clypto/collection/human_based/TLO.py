@@ -250,7 +250,7 @@ class ImprovedTLO(DevTLO):
             self,
             epoch: int = 10000,
             pop_size: int = 100,
-            n_teachers: int = 5,
+            n_teachers: int = 3,
             **kwargs: object
     ) -> None:
         """

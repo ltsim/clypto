@@ -42,7 +42,7 @@ class DevSARO(Optimizer):
             epoch: int = 10000,
             pop_size: int = 100,
             se: float = 0.5,
-            mu: int = 15,
+            mu: int = 10,
             **kwargs: object
     ) -> None:
         """
@@ -186,7 +186,7 @@ class OriginalSARO(DevSARO):
             epoch: int = 10000,
             pop_size: int = 100,
             se: float = 0.5,
-            mu: int = 15,
+            mu: int = 10,
             **kwargs: object
     ) -> None:
         """

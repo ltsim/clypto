@@ -50,7 +50,7 @@ class OriginalCEM(Optimizer):
             self,
             epoch: int = 10000,
             pop_size: int = 100,
-            n_best: int = 20,
+            n_best: int = 10,
             alpha: float = 0.7,
             **kwargs: object
     ) -> None:
