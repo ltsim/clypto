@@ -48,8 +48,15 @@ class OriginalTS(Optimizer):
     with continuous parameters. IEEE Transactions on Magnetics, 40(2), 1184-1187.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 2, tabu_size: int = 5,
-                 neighbour_size: int = 10, perturbation_scale: float = 0.05, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 2,
+        tabu_size: int = 5,
+        neighbour_size: int = 10,
+        perturbation_scale: float = 0.05,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -62,9 +69,15 @@ class OriginalTS(Optimizer):
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
         self.tabu_size = self.validator.check_int("tabu_size", tabu_size, [2, 10000])
-        self.neighbour_size = self.validator.check_int("neighbour_size", neighbour_size, [2, 10000])
-        self.perturbation_scale = self.validator.check_float("perturbation_scale", perturbation_scale, (0, 100))
-        self.set_parameters(["epoch", "pop_size", "tabu_size", "neighbour_size", "perturbation_scale"])
+        self.neighbour_size = self.validator.check_int(
+            "neighbour_size", neighbour_size, [2, 10000]
+        )
+        self.perturbation_scale = self.validator.check_float(
+            "perturbation_scale", perturbation_scale, (0, 100)
+        )
+        self.set_parameters(
+            ["epoch", "pop_size", "tabu_size", "neighbour_size", "perturbation_scale"]
+        )
         self.sort_flag = False
 
     def before_main_loop(self):
@@ -80,8 +93,11 @@ class OriginalTS(Optimizer):
             epoch (int): The current iteration
         """
         # Generate candidate solutions by perturbing the current solution
-        candidates = self.generator.normal(loc=self.x, scale=self.perturbation_scale,
-                                           size=(self.neighbour_size, self.problem.n_dims))
+        candidates = self.generator.normal(
+            loc=self.x,
+            scale=self.perturbation_scale,
+            size=(self.neighbour_size, self.problem.n_dims),
+        )
         # Evaluate candidate solutions and select best move
         list_candidates = []
         for candidate in candidates:

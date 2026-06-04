@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 22:23, 17/03/2023 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 22:23, 17/03/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 from clypto.utils.validator import Validator
@@ -55,7 +55,9 @@ class Termination:
     >>> model1.solve(p1, termination=term_dict)
     """
 
-    def __init__(self, max_epoch=None, max_fe=None, max_time=None, max_early_stop=None, **kwargs):
+    def __init__(
+        self, max_epoch=None, max_fe=None, max_time=None, max_early_stop=None, **kwargs
+    ):
         self.max_epoch = max_epoch
         self.max_fe = max_fe
         self.max_time = max_time
@@ -63,8 +65,15 @@ class Termination:
         self.epsilon = 1e-10
         self.__set_keyword_arguments(kwargs)
         self.validator = Validator(log_to="console", log_file=None)
-        self.name, self.message, self.log_to, self.log_file = "Termination", "", None, None
-        self.__set_condition(self.max_epoch, self.max_fe, self.max_time, self.max_early_stop)
+        self.name, self.message, self.log_to, self.log_file = (
+            "Termination",
+            "",
+            None,
+            None,
+        )
+        self.__set_condition(
+            self.max_epoch, self.max_fe, self.max_time, self.max_early_stop
+        )
 
     def __set_keyword_arguments(self, kwargs):
         if type(kwargs) == dict:
@@ -75,18 +84,32 @@ class Termination:
                 setattr(self, key, value)
 
     def __set_condition(self, max_epoch, max_fe, max_time, max_early_stop):
-        if (max_epoch is None) and (max_fe is None) and (max_time is None) and (max_early_stop is None):
+        if (
+            (max_epoch is None)
+            and (max_fe is None)
+            and (max_time is None)
+            and (max_early_stop is None)
+        ):
             raise ValueError(
-                "Please set at least one stopping condition with parameter 'max_epoch' or 'max_fe' or 'max_time' or 'max_early_stop'")
+                "Please set at least one stopping condition with parameter 'max_epoch' or 'max_fe' or 'max_time' or 'max_early_stop'"
+            )
         else:
             if max_epoch is not None:
-                self.max_epoch = self.validator.check_int("max_epoch", max_epoch, [1, 10000000])
+                self.max_epoch = self.validator.check_int(
+                    "max_epoch", max_epoch, [1, 10000000]
+                )
             if max_fe is not None:
-                self.max_fe = self.validator.check_int("max_fe", max_fe, [10, 1000000000])
+                self.max_fe = self.validator.check_int(
+                    "max_fe", max_fe, [10, 1000000000]
+                )
             if max_time is not None:
-                self.max_time = self.validator.check_float("max_time", max_time, [0.1, 1000000])
+                self.max_time = self.validator.check_float(
+                    "max_time", max_time, [0.1, 1000000]
+                )
             if max_early_stop is not None:
-                self.max_early_stop = self.validator.check_int("max_early_stop", max_early_stop, [1, 100000])
+                self.max_early_stop = self.validator.check_int(
+                    "max_early_stop", max_early_stop, [1, 100000]
+                )
 
     def get_name(self):
         return self.name
@@ -97,7 +120,9 @@ class Termination:
         self.start_time = start_time
         self.start_threshold = start_threshold
 
-    def should_terminate(self, current_epoch, current_fe, current_time, current_threshold):
+    def should_terminate(
+        self, current_epoch, current_fe, current_time, current_threshold
+    ):
         # Check maximum number of generations
         if self.max_epoch is not None and current_epoch >= self.max_epoch:
             self.message = "Stopping criterion with maximum number of epochs/generations/iterations (MG) occurred. End program!"
@@ -107,7 +132,10 @@ class Termination:
             self.message = "Stopping criterion with maximum number of function evaluations (FE) occurred. End program!"
             return True
         # Check maximum time
-        if self.max_time is not None and current_time - self.start_time >= self.max_time:
+        if (
+            self.max_time is not None
+            and current_time - self.start_time >= self.max_time
+        ):
             self.message = "Stopping criterion with maximum running time/time bound (TB) (seconds) occurred. End program!"
             return True
         # Check early stopping

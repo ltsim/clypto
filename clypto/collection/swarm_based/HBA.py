@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 17:55, 21/05/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 17:55, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -42,7 +42,9 @@ class OriginalHBA(Optimizer):
     algorithm for solving optimization problems. Mathematics and Computers in Simulation, 192, 84-110.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -63,11 +65,19 @@ class OriginalHBA(Optimizer):
         di = np.zeros(size)
         si = np.zeros(size)
         for idx in range(0, size):
-            di[idx] = (np.linalg.norm(pop[idx].solution - best.solution) + self.EPSILON) ** 2
+            di[idx] = (
+                np.linalg.norm(pop[idx].solution - best.solution) + self.EPSILON
+            ) ** 2
             if idx == size - 1:
-                si[idx] = (np.linalg.norm(pop[idx].solution - self.pop[0].solution) + self.EPSILON) ** 2
+                si[idx] = (
+                    np.linalg.norm(pop[idx].solution - self.pop[0].solution)
+                    + self.EPSILON
+                ) ** 2
             else:
-                si[idx] = (np.linalg.norm(pop[idx].solution - self.pop[idx + 1].solution) + self.EPSILON) ** 2
+                si[idx] = (
+                    np.linalg.norm(pop[idx].solution - self.pop[idx + 1].solution)
+                    + self.EPSILON
+                ) ** 2
         r2 = self.generator.random(size)
         return r2 * si / (4 * np.pi * di)
 
@@ -91,8 +101,15 @@ class OriginalHBA(Optimizer):
             r5 = self.generator.random(self.problem.n_dims)
             r6 = self.generator.random(self.problem.n_dims)
             r7 = self.generator.random(self.problem.n_dims)
-            temp1 = self.g_best.solution + F * self.beta * I[idx] * self.g_best.solution + F * r3 * alpha * di * np.abs(
-                np.cos(2 * np.pi * r4) * (1 - np.cos(2 * np.pi * r5)))
+            temp1 = (
+                self.g_best.solution
+                + F * self.beta * I[idx] * self.g_best.solution
+                + F
+                * r3
+                * alpha
+                * di
+                * np.abs(np.cos(2 * np.pi * r4) * (1 - np.cos(2 * np.pi * r5)))
+            )
             temp2 = self.g_best.solution + F * r7 * alpha * di
             pos_new = np.where(r6 < 0.5, temp1, temp2)
             pos_new = self.correct_solution(pos_new)
@@ -100,7 +117,11 @@ class OriginalHBA(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

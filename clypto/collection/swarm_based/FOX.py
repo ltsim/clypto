@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 00:08, 27/10/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 00:08, 27/10/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -49,13 +49,19 @@ class OriginalFOX(Optimizer):
     [1] Mohammed, H., & Rashid, T. (2023). FOX: a FOX-inspired optimization algorithm. Applied Intelligence, 53(1), 1030-1050.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c1: float = 0.18, c2: float = 0.82,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c1: float = 0.18,
+        c2: float = 0.82,
+        **kwargs: object
+    ) -> None:
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c1 = self.validator.check_float("c1", c1, (-100., 100.))
-        self.c2 = self.validator.check_float("c2", c2, (-100., 100.))
+        self.c1 = self.validator.check_float("c1", c1, (-100.0, 100.0))
+        self.c2 = self.validator.check_float("c2", c2, (-100.0, 100.0))
         self.set_parameters(["epoch", "pop_size", "c1", "c2"])
         self.sort_flag = False
 
@@ -78,7 +84,7 @@ class OriginalFOX(Optimizer):
                 dis = 0.5 * sps * t1
                 tt = np.mean(t1)
                 t = tt / 2
-                jump = 0.5 * 9.81 * t ** 2
+                jump = 0.5 * 9.81 * t**2
                 if self.generator.random() > 0.18:
                     pos_new = dis * jump * self.c1
                 else:
@@ -86,7 +92,11 @@ class OriginalFOX(Optimizer):
                 if self.mint > tt:
                     self.mint = tt
             else:
-                pos_new = self.g_best.solution * self.generator.random(self.problem.n_dims) * (self.mint * aa)
+                pos_new = (
+                    self.g_best.solution
+                    * self.generator.random(self.problem.n_dims)
+                    * (self.mint * aa)
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
@@ -134,13 +144,20 @@ class DevFOX(Optimizer):
     [1] Mohammed, H., & Rashid, T. (2023). FOX: a FOX-inspired optimization algorithm. Applied Intelligence, 53(1), 1030-1050.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c1: float = 0.18, c2: float = 0.82,
-                 pp=0.5, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c1: float = 0.18,
+        c2: float = 0.82,
+        pp=0.5,
+        **kwargs: object
+    ) -> None:
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c1 = self.validator.check_float("c1", c1, (-100., 100.))
-        self.c2 = self.validator.check_float("c2", c2, (-100., 100.))
+        self.c1 = self.validator.check_float("c1", c1, (-100.0, 100.0))
+        self.c2 = self.validator.check_float("c2", c2, (-100.0, 100.0))
         self.pp = self.validator.check_float("pp", pp, (0.0, 1.0))
         self.set_parameters(["epoch", "pop_size", "c1", "c2", "pp"])
         self.sort_flag = False
@@ -164,7 +181,7 @@ class DevFOX(Optimizer):
                 dis = 0.5 * sps * t1
                 tt = np.mean(t1)
                 t = tt / 2
-                jump = 0.5 * 9.81 * t ** 2
+                jump = 0.5 * 9.81 * t**2
                 if self.generator.random() > self.pp:
                     pos_new = dis * jump * self.c1
                 else:
@@ -172,7 +189,9 @@ class DevFOX(Optimizer):
                 if self.mint > tt:
                     self.mint = tt
             else:
-                pos_new = self.g_best.solution + self.generator.standard_normal(self.problem.n_dims) * (self.mint * aa)
+                pos_new = self.g_best.solution + self.generator.standard_normal(
+                    self.problem.n_dims
+                ) * (self.mint * aa)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)

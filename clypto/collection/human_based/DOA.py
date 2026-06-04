@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 23:58, 03/09/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 23:58, 03/09/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -53,7 +53,9 @@ class OriginalDOA(Optimizer):
     Computer Methods in Applied Mechanics and Engineering, 436, 117718.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -85,31 +87,55 @@ class OriginalDOA(Optimizer):
                 group_start = int((m / 5) * self.pop_size)
                 group_end = int(((m + 1) / 5) * self.pop_size)
                 # Update the best solution for current group
-                pbest = self.get_best_agent(self.pop[group_start:group_end], self.problem.minmax)
+                pbest = self.get_best_agent(
+                    self.pop[group_start:group_end], self.problem.minmax
+                )
 
                 # Memory strategy and forgetting/supplementation
                 for idx in range(group_start, group_end):
                     pos_new = pbest.solution.copy()
                     # Random permutation for dimensions to modify
-                    in_indices = self.generator.choice(self.problem.n_dims, size=kk, replace=False)
+                    in_indices = self.generator.choice(
+                        self.problem.n_dims, size=kk, replace=False
+                    )
                     if self.generator.random() < 0.9:
                         # Forgetting and supplementation strategy
-                        cos_term = (np.cos((epoch + self.epoch / 10) * np.pi / self.epoch) + 1) / 2
+                        cos_term = (
+                            np.cos((epoch + self.epoch / 10) * np.pi / self.epoch) + 1
+                        ) / 2
                         for jdx in in_indices:
-                            pos_new[jdx] = pbest.solution[jdx] + (
-                                    self.generator.random() * (self.problem.ub[jdx] - self.problem.lb[jdx]) +
-                                    self.problem.lb[jdx]) * cos_term
+                            pos_new[jdx] = (
+                                pbest.solution[jdx]
+                                + (
+                                    self.generator.random()
+                                    * (self.problem.ub[jdx] - self.problem.lb[jdx])
+                                    + self.problem.lb[jdx]
+                                )
+                                * cos_term
+                            )
                             # Boundary handling
-                            if pos_new[jdx] > self.problem.ub[jdx] or pos_new[jdx] < self.problem.lb[jdx]:
-                                if self.problem.n_dims > 15:  # For high-dimensional problems
-                                    rdx = self.generator.choice(list(set(range(self.pop_size)) - {idx}))
+                            if (
+                                pos_new[jdx] > self.problem.ub[jdx]
+                                or pos_new[jdx] < self.problem.lb[jdx]
+                            ):
+                                if (
+                                    self.problem.n_dims > 15
+                                ):  # For high-dimensional problems
+                                    rdx = self.generator.choice(
+                                        list(set(range(self.pop_size)) - {idx})
+                                    )
                                     pos_new[jdx] = self.pop[rdx].solution[jdx]
                                 else:  # For low-dimensional problems
-                                    pos_new[jdx] = self.generator.random() * (
-                                            self.problem.ub[jdx] - self.problem.lb[jdx]) + self.problem.lb[jdx]
+                                    pos_new[jdx] = (
+                                        self.generator.random()
+                                        * (self.problem.ub[jdx] - self.problem.lb[jdx])
+                                        + self.problem.lb[jdx]
+                                    )
                     else:  # Alternative update strategy
                         for jdx in in_indices:
-                            rdx = self.generator.choice(list(set(range(self.pop_size)) - {idx}))
+                            rdx = self.generator.choice(
+                                list(set(range(self.pop_size)) - {idx})
+                            )
                             pos_new[jdx] = self.pop[rdx].solution[jdx]
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_empty_agent(pos_new)
@@ -125,21 +151,37 @@ class OriginalDOA(Optimizer):
             for idx in range(self.pop_size):
                 km = max(2, int(np.ceil(self.problem.n_dims / 3)))
                 k = self.generator.integers(2, km + 1)
-                in_indices = self.generator.choice(self.problem.n_dims, size=k, replace=False)
+                in_indices = self.generator.choice(
+                    self.problem.n_dims, size=k, replace=False
+                )
                 pos_new = self.g_best.solution.copy()
                 for jdx in in_indices:
                     cos_term = (np.cos(epoch * np.pi / self.epoch) + 1) / 2
-                    pos_new[jdx] = pos_new[jdx] + (
-                            self.generator.random() * (self.problem.ub[idx] - self.problem.lb[idx]) +
-                            self.problem.lb[idx]) * cos_term
+                    pos_new[jdx] = (
+                        pos_new[jdx]
+                        + (
+                            self.generator.random()
+                            * (self.problem.ub[idx] - self.problem.lb[idx])
+                            + self.problem.lb[idx]
+                        )
+                        * cos_term
+                    )
                     # Boundary handling
-                    if pos_new[jdx] > self.problem.ub[jdx] or pos_new[jdx] < self.problem.lb[jdx]:
+                    if (
+                        pos_new[jdx] > self.problem.ub[jdx]
+                        or pos_new[jdx] < self.problem.lb[jdx]
+                    ):
                         if self.problem.n_dims > 15:
-                            rdx = self.generator.choice(list(set(range(self.pop_size)) - {idx}))
+                            rdx = self.generator.choice(
+                                list(set(range(self.pop_size)) - {idx})
+                            )
                             pos_new[jdx] = self.pop[rdx].solution[jdx]
                         else:
-                            pos_new[jdx] = self.generator.random() * (self.problem.ub[jdx] - self.problem.lb[jdx]) + \
-                                           self.problem.lb[jdx]
+                            pos_new[jdx] = (
+                                self.generator.random()
+                                * (self.problem.ub[jdx] - self.problem.lb[jdx])
+                                + self.problem.lb[jdx]
+                            )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)

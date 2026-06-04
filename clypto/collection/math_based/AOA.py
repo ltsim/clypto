@@ -45,8 +45,16 @@ class OriginalAOA(Optimizer):
     optimization algorithm. Computer methods in applied mechanics and engineering, 376, p.113609.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, alpha: float = 5,
-                 miu: float = 0.5, moa_min: float = 0.2, moa_max: float = 0.9, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        alpha: float = 5,
+        miu: float = 0.5,
+        moa_min: float = 0.2,
+        moa_max: float = 0.9,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -73,8 +81,12 @@ class OriginalAOA(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        moa = self.moa_min + epoch * ((self.moa_max - self.moa_min) / self.epoch)  # Eq. 2
-        mop = 1 - ((epoch + 1) ** (1.0 / self.alpha)) / (self.epoch ** (1.0 / self.alpha))  # Eq. 4
+        moa = self.moa_min + epoch * (
+            (self.moa_max - self.moa_min) / self.epoch
+        )  # Eq. 2
+        mop = 1 - ((epoch + 1) ** (1.0 / self.alpha)) / (
+            self.epoch ** (1.0 / self.alpha)
+        )  # Eq. 4
         pop_new = []
         for idx in range(0, self.pop_size):
             pos_new = self.pop[idx].solution.copy()
@@ -82,24 +94,44 @@ class OriginalAOA(Optimizer):
                 r1, r2, r3 = self.generator.random(3)
                 if r1 > moa:  # Exploration phase
                     if r2 < 0.5:
-                        pos_new[j] = self.g_best.solution[j] / (mop + self.EPSILON) * \
-                                     ((self.problem.ub[j] - self.problem.lb[j]) * self.miu + self.problem.lb[j])
+                        pos_new[j] = (
+                            self.g_best.solution[j]
+                            / (mop + self.EPSILON)
+                            * (
+                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu
+                                + self.problem.lb[j]
+                            )
+                        )
                     else:
-                        pos_new[j] = self.g_best.solution[j] * mop * (
-                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu + self.problem.lb[j])
+                        pos_new[j] = (
+                            self.g_best.solution[j]
+                            * mop
+                            * (
+                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu
+                                + self.problem.lb[j]
+                            )
+                        )
                 else:  # Exploitation phase
                     if r3 < 0.5:
                         pos_new[j] = self.g_best.solution[j] - mop * (
-                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu + self.problem.lb[j])
+                            (self.problem.ub[j] - self.problem.lb[j]) * self.miu
+                            + self.problem.lb[j]
+                        )
                     else:
                         pos_new[j] = self.g_best.solution[j] + mop * (
-                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu + self.problem.lb[j])
+                            (self.problem.ub[j] - self.problem.lb[j]) * self.miu
+                            + self.problem.lb[j]
+                        )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

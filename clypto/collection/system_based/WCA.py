@@ -53,8 +53,15 @@ class OriginalWCA(Optimizer):
     optimization method for solving constrained engineering optimization problems. Computers & Structures, 110, pp.151-166.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, nsr: int = 4, wc: float = 2.0, dmax: float = 1e-6,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        nsr: int = 4,
+        wc: float = 2.0,
+        dmax: float = 1e-6,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -80,20 +87,27 @@ class OriginalWCA(Optimizer):
         self.ecc = self.dmax  # Evaporation condition constant - variable
         n_stream = self.pop_size - self.nsr
         g_best = self.pop[0].copy()  # Global best solution (sea)
-        self.pop_best = self.pop[:self.nsr]  # Including sea and river (1st solution is sea)
-        self.pop_stream = self.pop[self.nsr:]  # Forming Stream
+        self.pop_best = self.pop[
+            : self.nsr
+        ]  # Including sea and river (1st solution is sea)
+        self.pop_stream = self.pop[self.nsr :]  # Forming Stream
 
         # Designate streams to rivers and sea
         cost_river_list = np.array([agent.target.fitness for agent in self.pop_best])
-        num_child_in_river_list = np.round(np.abs(cost_river_list / np.sum(cost_river_list)) * n_stream).astype(int)
+        num_child_in_river_list = np.round(
+            np.abs(cost_river_list / np.sum(cost_river_list)) * n_stream
+        ).astype(int)
         if np.sum(num_child_in_river_list) < n_stream:
             num_child_in_river_list[-1] += n_stream - np.sum(num_child_in_river_list)
         streams = {}
         idx_already_selected = []
         for i in range(0, self.nsr - 1):
             streams[i] = []
-            idx_list = self.generator.choice(list(set(range(0, n_stream)) - set(idx_already_selected)),
-                                             num_child_in_river_list[i], replace=False).tolist()
+            idx_list = self.generator.choice(
+                list(set(range(0, n_stream)) - set(idx_already_selected)),
+                num_child_in_river_list[i],
+                replace=False,
+            ).tolist()
             idx_already_selected += idx_list
             for idx in idx_list:
                 streams[i].append(self.pop_stream[idx])
@@ -116,7 +130,8 @@ class OriginalWCA(Optimizer):
             stream_new = []
             for idx_stream, stream in enumerate(stream_list):
                 pos_new = stream.solution + self.generator.uniform() * self.wc * (
-                        self.pop_best[idx].solution - stream.solution)
+                    self.pop_best[idx].solution - stream.solution
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 stream_new.append(agent)
@@ -125,21 +140,32 @@ class OriginalWCA(Optimizer):
             stream_new = self.update_target_for_population(stream_new)
             self.streams[idx] = stream_new
             stream_best = self.get_best_agent(stream_new, self.problem.minmax)
-            if self.compare_target(stream_best.target, self.pop_best[idx].target, self.problem.minmax):
+            if self.compare_target(
+                stream_best.target, self.pop_best[idx].target, self.problem.minmax
+            ):
                 self.pop_best[idx] = stream_best.copy()
             # Update river
-            pos_new = self.pop_best[idx].solution + self.generator.uniform() * self.wc * (
-                    self.g_best.solution - self.pop_best[idx].solution)
+            pos_new = self.pop_best[
+                idx
+            ].solution + self.generator.uniform() * self.wc * (
+                self.g_best.solution - self.pop_best[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop_best[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop_best[idx].target, self.problem.minmax
+            ):
                 self.pop_best[idx] = agent
         # Evaporation
         for idx in range(1, self.nsr):
-            distance = np.sqrt(np.sum((self.g_best.solution - self.pop_best[idx].solution) ** 2))
+            distance = np.sqrt(
+                np.sum((self.g_best.solution - self.pop_best[idx].solution) ** 2)
+            )
             if distance < self.ecc or self.generator.random() < 0.1:
                 child = self.generate_agent()
-                pop_current_best = self.get_sorted_population(self.streams[idx] + [child], self.problem.minmax)
+                pop_current_best = self.get_sorted_population(
+                    self.streams[idx] + [child], self.problem.minmax
+                )
                 self.pop_best[idx] = pop_current_best.pop(0)
                 self.streams[idx] = pop_current_best
         self.pop = self.pop_best.copy()

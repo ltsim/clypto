@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 17:41, 21/05/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 17:41, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -44,7 +44,9 @@ class OriginalWarSO(Optimizer):
     war strategy optimization algorithm." International Journal of Energy Research (2022).
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, rr: float = 0.1, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, rr: float = 0.1, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -70,21 +72,31 @@ class OriginalWarSO(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        pop_sorted, indices = self.get_sorted_population(self.pop, self.problem.minmax, return_index=True)
+        pop_sorted, indices = self.get_sorted_population(
+            self.pop, self.problem.minmax, return_index=True
+        )
         self.wl = self.wl[indices]
         self.wg = self.wg[indices]
         com = self.generator.permutation(self.pop_size)
         for idx in range(0, self.pop_size):
             r1 = self.generator.random()
             if r1 < self.rr:
-                pos_new = 2 * r1 * (self.g_best.solution - self.pop[com[idx]].solution) + \
-                          self.wl[idx] * self.generator.random() * (pop_sorted[idx].solution - self.pop[idx].solution)
+                pos_new = 2 * r1 * (
+                    self.g_best.solution - self.pop[com[idx]].solution
+                ) + self.wl[idx] * self.generator.random() * (
+                    pop_sorted[idx].solution - self.pop[idx].solution
+                )
             else:
-                pos_new = 2 * r1 * (pop_sorted[idx].solution - self.g_best.solution) + \
-                          self.generator.random() * (self.wl[idx] * self.g_best.solution - self.pop[idx].solution)
+                pos_new = 2 * r1 * (
+                    pop_sorted[idx].solution - self.g_best.solution
+                ) + self.generator.random() * (
+                    self.wl[idx] * self.g_best.solution - self.pop[idx].solution
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
                 self.wg[idx] += 1
                 self.wl[idx] = 1 * self.wl[idx] * (1 - self.wg[idx] / self.epoch) ** 2

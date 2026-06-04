@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 00:08, 27/10/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 00:08, 27/10/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 from clypto.optimizer.classic import Optimizer
@@ -46,7 +46,9 @@ class OriginalTDO(Optimizer):
     optimization algorithm for solving optimization algorithm. IEEE Access, 10, 19599-19620.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -72,36 +74,61 @@ class OriginalTDO(Optimizer):
                 # STRATEGY 1: FEEDING BY EATING CARRION (EXPLORATION PHASE)
                 # CARRION selection using (3)
                 kk = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                if self.compare_target(self.pop[kk].target, self.pop[idx].target, self.problem.minmax):
-                    pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * (
-                            self.pop[kk].solution - self.generator.integers(1, 3) * self.pop[idx].solution)
+                if self.compare_target(
+                    self.pop[kk].target, self.pop[idx].target, self.problem.minmax
+                ):
+                    pos_new = self.pop[idx].solution + self.generator.random(
+                        self.problem.n_dims
+                    ) * (
+                        self.pop[kk].solution
+                        - self.generator.integers(1, 3) * self.pop[idx].solution
+                    )
                 else:
-                    pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * (
-                            self.pop[idx].solution - self.pop[kk].solution)
+                    pos_new = self.pop[idx].solution + self.generator.random(
+                        self.problem.n_dims
+                    ) * (self.pop[idx].solution - self.pop[kk].solution)
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
-                if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    agent.target, self.pop[idx].target, self.problem.minmax
+                ):
                     self.pop[idx] = agent
             else:
                 # STRATEGY 2: FEEDING BY EATING PREY (EXPLOITATION PHASE)
                 # stage1: prey selection and attack it
                 kk = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                if self.compare_target(self.pop[kk].target, self.pop[idx].target, self.problem.minmax):
-                    pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * (
-                            self.pop[kk].solution - self.generator.integers(1, 3) * self.pop[idx].solution)
+                if self.compare_target(
+                    self.pop[kk].target, self.pop[idx].target, self.problem.minmax
+                ):
+                    pos_new = self.pop[idx].solution + self.generator.random(
+                        self.problem.n_dims
+                    ) * (
+                        self.pop[kk].solution
+                        - self.generator.integers(1, 3) * self.pop[idx].solution
+                    )
                 else:
-                    pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * (
-                            self.pop[idx].solution - self.pop[kk].solution)
+                    pos_new = self.pop[idx].solution + self.generator.random(
+                        self.problem.n_dims
+                    ) * (self.pop[idx].solution - self.pop[kk].solution)
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
-                if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    agent.target, self.pop[idx].target, self.problem.minmax
+                ):
                     self.pop[idx] = agent
 
             # stage2: prey chasing
-            rr = 0.01 * (1 - epoch / self.epoch)  # Calculating the neighborhood radius using(9)
-            pos_new = self.pop[idx].solution + (-rr + 2 * rr * self.generator.random(self.problem.n_dims)) * self.pop[
-                idx].solution
+            rr = 0.01 * (
+                1 - epoch / self.epoch
+            )  # Calculating the neighborhood radius using(9)
+            pos_new = (
+                self.pop[idx].solution
+                + (-rr + 2 * rr * self.generator.random(self.problem.n_dims))
+                * self.pop[idx].solution
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent

@@ -48,9 +48,18 @@ class OriginalFFA(Optimizer):
     parameter selection. International Journal of Computer Applications, 69(3).
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, gamma: float = 0.001, beta_base: float = 2,
-                 alpha: float = 0.2, alpha_damp: float = 0.99, delta: float = 0.05, exponent: int = 2,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        gamma: float = 0.001,
+        beta_base: float = 2,
+        alpha: float = 0.2,
+        alpha_damp: float = 0.99,
+        delta: float = 0.05,
+        exponent: int = 2,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -71,7 +80,18 @@ class OriginalFFA(Optimizer):
         self.alpha_damp = self.validator.check_float("alpha_damp", alpha_damp, (0, 1.0))
         self.delta = self.validator.check_float("delta", delta, (0, 1.0))
         self.exponent = self.validator.check_int("exponent", exponent, [2, 4])
-        self.set_parameters(["epoch", "pop_size", "gamma", "beta_base", "alpha", "alpha_damp", "delta", "exponent"])
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "gamma",
+                "beta_base",
+                "alpha",
+                "alpha_damp",
+                "delta",
+                "exponent",
+            ]
+        )
         self.is_parallelizable = False
         self.sort_flag = False
 
@@ -92,15 +112,25 @@ class OriginalFFA(Optimizer):
             pop_child = []
             for j in range(idx + 1, self.pop_size):
                 # Move Towards Better Solutions
-                if self.compare_target(self.pop[j].target, agent.target, self.problem.minmax):
+                if self.compare_target(
+                    self.pop[j].target, agent.target, self.problem.minmax
+                ):
                     # Calculate Radius and Attraction Level
                     rij = np.linalg.norm(agent.solution - self.pop[j].solution) / dmax
-                    beta = self.beta_base * np.exp(-self.gamma * rij ** self.exponent)
+                    beta = self.beta_base * np.exp(-self.gamma * rij**self.exponent)
                     # Mutation Vector
-                    mutation_vector = self.delta * self.generator.uniform(0, 1, self.problem.n_dims)
-                    temp = np.matmul((self.pop[j].solution - agent.solution),
-                                     self.generator.uniform(0, 1, (self.problem.n_dims, self.problem.n_dims)))
-                    pos_new = agent.solution + self.dyn_alpha * mutation_vector + beta * temp
+                    mutation_vector = self.delta * self.generator.uniform(
+                        0, 1, self.problem.n_dims
+                    )
+                    temp = np.matmul(
+                        (self.pop[j].solution - agent.solution),
+                        self.generator.uniform(
+                            0, 1, (self.problem.n_dims, self.problem.n_dims)
+                        ),
+                    )
+                    pos_new = (
+                        agent.solution + self.dyn_alpha * mutation_vector + beta * temp
+                    )
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     pop_child.append(agent)
@@ -108,7 +138,9 @@ class OriginalFFA(Optimizer):
                 pop_child += self.generate_population(self.pop_size - len(pop_child))
             local_best = self.get_best_agent(pop_child, self.problem.minmax)
             # Compare to Previous Solution
-            if self.compare_target(local_best.target, agent.target, self.problem.minmax):
+            if self.compare_target(
+                local_best.target, agent.target, self.problem.minmax
+            ):
                 self.pop[idx] = local_best
         self.pop.append(self.g_best)
         self.dyn_alpha = self.alpha_damp * self.alpha

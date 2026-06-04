@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 22:08, 28/08/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 22:08, 28/08/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -56,7 +56,9 @@ class OriginalSOO(Optimizer):
     Stellar oscillation optimizer: a nature-inspired metaheuristic optimization algorithm. Cluster Computing, 28(6), 362.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -92,11 +94,23 @@ class OriginalSOO(Optimizer):
             r3 = self.generator.random(size=self.problem.n_dims)
 
             # Calculate oscillation positions
-            osc1 = scaler * (caf * r1 - 1) * (
-                    self.pop[idx].solution - np.abs(r1 * np.sin(r2) * np.abs(r3 * self.g_best.solution)))
+            osc1 = (
+                scaler
+                * (caf * r1 - 1)
+                * (
+                    self.pop[idx].solution
+                    - np.abs(r1 * np.sin(r2) * np.abs(r3 * self.g_best.solution))
+                )
+            )
             osc1_pos = self.g_best.solution - r1 * r3 * osc1
-            osc2 = scaler * (caf * r1 - 1) * (
-                    self.pop[idx].solution - np.abs(r1 * np.cos(r2) * np.abs(r3 * self.g_best.solution)))
+            osc2 = (
+                scaler
+                * (caf * r1 - 1)
+                * (
+                    self.pop[idx].solution
+                    - np.abs(r1 * np.cos(r2) * np.abs(r3 * self.g_best.solution))
+                )
+            )
             osc2_pos = self.g_best.solution - r2 * r3 * osc2
             pos_new = r3 * (osc1_pos + osc2_pos) / 2
             pos_new = self.correct_solution(pos_new)
@@ -104,13 +118,19 @@ class OriginalSOO(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
         # Get top 3 stars
-        _, best3, _ = self.get_special_agents(self.pop, n_best=3, minmax=self.problem.minmax)
+        _, best3, _ = self.get_special_agents(
+            self.pop, n_best=3, minmax=self.problem.minmax
+        )
 
         # Perform oscillatory movement update
         for idx in range(self.pop_size):
@@ -118,21 +138,34 @@ class OriginalSOO(Optimizer):
             avg3 = np.mean([agent.solution for agent in best3], axis=0)
 
             # Select 3 random indices different from current
-            r1, r2, r3 = self.generator.choice(list(set(range(self.pop_size)) - {idx}), size=3, replace=False)
+            r1, r2, r3 = self.generator.choice(
+                list(set(range(self.pop_size)) - {idx}), size=3, replace=False
+            )
 
             # Generate new position based on oscillatory movement
             rf = self.generator.random()
-            pos_new = avg3 + 0.5 * (np.sin(rf * np.pi) * (self.pop[r1].solution - self.pop[r2].solution) +
-                                    np.cos((1 - rf) * np.pi) * (self.pop[r1].solution - self.pop[r3].solution))
+            pos_new = avg3 + 0.5 * (
+                np.sin(rf * np.pi) * (self.pop[r1].solution - self.pop[r2].solution)
+                + np.cos((1 - rf) * np.pi)
+                * (self.pop[r1].solution - self.pop[r3].solution)
+            )
             ## Probabilistic update
-            pos_new = np.where(self.generator.random(size=self.problem.n_dims) <= 0.5, pos_new, self.pop[idx].solution)
+            pos_new = np.where(
+                self.generator.random(size=self.problem.n_dims) <= 0.5,
+                pos_new,
+                self.pop[idx].solution,
+            )
             # Apply boundary constraints
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

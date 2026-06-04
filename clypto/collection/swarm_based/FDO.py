@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 10:01, 16/08/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 10:01, 16/08/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -45,7 +45,13 @@ class OriginalFDO(Optimizer):
     Fitness dependent optimizer: inspired by the bee swarming reproductive process. IEEe Access, 7, 43473-43486.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, weight_factor=0.1, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        weight_factor=0.1,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -55,13 +61,17 @@ class OriginalFDO(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.weight_factor = self.validator.check_float("weight_factor", weight_factor, [0.0, 1.0])
+        self.weight_factor = self.validator.check_float(
+            "weight_factor", weight_factor, [0.0, 1.0]
+        )
         self.set_parameters(["epoch", "pop_size", "weight_factor"])
         self.sort_flag = False
         self.is_parallelizable = False
 
     def before_main_loop(self):
-        self.pop_pace = [0, ] * self.pop_size
+        self.pop_pace = [
+            0,
+        ] * self.pop_size
 
     def get_fit_weight(self, best_fit, current_fit, weight_factor=0.1):
         """
@@ -99,13 +109,15 @@ class OriginalFDO(Optimizer):
         Returns:
             np.ndarray: The position clipped to the problem bounds.
         """
-        levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1)
+        levy = self.get_levy_flight_step(
+            beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
+        )
         levy_up = self.problem.ub * np.abs(levy)
         levy_lb = self.problem.lb * np.abs(levy)
         pos_new = np.select(
             [pos_new > self.problem.ub, pos_new < self.problem.lb],
             [levy_up, levy_lb],
-            default=pos_new
+            default=pos_new,
         )
         return pos_new
 
@@ -118,9 +130,15 @@ class OriginalFDO(Optimizer):
         """
         # Update positions for each thief
         for idx in range(self.pop_size):
-            fw = self.get_fit_weight(self.g_best.target.fitness, self.pop[idx].target.fitness, self.weight_factor)
+            fw = self.get_fit_weight(
+                self.g_best.target.fitness,
+                self.pop[idx].target.fitness,
+                self.weight_factor,
+            )
             dist = self.g_best.solution - self.pop[idx].solution
-            levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1)
+            levy = self.get_levy_flight_step(
+                beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
+            )
             if fw == 1:
                 pace = self.pop[idx].solution * levy
             elif fw == 0:
@@ -133,7 +151,9 @@ class OriginalFDO(Optimizer):
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             # Check if new position is better
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
             else:
                 # Alternative update strategy
@@ -142,14 +162,20 @@ class OriginalFDO(Optimizer):
                 pos_new = self.get_into_levy_bound(pos_new)
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
-                if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    agent.target, self.pop[idx].target, self.problem.minmax
+                ):
                     self.pop[idx] = agent
                 else:
                     # Third update strategy
-                    levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1)
+                    levy = self.get_levy_flight_step(
+                        beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
+                    )
                     pos_new = self.pop[idx].solution + self.pop[idx].solution * levy
                     pos_new = self.get_into_levy_bound(pos_new)
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
-                    if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+                    if self.compare_target(
+                        agent.target, self.pop[idx].target, self.problem.minmax
+                    ):
                         self.pop[idx] = agent

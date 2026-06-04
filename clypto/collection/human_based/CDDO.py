@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 23:41, 15/08/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 23:41, 15/08/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 from clypto.optimizer.classic import Optimizer
@@ -49,8 +49,14 @@ class OriginalCDDO(Optimizer):
     Child’s Cognitive Development. Arab J Sci Eng 47, 1337–1351 (2022). https://doi.org/10.1007/s13369-021-05928-6
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pattern_size=10,
-                 creativity_rate=0.1, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pattern_size=10,
+        creativity_rate=0.1,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -61,8 +67,12 @@ class OriginalCDDO(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.pattern_size = self.validator.check_int("pattern_size", pattern_size, [1, 1000])
-        self.creativity_rate = self.validator.check_float("creativity_rate", creativity_rate, [0.0, 1.0])
+        self.pattern_size = self.validator.check_int(
+            "pattern_size", pattern_size, [1, 1000]
+        )
+        self.creativity_rate = self.validator.check_float(
+            "creativity_rate", creativity_rate, [0.0, 1.0]
+        )
         self.set_parameters(["epoch", "pop_size", "pattern_size", "creativity_rate"])
         self.sort_flag = False
 
@@ -79,7 +89,9 @@ class OriginalCDDO(Optimizer):
                 self.list_gr.append(self.pop[idx].solution[p2])
             else:
                 self.list_gr.append(
-                    self.pop[idx].solution[p1] + self.pop[idx].solution[p2] / self.pop[idx].solution[p1])
+                    self.pop[idx].solution[p1]
+                    + self.pop[idx].solution[p2] / self.pop[idx].solution[p1]
+                )
 
     def evolve(self, epoch):
         """
@@ -89,23 +101,34 @@ class OriginalCDDO(Optimizer):
             epoch (int): The current iteration
         """
         # Pattern matrix
-        _, pattern, _ = self.get_special_agents(self.pop, n_best=self.pattern_size, minmax=self.problem.minmax)
+        _, pattern, _ = self.get_special_agents(
+            self.pop, n_best=self.pattern_size, minmax=self.problem.minmax
+        )
         for idx in range(0, self.pop_size):
-            hand_pressure = self.generator.integers(self.problem.lb[0], self.problem.ub[0] + 1)
+            hand_pressure = self.generator.integers(
+                self.problem.lb[0], self.problem.ub[0] + 1
+            )
             pp = self.generator.integers(0, self.problem.n_dims)
             pos_new = self.pop[idx].solution.copy()
             if self.pop[idx].solution[pp] <= hand_pressure:
                 # Update the drawings
-                pos_new = (self.list_gr[idx] + self.SR * self.generator.random(self.problem.n_dims) *
-                           (self.pop_local[idx].solution - self.pop[idx].solution) +
-                           self.LR * self.generator.random(self.problem.n_dims) *
-                           (self.g_best.solution - self.pop[idx].solution))
+                pos_new = (
+                    self.list_gr[idx]
+                    + self.SR
+                    * self.generator.random(self.problem.n_dims)
+                    * (self.pop_local[idx].solution - self.pop[idx].solution)
+                    + self.LR
+                    * self.generator.random(self.problem.n_dims)
+                    * (self.g_best.solution - self.pop[idx].solution)
+                )
                 self.LR = self.generator.integers(6, 11) / 10
                 self.SR = self.generator.integers(6, 11) / 10
             elif 1.5 < self.list_gr[idx] < 2:
                 # Consider the learnt patterns
-                pos_new = pattern[self.generator.integers(0, self.pattern_size)].solution - self.creativity_rate * \
-                          self.pop_local[idx].solution
+                pos_new = (
+                    pattern[self.generator.integers(0, self.pattern_size)].solution
+                    - self.creativity_rate * self.pop_local[idx].solution
+                )
                 self.LR = self.generator.integers(0, 6) / 10
                 self.SR = self.generator.integers(0, 6) / 10
             pos_new = self.correct_solution(pos_new)
@@ -116,4 +139,6 @@ class OriginalCDDO(Optimizer):
         if self.mode in self.AVAILABLE_MODES:
             self.pop = self.update_target_for_population(self.pop)
         # Update the local information
-        self.pop_local = self.greedy_selection_population(self.pop_local, self.pop, self.problem.minmax)
+        self.pop_local = self.greedy_selection_population(
+            self.pop_local, self.pop, self.problem.minmax
+        )

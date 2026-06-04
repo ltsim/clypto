@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 16:31, 13/09/2025 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 16:31, 13/09/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -41,7 +41,9 @@ class OriginalMSO(Optimizer):
     path planning and engineering design problems. Advances in Engineering Software, 203, 103883.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -89,14 +91,21 @@ class OriginalMSO(Optimizer):
         # Random permutation for agent selection
         ac = self.generator.permutation(self.pop_size - 1) + 1
         # Selection of individuals for Superior mirage search
-        cv = int(np.ceil((self.pop_size * (2 / 3)) * ((self.epoch - self.nfe_counter + 1) / self.epoch)))
+        cv = int(
+            np.ceil(
+                (self.pop_size * (2 / 3))
+                * ((self.epoch - self.nfe_counter + 1) / self.epoch)
+            )
+        )
 
         # Superior mirage search
         pop_new = []
         for idx in ac[:cv]:
             pos_new = np.zeros(self.problem.n_dims)
             for k in range(self.problem.n_dims):
-                h = (self.g_best.solution[k] - self.pop[idx].solution[k]) * self.generator.random()
+                h = (
+                    self.g_best.solution[k] - self.pop[idx].solution[k]
+                ) * self.generator.random()
                 cmax = 1
                 hmax = 5 * self.atanh(-(self.nfe_counter / self.epoch) + 1) + cmax
                 if h > hmax:
@@ -132,28 +141,43 @@ class OriginalMSO(Optimizer):
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             pop_new.append(agent)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new, self.pop_size, minmax=self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, minmax=self.problem.minmax
+        )
 
         # Inferior mirage search
         pop_new = []
         for idx in range(self.pop_size):
             if self.g_best == self.pop[idx]:
-                hh = np.ones(self.problem.n_dims) * 0.05 * self.generator.choice([-1, 1])
+                hh = (
+                    np.ones(self.problem.n_dims) * 0.05 * self.generator.choice([-1, 1])
+                )
             else:
                 hh = self.g_best.solution - self.pop[idx].solution
             zf = np.sign(hh)
             hh = np.abs(hh * self.generator.random(self.problem.n_dims))
-            gama = self.generator.random(self.problem.n_dims) * 90 * (
-                    (self.epoch - self.nfe_counter * 0.99) / self.epoch)
+            gama = (
+                self.generator.random(self.problem.n_dims)
+                * 90
+                * ((self.epoch - self.nfe_counter * 0.99) / self.epoch)
+            )
             amax = self.atand(1.0 / (2 * self.tand(gama)))
-            amin = self.atand((self.sind(gama) * self.cosd(gama)) / (1 + (self.sind(gama)) ** 2))
+            amin = self.atand(
+                (self.sind(gama) * self.cosd(gama)) / (1 + (self.sind(gama)) ** 2)
+            )
             fai = (amax - amin) * self.generator.random() + amin
             omg = self.asind(self.generator.random() * self.sind(fai + gama))
             x = (hh / self.tand(gama)) - (
-                    ((hh / self.sind(gama)) - (hh * self.sind(fai)) / (self.cosd(fai + gama))) * self.cosd(
-                omg)) / self.cosd(omg - gama)
+                (
+                    (hh / self.sind(gama))
+                    - (hh * self.sind(fai)) / (self.cosd(fai + gama))
+                )
+                * self.cosd(omg)
+            ) / self.cosd(omg - gama)
             pos_new = self.pop[idx].solution + x * zf
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             pop_new.append(agent)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new, self.pop_size, minmax=self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, minmax=self.problem.minmax
+        )

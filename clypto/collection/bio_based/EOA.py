@@ -54,8 +54,18 @@ class OriginalEOA(Optimizer):
     for global optimisation problems. International journal of bio-inspired computation, 12(1), pp.1-22.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, p_c: float = 0.9, p_m: float = 0.01, n_best: int = 2,
-                 alpha: float = 0.98, beta: float = 0.9, gama: float = 0.9, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        p_c: float = 0.9,
+        p_m: float = 0.01,
+        n_best: int = 2,
+        alpha: float = 0.98,
+        beta: float = 0.9,
+        gama: float = 0.9,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -72,11 +82,15 @@ class OriginalEOA(Optimizer):
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.p_c = self.validator.check_float("p_c", p_c, (0, 1.0))
         self.p_m = self.validator.check_float("p_m", p_m, (0, 1.0))
-        self.n_best = self.validator.check_int("n_best", n_best, [2, int(self.pop_size / 2)])
+        self.n_best = self.validator.check_int(
+            "n_best", n_best, [2, int(self.pop_size / 2)]
+        )
         self.alpha = self.validator.check_float("alpha", alpha, (0, 1.0))
         self.beta = self.validator.check_float("beta", beta, (0, 1.0))
         self.gama = self.validator.check_float("gama", gama, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "p_c", "p_m", "n_best", "alpha", "beta", "gama"])
+        self.set_parameters(
+            ["epoch", "pop_size", "p_c", "p_m", "n_best", "alpha", "beta", "gama"]
+        )
         self.sort_flag = False
 
     def initialize_variables(self):
@@ -90,21 +104,33 @@ class OriginalEOA(Optimizer):
             epoch (int): The current iteration
         """
         ## Update the pop best
-        pop_elites, _, _ = self.get_special_agents(self.pop, n_best=1, minmax=self.problem.minmax)
+        pop_elites, _, _ = self.get_special_agents(
+            self.pop, n_best=1, minmax=self.problem.minmax
+        )
         pop = []
         for idx in range(0, self.pop_size):
             ### Reproduction 1: the first way of reproducing
-            x_t1 = self.problem.lb + self.problem.ub - self.alpha * self.pop[idx].solution
+            x_t1 = (
+                self.problem.lb + self.problem.ub - self.alpha * self.pop[idx].solution
+            )
 
             ### Reproduction 2: the second way of reproducing
-            if idx >= self.n_best:  ### Select two parents to mate and create two children
+            if (
+                idx >= self.n_best
+            ):  ### Select two parents to mate and create two children
                 idx = int(self.pop_size * 0.2)
-                if self.generator.uniform() < 0.5:  ## 80% parents selected from best population
+                if (
+                    self.generator.uniform() < 0.5
+                ):  ## 80% parents selected from best population
                     idx1, idx2 = self.generator.choice(range(0, idx), 2, replace=False)
                 else:  ## 20% left parents selected from worst population (make more diversity)
-                    idx1, idx2 = self.generator.choice(range(idx, self.pop_size), 2, replace=False)
+                    idx1, idx2 = self.generator.choice(
+                        range(idx, self.pop_size), 2, replace=False
+                    )
                 r = self.generator.uniform()
-                x_child = r * self.pop[idx2].solution + (1 - r) * self.pop[idx1].solution
+                x_child = (
+                    r * self.pop[idx2].solution + (1 - r) * self.pop[idx1].solution
+                )
             else:
                 r1 = self.generator.integers(0, self.pop_size)
                 x_child = self.pop[r1].solution
@@ -114,19 +140,27 @@ class OriginalEOA(Optimizer):
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(self.pop, pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop, self.problem.minmax
+            )
         self.dyn_beta = self.gama * self.beta
-        self.pop = self.get_sorted_and_trimmed_population(self.pop, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop, self.pop_size, self.problem.minmax
+        )
 
         pos_list = np.array([agent.solution for agent in self.pop])
         x_mean = np.mean(pos_list, axis=0)
         ## Cauchy mutation (CM)
         cauchy_w = self.g_best.solution.copy()
         pop_new = []
-        for idx in range(self.n_best, self.pop_size):  # Don't allow the elites to be mutated
+        for idx in range(
+            self.n_best, self.pop_size
+        ):  # Don't allow the elites to be mutated
             condition = self.generator.random(self.problem.n_dims) < self.p_m
             cauchy_w = np.where(condition, x_mean, cauchy_w)
             x_t1 = (cauchy_w + self.g_best.solution) / 2
@@ -135,11 +169,14 @@ class OriginalEOA(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[self.n_best:] = self.greedy_selection_population(pop_new, self.pop[self.n_best:],
-                                                                      self.problem.minmax)
+            self.pop[self.n_best :] = self.greedy_selection_population(
+                pop_new, self.pop[self.n_best :], self.problem.minmax
+            )
 
         ## Elitism Strategy: Replace the worst with the previous generation's elites.
         self.pop, _, _ = self.get_special_agents(self.pop, minmax=self.problem.minmax)

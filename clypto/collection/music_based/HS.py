@@ -44,8 +44,14 @@ class DevHS(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c_r: float = 0.95, pa_r: float = 0.05,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c_r: float = 0.95,
+        pa_r: float = 0.05,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -77,12 +83,20 @@ class DevHS(Optimizer):
         for idx in range(0, self.pop_size):
             # Create New Harmony Position
             pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
-            delta = self.dyn_fw * self.generator.normal(self.problem.lb, self.problem.ub)
+            delta = self.dyn_fw * self.generator.normal(
+                self.problem.lb, self.problem.ub
+            )
             # Use Harmony Memory
-            pos_new = np.where(self.generator.random(self.problem.n_dims) < self.c_r, self.g_best.solution, pos_new)
+            pos_new = np.where(
+                self.generator.random(self.problem.n_dims) < self.c_r,
+                self.g_best.solution,
+                pos_new,
+            )
             # Pitch Adjustment
             x_new = pos_new + delta
-            pos_new = np.where(self.generator.random(self.problem.n_dims) < self.pa_r, x_new, pos_new)
+            pos_new = np.where(
+                self.generator.random(self.problem.n_dims) < self.pa_r, x_new, pos_new
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
@@ -92,7 +106,9 @@ class DevHS(Optimizer):
         # Update Damp Fret Width
         self.dyn_fw = self.dyn_fw * self.fw_damp
         # Merge Harmony Memory and New Harmonies, Then sort them, Then truncate extra harmonies
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new, self.pop_size, minmax=self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, minmax=self.problem.minmax
+        )
 
 
 class OriginalHS(DevHS):
@@ -131,8 +147,14 @@ class OriginalHS(DevHS):
     optimization algorithm: harmony search. simulation, 76(2), pp.60-68.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c_r: float = 0.95, pa_r: float = 0.05,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c_r: float = 0.95,
+        pa_r: float = 0.05,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -160,9 +182,12 @@ class OriginalHS(DevHS):
                 # Pitch Adjustment
                 if self.generator.uniform() <= self.pa_r:
                     mean = (self.problem.lb + self.problem.ub) / 2
-                    std_dev = abs(
-                        self.problem.ub - self.problem.lb) / 6  # This assumes a range of +/- 3 standard deviations
-                    delta = self.dyn_fw * self.generator.normal(mean, std_dev)  # Gaussian(Normal)
+                    std_dev = (
+                        abs(self.problem.ub - self.problem.lb) / 6
+                    )  # This assumes a range of +/- 3 standard deviations
+                    delta = self.dyn_fw * self.generator.normal(
+                        mean, std_dev
+                    )  # Gaussian(Normal)
                     pos_new[jdx] = pos_new[jdx] + delta[jdx]
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -173,4 +198,6 @@ class OriginalHS(DevHS):
         # Update Damp Fret Width
         self.dyn_fw = self.dyn_fw * self.fw_damp
         # Merge Harmony Memory and New Harmonies, Then sort them, Then truncate extra harmonies
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new, self.pop_size, minmax=self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, minmax=self.problem.minmax
+        )

@@ -63,8 +63,14 @@ class BaseGA(Optimizer):
     [1] Whitley, D., 1994. A genetic algorithm tutorial. Statistics and computing, 4(2), pp.65-85.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pc: float = 0.95, pm: float = 0.025,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pc: float = 0.95,
+        pm: float = 0.025,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -91,23 +97,33 @@ class BaseGA(Optimizer):
         self.mutation_multipoints = True
 
         if "selection" in kwargs:
-            self.selection = self.validator.check_str("selection", kwargs["selection"],
-                                                      ["tournament", "random", "roulette"])
+            self.selection = self.validator.check_str(
+                "selection", kwargs["selection"], ["tournament", "random", "roulette"]
+            )
         if "k_way" in kwargs:
             self.k_way = self.validator.check_float("k_way", kwargs["k_way"], (0, 1.0))
         if "crossover" in kwargs:
-            self.crossover = self.validator.check_str("crossover", kwargs["crossover"],
-                                                      ["one_point", "multi_points", "uniform", "arithmetic"])
+            self.crossover = self.validator.check_str(
+                "crossover",
+                kwargs["crossover"],
+                ["one_point", "multi_points", "uniform", "arithmetic"],
+            )
         if "mutation_multipoints" in kwargs:
-            self.mutation_multipoints = self.validator.check_bool("mutation_multipoints",
-                                                                  kwargs["mutation_multipoints"])
+            self.mutation_multipoints = self.validator.check_bool(
+                "mutation_multipoints", kwargs["mutation_multipoints"]
+            )
         if self.mutation_multipoints:
             if "mutation" in kwargs:
-                self.mutation = self.validator.check_str("mutation", kwargs["mutation"], ["flip", "swap"])
+                self.mutation = self.validator.check_str(
+                    "mutation", kwargs["mutation"], ["flip", "swap"]
+                )
         else:
             if "mutation" in kwargs:
-                self.mutation = self.validator.check_str("mutation", kwargs["mutation"],
-                                                         ["flip", "swap", "scramble", "inversion"])
+                self.mutation = self.validator.check_str(
+                    "mutation",
+                    kwargs["mutation"],
+                    ["flip", "swap", "scramble", "inversion"],
+                )
 
     def selection_process__(self, list_fitness):
         """
@@ -131,7 +147,9 @@ class BaseGA(Optimizer):
         elif self.selection == "random":
             id_c1, id_c2 = self.generator.choice(range(self.pop_size), 2, replace=False)
         else:  ## tournament
-            id_c1, id_c2 = self.get_index_kway_tournament_selection(self.pop, k_way=self.k_way, output=2)
+            id_c1, id_c2 = self.get_index_kway_tournament_selection(
+                self.pop, k_way=self.k_way, output=2
+            )
         return self.pop[id_c1].solution, self.pop[id_c2].solution
 
     def selection_process_00__(self, pop_selected):
@@ -155,9 +173,13 @@ class BaseGA(Optimizer):
             while id_c2 == id_c1:
                 id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
         elif self.selection == "random":
-            id_c1, id_c2 = self.generator.choice(range(len(pop_selected)), 2, replace=False)
+            id_c1, id_c2 = self.generator.choice(
+                range(len(pop_selected)), 2, replace=False
+            )
         else:  ## tournament
-            id_c1, id_c2 = self.get_index_kway_tournament_selection(pop_selected, k_way=self.k_way, output=2)
+            id_c1, id_c2 = self.get_index_kway_tournament_selection(
+                pop_selected, k_way=self.k_way, output=2
+            )
         return pop_selected[id_c1].solution, pop_selected[id_c2].solution
 
     def selection_process_01__(self, pop_dad, pop_mom):
@@ -180,8 +202,12 @@ class BaseGA(Optimizer):
             id_c1 = self.generator.choice(range(len(pop_dad)))
             id_c2 = self.generator.choice(range(len(pop_mom)))
         else:  ## tournament
-            id_c1 = self.get_index_kway_tournament_selection(pop_dad, k_way=self.k_way, output=1)[0]
-            id_c2 = self.get_index_kway_tournament_selection(pop_mom, k_way=self.k_way, output=1)[0]
+            id_c1 = self.get_index_kway_tournament_selection(
+                pop_dad, k_way=self.k_way, output=1
+            )[0]
+            id_c2 = self.get_index_kway_tournament_selection(
+                pop_mom, k_way=self.k_way, output=1
+            )[0]
         return pop_dad[id_c1].solution, pop_mom[id_c2].solution
 
     def crossover_process__(self, dad, mom):
@@ -206,7 +232,9 @@ class BaseGA(Optimizer):
             w1 = np.concatenate([dad[:cut], mom[cut:]])
             w2 = np.concatenate([mom[:cut], dad[cut:]])
         elif self.crossover == "multi_points":
-            idxs = self.generator.choice(range(1, self.problem.n_dims - 1), 2, replace=False)
+            idxs = self.generator.choice(
+                range(1, self.problem.n_dims - 1), 2, replace=False
+            )
             cut1, cut2 = np.min(idxs), np.max(idxs)
             w1 = np.concatenate([dad[:cut1], mom[cut1:cut2], dad[cut2:]])
             w2 = np.concatenate([mom[:cut1], dad[cut1:cut2], mom[cut2:]])
@@ -241,7 +269,9 @@ class BaseGA(Optimizer):
         if self.mutation_multipoints:
             if self.mutation == "swap":
                 for idx in range(self.problem.n_dims):
-                    idx_swap = self.generator.choice(list(set(range(0, self.problem.n_dims)) - {idx}))
+                    idx_swap = self.generator.choice(
+                        list(set(range(0, self.problem.n_dims)) - {idx})
+                    )
                     child[idx], child[idx_swap] = child[idx_swap], child[idx]
                     return child
             else:  # "flip"
@@ -250,24 +280,32 @@ class BaseGA(Optimizer):
                 return np.where(flag_child, mutation_child, child)
         else:
             if self.mutation == "swap":
-                idx1, idx2 = self.generator.choice(range(0, self.problem.n_dims), 2, replace=False)
+                idx1, idx2 = self.generator.choice(
+                    range(0, self.problem.n_dims), 2, replace=False
+                )
                 child[idx1], child[idx2] = child[idx2], child[idx1]
                 return child
             elif self.mutation == "inversion":
-                cut1, cut2 = self.generator.choice(range(0, self.problem.n_dims), 2, replace=False)
+                cut1, cut2 = self.generator.choice(
+                    range(0, self.problem.n_dims), 2, replace=False
+                )
                 temp = child[cut1:cut2]
                 temp = temp[::-1]
                 child[cut1:cut2] = temp
                 return child
             elif self.mutation == "scramble":
-                cut1, cut2 = self.generator.choice(range(0, self.problem.n_dims), 2, replace=False)
+                cut1, cut2 = self.generator.choice(
+                    range(0, self.problem.n_dims), 2, replace=False
+                )
                 temp = child[cut1:cut2]
                 self.generator.shuffle(temp)
                 child[cut1:cut2] = temp
                 return child
             else:  # "flip"
                 idx = self.generator.integers(0, self.problem.n_dims)
-                child[idx] = self.generator.uniform(self.problem.lb[idx], self.problem.ub[idx])
+                child[idx] = self.generator.uniform(
+                    self.problem.lb[idx], self.problem.ub[idx]
+                )
                 return child
 
     def survivor_process__(self, pop, pop_child):
@@ -284,8 +322,14 @@ class BaseGA(Optimizer):
         """
         pop_new = []
         for idx in range(0, self.pop_size):
-            id_child = self.get_index_kway_tournament_selection(pop, k_way=0.1, output=1, reverse=True)[0]
-            pop_new.append(self.get_better_agent(pop_child[idx], pop[id_child], self.problem.minmax))
+            id_child = self.get_index_kway_tournament_selection(
+                pop, k_way=0.1, output=1, reverse=True
+            )[0]
+            pop_new.append(
+                self.get_better_agent(
+                    pop_child[idx], pop[id_child], self.problem.minmax
+                )
+            )
         return pop_new
 
     def evolve(self, epoch):
@@ -380,9 +424,18 @@ class SingleGA(BaseGA):
     [1] Whitley, D., 1994. A genetic algorithm tutorial. Statistics and computing, 4(2), pp.65-85.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pc: float = 0.95, pm: float = 0.8,
-                 selection: str = "roulette",
-                 crossover: str = "uniform", mutation: str = "swap", k_way: float = 0.2, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pc: float = 0.95,
+        pm: float = 0.8,
+        selection: str = "roulette",
+        crossover: str = "uniform",
+        mutation: str = "swap",
+        k_way: float = 0.2,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -395,12 +448,30 @@ class SingleGA(BaseGA):
             k_way: Optional, set it when use "tournament" selection, default = 0.2
         """
         super().__init__(epoch, pop_size, pc, pm, **kwargs)
-        self.selection = self.validator.check_str("selection", selection, ["tournament", "random", "roulette"])
-        self.crossover = self.validator.check_str("crossover", crossover,
-                                                  ["one_point", "multi_points", "uniform", "arithmetic"])
-        self.mutation = self.validator.check_str("mutation", mutation, ["flip", "swap", "scramble", "inversion"])
+        self.selection = self.validator.check_str(
+            "selection", selection, ["tournament", "random", "roulette"]
+        )
+        self.crossover = self.validator.check_str(
+            "crossover",
+            crossover,
+            ["one_point", "multi_points", "uniform", "arithmetic"],
+        )
+        self.mutation = self.validator.check_str(
+            "mutation", mutation, ["flip", "swap", "scramble", "inversion"]
+        )
         self.k_way = self.validator.check_float("k_way", k_way, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "pc", "pm", "selection", "crossover", "mutation", "k_way"])
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "pc",
+                "pm",
+                "selection",
+                "crossover",
+                "mutation",
+                "k_way",
+            ]
+        )
         self.sort_flag = False
 
     def mutation_process__(self, child):
@@ -419,24 +490,32 @@ class SingleGA(BaseGA):
             np.array: The mutated vector of the child
         """
         if self.mutation == "swap":
-            idx1, idx2 = self.generator.choice(range(0, self.problem.n_dims), 2, replace=False)
+            idx1, idx2 = self.generator.choice(
+                range(0, self.problem.n_dims), 2, replace=False
+            )
             child[idx1], child[idx2] = child[idx2], child[idx1]
             return child
         elif self.mutation == "inversion":
-            cut1, cut2 = self.generator.choice(range(0, self.problem.n_dims), 2, replace=False)
+            cut1, cut2 = self.generator.choice(
+                range(0, self.problem.n_dims), 2, replace=False
+            )
             temp = child[cut1:cut2]
             temp = temp[::-1]
             child[cut1:cut2] = temp
             return child
         elif self.mutation == "scramble":
-            cut1, cut2 = self.generator.choice(range(0, self.problem.n_dims), 2, replace=False)
+            cut1, cut2 = self.generator.choice(
+                range(0, self.problem.n_dims), 2, replace=False
+            )
             temp = child[cut1:cut2]
             self.generator.shuffle(temp)
             child[cut1:cut2] = temp
             return child
         else:  # "flip"
             idx = self.generator.integers(0, self.problem.n_dims)
-            child[idx] = self.generator.uniform(self.problem.lb[idx], self.problem.ub[idx])
+            child[idx] = self.generator.uniform(
+                self.problem.lb[idx], self.problem.ub[idx]
+            )
             return child
 
 
@@ -497,25 +576,62 @@ class EliteSingleGA(SingleGA):
     [1] Whitley, D., 1994. A genetic algorithm tutorial. Statistics and computing, 4(2), pp.65-85.
     """
 
-    def __init__(self, epoch=10000, pop_size=100, pc=0.95, pm=0.8, selection="roulette",
-                 crossover="uniform", mutation="swap", k_way=0.2,
-                 elite_best=0.1, elite_worst=0.3, strategy=0, **kwargs):
-        super().__init__(epoch, pop_size, pc, pm, selection, crossover, mutation, k_way, **kwargs)
-        self.elite_best = self.validator.check_is_int_and_float("elite_best", elite_best,
-                                                                [1, int(self.pop_size / 2) - 1], (0, 0.5))
-        self.n_elite_best = int(self.elite_best * self.pop_size) if self.elite_best < 1 else self.elite_best
+    def __init__(
+        self,
+        epoch=10000,
+        pop_size=100,
+        pc=0.95,
+        pm=0.8,
+        selection="roulette",
+        crossover="uniform",
+        mutation="swap",
+        k_way=0.2,
+        elite_best=0.1,
+        elite_worst=0.3,
+        strategy=0,
+        **kwargs
+    ):
+        super().__init__(
+            epoch, pop_size, pc, pm, selection, crossover, mutation, k_way, **kwargs
+        )
+        self.elite_best = self.validator.check_is_int_and_float(
+            "elite_best", elite_best, [1, int(self.pop_size / 2) - 1], (0, 0.5)
+        )
+        self.n_elite_best = (
+            int(self.elite_best * self.pop_size)
+            if self.elite_best < 1
+            else self.elite_best
+        )
         if self.n_elite_best < 1:
             self.n_elite_best = 1
 
-        self.elite_worst = self.validator.check_is_int_and_float("elite_worst", elite_worst,
-                                                                 [1, int(self.pop_size / 2) - 1], (0, 0.5))
-        self.n_elite_worst = int(self.elite_worst * self.pop_size) if self.elite_worst < 1 else self.elite_worst
+        self.elite_worst = self.validator.check_is_int_and_float(
+            "elite_worst", elite_worst, [1, int(self.pop_size / 2) - 1], (0, 0.5)
+        )
+        self.n_elite_worst = (
+            int(self.elite_worst * self.pop_size)
+            if self.elite_worst < 1
+            else self.elite_worst
+        )
         if self.n_elite_worst < 1:
             self.n_elite_worst = 1
 
         self.strategy = self.validator.check_int("strategy", strategy, [0, 1])
-        self.set_parameters(["epoch", "pop_size", "pc", "pm", "selection", "crossover", "mutation", "k_way",
-                             "elite_best", "elite_worst", "strategy"])
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "pc",
+                "pm",
+                "selection",
+                "crossover",
+                "mutation",
+                "k_way",
+                "elite_best",
+                "elite_worst",
+                "strategy",
+            ]
+        )
         self.sort_flag = True
 
     def evolve(self, epoch):
@@ -525,9 +641,9 @@ class EliteSingleGA(SingleGA):
         Args:
             epoch (int): The current iteration
         """
-        pop_new = self.pop[:self.n_elite_best]
+        pop_new = self.pop[: self.n_elite_best]
         if self.strategy == 0:
-            pop_old = self.pop[self.n_elite_best:]
+            pop_old = self.pop[self.n_elite_best :]
             for idx in range(self.n_elite_best, self.pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_00__(pop_old)
@@ -545,8 +661,10 @@ class EliteSingleGA(SingleGA):
                     pop_new[-1].target = self.get_target(pos_new)
             self.pop = self.update_target_for_population(pop_new)
         else:
-            pop_dad = self.pop[self.n_elite_best:self.n_elite_best + self.n_elite_worst]
-            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst:]
+            pop_dad = self.pop[
+                self.n_elite_best : self.n_elite_best + self.n_elite_worst
+            ]
+            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst :]
             for idx in range(self.n_elite_best, self.pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_01__(pop_dad, pop_mom)
@@ -618,9 +736,18 @@ class MultiGA(BaseGA):
     [1] Whitley, D., 1994. A genetic algorithm tutorial. Statistics and computing, 4(2), pp.65-85.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pc: float = 0.95, pm: float = 0.025,
-                 selection: str = "roulette", crossover: str = "arithmetic", mutation: str = "flip", k_way: float = 0.2,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pc: float = 0.95,
+        pm: float = 0.025,
+        selection: str = "roulette",
+        crossover: str = "arithmetic",
+        mutation: str = "flip",
+        k_way: float = 0.2,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -633,12 +760,28 @@ class MultiGA(BaseGA):
             k_way: Optional, set it when use "tournament" selection, default = 0.2
         """
         super().__init__(epoch, pop_size, pc, pm, **kwargs)
-        self.selection = self.validator.check_str("selection", selection, ["tournament", "random", "roulette"])
-        self.crossover = self.validator.check_str("crossover", crossover,
-                                                  ["one_point", "multi_points", "uniform", "arithmetic"])
+        self.selection = self.validator.check_str(
+            "selection", selection, ["tournament", "random", "roulette"]
+        )
+        self.crossover = self.validator.check_str(
+            "crossover",
+            crossover,
+            ["one_point", "multi_points", "uniform", "arithmetic"],
+        )
         self.mutation = self.validator.check_str("mutation", mutation, ["flip", "swap"])
         self.k_way = self.validator.check_float("k_way", k_way, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "pc", "pm", "selection", "crossover", "mutation", "k_way"])
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "pc",
+                "pm",
+                "selection",
+                "crossover",
+                "mutation",
+                "k_way",
+            ]
+        )
 
     def mutation_process__(self, child):
         """
@@ -655,7 +798,9 @@ class MultiGA(BaseGA):
         """
         if self.mutation == "swap":
             for idx in range(self.problem.n_dims):
-                idx_swap = self.generator.choice(list(set(range(0, self.problem.n_dims)) - {idx}))
+                idx_swap = self.generator.choice(
+                    list(set(range(0, self.problem.n_dims)) - {idx})
+                )
                 child[idx], child[idx_swap] = child[idx_swap], child[idx]
                 return child
         else:  # "flip"
@@ -708,25 +853,62 @@ class EliteMultiGA(MultiGA):
     [1] Whitley, D., 1994. A genetic algorithm tutorial. Statistics and computing, 4(2), pp.65-85.
     """
 
-    def __init__(self, epoch=10000, pop_size=100, pc=0.95, pm=0.8, selection="roulette",
-                 crossover="uniform", mutation="swap", k_way=0.2,
-                 elite_best=0.1, elite_worst=0.3, strategy=0, **kwargs):
-        super().__init__(epoch, pop_size, pc, pm, selection, crossover, mutation, k_way, **kwargs)
-        self.elite_best = self.validator.check_is_int_and_float("elite_best", elite_best,
-                                                                [1, int(self.pop_size / 2) - 1], (0, 0.5))
-        self.n_elite_best = int(self.elite_best * self.pop_size) if self.elite_best < 1 else self.elite_best
+    def __init__(
+        self,
+        epoch=10000,
+        pop_size=100,
+        pc=0.95,
+        pm=0.8,
+        selection="roulette",
+        crossover="uniform",
+        mutation="swap",
+        k_way=0.2,
+        elite_best=0.1,
+        elite_worst=0.3,
+        strategy=0,
+        **kwargs
+    ):
+        super().__init__(
+            epoch, pop_size, pc, pm, selection, crossover, mutation, k_way, **kwargs
+        )
+        self.elite_best = self.validator.check_is_int_and_float(
+            "elite_best", elite_best, [1, int(self.pop_size / 2) - 1], (0, 0.5)
+        )
+        self.n_elite_best = (
+            int(self.elite_best * self.pop_size)
+            if self.elite_best < 1
+            else self.elite_best
+        )
         if self.n_elite_best < 1:
             self.n_elite_best = 1
 
-        self.elite_worst = self.validator.check_is_int_and_float("elite_worst", elite_worst,
-                                                                 [1, int(self.pop_size / 2) - 1], (0, 0.5))
-        self.n_elite_worst = int(self.elite_worst * self.pop_size) if self.elite_worst < 1 else self.elite_worst
+        self.elite_worst = self.validator.check_is_int_and_float(
+            "elite_worst", elite_worst, [1, int(self.pop_size / 2) - 1], (0, 0.5)
+        )
+        self.n_elite_worst = (
+            int(self.elite_worst * self.pop_size)
+            if self.elite_worst < 1
+            else self.elite_worst
+        )
         if self.n_elite_worst < 1:
             self.n_elite_worst = 1
 
         self.strategy = self.validator.check_int("strategy", strategy, [0, 1])
-        self.set_parameters(["epoch", "pop_size", "pc", "pm", "selection", "crossover", "mutation", "k_way",
-                             "elite_best", "elite_worst", "strategy"])
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "pc",
+                "pm",
+                "selection",
+                "crossover",
+                "mutation",
+                "k_way",
+                "elite_best",
+                "elite_worst",
+                "strategy",
+            ]
+        )
         self.sort_flag = True
 
     def evolve(self, epoch):
@@ -736,9 +918,9 @@ class EliteMultiGA(MultiGA):
         Args:
             epoch (int): The current iteration
         """
-        pop_new = self.pop[:self.n_elite_best]
+        pop_new = self.pop[: self.n_elite_best]
         if self.strategy == 0:
-            pop_old = self.pop[self.n_elite_best:]
+            pop_old = self.pop[self.n_elite_best :]
             for idx in range(self.n_elite_best, self.pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_00__(pop_old)
@@ -756,8 +938,10 @@ class EliteMultiGA(MultiGA):
                     pop_new[-1].target = self.get_target(pos_new)
             self.pop = self.update_target_for_population(pop_new)
         else:
-            pop_dad = self.pop[self.n_elite_best:self.n_elite_best + self.n_elite_worst]
-            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst:]
+            pop_dad = self.pop[
+                self.n_elite_best : self.n_elite_best + self.n_elite_worst
+            ]
+            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst :]
             for idx in range(self.n_elite_best, self.pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_01__(pop_dad, pop_mom)
@@ -830,9 +1014,19 @@ class OriginalGA(Optimizer):
     [1] Whitley, D., 1994. A genetic algorithm tutorial. Statistics and computing, 4(2), pp.65-85.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pc: float = 0.95, pm: float = 0.025,
-                 selection: str = "tournament", crossover: str = "uniform", mutation: str = "flip",
-                 k_way: float = 0.2, mutation_multipoints: bool = True, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pc: float = 0.95,
+        pm: float = 0.025,
+        selection: str = "tournament",
+        crossover: str = "uniform",
+        mutation: str = "flip",
+        k_way: float = 0.2,
+        mutation_multipoints: bool = True,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch: maximum number of iterations, default = 10000
@@ -850,15 +1044,37 @@ class OriginalGA(Optimizer):
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pc = self.validator.check_float("pc", pc, (0, 1.0))
         self.pm = self.validator.check_float("pm", pm, (0, 1.0))
-        self.selection = self.validator.check_str("selection", selection, ["tournament", "random", "roulette"])
-        self.crossover = self.validator.check_str("crossover", crossover,
-                                                  ["one_point", "multi_points", "uniform", "arithmetic"])
-        self.mutation_multipoints = self.validator.check_bool("mutation_multipoints", mutation_multipoints)
+        self.selection = self.validator.check_str(
+            "selection", selection, ["tournament", "random", "roulette"]
+        )
+        self.crossover = self.validator.check_str(
+            "crossover",
+            crossover,
+            ["one_point", "multi_points", "uniform", "arithmetic"],
+        )
+        self.mutation_multipoints = self.validator.check_bool(
+            "mutation_multipoints", mutation_multipoints
+        )
         if self.mutation_multipoints:
-            self.mutation = self.validator.check_str("mutation", mutation, ["flip", "swap"])
+            self.mutation = self.validator.check_str(
+                "mutation", mutation, ["flip", "swap"]
+            )
         else:
-            self.mutation = self.validator.check_str("mutation", mutation, ["flip", "swap", "scramble", "inversion"])
+            self.mutation = self.validator.check_str(
+                "mutation", mutation, ["flip", "swap", "scramble", "inversion"]
+            )
         self.k_way = self.validator.check_float("k_way", k_way, (0, 1.0))
         self.set_parameters(
-            ["epoch", "pop_size", "pc", "pm", "selection", "crossover", "mutation", "k_way", "mutation_multipoints"])
+            [
+                "epoch",
+                "pop_size",
+                "pc",
+                "pm",
+                "selection",
+                "crossover",
+                "mutation",
+                "k_way",
+                "mutation_multipoints",
+            ]
+        )
         self.sort_flag = False

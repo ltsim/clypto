@@ -49,8 +49,15 @@ class OriginalMSA(Optimizer):
     global optimization problems. Memetic Computing, 10(2), pp.151-164.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, n_best: int = 5, partition: float = 0.5,
-                 max_step_size: float = 1.0, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        n_best: int = 5,
+        partition: float = 0.5,
+        max_step_size: float = 1.0,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -62,10 +69,16 @@ class OriginalMSA(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.n_best = self.validator.check_int("n_best", n_best, [2, int(self.pop_size / 2)])
+        self.n_best = self.validator.check_int(
+            "n_best", n_best, [2, int(self.pop_size / 2)]
+        )
         self.partition = self.validator.check_float("partition", partition, (0, 1.0))
-        self.max_step_size = self.validator.check_float("max_step_size", max_step_size, (0, 5.0))
-        self.set_parameters(["epoch", "pop_size", "n_best", "partition", "max_step_size"])
+        self.max_step_size = self.validator.check_float(
+            "max_step_size", max_step_size, (0, 5.0)
+        )
+        self.set_parameters(
+            ["epoch", "pop_size", "n_best", "partition", "max_step_size"]
+        )
         self.sort_flag = True
         # np1 in paper
         self.n_moth1 = int(np.ceil(self.partition * self.pop_size))
@@ -76,8 +89,11 @@ class OriginalMSA(Optimizer):
 
     def _levy_walk(self, iteration):
         beta = 1.5  # Eq. 2.23
-        sigma = (gamma(1 + beta) * np.sin(np.pi * (beta - 1) / 2) / (
-                gamma(beta / 2) * (beta - 1) * 2 ** ((beta - 2) / 2))) ** (1 / (beta - 1))
+        sigma = (
+            gamma(1 + beta)
+            * np.sin(np.pi * (beta - 1) / 2)
+            / (gamma(beta / 2) * (beta - 1) * 2 ** ((beta - 2) / 2))
+        ) ** (1 / (beta - 1))
         u = self.generator.uniform(self.problem.lb, self.problem.ub) * sigma
         v = self.generator.uniform(self.problem.lb, self.problem.ub)
         step = u / np.abs(v) ** (1.0 / (beta - 1))  # Eq. 2.21
@@ -92,29 +108,43 @@ class OriginalMSA(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        pop_best = [agent.copy() for agent in self.pop[:self.n_best]]
+        pop_best = [agent.copy() for agent in self.pop[: self.n_best]]
         pop_new = []
         for idx in range(0, self.pop_size):
             # Migration operator
             if idx < self.n_moth1:
                 # scale = self.max_step_size / (epoch+1)       # Smaller step for local walk
-                pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * self._levy_walk(epoch)
+                pos_new = self.pop[idx].solution + self.generator.random(
+                    self.problem.n_dims
+                ) * self._levy_walk(epoch)
             else:
                 # Flying in a straight line
-                temp_case1 = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * \
-                             self.golden_ratio * (self.g_best.solution - self.pop[idx].solution)
-                temp_case2 = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * \
-                             (1.0 / self.golden_ratio) * (self.g_best.solution - self.pop[idx].solution)
-                pos_new = np.where(self.generator.random(self.problem.n_dims) < 0.5, temp_case2, temp_case1)
+                temp_case1 = self.pop[idx].solution + self.generator.random(
+                    self.problem.n_dims
+                ) * self.golden_ratio * (self.g_best.solution - self.pop[idx].solution)
+                temp_case2 = self.pop[idx].solution + self.generator.random(
+                    self.problem.n_dims
+                ) * (1.0 / self.golden_ratio) * (
+                    self.g_best.solution - self.pop[idx].solution
+                )
+                pos_new = np.where(
+                    self.generator.random(self.problem.n_dims) < 0.5,
+                    temp_case2,
+                    temp_case1,
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         self.pop = self.get_sorted_population(self.pop, self.problem.minmax)
         # Replace the worst with the previous generation's elites.
         for idx in range(0, self.n_best):

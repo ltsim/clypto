@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 18:09, 13/03/2023 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 18:09, 13/03/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -47,7 +47,9 @@ class OriginalEVO(Optimizer):
     metaheuristic algorithm for global and engineering optimization. Scientific Reports, 13(1), 226.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -78,22 +80,31 @@ class OriginalEVO(Optimizer):
             x_avg_pop = np.mean(pos_list, axis=0)
             eb = np.mean(fit_list)
             sl = (fit_list[idx] - self.g_best.target.fitness) / (
-                    self.g_worst.target.fitness - self.g_best.target.fitness + self.EPSILON)
+                self.g_worst.target.fitness - self.g_best.target.fitness + self.EPSILON
+            )
 
             pos_new1 = self.pop[idx].solution.copy()
             pos_new2 = self.pop[idx].solution.copy()
-            if self.compare_fitness(eb, self.pop[idx].target.fitness, self.problem.minmax):
+            if self.compare_fitness(
+                eb, self.pop[idx].target.fitness, self.problem.minmax
+            ):
                 if self.generator.random() > sl:
                     a1_idx = self.generator.integers(self.problem.n_dims)
-                    a2_idx = self.generator.integers(0, self.problem.n_dims, size=a1_idx)
+                    a2_idx = self.generator.integers(
+                        0, self.problem.n_dims, size=a1_idx
+                    )
                     pos_new1[a2_idx] = self.g_best.solution[a2_idx]
                     g1_idx = self.generator.integers(self.problem.n_dims)
-                    g2_idx = self.generator.integers(0, self.problem.n_dims, size=g1_idx)
+                    g2_idx = self.generator.integers(
+                        0, self.problem.n_dims, size=g1_idx
+                    )
                     pos_new2[g2_idx] = x_avg_team[g2_idx]
                 else:
                     ir = self.generator.uniform(0, 1, 2)
                     jr = self.generator.uniform(0, 1, self.problem.n_dims)
-                    pos_new1 += jr * (ir[0] * self.g_best.solution - ir[1] * x_avg_pop) / sl
+                    pos_new1 += (
+                        jr * (ir[0] * self.g_best.solution - ir[1] * x_avg_pop) / sl
+                    )
                     ir = self.generator.uniform(0, 1, 2)
                     jr = self.generator.uniform(0, 1, self.problem.n_dims)
                     pos_new2 += jr * (ir[0] * self.g_best.solution - ir[1] * x_avg_team)
@@ -104,9 +115,14 @@ class OriginalEVO(Optimizer):
                 pop_new.append(agent1)
                 pop_new.append(agent2)
             else:
-                pos_new = pos_new1 + self.generator.random() * sl * self.generator.uniform(self.problem.lb,
-                                                                                           self.problem.ub,
-                                                                                           self.problem.n_dims)
+                pos_new = (
+                    pos_new1
+                    + self.generator.random()
+                    * sl
+                    * self.generator.uniform(
+                        self.problem.lb, self.problem.ub, self.problem.n_dims
+                    )
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
@@ -114,4 +130,6 @@ class OriginalEVO(Optimizer):
             for idx in range(0, len(pop_new)):
                 pop_new[idx].target = self.get_target(pop_new[idx].solution)
         pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.get_sorted_and_trimmed_population(self.pop + pop_new, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, self.problem.minmax
+        )

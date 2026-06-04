@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Created by "Thieu" at 18:29, 11/03/2023 ----------%
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 from clypto.optimizer.classic import Optimizer
@@ -46,7 +46,9 @@ class OriginalNGO(Optimizer):
     algorithm for solving optimization problems. IEEE Access, 9, 162059-162080.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -72,21 +74,33 @@ class OriginalNGO(Optimizer):
             # Phase 1: Exploration
             kk = self.generator.permutation(self.pop_size)[0]
             if self.compare_target(self.pop[kk].target, self.pop[idx].target):  # Eq. 4
-                pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * (
-                        self.pop[kk].solution - self.generator.integers(1, 3) * self.pop[idx].solution)
+                pos_new = self.pop[idx].solution + self.generator.random(
+                    self.problem.n_dims
+                ) * (
+                    self.pop[kk].solution
+                    - self.generator.integers(1, 3) * self.pop[idx].solution
+                )
             else:
-                pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * (
-                        self.pop[idx].solution - self.pop[kk].solution)
+                pos_new = self.pop[idx].solution + self.generator.random(
+                    self.problem.n_dims
+                ) * (self.pop[idx].solution - self.pop[kk].solution)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
 
             # PHASE 2 Exploitation
-            R = 0.02 * (1. - epoch / self.epoch)  # Eq. 6
-            pos_new = self.pop[idx].solution + (-R + 2 * R * self.generator.random(self.problem.n_dims)) * self.pop[
-                idx].solution  # Eq. 7
+            R = 0.02 * (1.0 - epoch / self.epoch)  # Eq. 6
+            pos_new = (
+                self.pop[idx].solution
+                + (-R + 2 * R * self.generator.random(self.problem.n_dims))
+                * self.pop[idx].solution
+            )  # Eq. 7
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent

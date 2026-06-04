@@ -51,9 +51,18 @@ class CleverBookBeesA(Optimizer):
     for complex optimisation problems. In Proceedings of IPROMS 2006 Conference, pages 454–461, 2006.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, n_elites: int = 16, n_others: int = 4,
-                 patch_size: float = 5.0, patch_reduction: float = 0.985, n_sites: int = 3, n_elite_sites: int = 1,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        n_elites: int = 16,
+        n_others: int = 4,
+        patch_size: float = 5.0,
+        patch_reduction: float = 0.985,
+        n_sites: int = 3,
+        n_elite_sites: int = 1,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -71,11 +80,25 @@ class CleverBookBeesA(Optimizer):
         self.n_elites = self.validator.check_int("n_elites", n_elites, [4, 20])
         self.n_others = self.validator.check_int("n_others", n_others, [2, 5])
         self.patch_size = self.validator.check_float("patch_size", patch_size, [2, 10])
-        self.patch_reduction = self.validator.check_float("patch_reduction", patch_reduction, (0, 1.0))
+        self.patch_reduction = self.validator.check_float(
+            "patch_reduction", patch_reduction, (0, 1.0)
+        )
         self.n_sites = self.validator.check_int("n_sites", n_sites, [2, 5])
-        self.n_elite_sites = self.validator.check_int("n_elite_sites", n_elite_sites, [1, 3])
+        self.n_elite_sites = self.validator.check_int(
+            "n_elite_sites", n_elite_sites, [1, 3]
+        )
         self.set_parameters(
-            ["epoch", "pop_size", "n_elites", "n_others", "patch_size", "patch_reduction", "n_sites", "n_elite_sites"])
+            [
+                "epoch",
+                "pop_size",
+                "n_elites",
+                "n_others",
+                "patch_size",
+                "patch_reduction",
+                "n_sites",
+                "n_elite_sites",
+            ]
+        )
         self.sort_flag = True
 
     def search_neighborhood__(self, parent=None, neigh_size=None):
@@ -86,9 +109,11 @@ class CleverBookBeesA(Optimizer):
         for idx in range(0, neigh_size):
             t1 = self.generator.integers(0, len(parent.solution) - 1)
             new_bee = parent.solution.copy()
-            new_bee[t1] = (parent.solution[
-                               t1] + self.generator.uniform() * self.patch_size) if self.generator.uniform() < 0.5 \
+            new_bee[t1] = (
+                (parent.solution[t1] + self.generator.uniform() * self.patch_size)
+                if self.generator.uniform() < 0.5
                 else (parent.solution[t1] - self.generator.uniform() * self.patch_size)
+            )
             pos_new = self.correct_solution(new_bee)
             agent = self.generate_empty_agent(pos_new)
             pop_neigh.append(agent)
@@ -116,9 +141,13 @@ class CleverBookBeesA(Optimizer):
                 agent = self.generate_agent()
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class OriginalBeesA(Optimizer):
@@ -163,39 +192,73 @@ class OriginalBeesA(Optimizer):
     for complex optimisation problems. In Intelligent production machines and systems (pp. 454-459). Elsevier Science Ltd.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, selected_site_ratio: float = 0.5,
-                 elite_site_ratio: float = 0.4, selected_site_bee_ratio: float = 0.1, elite_site_bee_ratio: float = 2.0,
-                 dance_radius: float = 0.1, dance_reduction: float = 0.99, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        selected_site_ratio: float = 0.5,
+        elite_site_ratio: float = 0.4,
+        selected_site_bee_ratio: float = 0.1,
+        elite_site_bee_ratio: float = 2.0,
+        dance_radius: float = 0.1,
+        dance_reduction: float = 0.99,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
-            selected_site_ratio (float): 
+            selected_site_ratio (float):
             elite_site_ratio (float):
-            selected_site_bee_ratio (float): 
-            elite_site_bee_ratio (float): 
-            dance_radius (float): 
-            dance_reduction (float): 
+            selected_site_bee_ratio (float):
+            elite_site_bee_ratio (float):
+            dance_radius (float):
+            dance_reduction (float):
         """
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         # (Scout Bee Count or Population Size, Selected Sites Count)
-        self.selected_site_ratio = self.validator.check_float("selected_site_ratio", selected_site_ratio, (0, 1.0))
-        self.elite_site_ratio = self.validator.check_float("elite_site_ratio", elite_site_ratio, (0, 1.0))
-        self.selected_site_bee_ratio = self.validator.check_float("selected_site_bee_ratio", selected_site_bee_ratio,
-                                                                  (0, 1.0))
-        self.elite_site_bee_ratio = self.validator.check_float("elite_site_bee_ratio", elite_site_bee_ratio, (0, 3.0))
-        self.dance_radius = self.validator.check_float("dance_radius", dance_radius, (0, 1.0))
-        self.dance_reduction = self.validator.check_float("dance_reduction", dance_reduction, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "selected_site_ratio", "elite_site_ratio", "selected_site_bee_ratio",
-                             "elite_site_bee_ratio", "dance_radius", "dance_reduction"])
+        self.selected_site_ratio = self.validator.check_float(
+            "selected_site_ratio", selected_site_ratio, (0, 1.0)
+        )
+        self.elite_site_ratio = self.validator.check_float(
+            "elite_site_ratio", elite_site_ratio, (0, 1.0)
+        )
+        self.selected_site_bee_ratio = self.validator.check_float(
+            "selected_site_bee_ratio", selected_site_bee_ratio, (0, 1.0)
+        )
+        self.elite_site_bee_ratio = self.validator.check_float(
+            "elite_site_bee_ratio", elite_site_bee_ratio, (0, 3.0)
+        )
+        self.dance_radius = self.validator.check_float(
+            "dance_radius", dance_radius, (0, 1.0)
+        )
+        self.dance_reduction = self.validator.check_float(
+            "dance_reduction", dance_reduction, (0, 1.0)
+        )
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "selected_site_ratio",
+                "elite_site_ratio",
+                "selected_site_bee_ratio",
+                "elite_site_bee_ratio",
+                "dance_radius",
+                "dance_reduction",
+            ]
+        )
         # Initial Value of Dance Radius
         self.dyn_radius = self.dance_radius
         self.n_selected_bees = int(round(self.selected_site_ratio * self.pop_size))
         self.n_elite_bees = int(round(self.elite_site_ratio * self.n_selected_bees))
-        self.n_selected_bees_local = int(round(self.selected_site_bee_ratio * self.pop_size))
-        self.n_elite_bees_local = int(round(self.elite_site_bee_ratio * self.n_selected_bees_local))
+        self.n_selected_bees_local = int(
+            round(self.selected_site_bee_ratio * self.pop_size)
+        )
+        self.n_elite_bees_local = int(
+            round(self.elite_site_bee_ratio * self.n_selected_bees_local)
+        )
         self.sort_flag = True
 
     def perform_dance__(self, position, r):
@@ -216,27 +279,35 @@ class OriginalBeesA(Optimizer):
             if idx < self.n_elite_bees:
                 pop_child = []
                 for j in range(0, self.n_elite_bees_local):
-                    pos_new = self.perform_dance__(self.pop[idx].solution, self.dyn_radius)
+                    pos_new = self.perform_dance__(
+                        self.pop[idx].solution, self.dyn_radius
+                    )
                     agent = self.generate_empty_agent(pos_new)
                     pop_child.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
                         pop_child[-1].target = self.get_target(pos_new)
                 pop_child = self.update_target_for_population(pop_child)
                 local_best = self.get_best_agent(pop_child, self.problem.minmax)
-                if self.compare_target(local_best.target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    local_best.target, self.pop[idx].target, self.problem.minmax
+                ):
                     pop_new[idx] = local_best
             elif self.n_elite_bees <= idx < self.n_selected_bees:
                 # Selected Non-Elite Sites
                 pop_child = []
                 for j in range(0, self.n_selected_bees_local):
-                    pos_new = self.perform_dance__(self.pop[idx].solution, self.dyn_radius)
+                    pos_new = self.perform_dance__(
+                        self.pop[idx].solution, self.dyn_radius
+                    )
                     agent = self.generate_empty_agent(pos_new)
                     pop_child.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
                         pop_child[-1].target = self.get_target(pos_new)
                 pop_child = self.update_target_for_population(pop_child)
                 local_best = self.get_best_agent(pop_child, self.problem.minmax)
-                if self.compare_target(local_best.target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    local_best.target, self.pop[idx].target, self.problem.minmax
+                ):
                     pop_new[idx] = local_best
             else:
                 # Non-Selected Sites
@@ -279,8 +350,15 @@ class ProbBeesA(Optimizer):
     function optimisation. Cogent Engineering, 2(1), p.1091540.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, recruited_bee_ratio: float = 0.1,
-                 dance_radius: float = 0.1, dance_reduction: float = 0.99, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        recruited_bee_ratio: float = 0.1,
+        dance_radius: float = 0.1,
+        dance_reduction: float = 0.99,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -292,10 +370,24 @@ class ProbBeesA(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.recruited_bee_ratio = self.validator.check_float("recruited_bee_ratio", recruited_bee_ratio, (0, 1.0))
-        self.dance_radius = self.validator.check_float("dance_radius", dance_radius, (0, 1.0))
-        self.dance_reduction = self.validator.check_float("dance_reduction", dance_reduction, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "recruited_bee_ratio", "dance_radius", "dance_reduction"])
+        self.recruited_bee_ratio = self.validator.check_float(
+            "recruited_bee_ratio", recruited_bee_ratio, (0, 1.0)
+        )
+        self.dance_radius = self.validator.check_float(
+            "dance_radius", dance_radius, (0, 1.0)
+        )
+        self.dance_reduction = self.validator.check_float(
+            "dance_reduction", dance_reduction, (0, 1.0)
+        )
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "recruited_bee_ratio",
+                "dance_radius",
+                "dance_reduction",
+            ]
+        )
         self.sort_flag = True
         # Initial Value of Dance Radius
         self.dyn_radius = self.dance_radius
@@ -331,19 +423,25 @@ class ProbBeesA(Optimizer):
             if self.generator.random() >= reject_prob:  # Acceptance
                 # Calculate New Bees Count
                 bee_count = int(np.ceil(d_fit[idx] * self.recruited_bee_count))
-                if bee_count < 2: bee_count = 2
-                if bee_count > self.pop_size: bee_count = self.pop_size
+                if bee_count < 2:
+                    bee_count = 2
+                if bee_count > self.pop_size:
+                    bee_count = self.pop_size
                 # Create New Bees(Solutions)
                 pop_child = []
                 for j in range(0, bee_count):
-                    pos_new = self.perform_dance__(self.pop[idx].solution, self.dyn_radius)
+                    pos_new = self.perform_dance__(
+                        self.pop[idx].solution, self.dyn_radius
+                    )
                     agent = self.generate_empty_agent(pos_new)
                     pop_child.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
                         pop_child[-1].target = self.get_target(pos_new)
                 pop_child = self.update_target_for_population(pop_child)
                 local_best = self.get_best_agent(pop_child, self.problem.minmax)
-                if self.compare_target(local_best.target, self.pop[idx].target, self.problem.minmax):
+                if self.compare_target(
+                    local_best.target, self.pop[idx].target, self.problem.minmax
+                ):
                     self.pop[idx] = local_best
             else:
                 self.pop[idx] = self.generate_agent()

@@ -44,8 +44,14 @@ class DevGSKA(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pb: float = 0.1, kr: float = 0.7,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pb: float = 0.1,
+        kr: float = 0.7,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -68,7 +74,7 @@ class DevGSKA(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        dd = int(np.ceil(self.pop_size * (1. - epoch / self.epoch)))
+        dd = int(np.ceil(self.pop_size * (1.0 - epoch / self.epoch)))
         pop_new = []
         for idx in range(0, self.pop_size):
             # If it is the best it chooses best+2, best+1
@@ -82,14 +88,26 @@ class DevGSKA(Optimizer):
                 previ, nexti = idx - 1, idx + 1
             if idx < dd:  # senior gaining and sharing
                 if self.generator.uniform() <= self.kr:
-                    rand_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {previ, idx, nexti}))
-                    if self.compare_target(self.pop[rand_idx].target, self.pop[idx].target, self.problem.minmax):
-                        pos_new = self.pop[idx].solution + self.generator.uniform(0, 1, self.problem.n_dims) * \
-                                  (self.pop[previ].solution - self.pop[nexti].solution + self.pop[rand_idx].solution -
-                                   self.pop[idx].solution)
+                    rand_idx = self.generator.choice(
+                        list(set(range(0, self.pop_size)) - {previ, idx, nexti})
+                    )
+                    if self.compare_target(
+                        self.pop[rand_idx].target,
+                        self.pop[idx].target,
+                        self.problem.minmax,
+                    ):
+                        pos_new = self.pop[idx].solution + self.generator.uniform(
+                            0, 1, self.problem.n_dims
+                        ) * (
+                            self.pop[previ].solution
+                            - self.pop[nexti].solution
+                            + self.pop[rand_idx].solution
+                            - self.pop[idx].solution
+                        )
                     else:
-                        pos_new = self.g_best.solution + self.generator.uniform(0, 1, self.problem.n_dims) * \
-                                  (self.pop[rand_idx].solution - self.pop[idx].solution)
+                        pos_new = self.g_best.solution + self.generator.uniform(
+                            0, 1, self.problem.n_dims
+                        ) * (self.pop[rand_idx].solution - self.pop[idx].solution)
                 else:
                     pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
             else:  # junior gaining and sharing
@@ -97,15 +115,27 @@ class DevGSKA(Optimizer):
                     id1 = int(self.pb * self.pop_size)
                     id2 = int(id1 + self.pop_size * (1 - 2 * self.pb))
                     rand_best = self.generator.choice(list(set(range(0, id1)) - {idx}))
-                    rand_worst = self.generator.choice(list(set(range(id2, self.pop_size)) - {idx}))
+                    rand_worst = self.generator.choice(
+                        list(set(range(id2, self.pop_size)) - {idx})
+                    )
                     rand_mid = self.generator.choice(list(set(range(id1, id2)) - {idx}))
-                    if self.compare_target(self.pop[rand_mid].target, self.pop[idx].target, self.problem.minmax):
-                        pos_new = self.pop[idx].solution + self.generator.uniform(0, 1, self.problem.n_dims) * \
-                                  (self.pop[rand_best].solution - self.pop[rand_worst].solution + self.pop[
-                                      rand_mid].solution - self.pop[idx].solution)
+                    if self.compare_target(
+                        self.pop[rand_mid].target,
+                        self.pop[idx].target,
+                        self.problem.minmax,
+                    ):
+                        pos_new = self.pop[idx].solution + self.generator.uniform(
+                            0, 1, self.problem.n_dims
+                        ) * (
+                            self.pop[rand_best].solution
+                            - self.pop[rand_worst].solution
+                            + self.pop[rand_mid].solution
+                            - self.pop[idx].solution
+                        )
                     else:
-                        pos_new = self.g_best.solution + self.generator.uniform(0, 1, self.problem.n_dims) * \
-                                  (self.pop[rand_mid].solution - self.pop[idx].solution)
+                        pos_new = self.g_best.solution + self.generator.uniform(
+                            0, 1, self.problem.n_dims
+                        ) * (self.pop[rand_mid].solution - self.pop[idx].solution)
                 else:
                     pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
             pos_new = self.correct_solution(pos_new)
@@ -113,10 +143,14 @@ class DevGSKA(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class OriginalGSKA(Optimizer):
@@ -157,8 +191,16 @@ class OriginalGSKA(Optimizer):
     optimization problems: a novel nature-inspired algorithm. International Journal of Machine Learning and Cybernetics, 11(7), pp.1501-1529.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pb: float = 0.1, kf: float = 0.5, kr: float = 0.9,
-                 kg: int = 5, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pb: float = 0.1,
+        kf: float = 0.5,
+        kr: float = 0.9,
+        kg: int = 5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -199,41 +241,73 @@ class OriginalGSKA(Optimizer):
             else:
                 previ, nexti = idx - 1, idx + 1
             # The random individual is for all dimension values
-            rand_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {previ, idx, nexti}))
+            rand_idx = self.generator.choice(
+                list(set(range(0, self.pop_size)) - {previ, idx, nexti})
+            )
             pos_new = self.pop[idx].solution.copy()
 
             for j in range(0, self.problem.n_dims):
                 if j < dd:  # junior gaining and sharing
                     if self.generator.uniform() <= self.kr:
-                        if self.compare_target(self.pop[rand_idx].target, self.pop[idx].target, self.problem.minmax):
-                            pos_new[j] = self.pop[idx].solution[j] + self.kf * \
-                                         (self.pop[previ].solution[j] - self.pop[nexti].solution[j] +
-                                          self.pop[rand_idx].solution[j] - self.pop[idx].solution[j])
+                        if self.compare_target(
+                            self.pop[rand_idx].target,
+                            self.pop[idx].target,
+                            self.problem.minmax,
+                        ):
+                            pos_new[j] = self.pop[idx].solution[j] + self.kf * (
+                                self.pop[previ].solution[j]
+                                - self.pop[nexti].solution[j]
+                                + self.pop[rand_idx].solution[j]
+                                - self.pop[idx].solution[j]
+                            )
                         else:
-                            pos_new[j] = self.pop[idx].solution[j] + self.kf * \
-                                         (self.pop[previ].solution[j] - self.pop[nexti].solution[j] +
-                                          self.pop[idx].solution[j] - self.pop[rand_idx].solution[j])
+                            pos_new[j] = self.pop[idx].solution[j] + self.kf * (
+                                self.pop[previ].solution[j]
+                                - self.pop[nexti].solution[j]
+                                + self.pop[idx].solution[j]
+                                - self.pop[rand_idx].solution[j]
+                            )
                 else:  # senior gaining and sharing
                     if self.generator.uniform() <= self.kr:
                         id1 = int(self.pb * self.pop_size)
                         id2 = int(id1 + self.pop_size * (1 - 2 * self.pb))
-                        rand_best = self.generator.choice(list(set(range(0, id1)) - {idx}))
-                        rand_worst = self.generator.choice(list(set(range(id2, self.pop_size)) - {idx}))
-                        rand_mid = self.generator.choice(list(set(range(id1, id2)) - {idx}))
-                        if self.compare_target(self.pop[rand_mid].target, self.pop[idx].target, self.problem.minmax):
-                            pos_new[j] = self.pop[idx].solution[j] + self.kf * \
-                                         (self.pop[rand_best].solution[j] - self.pop[rand_worst].solution[j] +
-                                          self.pop[rand_mid].solution[j] - self.pop[idx].solution[j])
+                        rand_best = self.generator.choice(
+                            list(set(range(0, id1)) - {idx})
+                        )
+                        rand_worst = self.generator.choice(
+                            list(set(range(id2, self.pop_size)) - {idx})
+                        )
+                        rand_mid = self.generator.choice(
+                            list(set(range(id1, id2)) - {idx})
+                        )
+                        if self.compare_target(
+                            self.pop[rand_mid].target,
+                            self.pop[idx].target,
+                            self.problem.minmax,
+                        ):
+                            pos_new[j] = self.pop[idx].solution[j] + self.kf * (
+                                self.pop[rand_best].solution[j]
+                                - self.pop[rand_worst].solution[j]
+                                + self.pop[rand_mid].solution[j]
+                                - self.pop[idx].solution[j]
+                            )
                         else:
-                            pos_new[j] = self.pop[idx].solution[j] + self.kf * \
-                                         (self.pop[rand_best].solution[j] - self.pop[rand_worst].solution[j] +
-                                          self.pop[idx].solution[j] - self.pop[rand_mid].solution[j])
+                            pos_new[j] = self.pop[idx].solution[j] + self.kf * (
+                                self.pop[rand_best].solution[j]
+                                - self.pop[rand_worst].solution[j]
+                                + self.pop[idx].solution[j]
+                                - self.pop[rand_mid].solution[j]
+                            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

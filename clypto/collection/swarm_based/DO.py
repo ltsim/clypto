@@ -41,7 +41,9 @@ class OriginalDO(Optimizer):
     discrete, and multi-objective problems. Neural computing and applications, 27(4), pp.1053-1073.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -68,10 +70,13 @@ class OriginalDO(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        _, (self.g_best,), (self.g_worst,) = self.get_special_agents(self.pop, n_best=1, n_worst=1,
-                                                                     minmax=self.problem.minmax)
+        _, (self.g_best,), (self.g_worst,) = self.get_special_agents(
+            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        )
 
-        r = (self.problem.ub - self.problem.lb) / 4 + ((self.problem.ub - self.problem.lb) * (2 * epoch / self.epoch))
+        r = (self.problem.ub - self.problem.lb) / 4 + (
+            (self.problem.ub - self.problem.lb) * (2 * epoch / self.epoch)
+        )
         w = 0.9 - epoch * ((0.9 - 0.4) / self.epoch)
         my_c = 0.1 - epoch * ((0.1 - 0) / (self.epoch / 2))
         my_c = 0 if my_c < 0 else my_c
@@ -100,7 +105,10 @@ class OriginalDO(Optimizer):
 
             # Separation: Eq 3.1, Alignment: Eq 3.2, Cohesion: Eq 3.3
             if neighbours_num > 1:
-                S = np.sum(pos_neighbours, axis=0) - neighbours_num * self.pop[idx].solution
+                S = (
+                    np.sum(pos_neighbours, axis=0)
+                    - neighbours_num * self.pop[idx].solution
+                )
                 A = np.sum(pos_neighbours_delta, axis=0) / neighbours_num
                 C_temp = np.sum(pos_neighbours, axis=0) / neighbours_num
             else:
@@ -127,18 +135,26 @@ class OriginalDO(Optimizer):
             pos_delta_new = self.pop_delta[idx].solution.copy().astype(float)
             if np.any(dist_to_food > r):
                 if neighbours_num > 1:
-                    temp = w * self.pop_delta[idx].solution + self.generator.uniform(0, 1, self.problem.n_dims) * A + \
-                           self.generator.uniform(0, 1, self.problem.n_dims) * C + self.generator.uniform(0, 1,
-                                                                                                          self.problem.n_dims) * S
+                    temp = (
+                        w * self.pop_delta[idx].solution
+                        + self.generator.uniform(0, 1, self.problem.n_dims) * A
+                        + self.generator.uniform(0, 1, self.problem.n_dims) * C
+                        + self.generator.uniform(0, 1, self.problem.n_dims) * S
+                    )
                     temp = np.clip(temp, -1 * self.delta_max, self.delta_max)
                     pos_delta_new = temp.copy()
                     pos_new += temp
                 else:  # Eq. 3.8
-                    pos_new += self.get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1) * self.pop[idx].solution
+                    pos_new += (
+                        self.get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
+                        * self.pop[idx].solution
+                    )
                     pos_delta_new = np.zeros(self.problem.n_dims)
             else:
                 # Eq. 3.6
-                temp = (a * A + c * C + s * S + f * F + e * enemy) + w * self.pop_delta[idx].solution
+                temp = (a * A + c * C + s * S + f * F + e * enemy) + w * self.pop_delta[
+                    idx
+                ].solution
                 temp = np.clip(temp, -1 * self.delta_max, self.delta_max)
                 pos_delta_new = temp
                 pos_new += temp
@@ -153,10 +169,18 @@ class OriginalDO(Optimizer):
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
                 agent_delta.target = self.get_target(pos_delta_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
-                self.pop_delta[idx] = self.get_better_agent(agent_delta, self.pop_delta[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
+                self.pop_delta[idx] = self.get_better_agent(
+                    agent_delta, self.pop_delta[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
             pop_delta_new = self.update_target_for_population(pop_delta_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
-            self.pop_delta = self.greedy_selection_population(self.pop_delta, pop_delta_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
+            self.pop_delta = self.greedy_selection_population(
+                self.pop_delta, pop_delta_new, self.problem.minmax
+            )

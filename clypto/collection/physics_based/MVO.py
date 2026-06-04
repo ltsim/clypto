@@ -41,8 +41,14 @@ class DevMVO(Optimizer):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, wep_min: float = 0.2, wep_max: float = 1.0,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        wep_min: float = 0.2,
+        wep_max: float = 1.0,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -74,12 +80,17 @@ class DevMVO(Optimizer):
             if self.generator.uniform() < wep:
                 list_fitness = np.array([agent.target.fitness for agent in self.pop])
                 white_hole_id = self.get_index_roulette_wheel_selection(list_fitness)
-                black_hole_pos_1 = self.pop[idx].solution + tdr * self.generator.normal(0, 1) * \
-                                   (self.pop[white_hole_id].solution - self.pop[idx].solution)
-                black_hole_pos_2 = self.g_best.solution + tdr * self.generator.normal(0, 1) * (
-                        self.g_best.solution - self.pop[idx].solution)
-                black_hole_pos = np.where(self.generator.random(self.problem.n_dims) < 0.5, black_hole_pos_1,
-                                          black_hole_pos_2)
+                black_hole_pos_1 = self.pop[idx].solution + tdr * self.generator.normal(
+                    0, 1
+                ) * (self.pop[white_hole_id].solution - self.pop[idx].solution)
+                black_hole_pos_2 = self.g_best.solution + tdr * self.generator.normal(
+                    0, 1
+                ) * (self.g_best.solution - self.pop[idx].solution)
+                black_hole_pos = np.where(
+                    self.generator.random(self.problem.n_dims) < 0.5,
+                    black_hole_pos_1,
+                    black_hole_pos_2,
+                )
             else:
                 black_hole_pos = self.problem.generate_solution()
             pos_new = self.correct_solution(black_hole_pos)
@@ -87,10 +98,14 @@ class DevMVO(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class OriginalMVO(DevMVO):
@@ -130,8 +145,14 @@ class OriginalMVO(DevMVO):
     algorithm for global optimization. Neural Computing and Applications, 27(2), pp.495-513.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, wep_min: float = 0.2, wep_max: float = 1.0,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        wep_min: float = 0.2,
+        wep_max: float = 1.0,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -179,19 +200,22 @@ class OriginalMVO(DevMVO):
         tdr = 1 - epoch ** (1.0 / 6) / self.epoch ** (1.0 / 6)
         list_fitness_raw = np.array([item.target.fitness for item in self.pop])
         maxx = max(list_fitness_raw)
-        if maxx > (2 ** 64 - 1):
+        if maxx > (2**64 - 1):
             list_fitness_normalized = self.generator.uniform(0, 0.1, self.pop_size)
         else:
             ### Normalize inflation rates (NI in Eq. (3.1) in the paper)
-            list_fitness_normalized = np.reshape(self.normalize__(np.array([list_fitness_raw])),
-                                                 self.pop_size)  # Matrix
+            list_fitness_normalized = np.reshape(
+                self.normalize__(np.array([list_fitness_raw])), self.pop_size
+            )  # Matrix
         pop_new = []
         for idx in range(0, self.pop_size):
             black_hole_pos = self.pop[idx].solution.copy()
             for jdx in range(0, self.problem.n_dims):
                 r1 = self.generator.uniform()
                 if r1 < list_fitness_normalized[idx]:
-                    white_hole_id = self.roulette_wheel_selection__((-1. * list_fitness_raw))
+                    white_hole_id = self.roulette_wheel_selection__(
+                        (-1.0 * list_fitness_raw)
+                    )
                     if white_hole_id == None or white_hole_id == -1:
                         white_hole_id = 0
                     # Eq. (3.1) in the paper
@@ -201,17 +225,27 @@ class OriginalMVO(DevMVO):
                 if r2 < wep:
                     r3 = self.generator.uniform()
                     if r3 < 0.5:
-                        black_hole_pos[jdx] = self.g_best.solution[jdx] + tdr * self.generator.uniform(
-                            self.problem.lb[jdx], self.problem.ub[jdx])
+                        black_hole_pos[jdx] = self.g_best.solution[
+                            jdx
+                        ] + tdr * self.generator.uniform(
+                            self.problem.lb[jdx], self.problem.ub[jdx]
+                        )
                     else:
-                        black_hole_pos[jdx] = self.g_best.solution[jdx] - tdr * self.generator.uniform(
-                            self.problem.lb[jdx], self.problem.ub[jdx])
+                        black_hole_pos[jdx] = self.g_best.solution[
+                            jdx
+                        ] - tdr * self.generator.uniform(
+                            self.problem.lb[jdx], self.problem.ub[jdx]
+                        )
             pos_new = self.correct_solution(black_hole_pos)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

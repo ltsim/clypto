@@ -43,7 +43,13 @@ class OriginalNMRA(Optimizer):
     [1] Salgotra, R. and Singh, U., 2019. The naked mole-rat algorithm. Neural Computing and Applications, 31(12), pp.8837-8857.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pb: float = 0.75, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pb: float = 0.75,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -72,20 +78,28 @@ class OriginalNMRA(Optimizer):
                 if self.generator.uniform() < self.pb:
                     alpha = self.generator.uniform()
                     pos_new = (1 - alpha) * self.pop[idx].solution + alpha * (
-                            self.g_best.solution - self.pop[idx].solution)
+                        self.g_best.solution - self.pop[idx].solution
+                    )
             else:  # working operators
-                t1, t2 = self.generator.choice(range(self.size_b, self.pop_size), 2, replace=False)
+                t1, t2 = self.generator.choice(
+                    range(self.size_b, self.pop_size), 2, replace=False
+                )
                 pos_new = self.pop[idx].solution + self.generator.uniform() * (
-                        self.pop[t1].solution - self.pop[t2].solution)
+                    self.pop[t1].solution - self.pop[t2].solution
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class ImprovedNMRA(Optimizer):
@@ -163,18 +177,25 @@ class ImprovedNMRA(Optimizer):
             # Exploration
             if idx < self.size_b:  # breeding operators
                 if self.generator.uniform() < self.pb:
-                    pos_new = self.pop[idx].solution + self.generator.normal(0, 1, self.problem.n_dims) * \
-                              (self.g_best.solution - self.pop[idx].solution)
+                    pos_new = self.pop[idx].solution + self.generator.normal(
+                        0, 1, self.problem.n_dims
+                    ) * (self.g_best.solution - self.pop[idx].solution)
                 else:
-                    levy_step = self.get_levy_flight_step(beta=1, multiplier=0.001, case=-1)
-                    pos_new = self.pop[idx].solution + 1.0 / np.sqrt(epoch) * np.sign(self.generator.random() - 0.5) * \
-                              levy_step * (self.pop[idx].solution - self.g_best.solution)
+                    levy_step = self.get_levy_flight_step(
+                        beta=1, multiplier=0.001, case=-1
+                    )
+                    pos_new = self.pop[idx].solution + 1.0 / np.sqrt(epoch) * np.sign(
+                        self.generator.random() - 0.5
+                    ) * levy_step * (self.pop[idx].solution - self.g_best.solution)
             # Exploitation
             else:  # working operators
                 if self.generator.uniform() < 0.5:
-                    t1, t2 = self.generator.choice(range(self.size_b, self.pop_size), 2, replace=False)
-                    pos_new = self.pop[idx].solution + self.generator.normal(0, 1, self.problem.n_dims) * \
-                              (self.pop[t1].solution - self.pop[t2].solution)
+                    t1, t2 = self.generator.choice(
+                        range(self.size_b, self.pop_size), 2, replace=False
+                    )
+                    pos_new = self.pop[idx].solution + self.generator.normal(
+                        0, 1, self.problem.n_dims
+                    ) * (self.pop[t1].solution - self.pop[t2].solution)
                 else:
                     pos_new = self.crossover_random__(self.pop, self.g_best)
             # Mutation
@@ -186,7 +207,11 @@ class ImprovedNMRA(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

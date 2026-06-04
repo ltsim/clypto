@@ -46,8 +46,15 @@ class OriginalBWO(Optimizer):
     approach for solving engineering optimization problems. Engineering Applications of Artificial Intelligence, 87, 103249.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, pp: float = 0.6, cr: float = 0.44,
-                 pm: float = 0.4, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pp: float = 0.6,
+        cr: float = 0.44,
+        pm: float = 0.4,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -93,7 +100,9 @@ class OriginalBWO(Optimizer):
             return position
         pos_new = position.copy()
         idx = self.generator.integers(0, self.problem.n_dims)
-        pos_new[idx] = self.generator.uniform(self.problem.lb[idx], self.problem.ub[idx])
+        pos_new[idx] = self.generator.uniform(
+            self.problem.lb[idx], self.problem.ub[idx]
+        )
         return self.correct_solution(pos_new)
 
     def evolve(self, epoch: int) -> None:
@@ -104,7 +113,7 @@ class OriginalBWO(Optimizer):
             epoch (int): The current iteration
         """
         pop_sorted = self.get_sorted_population(self.pop, self.problem.minmax)
-        pop1 = [agent.copy() for agent in pop_sorted[:self.n_parents]]
+        pop1 = [agent.copy() for agent in pop_sorted[: self.n_parents]]
 
         pop2 = []
         for _ in range(self.n_parents):
@@ -143,4 +152,6 @@ class OriginalBWO(Optimizer):
         if len(pop_new) < self.pop_size:
             needed = self.pop_size - len(pop_new)
             pop_new.extend([agent.copy() for agent in pop_sorted[:needed]])
-        self.pop = self.get_sorted_and_trimmed_population(pop_new, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            pop_new, self.pop_size, self.problem.minmax
+        )

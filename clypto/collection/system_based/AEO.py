@@ -42,7 +42,9 @@ class OriginalAEO(Optimizer):
     nature-inspired meta-heuristic algorithm. Neural Computing and Applications, 32(13), pp.9383-9425.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -64,7 +66,9 @@ class OriginalAEO(Optimizer):
         ## Production   - Update the worst agent
         # Eq. 2, 3, 1
         a = (1.0 - epoch / self.epoch) * self.generator.uniform()
-        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(self.problem.lb, self.problem.ub)
+        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(
+            self.problem.lb, self.problem.ub
+        )
         pos_new = self.correct_solution(x1)
         agent = self.generate_agent(pos_new)
         self.pop[-1] = agent
@@ -79,24 +83,34 @@ class OriginalAEO(Optimizer):
             jdx = 1 if idx == 0 else self.generator.integers(0, idx)
             ### Herbivore
             if rand < 1.0 / 3:
-                x_t1 = self.pop[idx].solution + c * (self.pop[idx].solution - self.pop[0].solution)  # Eq. 6
+                x_t1 = self.pop[idx].solution + c * (
+                    self.pop[idx].solution - self.pop[0].solution
+                )  # Eq. 6
             ### Carnivore
             elif 1.0 / 3 <= rand and rand <= 2.0 / 3:
-                x_t1 = self.pop[idx].solution + c * (self.pop[idx].solution - self.pop[jdx].solution)  # Eq. 7
+                x_t1 = self.pop[idx].solution + c * (
+                    self.pop[idx].solution - self.pop[jdx].solution
+                )  # Eq. 7
             ### Omnivore
             else:
                 r2 = self.generator.uniform()
-                x_t1 = self.pop[idx].solution + c * (r2 * (self.pop[idx].solution - self.pop[0].solution)
-                                                     + (1 - r2) * (self.pop[idx].solution - self.pop[jdx].solution))
+                x_t1 = self.pop[idx].solution + c * (
+                    r2 * (self.pop[idx].solution - self.pop[0].solution)
+                    + (1 - r2) * (self.pop[idx].solution - self.pop[jdx].solution)
+                )
             pos_new = self.correct_solution(x_t1)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[:-1] = self.greedy_selection_population(self.pop[:-1], pop_new, self.problem.minmax)
+            self.pop[:-1] = self.greedy_selection_population(
+                self.pop[:-1], pop_new, self.problem.minmax
+            )
         ## find current best used in decomposition
         best = self.get_best_agent(self.pop, self.problem.minmax)
         ## Decomposition
@@ -113,10 +127,14 @@ class OriginalAEO(Optimizer):
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_child, self.problem.minmax
+            )
 
 
 class ImprovedAEO(OriginalAEO):
@@ -151,7 +169,9 @@ class ImprovedAEO(OriginalAEO):
     proton exchange membrane fuel cells model. International Journal of Hydrogen Energy, 46(75), pp.37612-37627.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -169,7 +189,9 @@ class ImprovedAEO(OriginalAEO):
         ## Production   - Update the worst agent
         # Eq. 2, 3, 1
         a = (1.0 - epoch / self.epoch) * self.generator.uniform()
-        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(self.problem.lb, self.problem.ub)
+        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(
+            self.problem.lb, self.problem.ub
+        )
         pos_new = self.correct_solution(x1)
         agent = self.generate_agent(pos_new)
         self.pop[-1] = agent
@@ -184,24 +206,34 @@ class ImprovedAEO(OriginalAEO):
             j = 1 if idx == 0 else self.generator.integers(0, idx)
             ### Herbivore
             if rand < 1.0 / 3:
-                x_t1 = self.pop[idx].solution + c * (self.pop[idx].solution - self.pop[0].solution)  # Eq. 6
+                x_t1 = self.pop[idx].solution + c * (
+                    self.pop[idx].solution - self.pop[0].solution
+                )  # Eq. 6
             ### Carnivore
             elif 1.0 / 3 <= rand and rand <= 2.0 / 3:
-                x_t1 = self.pop[idx].solution + c * (self.pop[idx].solution - self.pop[j].solution)  # Eq. 7
+                x_t1 = self.pop[idx].solution + c * (
+                    self.pop[idx].solution - self.pop[j].solution
+                )  # Eq. 7
             ### Omnivore
             else:
                 r2 = self.generator.uniform()
-                x_t1 = self.pop[idx].solution + c * (r2 * (self.pop[idx].solution - self.pop[0].solution) +
-                                                     (1 - r2) * (self.pop[idx].solution - self.pop[j].solution))
+                x_t1 = self.pop[idx].solution + c * (
+                    r2 * (self.pop[idx].solution - self.pop[0].solution)
+                    + (1 - r2) * (self.pop[idx].solution - self.pop[j].solution)
+                )
             pos_new = self.correct_solution(x_t1)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[:-1] = self.greedy_selection_population(self.pop[:-1], pop_new, self.problem.minmax)
+            self.pop[:-1] = self.greedy_selection_population(
+                self.pop[:-1], pop_new, self.problem.minmax
+            )
         ## find current best used in decomposition
         best = self.get_best_agent(self.pop, self.problem.minmax)
         ## Decomposition
@@ -220,17 +252,23 @@ class ImprovedAEO(OriginalAEO):
                 else:
                     x_new = beta * self.pop[idx].solution + (1 - beta) * x_r
             else:
-                x_new = best.solution + d * (e * best.solution - h * self.pop[idx].solution)
+                x_new = best.solution + d * (
+                    e * best.solution - h * self.pop[idx].solution
+                )
                 # x_new = best.solution + self.generator.normal() * best.solution
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_child, self.problem.minmax
+            )
 
 
 class EnhancedAEO(Optimizer):
@@ -265,7 +303,9 @@ class EnhancedAEO(Optimizer):
     optimization for optimal allocation of multiple distributed generations. IEEE Access, 8, pp.178493-178513.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -286,8 +326,10 @@ class EnhancedAEO(Optimizer):
         """
         ## Production - Update the worst agent
         # Eq. 13
-        a = 2 * (1. - epoch / self.epoch)
-        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(self.problem.lb, self.problem.ub)
+        a = 2 * (1.0 - epoch / self.epoch)
+        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(
+            self.problem.lb, self.problem.ub
+        )
         pos_new = self.correct_solution(x1)
         agent = self.generate_agent(pos_new)
         self.pop[-1] = agent
@@ -305,35 +347,49 @@ class EnhancedAEO(Optimizer):
             ### Herbivore
             if rand <= 1.0 / 3:  # Eq. 15
                 if r4 <= 0.5:
-                    x_t1 = self.pop[idx].solution + np.sin(r3) * c * (self.pop[idx].solution - self.pop[0].solution)
+                    x_t1 = self.pop[idx].solution + np.sin(r3) * c * (
+                        self.pop[idx].solution - self.pop[0].solution
+                    )
                 else:
-                    x_t1 = self.pop[idx].solution + np.cos(r3) * c * (self.pop[idx].solution - self.pop[0].solution)
+                    x_t1 = self.pop[idx].solution + np.cos(r3) * c * (
+                        self.pop[idx].solution - self.pop[0].solution
+                    )
             ### Carnivore
             elif 1.0 / 3 <= rand and rand <= 2.0 / 3:  # Eq. 16
                 if r4 <= 0.5:
-                    x_t1 = self.pop[idx].solution + np.sin(r3) * c * (self.pop[idx].solution - self.pop[j].solution)
+                    x_t1 = self.pop[idx].solution + np.sin(r3) * c * (
+                        self.pop[idx].solution - self.pop[j].solution
+                    )
                 else:
-                    x_t1 = self.pop[idx].solution + np.cos(r3) * c * (self.pop[idx].solution - self.pop[j].solution)
+                    x_t1 = self.pop[idx].solution + np.cos(r3) * c * (
+                        self.pop[idx].solution - self.pop[j].solution
+                    )
             ### Omnivore
             else:  # Eq. 17
                 r5 = self.generator.random()
                 if r4 <= 0.5:
                     x_t1 = self.pop[idx].solution + np.sin(r5) * c * (
-                            r5 * (self.pop[idx].solution - self.pop[0].solution) +
-                            (1 - r5) * (self.pop[idx].solution - self.pop[j].solution))
+                        r5 * (self.pop[idx].solution - self.pop[0].solution)
+                        + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
+                    )
                 else:
                     x_t1 = self.pop[idx].solution + np.cos(r5) * c * (
-                            r5 * (self.pop[idx].solution - self.pop[0].solution) +
-                            (1 - r5) * (self.pop[idx].solution - self.pop[j].solution))
+                        r5 * (self.pop[idx].solution - self.pop[0].solution)
+                        + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
+                    )
             pos_new = self.correct_solution(x_t1)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[:-1] = self.greedy_selection_population(self.pop[:-1], pop_new, self.problem.minmax)
+            self.pop[:-1] = self.greedy_selection_population(
+                self.pop[:-1], pop_new, self.problem.minmax
+            )
         ## find current best used in decomposition
         best = self.get_best_agent(self.pop, self.problem.minmax)
         ## Decomposition
@@ -346,23 +402,31 @@ class EnhancedAEO(Optimizer):
             h = 2 * r3 - 1
             if self.generator.random() < 0.5:
                 beta = 1 - (1 - 0) * (epoch / self.epoch)  # Eq. 21
-                r_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
+                r_idx = self.generator.choice(
+                    list(set(range(0, self.pop_size)) - {idx})
+                )
                 x_r = self.pop[r_idx].solution
                 if self.generator.random() < 0.5:
                     x_new = beta * x_r + (1 - beta) * self.pop[idx].solution
                 else:
                     x_new = (1 - beta) * x_r + beta * self.pop[idx].solution
             else:
-                x_new = best.solution + d * (e * best.solution - h * self.pop[idx].solution)
+                x_new = best.solution + d * (
+                    e * best.solution - h * self.pop[idx].solution
+                )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_child, self.problem.minmax
+            )
 
 
 class ModifiedAEO(Optimizer):
@@ -398,7 +462,9 @@ class ModifiedAEO(Optimizer):
     modified artificial ecosystem optimization algorithm. IEEE Access, 8, pp.31892-31909.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -421,7 +487,9 @@ class ModifiedAEO(Optimizer):
         # Eq. 22
         H = 2 * (1 - epoch / self.epoch)
         a = (1 - epoch / self.epoch) * self.generator.random()
-        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(self.problem.lb, self.problem.ub)
+        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(
+            self.problem.lb, self.problem.ub
+        )
         pos_new = self.correct_solution(x1)
         agent = self.generate_agent(pos_new)
         self.pop[-1] = agent
@@ -436,24 +504,34 @@ class ModifiedAEO(Optimizer):
             j = 1 if idx == 0 else self.generator.integers(0, idx)
             ### Herbivore
             if rand <= 1.0 / 3:  # Eq. 23
-                pos_new = self.pop[idx].solution + H * c * (self.pop[idx].solution - self.pop[0].solution)
+                pos_new = self.pop[idx].solution + H * c * (
+                    self.pop[idx].solution - self.pop[0].solution
+                )
             ### Carnivore
             elif 1.0 / 3 <= rand and rand <= 2.0 / 3:  # Eq. 24
-                pos_new = self.pop[idx].solution + H * c * (self.pop[idx].solution - self.pop[j].solution)
+                pos_new = self.pop[idx].solution + H * c * (
+                    self.pop[idx].solution - self.pop[j].solution
+                )
             ### Omnivore
             else:  # Eq. 25
                 r5 = self.generator.random()
-                pos_new = self.pop[idx].solution + H * c * (r5 * (self.pop[idx].solution - self.pop[0].solution) +
-                                                            (1 - r5) * (self.pop[idx].solution - self.pop[j].solution))
+                pos_new = self.pop[idx].solution + H * c * (
+                    r5 * (self.pop[idx].solution - self.pop[0].solution)
+                    + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[:-1] = self.greedy_selection_population(self.pop[:-1], pop_new, self.problem.minmax)
+            self.pop[:-1] = self.greedy_selection_population(
+                self.pop[:-1], pop_new, self.problem.minmax
+            )
         ## find current best used in decomposition
         best = self.get_best_agent(self.pop, self.problem.minmax)
         ## Decomposition
@@ -466,23 +544,31 @@ class ModifiedAEO(Optimizer):
             h = 2 * r3 - 1
             if self.generator.random() < 0.5:
                 beta = 1 - (1 - 0) * (epoch / self.epoch)  # Eq. 21
-                r_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
+                r_idx = self.generator.choice(
+                    list(set(range(0, self.pop_size)) - {idx})
+                )
                 x_r = self.pop[r_idx].solution
                 if self.generator.random() < 0.5:
                     x_new = beta * x_r + (1 - beta) * self.pop[idx].solution
                 else:
                     x_new = (1 - beta) * x_r + beta * self.pop[idx].solution
             else:
-                x_new = best.solution + d * (e * best.solution - h * self.pop[idx].solution)
+                x_new = best.solution + d * (
+                    e * best.solution - h * self.pop[idx].solution
+                )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_child, self.problem.minmax
+            )
 
 
 class AugmentedAEO(Optimizer):
@@ -518,7 +604,9 @@ class AugmentedAEO(Optimizer):
     using Augmented Artificial Ecosystem Optimization. Journal of Hydrology, 129034.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -541,7 +629,9 @@ class AugmentedAEO(Optimizer):
         # Eq. 2, 3, 1
         wf = 2 * (1 - epoch / self.epoch)  # Weight factor
         a = (1.0 - epoch / self.epoch) * self.generator.random()
-        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(self.problem.lb, self.problem.ub)
+        x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(
+            self.problem.lb, self.problem.ub
+        )
         pos_new = self.correct_solution(x1)
         agent = self.generate_agent(pos_new)
         self.pop[-1] = agent
@@ -551,33 +641,48 @@ class AugmentedAEO(Optimizer):
             if self.generator.random() < 0.5:
                 rand = self.generator.random()
                 # Eq. 4, 5, 6
-                c = 0.5 * self.generator.normal(0, 1) / np.abs(self.generator.normal(0, 1))  # Consumption factor
+                c = (
+                    0.5
+                    * self.generator.normal(0, 1)
+                    / np.abs(self.generator.normal(0, 1))
+                )  # Consumption factor
                 j = 1 if idx == 0 else self.generator.integers(0, idx)
                 ### Herbivore
                 if rand < 1.0 / 3:
-                    pos_new = self.pop[idx].solution + wf * c * (self.pop[idx].solution - self.pop[0].solution)  # Eq. 6
+                    pos_new = self.pop[idx].solution + wf * c * (
+                        self.pop[idx].solution - self.pop[0].solution
+                    )  # Eq. 6
                 ### Omnivore
                 elif 1.0 / 3 <= rand <= 2.0 / 3:
-                    pos_new = self.pop[idx].solution + wf * c * (self.pop[idx].solution - self.pop[j].solution)  # Eq. 7
+                    pos_new = self.pop[idx].solution + wf * c * (
+                        self.pop[idx].solution - self.pop[j].solution
+                    )  # Eq. 7
                 ### Carnivore
                 else:
                     r2 = self.generator.uniform()
-                    pos_new = self.pop[idx].solution + wf * c * (r2 * (self.pop[idx].solution - self.pop[0].solution) +
-                                                                 (1 - r2) * (self.pop[idx].solution - self.pop[
-                                j].solution))
+                    pos_new = self.pop[idx].solution + wf * c * (
+                        r2 * (self.pop[idx].solution - self.pop[0].solution)
+                        + (1 - r2) * (self.pop[idx].solution - self.pop[j].solution)
+                    )
             else:
-                pos_new = self.pop[idx].solution + self.get_levy_flight_step(1., 0.001, case=-1) * \
-                          (1.0 / np.sqrt(epoch)) * np.sign(self.generator.random() - 0.5) * (
-                                  self.pop[idx].solution - self.g_best.solution)
+                pos_new = self.pop[idx].solution + self.get_levy_flight_step(
+                    1.0, 0.001, case=-1
+                ) * (1.0 / np.sqrt(epoch)) * np.sign(self.generator.random() - 0.5) * (
+                    self.pop[idx].solution - self.g_best.solution
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[:-1] = self.greedy_selection_population(self.pop[:-1], pop_new, self.problem.minmax)
+            self.pop[:-1] = self.greedy_selection_population(
+                self.pop[:-1], pop_new, self.problem.minmax
+            )
         ## find current best used in decomposition
         best = self.get_best_agent(self.pop, self.problem.minmax)
         ## Decomposition
@@ -585,19 +690,24 @@ class AugmentedAEO(Optimizer):
         pop_child = []
         for idx in range(0, self.pop_size):
             if self.generator.random() < 0.5:
-                pos_new = best.solution + self.generator.normal(0, 1, self.problem.n_dims) * (
-                        best.solution - self.pop[idx].solution)
+                pos_new = best.solution + self.generator.normal(
+                    0, 1, self.problem.n_dims
+                ) * (best.solution - self.pop[idx].solution)
             else:
-                beta = self.generator.uniform(0.01, 1.)
-                pos_new = best.solution + self.get_levy_flight_step(beta=beta, multiplier=0.01,
-                                                                    size=self.problem.n_dims, case=0) * (
-                                  best.solution - self.pop[idx].solution)
+                beta = self.generator.uniform(0.01, 1.0)
+                pos_new = best.solution + self.get_levy_flight_step(
+                    beta=beta, multiplier=0.01, size=self.problem.n_dims, case=0
+                ) * (best.solution - self.pop[idx].solution)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_child, self.problem.minmax
+            )

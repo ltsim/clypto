@@ -62,7 +62,7 @@ class ChaoticMap:
     @staticmethod
     def singer_map(x: float, a: float = 1.07) -> float:
         """Singer map"""
-        return a * (7.86 * x - 23.31 * x ** 2 + 28.75 * x ** 3 - 13.302875 * x ** 4)
+        return a * (7.86 * x - 23.31 * x**2 + 28.75 * x**3 - 13.302875 * x**4)
 
     @staticmethod
     def sinusoidal_map(x: float, a: float = 2.3) -> float:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 17:23, 21/05/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 17:23, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -70,8 +70,12 @@ class OriginalTSA(Optimizer):
             c1 = self.generator.random(self.problem.n_dims)
             M = np.fix(pmin + self.generator.random() * (pmax - pmin))
             A = (c2 + c3 - 2 * c1) / M
-            t1 = self.g_best.solution + A * np.abs(self.g_best.solution - c2 * self.pop[idx].solution)
-            t2 = self.g_best.solution - A * np.abs(self.g_best.solution - c2 * self.pop[idx].solution)
+            t1 = self.g_best.solution + A * np.abs(
+                self.g_best.solution - c2 * self.pop[idx].solution
+            )
+            t2 = self.g_best.solution - A * np.abs(
+                self.g_best.solution - c2 * self.pop[idx].solution
+            )
             pos_new = np.where(c3 >= 0.5, t1, t2)
             if idx != 0:
                 pos_new = (pos_new + self.pop[idx - 1].solution) / 2

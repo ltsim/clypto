@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 21:32, 14/03/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 21:32, 14/03/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numbers
@@ -90,7 +90,9 @@ class Validator:
             value_flag = [isinstance(item, DIGIT) for item in values]
             if np.all(value_flag):
                 if bounds is not None and len(bounds) == len(values):
-                    value_flag = [is_in_bound(item, bound) for item, bound in zip(values, bounds)]
+                    value_flag = [
+                        is_in_bound(item, bound) for item, bound in zip(values, bounds)
+                    ]
                     if np.all(value_flag):
                         return values
                 else:
@@ -104,7 +106,9 @@ class Validator:
             value_flag = [isinstance(item, numbers.Number) for item in values]
             if np.all(value_flag):
                 if bounds is not None and len(bounds) == len(values):
-                    value_flag = [is_in_bound(item, bound) for item, bound in zip(values, bounds)]
+                    value_flag = [
+                        is_in_bound(item, bound) for item, bound in zip(values, bounds)
+                    ]
                     if np.all(value_flag):
                         return values
                 else:
@@ -116,7 +120,9 @@ class Validator:
     def check_list_tuple(name: str, value: any, data_type: str):
         if type(value) in (tuple, list) and len(value) >= 1:
             return list(value)
-        raise TypeError(f"'{name}' should be a list or tuple of {data_type}, and length >= 1.")
+        raise TypeError(
+            f"'{name}' should be a list or tuple of {data_type}, and length >= 1."
+        )
 
     @staticmethod
     def check_is_instance(name: str, value: any, class_type: any):
@@ -133,5 +139,9 @@ class Validator:
         if type(value) is float:
             if bound_float is None or is_in_bound(value, bound_float):
                 return float(value)
-        bound_float_str = "" if bound_float is None else f"and value in range: {bound_float}"
-        raise TypeError(f"'{name}' can be int {bound_int_str}, or float {bound_float_str}.")
+        bound_float_str = (
+            "" if bound_float is None else f"and value in range: {bound_float}"
+        )
+        raise TypeError(
+            f"'{name}' can be int {bound_int_str}, or float {bound_float_str}."
+        )

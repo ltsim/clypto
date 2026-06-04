@@ -38,7 +38,9 @@ class DevJA(Optimizer):
     unconstrained optimization problems. International Journal of Industrial Engineering Computations, 7(1), pp.19-34.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -57,21 +59,31 @@ class DevJA(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        _, (g_best,), (g_worst,) = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
+        _, (g_best,), (g_worst,) = self.get_special_agents(
+            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        )
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution + self.generator.random(self.problem.n_dims) * (
-                    g_best.solution - np.abs(self.pop[idx].solution)) + \
-                      self.generator.normal() * (g_worst.solution - np.abs(self.pop[idx].solution))
+            pos_new = (
+                self.pop[idx].solution
+                + self.generator.random(self.problem.n_dims)
+                * (g_best.solution - np.abs(self.pop[idx].solution))
+                + self.generator.normal()
+                * (g_worst.solution - np.abs(self.pop[idx].solution))
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class OriginalJA(DevJA):
@@ -106,7 +118,9 @@ class OriginalJA(DevJA):
     unconstrained optimization problems. International Journal of Industrial Engineering Computations, 7(1), pp.19-34.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -121,13 +135,18 @@ class OriginalJA(DevJA):
         Args:
             epoch (int): The current iteration
         """
-        _, (g_best,), (g_worst,) = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
+        _, (g_best,), (g_worst,) = self.get_special_agents(
+            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        )
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution + self.generator.uniform(0, 1, self.problem.n_dims) * \
-                      (g_best.solution - np.abs(self.pop[idx].solution)) - \
-                      self.generator.uniform(0, 1, self.problem.n_dims) * (
-                              g_worst.solution - np.abs(self.pop[idx].solution))
+            pos_new = (
+                self.pop[idx].solution
+                + self.generator.uniform(0, 1, self.problem.n_dims)
+                * (g_best.solution - np.abs(self.pop[idx].solution))
+                - self.generator.uniform(0, 1, self.problem.n_dims)
+                * (g_worst.solution - np.abs(self.pop[idx].solution))
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
@@ -172,7 +191,9 @@ class LevyJA(DevJA):
     algorithm with Lévy flight. Expert Systems with Applications, 165, p.113902.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -188,19 +209,28 @@ class LevyJA(DevJA):
         Args:
             epoch (int): The current iteration
         """
-        _, (g_best,), (g_worst,) = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
+        _, (g_best,), (g_worst,) = self.get_special_agents(
+            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        )
         pop_new = []
         for idx in range(0, self.pop_size):
             L1 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, case=-1)
             L2 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, case=-1)
-            pos_new = self.pop[idx].solution + np.abs(L1) * (g_best.solution - np.abs(self.pop[idx].solution)) - \
-                      np.abs(L2) * (g_worst.solution - np.abs(self.pop[idx].solution))
+            pos_new = (
+                self.pop[idx].solution
+                + np.abs(L1) * (g_best.solution - np.abs(self.pop[idx].solution))
+                - np.abs(L2) * (g_worst.solution - np.abs(self.pop[idx].solution))
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

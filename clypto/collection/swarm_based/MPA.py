@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 17:28, 21/05/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 17:28, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -47,7 +47,9 @@ class OriginalMPA(Optimizer):
     Marine Predators Algorithm: A nature-inspired metaheuristic. Expert systems with applications, 152, 113377.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -71,7 +73,12 @@ class OriginalMPA(Optimizer):
             epoch (int): The current iteration
         """
         CF = (1 - epoch / self.epoch) ** (2 * epoch / self.epoch)
-        RL = self.get_levy_flight_step(beta=1.5, multiplier=0.05, size=(self.pop_size, self.problem.n_dims), case=-1)
+        RL = self.get_levy_flight_step(
+            beta=1.5,
+            multiplier=0.05,
+            size=(self.pop_size, self.problem.n_dims),
+            case=-1,
+        )
         RB = self.generator.standard_normal((self.pop_size, self.problem.n_dims))
         per1 = self.generator.permutation(self.pop_size)
         per2 = self.generator.permutation(self.pop_size)
@@ -79,33 +86,57 @@ class OriginalMPA(Optimizer):
         for idx in range(0, self.pop_size):
             R = self.generator.random(self.problem.n_dims)
             if epoch < self.epoch / 3:  # Phase 1 (Eq.12)
-                step_size = RB[idx] * (self.g_best.solution - RB[idx] * self.pop[idx].solution)
+                step_size = RB[idx] * (
+                    self.g_best.solution - RB[idx] * self.pop[idx].solution
+                )
                 pos_new = self.pop[idx].solution + self.P * R * step_size
             elif self.epoch / 3 < epoch < 2 * self.epoch / 3:  # Phase 2 (Eqs. 13 & 14)
                 if idx > self.pop_size / 2:
-                    step_size = RB[idx] * (RB[idx] * self.g_best.solution - self.pop[idx].solution)
+                    step_size = RB[idx] * (
+                        RB[idx] * self.g_best.solution - self.pop[idx].solution
+                    )
                     pos_new = self.g_best.solution + self.P * CF * step_size
                 else:
-                    step_size = RL[idx] * (self.g_best.solution - RL[idx] * self.pop[idx].solution)
+                    step_size = RL[idx] * (
+                        self.g_best.solution - RL[idx] * self.pop[idx].solution
+                    )
                     pos_new = self.pop[idx].solution + self.P * R * step_size
             else:  # Phase 3 (Eq. 15)
-                step_size = RL[idx] * (RL[idx] * self.g_best.solution - self.pop[idx].solution)
+                step_size = RL[idx] * (
+                    RL[idx] * self.g_best.solution - self.pop[idx].solution
+                )
                 pos_new = self.g_best.solution + self.P * CF * step_size
             pos_new = self.correct_solution(pos_new)
             if self.generator.random() < self.FADS:
-                u = np.where(self.generator.random(self.problem.n_dims) < self.FADS, 1, 0)
-                pos_new = pos_new + CF * (self.problem.lb + self.generator.random(self.problem.n_dims) * (
-                        self.problem.ub - self.problem.lb)) * u
+                u = np.where(
+                    self.generator.random(self.problem.n_dims) < self.FADS, 1, 0
+                )
+                pos_new = (
+                    pos_new
+                    + CF
+                    * (
+                        self.problem.lb
+                        + self.generator.random(self.problem.n_dims)
+                        * (self.problem.ub - self.problem.lb)
+                    )
+                    * u
+                )
             else:
                 r = self.generator.random()
-                step_size = (self.FADS * (1 - r) + r) * (self.pop[per1[idx]].solution - self.pop[per2[idx]].solution)
+                step_size = (self.FADS * (1 - r) + r) * (
+                    self.pop[per1[idx]].solution - self.pop[per2[idx]].solution
+                )
                 pos_new = pos_new + step_size
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

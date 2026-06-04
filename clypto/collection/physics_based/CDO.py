@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 21:45, 13/03/2023 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 21:45, 13/03/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -42,7 +42,9 @@ class OriginalCDO(Optimizer):
     for global optimization. Neural Computing and Applications, 1-17.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -61,8 +63,10 @@ class OriginalCDO(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        _, (b1, b2, b3), _ = self.get_special_agents(self.pop, n_best=3, n_worst=1, minmax=self.problem.minmax)
-        a = 3. - 3. * epoch / self.epoch
+        _, (b1, b2, b3), _ = self.get_special_agents(
+            self.pop, n_best=3, n_worst=1, minmax=self.problem.minmax
+        )
+        a = 3.0 - 3.0 * epoch / self.epoch
         a1 = np.log10((16000 - 1) * self.generator.random() + 16000)
         a2 = np.log10((270000 - 1) * self.generator.random() + 270000)
         a3 = np.log10((300000 - 1) * self.generator.random() + 300000)
@@ -70,14 +74,18 @@ class OriginalCDO(Optimizer):
         for idx in range(0, self.pop_size):
             r1 = self.generator.random(self.problem.n_dims)
             r2 = self.generator.random(self.problem.n_dims)
-            pa = np.pi * r1 * r1 / (0.25 * a1) - a * self.generator.random(self.problem.n_dims)
+            pa = np.pi * r1 * r1 / (0.25 * a1) - a * self.generator.random(
+                self.problem.n_dims
+            )
             c1 = r2 * r2 * np.pi
             alpha = np.abs(c1 * b1.solution - self.pop[idx].solution)
             pos_a = 0.25 * (b1.solution - pa * alpha)
 
             r3 = self.generator.random(self.problem.n_dims)
             r4 = self.generator.random(self.problem.n_dims)
-            pb = np.pi * r3 * r3 / (0.5 * a2) - a * self.generator.random(self.problem.n_dims)
+            pb = np.pi * r3 * r3 / (0.5 * a2) - a * self.generator.random(
+                self.problem.n_dims
+            )
             c2 = r4 * r4 * np.pi
             beta = np.abs(c2 * b2.solution - self.pop[idx].solution)
             pos_b = 0.5 * (b2.solution - pb * beta)

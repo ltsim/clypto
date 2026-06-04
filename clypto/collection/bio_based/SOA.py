@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 17:21, 21/05/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 17:21, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -48,7 +48,7 @@ class DevSOA(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.fc = self.validator.check_float("fc", fc, [1.0, 10.])
+        self.fc = self.validator.check_float("fc", fc, [1.0, 10.0])
         self.set_parameters(["epoch", "pop_size", "fc"])
         self.sort_flag = False
 
@@ -63,7 +63,7 @@ class DevSOA(Optimizer):
         uu = vv = 1
         pop_new = []
         for idx in range(0, self.pop_size):
-            B = 2 * A ** 2 * self.generator.random()  # Eq. 8
+            B = 2 * A**2 * self.generator.random()  # Eq. 8
             M = B * (self.g_best.solution - self.pop[idx].solution)  # Eq. 7
             C = A * self.pop[idx].solution  # Eq. 5
             D = np.abs(C + M)  # Eq. 9
@@ -72,16 +72,22 @@ class DevSOA(Optimizer):
             xx = r * np.cos(k)
             yy = r * np.sin(k)
             zz = r * k
-            pos_new = xx * yy * zz * D + self.generator.normal(0, 1) * self.g_best.solution  # Eq. 14
+            pos_new = (
+                xx * yy * zz * D + self.generator.normal(0, 1) * self.g_best.solution
+            )  # Eq. 14
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class OriginalSOA(Optimizer):
@@ -123,7 +129,7 @@ class OriginalSOA(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.fc = self.validator.check_float("fc", fc, [1.0, 10.])
+        self.fc = self.validator.check_float("fc", fc, [1.0, 10.0])
         self.set_parameters(["epoch", "pop_size", "fc"])
         self.sort_flag = False
 
@@ -138,7 +144,7 @@ class OriginalSOA(Optimizer):
         uu = vv = 1
         pop_new = []
         for idx in range(0, self.pop_size):
-            B = 2 * A ** 2 * self.generator.random()  # Eq. 8
+            B = 2 * A**2 * self.generator.random()  # Eq. 8
             M = B * (self.g_best.solution - self.pop[idx].solution)  # Eq. 7
             C = A * self.pop[idx].solution  # Eq. 5
             D = np.abs(C + M)  # Eq. 9

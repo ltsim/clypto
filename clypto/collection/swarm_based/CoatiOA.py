@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 00:08, 27/10/2022 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 00:08, 27/10/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 from clypto.optimizer.classic import Optimizer
@@ -45,7 +45,9 @@ class OriginalCoatiOA(Optimizer):
     bio-inspired metaheuristic algorithm for solving optimization problems. Knowledge-Based Systems, 259, 110011.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -69,31 +71,45 @@ class OriginalCoatiOA(Optimizer):
         size2 = int(self.pop_size / 2)
         for idx in range(0, size2):
             pos_new = self.pop[idx].solution + self.generator.random() * (
-                    self.g_best.solution - self.generator.integers(1, 3) * self.pop[idx].solution)  # Eq. 4
+                self.g_best.solution
+                - self.generator.integers(1, 3) * self.pop[idx].solution
+            )  # Eq. 4
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
 
         for idx in range(size2, self.pop_size):
             iguana = self.generate_agent()
-            if self.compare_target(iguana.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                iguana.target, self.pop[idx].target, self.problem.minmax
+            ):
                 pos_new = self.pop[idx].solution + self.generator.random() * (
-                        iguana.solution - self.generator.integers(1, 3) * self.pop[idx].solution)  # Eq. 6
+                    iguana.solution
+                    - self.generator.integers(1, 3) * self.pop[idx].solution
+                )  # Eq. 6
             else:
                 pos_new = self.pop[idx].solution + self.generator.random() * (
-                        self.pop[idx].solution - iguana.solution)  # Eq. 6
+                    self.pop[idx].solution - iguana.solution
+                )  # Eq. 6
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent
 
         # Phase2: The process of escaping from predators (Exploitation Phase)
         for idx in range(0, self.pop_size):
             LO, HI = self.problem.lb / epoch, self.problem.ub / epoch
             pos_new = self.pop[idx].solution + (1 - 2 * self.generator.random()) * (
-                    LO + self.generator.random() * (HI - LO))  # Eq. 8
+                LO + self.generator.random() * (HI - LO)
+            )  # Eq. 8
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.pop[idx].target, self.problem.minmax):
+            if self.compare_target(
+                agent.target, self.pop[idx].target, self.problem.minmax
+            ):
                 self.pop[idx] = agent

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 21:58, 16/03/2023 ----------%                                                                               
-#       Email: nguyenthieu2102@gmail.com            %                                                    
-#       Github: https://github.com/thieu1995        %                         
+# Created by "Thieu" at 21:58, 16/03/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
 import numpy as np
@@ -47,8 +47,14 @@ class OriginalGTO(Optimizer):
     Algorithm for Global Optimization and Challenging Engineering Problems. IEEE Access, 10, 121615-121640.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, A: float = 0.4, H: float = 2.0,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        A: float = 0.4,
+        H: float = 2.0,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -59,8 +65,8 @@ class OriginalGTO(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.A = self.validator.check_float("A", A, [-10., 10.])
-        self.H = self.validator.check_float("H", H, [1., 10.])
+        self.A = self.validator.check_float("A", A, [-10.0, 10.0])
+        self.H = self.validator.check_float("H", H, [1.0, 10.0])
         self.set_parameters(["epoch", "pop_size", "A", "H"])
         self.sort_flag = True
 
@@ -76,17 +82,24 @@ class OriginalGTO(Optimizer):
         for idx in range(0, self.pop_size):
             # Eq.(4)
             pos_new = self.g_best.solution * self.generator.random() + (
-                    (self.problem.ub - self.problem.lb) * self.generator.random() + self.problem.lb) * \
-                      self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1)
+                (self.problem.ub - self.problem.lb) * self.generator.random()
+                + self.problem.lb
+            ) * self.get_levy_flight_step(
+                beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         self.pop, self.g_best = self.update_global_best_agent(self.pop, save=False)
 
         # Step 2: Choosing Area
@@ -95,16 +108,22 @@ class OriginalGTO(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             r3 = self.generator.random()
-            pos_new = self.g_best.solution * self.A * r3 + pos_m - self.pop[idx].solution * r3  # Eq. 7
+            pos_new = (
+                self.g_best.solution * self.A * r3 + pos_m - self.pop[idx].solution * r3
+            )  # Eq. 7
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         _, self.g_best = self.update_global_best_agent(self.pop, save=False)
 
         # Step 3: Attacking
@@ -114,19 +133,31 @@ class OriginalGTO(Optimizer):
             # the distance between the prey and the attacker, and can be calculated using (12):
             dist = np.sum(np.abs(self.g_best.solution - self.pop[idx].solution))
             theta2 = (360 - 0) * self.generator.random() + 0
-            theta1 = (1.33 / 1.00029) * np.sin(np.radians(theta2))  # calculate theta_1 using (10)
+            theta1 = (1.33 / 1.00029) * np.sin(
+                np.radians(theta2)
+            )  # calculate theta_1 using (10)
             VD = np.sin(np.radians(theta1)) * dist  # Eq. 11
             # Eq. (13)
-            pos_new = self.pop[idx].solution * np.sin(np.radians(theta2)) * self.pop[idx].target.fitness + VD + H
+            pos_new = (
+                self.pop[idx].solution
+                * np.sin(np.radians(theta2))
+                * self.pop[idx].target.fitness
+                + VD
+                + H
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class Matlab102GTO(Optimizer):
@@ -168,7 +199,9 @@ class Matlab102GTO(Optimizer):
     Algorithm for Global Optimization and Challenging Engineering Problems. IEEE Access, 10, 121615-121640.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -192,17 +225,24 @@ class Matlab102GTO(Optimizer):
         for idx in range(0, self.pop_size):
             # foraging movement patterns of giant trevallies are simulated using Eq.(4)
             pos_new = self.g_best.solution * self.generator.random() + (
-                    (self.problem.ub - self.problem.lb) * self.generator.random() + self.problem.lb) * \
-                      self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1)
+                (self.problem.ub - self.problem.lb) * self.generator.random()
+                + self.problem.lb
+            ) * self.get_levy_flight_step(
+                beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         self.pop, self.g_best = self.update_global_best_agent(self.pop, save=False)
 
         # Step 2: Choosing Area
@@ -213,21 +253,27 @@ class Matlab102GTO(Optimizer):
             # In the choosing area step, giant trevallies identify and select the best area in terms of
             # the amount of food (seabirds) within the selected search space where they can hunt for prey.
             r3 = self.generator.random()
-            pos_new = self.g_best.solution * A * r3 + pos_m - self.pop[idx].solution * r3  # Eq. 7
+            pos_new = (
+                self.g_best.solution * A * r3 + pos_m - self.pop[idx].solution * r3
+            )  # Eq. 7
 
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         self.pop, self.g_best = self.update_global_best_agent(self.pop, save=False)
 
         # Step 3: Attacking
-        H = self.generator.random() * 2. * (1. - epoch / self.epoch)  # Eq.(15)
+        H = self.generator.random() * 2.0 * (1.0 - epoch / self.epoch)  # Eq.(15)
         pop_new = []
         for idx in range(0, self.pop_size):
             # the distance between the prey and the attacker, and can be calculated using (12):
@@ -238,16 +284,26 @@ class Matlab102GTO(Optimizer):
             # to be higher than its actual height due to the refraction of the light.
             VD = np.sin(np.radians(theta1)) * dist  # Eq. 11
             # the behavior of giant trevally when chasing and jumping out of the water is mathematically simulated using (13)
-            pos_new = self.pop[idx].solution * np.sin(np.radians(theta2)) * self.pop[idx].target.fitness + VD + H
+            pos_new = (
+                self.pop[idx].solution
+                * np.sin(np.radians(theta2))
+                * self.pop[idx].target.fitness
+                + VD
+                + H
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
 
 
 class Matlab101GTO(Optimizer):
@@ -289,7 +345,9 @@ class Matlab101GTO(Optimizer):
     Algorithm for Global Optimization and Challenging Engineering Problems. IEEE Access, 10, 121615-121640.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -316,16 +374,20 @@ class Matlab101GTO(Optimizer):
                     continue
                 # foraging movement patterns of giant trevallies are simulated using Eq.(4)
                 pos_new = self.g_best.solution * self.generator.random() + (
-                        (self.problem.ub - self.problem.lb) * self.generator.random() +
-                        self.problem.lb) * self.get_levy_flight_step(beta=1.5, multiplier=0.01,
-                                                                     size=self.problem.n_dims, case=-1)
+                    (self.problem.ub - self.problem.lb) * self.generator.random()
+                    + self.problem.lb
+                ) * self.get_levy_flight_step(
+                    beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
                     pop_new[-1].target = self.get_target(pos_new)
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[idx] = self.get_best_agent(pop_new + [self.pop[idx]], self.problem.minmax)
+            self.pop[idx] = self.get_best_agent(
+                pop_new + [self.pop[idx]], self.problem.minmax
+            )
         _, self.g_best = self.update_global_best_agent(self.pop, save=False)
 
         # Step 2: Choosing Area
@@ -337,20 +399,26 @@ class Matlab101GTO(Optimizer):
             # In the choosing area step, giant trevallies identify and select the best area in terms of
             # the amount of food (seabirds) within the selected search space where they can hunt for prey.
             r3 = self.generator.random()
-            pos_new = self.g_best.solution * A * r3 + pos_m - self.pop[idx].solution * r3  # Eq. 7
+            pos_new = (
+                self.g_best.solution * A * r3 + pos_m - self.pop[idx].solution * r3
+            )  # Eq. 7
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         _, self.g_best = self.update_global_best_agent(self.pop, save=False)
 
         # Step 3: Attacking
-        H = self.generator.random() * 2. * (1.0 - epoch / self.epoch)  # Eq.(15)
+        H = self.generator.random() * 2.0 * (1.0 - epoch / self.epoch)  # Eq.(15)
         for idx in range(0, self.pop_size):
             pop_new = []
             for jdx in range(0, self.pop_size):
@@ -359,16 +427,26 @@ class Matlab101GTO(Optimizer):
                 # the distance between the prey and the attacker, and can be calculated using (12):
                 dist = np.sum(np.abs(self.g_best.solution - self.pop[idx].solution))
                 theta2 = (360 - 0) * self.generator.random() + 0
-                theta1 = 1.3296 * np.sin(np.radians(theta2))  # calculate theta_1 using (10)
+                theta1 = 1.3296 * np.sin(
+                    np.radians(theta2)
+                )  # calculate theta_1 using (10)
                 # visual distortion indicates the apparent height of the bird, which is always seen
                 # to be higher than its actual height due to the refraction of the light.
                 VD = np.sin(np.radians(theta1)) * dist  # Eq. 11
                 # the behavior of giant trevally when chasing and jumping out of the water is mathematically simulated using (13)
-                pos_new = self.pop[idx].solution * np.sin(np.radians(theta2)) * self.pop[idx].target.fitness + VD + H
+                pos_new = (
+                    self.pop[idx].solution
+                    * np.sin(np.radians(theta2))
+                    * self.pop[idx].target.fitness
+                    + VD
+                    + H
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
                     pop_new[-1].target = self.get_target(pos_new)
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[idx] = self.get_best_agent(pop_new + [self.pop[idx]], self.problem.minmax)
+            self.pop[idx] = self.get_best_agent(
+                pop_new + [self.pop[idx]], self.problem.minmax
+            )

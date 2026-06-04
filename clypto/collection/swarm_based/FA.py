@@ -48,8 +48,17 @@ class OriginalFA(Optimizer):
     conference in swarm intelligence (pp. 355-364). Springer, Berlin, Heidelberg.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, max_sparks: int = 100, p_a: float = 0.04,
-                 p_b: float = 0.8, max_ea: int = 40, m_sparks: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        max_sparks: int = 100,
+        p_a: float = 0.04,
+        p_b: float = 0.8,
+        max_ea: int = 40,
+        m_sparks: int = 100,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -68,7 +77,9 @@ class OriginalFA(Optimizer):
         self.p_b = self.validator.check_float("p_b", p_b, (0, 1.0))
         self.max_ea = self.validator.check_int("max_ea", max_ea, [2, 100])
         self.m_sparks = self.validator.check_int("m_sparks", m_sparks, [2, 10000])
-        self.set_parameters(["epoch", "pop_size", "max_sparks", "p_a", "p_b", "max_ea", "m_sparks"])
+        self.set_parameters(
+            ["epoch", "pop_size", "max_sparks", "p_a", "p_b", "max_ea", "m_sparks"]
+        )
         self.sort_flag = False
 
     def evolve(self, epoch):
@@ -82,10 +93,16 @@ class OriginalFA(Optimizer):
         fit_list = sorted(fit_list)
         pop_new = []
         for idx in range(0, self.pop_size):
-            si = self.max_sparks * (fit_list[-1] - self.pop[idx].target.fitness) / \
-                 (self.pop_size * fit_list[-1] - np.sum(fit_list) + self.EPSILON)
-            Ai = self.max_ea * (self.pop[idx].target.fitness - fit_list[0]) / \
-                 (np.sum(fit_list) - fit_list[0] + self.EPSILON)
+            si = (
+                self.max_sparks
+                * (fit_list[-1] - self.pop[idx].target.fitness)
+                / (self.pop_size * fit_list[-1] - np.sum(fit_list) + self.EPSILON)
+            )
+            Ai = (
+                self.max_ea
+                * (self.pop[idx].target.fitness - fit_list[0])
+                / (np.sum(fit_list) - fit_list[0] + self.EPSILON)
+            )
             if si < self.p_a * self.max_sparks:
                 si_ = int(round(self.p_a * self.max_sparks) + 1)
             elif si > self.p_b * self.m_sparks:
@@ -96,12 +113,19 @@ class OriginalFA(Optimizer):
             pop_new = []
             for j in range(0, si_):
                 pos_new = self.pop[idx].solution.copy()
-                list_idx = self.generator.choice(range(0, self.problem.n_dims),
-                                                 round(self.generator.uniform() * self.problem.n_dims), replace=False)
+                list_idx = self.generator.choice(
+                    range(0, self.problem.n_dims),
+                    round(self.generator.uniform() * self.problem.n_dims),
+                    replace=False,
+                )
                 displacement = Ai * self.generator.uniform(-1, 1)
                 pos_new[list_idx] = pos_new[list_idx] + displacement
-                pos_new = np.where(np.logical_or(pos_new < self.problem.lb, pos_new > self.problem.ub),
-                                   self.problem.lb + np.abs(pos_new) % (self.problem.ub - self.problem.lb), pos_new)
+                pos_new = np.where(
+                    np.logical_or(pos_new < self.problem.lb, pos_new > self.problem.ub),
+                    self.problem.lb
+                    + np.abs(pos_new) % (self.problem.ub - self.problem.lb),
+                    pos_new,
+                )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
@@ -112,11 +136,20 @@ class OriginalFA(Optimizer):
         for _ in range(0, self.m_sparks):
             idx = self.generator.integers(0, self.pop_size)
             pos_new = self.pop[idx].solution.copy()
-            list_idx = self.generator.choice(range(0, self.problem.n_dims),
-                                             round(self.generator.uniform() * self.problem.n_dims), replace=False)
-            pos_new[list_idx] = pos_new[list_idx] + self.generator.normal(0, 1, len(list_idx))  # Gaussian
-            condition = np.logical_or(pos_new < self.problem.lb, pos_new > self.problem.ub)
-            pos_true = self.problem.lb + np.abs(pos_new) % (self.problem.ub - self.problem.lb)
+            list_idx = self.generator.choice(
+                range(0, self.problem.n_dims),
+                round(self.generator.uniform() * self.problem.n_dims),
+                replace=False,
+            )
+            pos_new[list_idx] = pos_new[list_idx] + self.generator.normal(
+                0, 1, len(list_idx)
+            )  # Gaussian
+            condition = np.logical_or(
+                pos_new < self.problem.lb, pos_new > self.problem.ub
+            )
+            pos_true = self.problem.lb + np.abs(pos_new) % (
+                self.problem.ub - self.problem.lb
+            )
             pos_new = np.where(condition, pos_true, pos_new)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -126,4 +159,6 @@ class OriginalFA(Optimizer):
         pop_new = self.update_target_for_population(pop_new)
 
         ## Update the global best
-        self.pop = self.get_sorted_and_trimmed_population(pop_new + self.pop, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            pop_new + self.pop, self.pop_size, self.problem.minmax
+        )

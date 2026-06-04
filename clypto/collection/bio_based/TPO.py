@@ -53,8 +53,15 @@ class DevTPO(Optimizer):
     traveling salesman problem. Journal of Intelligent Systems, 28(5), 849-871.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, alpha: float = 0.3, beta: float = 50.0,
-                 theta: float = 0.9, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        alpha: float = 0.3,
+        beta: float = 50.0,
+        theta: float = 0.9,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -65,9 +72,11 @@ class DevTPO(Optimizer):
         """
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])  # Number of branches
-        self.alpha = self.validator.check_float("alpha", alpha, [-10.0, 10.])
-        self.beta = self.validator.check_float("beta", beta, [-100., 100])
+        self.pop_size = self.validator.check_int(
+            "pop_size", pop_size, [5, 10000]
+        )  # Number of branches
+        self.alpha = self.validator.check_float("alpha", alpha, [-10.0, 10.0])
+        self.beta = self.validator.check_float("beta", beta, [-100.0, 100])
         self.theta = self.validator.check_float("theta", theta, (0, 1.0))
         self.set_parameters(["epoch", "pop_size", "alpha", "beta", "theta"])
         self.sort_flag = False
@@ -100,8 +109,11 @@ class DevTPO(Optimizer):
             pos_list = np.array([agent.solution for agent in self.pop_total[idx]])
             carbon_gain = self._theta * self.g_best.solution - pos_list
             roots_old = np.copy(self.roots)
-            self.roots += self.alpha * carbon_gain * self.generator.uniform(-0.5, 0.5,
-                                                                            (self.n_leafs, self.problem.n_dims))
+            self.roots += (
+                self.alpha
+                * carbon_gain
+                * self.generator.uniform(-0.5, 0.5, (self.n_leafs, self.problem.n_dims))
+            )
             nutrient_value = self._theta * (self.roots - roots_old)
             pos_list_new = self.g_best.solution + self.beta * nutrient_value
             pop_new = []
@@ -111,12 +123,14 @@ class DevTPO(Optimizer):
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
                     agent.target = self.get_target(pos_new)
-                    self.pop_total[idx][jdx] = self.get_better_agent(agent, self.pop_total[idx][jdx],
-                                                                     self.problem.minmax)
+                    self.pop_total[idx][jdx] = self.get_better_agent(
+                        agent, self.pop_total[idx][jdx], self.problem.minmax
+                    )
             if self.mode in self.AVAILABLE_MODES:
                 pop_new = self.update_target_for_population(pop_new)
-                self.pop_total[idx] = self.greedy_selection_population(pop_new, self.pop_total[idx],
-                                                                       self.problem.minmax)
+                self.pop_total[idx] = self.greedy_selection_population(
+                    pop_new, self.pop_total[idx], self.problem.minmax
+                )
         self._theta = self._theta * self.theta
         for idx in range(0, self.pop_size):
             best = self.get_best_agent(self.pop_total[idx], self.problem.minmax)
