@@ -13,14 +13,14 @@ import numpy as np
 import numpy.typing as npt
 
 from clypto.agents import Agent
-from clypto.optimizer.optimizer import AbstractOptimizer
+from clypto.optimizer.base import BaseOptimizer
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
 
 
-class Optimizer(AbstractOptimizer):
+class Optimizer(BaseOptimizer):
     """
     The base class of all classic algorithms. All methods in this class will be inherited
 
