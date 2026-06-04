@@ -193,7 +193,11 @@ def get_all_optimizers(verbose=False):
     for name, obj in inspect.getmembers(sys.modules[__name__]):
         if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES):
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, Optimizer):
+                if (
+                    inspect.isclass(cls_obj)
+                    and issubclass(cls_obj, Optimizer)
+                    and cls_obj is not Optimizer
+                ):
                     cls[cls_name] = cls_obj
 
     if verbose:
