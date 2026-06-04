@@ -3,17 +3,18 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-
-from typing import Any
+import typing
 
 import numpy as np
 
+from clypto.types.sense import SenseType
 from clypto.utils.target import Target
+from clypto.types.array import NDArrayType
 
 
 class Agent:
     def __init__(
-        self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs
+        self, solution: NDArrayType | None = None, target: Target | None = None, **kwargs
     ) -> None:
         self.__solution = solution
         self.__target = target
@@ -30,14 +31,14 @@ class Agent:
         self.__target = target
 
     @property
-    def solution(self) -> np.ndarray | None:
+    def solution(self) -> NDArrayType | None:
         return self.__solution
 
     @solution.setter
-    def solution(self, solution: np.ndarray):
+    def solution(self, solution: NDArrayType):
         self.__solution = solution
 
-    def __getattr__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> typing.Any:
         return self.__dict__.get(name, None)
 
     def copy(self) -> "Agent":
@@ -49,7 +50,7 @@ class Agent:
 
         return agent
 
-    def update_agent(self, solution: np.ndarray, target: Target) -> None:
+    def update_agent(self, solution: NDArrayType, target: Target) -> None:
         self.__solution = solution
         self.__target = target
 
@@ -71,7 +72,7 @@ class Agent:
 
         return is_eq
 
-    def _compare_fitness(self, other: "Agent", minmax: str = "min") -> int:
+    def _compare_fitness(self, other: "Agent", minmax: SenseType = "min") -> int:
         """
         Compare fitness between self and other.
 
@@ -87,7 +88,7 @@ class Agent:
         else:
             return -1 if self.target.fitness > other.target.fitness else 1
 
-    def get_better_solution(self, other: "Agent", minmax: str = "min") -> "Agent":
+    def get_better_solution(self, other: "Agent", minmax: SenseType = "min") -> "Agent":
         """
         Return better solution
 
@@ -97,7 +98,7 @@ class Agent:
         """
         return self if self._compare_fitness(other, minmax) <= 0 else other
 
-    def is_better_than(self, other: "Agent", minmax: str = "min") -> bool:
+    def is_better_than(self, other: "Agent", minmax: SenseType = "min") -> bool:
         """
         Compare the current agent with other agent. Return True if current agent is better and False otherwise
 
@@ -110,7 +111,7 @@ class Agent:
     def __repr__(self):
         return f"Agent(target={self.target}, solution={self.solution})"
 
-    def __eq__(self, other):
+    def __eq__(self, other: typing.Any):
         """Check if two agents are equal based on their solutions with a tolerance."""
         if not isinstance(other, Agent):
             return False
