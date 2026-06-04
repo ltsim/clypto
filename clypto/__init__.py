@@ -180,7 +180,7 @@ __EXCLUDE_MODULES = ["__builtins__", "current_module", "inspect", "sys"]
 @functools.cache
 def get_all_optimizers(verbose=False):
     """
-    Get all available optimizer classes in Mealpy library
+    Get all available optimizer classes in clypto library
 
     Args:
         verbose (bool): whether to print the optimizer information
@@ -193,7 +193,11 @@ def get_all_optimizers(verbose=False):
     for name, obj in inspect.getmembers(sys.modules[__name__]):
         if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES):
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, Optimizer):
+                if (
+                    inspect.isclass(cls_obj)
+                    and issubclass(cls_obj, Optimizer)
+                    and cls_obj is not Optimizer
+                ):
                     cls[cls_name] = cls_obj
 
     if verbose:
@@ -218,10 +222,7 @@ def get_optimizer_by_class(class_name: str, verbose=False):
         all_optimizers = get_all_optimizers(verbose=verbose)
         return all_optimizers[class_name]
     except KeyError:
-        print(
-            f"Mealpy doesn't support optimizer named: {class_name}.\n"
-            f"Please see the supported Optimizer name from here: https://mealpy.readthedocs.io/en/latest/pages/support.html#classification-table"
-        )
+        print(f"clypto doesn't support optimizer named: {class_name}.\n")
         return None
 
 
@@ -251,10 +252,7 @@ def get_optimizer_by_name(name: str, verbose=False):
                     cls[cls_name] = cls_obj
     if verbose:
         if not flag:
-            print(
-                f"Mealpy doesn't support optimizer named: {name}.\n"
-                f"Please see the supported Optimizer name from here: https://mealpy.readthedocs.io/en/latest/pages/support.html#classification-table"
-            )
+            print(f"clypto doesn't support optimizer named: {name}.\n")
             return None
 
         print(f"Found algorithm: {name}, the supported variants are:")
