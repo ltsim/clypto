@@ -15,10 +15,14 @@ class BaseVar(abc.ABC):
         else:
             raise ValueError(f"Invalid n_vars. It should be integer and > 0.")
 
-        self.__name = name
-        self.__seed = None
+        self.__lb: int = 0
+        self.__ub: int = 0
+
+        self.__name: str = name
+        self.__seed: int | None = None
+        self.__n_vars: int = n_vars
+
         self.__lb, self.__ub = bounds
-        self.__n_vars = n_vars
 
         self.generator = np.random.default_rng()
 
@@ -43,7 +47,7 @@ class BaseVar(abc.ABC):
         return self.__seed
 
     @seed.setter
-    def seed(self, value: int) -> None:
+    def seed(self, value: int | None) -> None:
         self.__seed = value
         self.generator = np.random.default_rng(self.__seed)
 

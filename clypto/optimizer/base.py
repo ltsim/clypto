@@ -8,6 +8,7 @@ from clypto.agents import Agent
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
+from clypto.types.array import NDArrayType
 
 
 class BaseOptimizer(abc.ABC):
@@ -57,7 +58,7 @@ class BaseOptimizer(abc.ABC):
     def before_initialization(
         self,
         starting_solutions: (
-            typing.Sequence[float] | npt.NDArray[np.float64] | None
+            typing.Sequence[float] | NDArrayType | None
         ) = None,
     ) -> None:
         """
@@ -120,7 +121,7 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def check_problem(self, problem: dict | Problem, seed: int | None):
+    def check_problem(self, problem: Problem, seed: typing.Optional[int]):
         """
         Validate the problem definition and bind it to the optimizer.
 
@@ -136,7 +137,7 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def check_termination(self, mode="start", termination=None, epoch=None):
+    def check_termination(self, mode="start", termination: typing.Optional[Termination] = None, epoch: typing.Optional[int] = None):
         """
         Configure and evaluate termination conditions.
 
@@ -156,12 +157,12 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def solve(
         self,
-        problem: dict | Problem,
-        termination: typing.Optional[dict | Termination] = None,
+        problem: Problem,
+        termination: typing.Optional[Termination] = None,
         starting_solutions: (
             typing.Sequence[float] | npt.NDArray[np.float64] | None
         ) = None,
-        seed: int | None = None,
+        seed: typing.Optional[int] = None,
         debug: bool = False,
     ) -> "Agent":
         """
@@ -197,9 +198,9 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def track_optimize_step(
         self,
-        pop: list["Agent"] | None = None,
-        epoch: int | None = None,
-        runtime: float | None = None,
+        pop: typing.Optional[list["Agent"]] = None,
+        epoch: typing.Optional[int] = None,
+        runtime: typing.Optional[float] = None,
     ) -> None:
         """
         Record per-epoch history and optionally print training details.
@@ -226,7 +227,7 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> "Agent":
+    def generate_empty_agent(self, solution: typing.Optional[NDArrayType] = None) -> "Agent":
         """
         Create a new agent skeleton without evaluating its target.
 
@@ -244,7 +245,7 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_agent(self, solution: np.ndarray | None = None) -> "Agent":
+    def generate_agent(self, solution: typing.Optional[NDArrayType] = None) -> "Agent":
         """
         Create a fully evaluated agent.
 
@@ -262,7 +263,7 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_population(self, pop_size: int | None = None) -> list["Agent"]:
+    def generate_population(self, pop_size: typing.Optional[int] = None) -> list["Agent"]:
         """
         Generate a population of fully evaluated agents.
 
@@ -277,7 +278,7 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def amend_solution(self, solution: np.ndarray) -> np.ndarray:
+    def amend_solution(self, solution: NDArrayType) -> NDArrayType:
         """
         Apply the optimizer's strategy for handling invalid solutions.
 
@@ -295,7 +296,7 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def correct_solution(self, solution: np.ndarray) -> np.ndarray:
+    def correct_solution(self, solution: NDArrayType) -> NDArrayType:
         """
         Produce a fully valid solution ready for objective evaluation.
 
@@ -332,7 +333,7 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def get_target(self, solution: np.ndarray, counted: bool = True) -> "Target":
+    def get_target(self, solution: NDArrayType, counted: bool = True) -> "Target":
         """
         Evaluate the objective function for a single solution.
 
