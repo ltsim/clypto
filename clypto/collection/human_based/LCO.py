@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalLCO(ClassicOptimizer):
+class OriginalLCO(Optimizer):
     """
     The original version of: Life Choice-based Optimization (LCO)
 
@@ -167,7 +167,7 @@ class DevLCO(OriginalLCO):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class ImprovedLCO(ClassicOptimizer):
+class ImprovedLCO(Optimizer):
     """
     The improved version: Life Choice-based Optimization (ILCO)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalARO(ClassicOptimizer):
+class OriginalARO(Optimizer):
     """
     The original version of: Artificial Rabbits Optimization (ARO)
 
@@ -95,7 +95,7 @@ class OriginalARO(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, minmax=self.problem.minmax)
 
 
-class LARO(ClassicOptimizer):
+class LARO(Optimizer):
     """
     The improved version of:  Lévy flight, and the selective opposition version of the artificial rabbit algorithm (LARO)
 
@@ -200,7 +200,7 @@ class LARO(ClassicOptimizer):
                         self.pop[idx].update(solution=pos_new, target=target)
 
 
-class IARO(ClassicOptimizer):
+class IARO(Optimizer):
     """
     The improved version of: Improved Artificial Rabbits Optimization (IARO)
 

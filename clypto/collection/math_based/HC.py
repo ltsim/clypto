@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalHC(ClassicOptimizer):
+class OriginalHC(Optimizer):
     """
     The original version of: Hill Climbing (HC)
 
@@ -79,7 +79,7 @@ class OriginalHC(ClassicOptimizer):
         self.pop = self.update_target_for_population(pop_neighbours)
 
 
-class SwarmHC(ClassicOptimizer):
+class SwarmHC(Optimizer):
     """
     The developed version: Swarm-based Hill Climbing (S-HC)
 

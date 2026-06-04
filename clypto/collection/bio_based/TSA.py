@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalTSA(ClassicOptimizer):
+class OriginalTSA(Optimizer):
     """
     The original version: Tunicate Swarm Algorithm (TSA)
 

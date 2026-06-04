@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalBBOA(ClassicOptimizer):
+class OriginalBBOA(Optimizer):
     """
     The original version of: Brown-Bear Optimization Algorithm (BBOA)
 

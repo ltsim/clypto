@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalDO(ClassicOptimizer):
+class OriginalDO(Optimizer):
     """
     The original version of: Dragonfly Optimization (DO)
 

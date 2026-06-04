@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalMRFO(ClassicOptimizer):
+class OriginalMRFO(Optimizer):
     """
     The original version of: Manta Ray Foraging Optimization (MRFO)
 
@@ -127,7 +127,7 @@ class OriginalMRFO(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_child, self.problem.minmax)
 
 
-class WMQIMRFO(ClassicOptimizer):
+class WMQIMRFO(Optimizer):
     """
     The original version of: Wavelet Mutation and Quadratic Interpolation MRFO (WMQIMRFO)
 

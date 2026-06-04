@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalEO(ClassicOptimizer):
+class OriginalEO(Optimizer):
     """
     The original version of: Equilibrium Optimizer (EO)
 

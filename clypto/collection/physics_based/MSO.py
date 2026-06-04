@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalMSO(ClassicOptimizer):
+class OriginalMSO(Optimizer):
     """
     The original version of: Mirage Search Optimization (MSO)
 

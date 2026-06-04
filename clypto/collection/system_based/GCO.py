@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevGCO(ClassicOptimizer):
+class DevGCO(Optimizer):
     """
     The developed version: Germinal Center Optimization (GCO)
 

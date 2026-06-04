@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalOOA(ClassicOptimizer):
+class OriginalOOA(Optimizer):
     """
     The original version of: Osprey Optimization Algorithm (OOA)
 

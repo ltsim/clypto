@@ -9,10 +9,10 @@ from math import gamma
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent, Agent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSLO(ClassicOptimizer):
+class OriginalSLO(Optimizer):
     """
     The original version of: Sea Lion Optimization Algorithm (SLO)
 
@@ -99,7 +99,7 @@ class OriginalSLO(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class ModifiedSLO(ClassicOptimizer):
+class ModifiedSLO(Optimizer):
     """
     The original version of: Modified Sea Lion Optimization (M-SLO)
 

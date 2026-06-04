@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalFOX(ClassicOptimizer):
+class OriginalFOX(Optimizer):
     """
     The original version of: Fox Optimizer (FOX)
 
@@ -97,7 +97,7 @@ class OriginalFOX(ClassicOptimizer):
             self.pop = self.update_target_for_population(pop_new)
 
 
-class DevFOX(ClassicOptimizer):
+class DevFOX(Optimizer):
     """
     The developed version of: Fox Optimizer (FOX)
 

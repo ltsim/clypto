@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevVCS(ClassicOptimizer):
+class DevVCS(Optimizer):
     """
     The developed version: Virus Colony Search (VCS)
 

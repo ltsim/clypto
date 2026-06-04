@@ -5,13 +5,13 @@ import numpy as np
 import numpy.typing as npt
 
 from clypto.agents.virtual import BaseAgent
+from clypto.utils.history import TrackHistory
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
-from clypto.utils.track import HistoryProtocol
 
 
-class Optimizer(abc.ABC):
+class AbstractOtimizer(abc.ABC):
     """
     Abstract base class that defines the contract for metaheuristic optimization
     algorithms.
@@ -44,7 +44,7 @@ class Optimizer(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def history(self) -> HistoryProtocol:
+    def history(self) -> TrackHistory:
         ...
 
     @abc.abstractmethod

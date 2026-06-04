@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalBES(ClassicOptimizer):
+class OriginalBES(Optimizer):
     """
     The original version of: Bald Eagle Search (BES)
 

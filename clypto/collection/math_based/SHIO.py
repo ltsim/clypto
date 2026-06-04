@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSHIO(ClassicOptimizer):
+class OriginalSHIO(Optimizer):
     """
     The original version of: Success History Intelligent Optimizer (SHIO)
 

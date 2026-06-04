@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalHHO(ClassicOptimizer):
+class OriginalHHO(Optimizer):
     """
     The original version of: Harris Hawks Optimization (HHO)
 

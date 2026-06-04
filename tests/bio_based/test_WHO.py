@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from clypto import FloatVar, ClassicOptimizer
+from clypto import FloatVar, Optimizer
 from clypto.collection.bio_based import WHO
 
 
@@ -29,7 +29,7 @@ def test_BaseWHO_results(problem):
                             local_alpha=0.9, local_beta=0.3, global_alpha=0.2, global_beta=0.8, delta_w=2.0,
                             delta_c=2.0)
     g_best = model.solve(problem)
-    assert isinstance(model, ClassicOptimizer)
+    assert isinstance(model, Optimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

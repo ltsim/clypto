@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalAO(ClassicOptimizer):
+class OriginalAO(Optimizer):
     """
     The original version of: Aquila Optimization (AO)
 
@@ -104,7 +104,7 @@ class OriginalAO(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class AAO(ClassicOptimizer):
+class AAO(Optimizer):
     """
     The original version of: Adaptive Aquila Optimizer (AAO)
 

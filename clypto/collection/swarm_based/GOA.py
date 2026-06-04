@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalGOA(ClassicOptimizer):
+class OriginalGOA(Optimizer):
     """
     The original version of: Grasshopper Optimization Algorithm (GOA)
 

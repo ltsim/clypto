@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevSCA(ClassicOptimizer):
+class DevSCA(Optimizer):
     """
     The developed version: Sine Cosine Algorithm (SCA)
 

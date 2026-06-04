@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalGBO(ClassicOptimizer):
+class OriginalGBO(Optimizer):
     """
     The original version of: Gradient-Based Optimizer (GBO)
 

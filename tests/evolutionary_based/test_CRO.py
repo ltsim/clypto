@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from clypto import FloatVar, ClassicOptimizer
+from clypto import FloatVar, Optimizer
 from clypto.collection.evolutionary_based import CRO
 
 
@@ -39,7 +39,7 @@ def test_OriginalCRO_results(problem):
     n_trials = 5
     model = CRO.OriginalCRO(epoch, pop_size, po, Fb, Fa, Fd, Pd, GCR, gamma_min, gamma_max, n_trials)
     g_best = model.solve(problem)
-    assert isinstance(model, ClassicOptimizer)
+    assert isinstance(model, Optimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 
@@ -58,7 +58,7 @@ def test_OCRO_results(problem):
     n_trials = 5
     model = CRO.OriginalCRO(epoch, pop_size, po, Fb, Fa, Fd, Pd, GCR, gamma_min, gamma_max, n_trials)
     g_best = model.solve(problem)
-    assert isinstance(model, ClassicOptimizer)
+    assert isinstance(model, Optimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

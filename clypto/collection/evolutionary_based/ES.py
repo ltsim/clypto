@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent, Agent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalES(ClassicOptimizer):
+class OriginalES(Optimizer):
     """
     The original version of: Evolution Strategies (ES)
 
@@ -181,7 +181,7 @@ class LevyES(OriginalES):
                                                           self.problem.minmax)
 
 
-class CMA_ES(ClassicOptimizer):
+class CMA_ES(Optimizer):
     """
     The original version of: Covariance Matrix Adaptation Evolution Strategy (CMA-ES)
 
@@ -305,7 +305,7 @@ class CMA_ES(ClassicOptimizer):
             self.C = V * E / V
 
 
-class Simple_CMA_ES(ClassicOptimizer):
+class Simple_CMA_ES(Optimizer):
     """
     The simple version of: Covariance Matrix Adaptation Evolution Strategy (Simple-CMA-ES)
 

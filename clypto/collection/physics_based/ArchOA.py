@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent, Agent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalArchOA(ClassicOptimizer):
+class OriginalArchOA(Optimizer):
     """
     The original version of: Archimedes Optimization Algorithm (ArchOA)
 

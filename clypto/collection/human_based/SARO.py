@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevSARO(ClassicOptimizer):
+class DevSARO(Optimizer):
     """
     The developed version: Search And Rescue Optimization (SARO)
 

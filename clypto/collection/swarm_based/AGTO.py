@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalAGTO(ClassicOptimizer):
+class OriginalAGTO(Optimizer):
     """
     The original version of: Artificial Gorilla Troops Optimization (AGTO)
 
@@ -125,7 +125,7 @@ class OriginalAGTO(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class MGTO(ClassicOptimizer):
+class MGTO(Optimizer):
     """
     The original version of: Modified Gorilla Troops Optimization (mGTO)
 

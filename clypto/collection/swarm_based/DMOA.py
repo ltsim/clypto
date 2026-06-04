@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalDMOA(ClassicOptimizer):
+class OriginalDMOA(Optimizer):
     """
     The original version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 
@@ -122,7 +122,7 @@ class OriginalDMOA(ClassicOptimizer):
             self.pop[idx] = self.generate_agent(new_pos)
 
 
-class DevDMOA(ClassicOptimizer):
+class DevDMOA(Optimizer):
     """
     The developed version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 

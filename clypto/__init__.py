@@ -34,7 +34,7 @@ from clypto.collection.swarm_based import AO, JA, EHO, NMRA, PSO, CoatiOA, BA, T
     SSA
 from clypto.collection.system_based import AEO, GCO
 from clypto.collection.system_based import WCA
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 from clypto.utils.problem import Problem
 from clypto.utils.space import (IntegerVar, FloatVar, StringVar, BinaryVar, BoolVar, CategoricalVar,
                                 SequenceVar, PermutationVar, TransferBinaryVar, TransferBoolVar)
@@ -59,7 +59,7 @@ def get_all_optimizers(verbose=False):
     for name, obj in inspect.getmembers(sys.modules[__name__]):
         if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES):
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, ClassicOptimizer):
+                if inspect.isclass(cls_obj) and issubclass(cls_obj, Optimizer):
                     cls[cls_name] = cls_obj
 
     if verbose:
@@ -107,7 +107,7 @@ def get_optimizer_by_name(name: str, verbose=False):
         if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES) and (module_name == name):
             flag = True
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, ClassicOptimizer):
+                if inspect.isclass(cls_obj) and issubclass(cls_obj, Optimizer):
                     cls[cls_name] = cls_obj
     if verbose:
         if not flag:

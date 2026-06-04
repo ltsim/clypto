@@ -8,10 +8,10 @@ from functools import reduce
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevTLO(ClassicOptimizer):
+class DevTLO(Optimizer):
     """
     The developed version: Teaching Learning-based Optimization (TLO)
 

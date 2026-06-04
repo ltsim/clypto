@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.virtual import BaseAgent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalESOA(ClassicOptimizer):
+class OriginalESOA(Optimizer):
     """
     The original version of: Egret Swarm Optimization Algorithm (ESOA)
 

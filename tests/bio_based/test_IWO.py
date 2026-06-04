@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from clypto import FloatVar, ClassicOptimizer
+from clypto import FloatVar, Optimizer
 from clypto.collection.bio_based import IWO
 
 
@@ -35,7 +35,7 @@ def test_OriginalIWO_results(problem):
 
     model = IWO.OriginalIWO(epoch, pop_size, seed_min, seed_max, exponent, sigma_start, sigma_end)
     g_best = model.solve(problem)
-    assert isinstance(model, ClassicOptimizer)
+    assert isinstance(model, Optimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

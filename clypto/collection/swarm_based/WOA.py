@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalWOA(ClassicOptimizer):
+class OriginalWOA(Optimizer):
     """
     The original version of: Whale Optimization Algorithm (WOA)
 
@@ -93,7 +93,7 @@ class OriginalWOA(ClassicOptimizer):
             self.pop = self.update_target_for_population(pop_new)
 
 
-class DevWOA(ClassicOptimizer):
+class DevWOA(Optimizer):
     """
     The developed version of: Whale Optimization Algorithm (WOA)
 
@@ -181,7 +181,7 @@ class DevWOA(ClassicOptimizer):
             self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
 
 
-class HI_WOA(ClassicOptimizer):
+class HI_WOA(Optimizer):
     """
     The original version of: Hybrid Improved Whale Optimization Algorithm (HI-WOA)
 

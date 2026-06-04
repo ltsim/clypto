@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalCircleSA(ClassicOptimizer):
+class OriginalCircleSA(Optimizer):
     """
     The original version of: Circle Search Algorithm (CircleSA)
 

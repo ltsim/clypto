@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalCEM(ClassicOptimizer):
+class OriginalCEM(Optimizer):
     """
     The original version of: Cross-Entropy Method (CEM)
 

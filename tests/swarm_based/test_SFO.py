@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from clypto import FloatVar, ClassicOptimizer
+from clypto import FloatVar, Optimizer
 from clypto.collection.swarm_based import SFO
 
 
@@ -32,6 +32,6 @@ def test_SFO_results(problem):
     ]
     for model in models:
         g_best = model.solve(problem)
-        assert isinstance(model, ClassicOptimizer)
+        assert isinstance(model, Optimizer)
         assert isinstance(g_best.solution, np.ndarray)
         assert len(g_best.solution) == len(model.problem.lb)

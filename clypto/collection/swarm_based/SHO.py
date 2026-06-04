@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSHO(ClassicOptimizer):
+class OriginalSHO(Optimizer):
     """
     The original version of: Spotted Hyena Optimizer (SHO)
 

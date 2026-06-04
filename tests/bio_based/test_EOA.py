@@ -7,7 +7,7 @@
 import numpy as np
 import pytest
 
-from clypto import FloatVar, ClassicOptimizer
+from clypto import FloatVar, Optimizer
 from clypto.collection.bio_based import EOA
 
 
@@ -36,7 +36,7 @@ def test_BaseEOA_results(problem):
     gama = 0.9
     model = EOA.OriginalEOA(epoch, pop_size, p_c, p_m, n_best, alpha, beta, gama)
     g_best = model.solve(problem)
-    assert isinstance(model, ClassicOptimizer)
+    assert isinstance(model, Optimizer)
     assert isinstance(g_best.solution, np.ndarray)
     assert len(g_best.solution) == len(model.problem.lb)
 

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevSMO(ClassicOptimizer):
+class DevSMO(Optimizer):
     """
     The developed version of: Spider Monkey Optimization (SMO)
 

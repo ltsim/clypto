@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import cauchy, norm
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalLSHADEcnEpSin(ClassicOptimizer):
+class OriginalLSHADEcnEpSin(Optimizer):
     """
     The original version of: Ensemble sinusoidal differential covariance matrix adaptation with Euclidean neighborhood (LSHADEcnEpSin)
 

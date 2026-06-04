@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSOO(ClassicOptimizer):
+class OriginalSOO(Optimizer):
     """
     The original version of: Stellar Oscillation Optimizer (SOO)
 

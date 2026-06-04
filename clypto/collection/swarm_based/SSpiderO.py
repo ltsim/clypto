@@ -8,10 +8,10 @@ import numpy as np
 
 from clypto.agents import Agent
 from clypto.agents.virtual import BaseAgent
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSSpiderO(ClassicOptimizer):
+class OriginalSSpiderO(Optimizer):
     """
     The original version of: Social Spider Optimization (SSpiderO)
 

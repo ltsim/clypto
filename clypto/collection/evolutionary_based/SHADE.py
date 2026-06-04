@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import cauchy
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSHADE(ClassicOptimizer):
+class OriginalSHADE(Optimizer):
     """
     The original version of: Success-History Adaptation Differential Evolution (OriginalSHADE)
 
@@ -167,7 +167,7 @@ class OriginalSHADE(ClassicOptimizer):
                 self.k_counter = 0
 
 
-class L_SHADE(ClassicOptimizer):
+class L_SHADE(Optimizer):
     """
     The original version of: Linear Population Size Reduction Success-History Adaptation Differential Evolution (LSHADE)
 

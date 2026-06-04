@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSFOA(ClassicOptimizer):
+class OriginalSFOA(Optimizer):
     """
     The original version: Starfish Optimization Algorithm (SFOA)
 

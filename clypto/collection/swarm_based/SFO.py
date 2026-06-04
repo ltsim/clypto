@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalSFO(ClassicOptimizer):
+class OriginalSFO(Optimizer):
     """
     The original version of: SailFish Optimizer (SFO)
 
@@ -146,7 +146,7 @@ class OriginalSFO(ClassicOptimizer):
         self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)
 
 
-class ImprovedSFO(ClassicOptimizer):
+class ImprovedSFO(Optimizer):
     """
     The original version: Improved Sailfish Optimizer (I-SFO)
 

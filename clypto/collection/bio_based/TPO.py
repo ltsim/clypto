@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevTPO(ClassicOptimizer):
+class DevTPO(Optimizer):
     """
     The original version: Tree Physiology Optimization (TPO)
 

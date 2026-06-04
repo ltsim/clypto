@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import qmc
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalPSS(ClassicOptimizer):
+class OriginalPSS(Optimizer):
     """
     The original version of: Pareto-like Sequential Sampling (PSS)
 

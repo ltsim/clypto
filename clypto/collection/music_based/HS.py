@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class DevHS(ClassicOptimizer):
+class DevHS(Optimizer):
     """
     The developed version: Harmony Search (HS)
 

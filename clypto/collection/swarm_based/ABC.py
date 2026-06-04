@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalABC(ClassicOptimizer):
+class OriginalABC(Optimizer):
     """
     The original version of: Artificial Bee Colony (ABC)
 

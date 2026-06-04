@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import ClassicOptimizer
+from clypto.optimizer.classic import Optimizer
 
 
-class OriginalPFA(ClassicOptimizer):
+class OriginalPFA(Optimizer):
     """
     The original version of: Pathfinder Algorithm (PFA)
 

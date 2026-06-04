@@ -109,6 +109,7 @@ setup(
             "flake8>=7.0",
             "pandas-stubs>=2.2.3",
             "scipy-stubs>=1.15.0",
+            "black>=26.5.1"
         ],
     },
 )
