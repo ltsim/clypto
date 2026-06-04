@@ -51,16 +51,16 @@ class OriginalICA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        empire_count: int = 5,
-        assimilation_coeff: float = 1.5,
-        revolution_prob: float = 0.05,
-        revolution_rate: float = 0.1,
-        revolution_step_size: float = 0.1,
-        zeta: float = 0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            empire_count: int = 5,
+            assimilation_coeff: float = 1.5,
+            revolution_prob: float = 0.05,
+            revolution_rate: float = 0.1,
+            revolution_step_size: float = 0.1,
+            zeta: float = 0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -107,7 +107,7 @@ class OriginalICA(Optimizer):
         self.sort_flag = True
 
     def revolution_country__(
-        self, solution: np.ndarray, n_revoluted: int
+            self, solution: np.ndarray, n_revoluted: int
     ) -> np.ndarray:
         pos_new = solution + self.revolution_step_size * self.generator.normal(
             0, 1, self.problem.n_dims
@@ -134,13 +134,13 @@ class OriginalICA(Optimizer):
         # pop = Empires
         colony_count = self.pop_size - self.empire_count
         self.pop_empires = [agent.copy() for agent in self.pop[: self.empire_count]]
-        self.pop_colonies = [agent.copy() for agent in self.pop[self.empire_count :]]
+        self.pop_colonies = [agent.copy() for agent in self.pop[self.empire_count:]]
 
         cost_empires_list = np.array(
             [agent.target.fitness for agent in self.pop_empires]
         )
         cost_empires_list_normalized = cost_empires_list - (
-            np.max(cost_empires_list) + np.min(cost_empires_list)
+                np.max(cost_empires_list) + np.min(cost_empires_list)
         )
         prob_empires_list = np.abs(
             cost_empires_list_normalized / np.sum(cost_empires_list_normalized)
@@ -175,10 +175,10 @@ class OriginalICA(Optimizer):
         for idx, colonies in self.empires.items():
             for idx_colony, colony in enumerate(colonies):
                 pos_new = (
-                    colony.solution
-                    + self.assimilation_coeff
-                    * self.generator.uniform(0, 1, self.problem.n_dims)
-                    * (self.pop_empires[idx].solution - colony.solution)
+                        colony.solution
+                        + self.assimilation_coeff
+                        * self.generator.uniform(0, 1, self.problem.n_dims)
+                        * (self.pop_empires[idx].solution - colony.solution)
                 )
                 pos_new = self.correct_solution(pos_new)
                 self.empires[idx][idx_colony].solution = pos_new
@@ -212,7 +212,7 @@ class OriginalICA(Optimizer):
         for idx, colonies in self.empires.items():
             for idx_colony, colony in enumerate(colonies):
                 if self.compare_target(
-                    colony.target, self.pop_empires[idx].target, self.problem.minmax
+                        colony.target, self.pop_empires[idx].target, self.problem.minmax
                 ):
                     self.empires[idx][idx_colony], self.pop_empires[idx] = (
                         self.pop_empires[idx].copy(),
@@ -229,7 +229,7 @@ class OriginalICA(Optimizer):
         cost_empires_list = np.array(cost_empires_list)
         # Find possession probability of each empire based on its total power
         cost_empires_list_normalized = cost_empires_list - (
-            np.max(cost_empires_list) + np.min(cost_empires_list)
+                np.max(cost_empires_list) + np.min(cost_empires_list)
         )
         prob_empires_list = np.abs(
             cost_empires_list_normalized / np.sum(cost_empires_list_normalized)

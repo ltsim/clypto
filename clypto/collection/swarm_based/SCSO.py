@@ -43,7 +43,7 @@ class OriginalSCSO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -77,8 +77,8 @@ class OriginalSCSO(Optimizer):
         for idx in range(0, self.pop_size):
             r = self.generator.random() * guides_r
             R = (
-                2 * guides_r
-            ) * self.generator.random() - guides_r  # controls to transition phases
+                        2 * guides_r
+                ) * self.generator.random() - guides_r  # controls to transition phases
             pos_new = self.pop[idx].solution.copy()
             for jdx in range(0, self.problem.n_dims):
                 teta = self.get_index_roulette_wheel_selection__(self.pp)
@@ -93,8 +93,8 @@ class OriginalSCSO(Optimizer):
                 else:
                     cp = int(self.generator.random() * self.pop_size)
                     pos_new[jdx] = r * (
-                        self.pop[cp].solution[jdx]
-                        - self.generator.random() * self.pop[idx].solution[jdx]
+                            self.pop[cp].solution[jdx]
+                            - self.generator.random() * self.pop[idx].solution[jdx]
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

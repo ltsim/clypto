@@ -44,7 +44,7 @@ class OriginalSSDO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -84,18 +84,18 @@ class OriginalSSDO(Optimizer):
         for i in range(0, self.pop_size):
             if r2 <= 0.5:  ## Use Sine function to move
                 vel_new = c * np.sin(r1) * (
-                    self.pop[i].local_solution - self.pop[i].solution
+                        self.pop[i].local_solution - self.pop[i].solution
                 ) + (2 - c) * np.sin(r1) * (pos_mean - self.pop[i].solution)
             else:  ## Use Cosine function to move
                 vel_new = c * np.cos(r1) * (
-                    self.pop[i].local_solution - self.pop[i].solution
+                        self.pop[i].local_solution - self.pop[i].solution
                 ) + (2 - c) * np.cos(r1) * (pos_mean - self.pop[i].solution)
             pop_new[i].velocity = vel_new
         ## Reproduction
         for idx in range(0, self.pop_size):
             pos_new = (
-                self.generator.normal(0, 1, self.problem.n_dims) * pop_new[idx].solution
-                + self.generator.random() * pop_new[idx].velocity
+                    self.generator.normal(0, 1, self.problem.n_dims) * pop_new[idx].solution
+                    + self.generator.random() * pop_new[idx].velocity
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

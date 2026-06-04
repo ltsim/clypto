@@ -63,7 +63,7 @@ class DevSOA(Optimizer):
         uu = vv = 1
         pop_new = []
         for idx in range(0, self.pop_size):
-            B = 2 * A**2 * self.generator.random()  # Eq. 8
+            B = 2 * A ** 2 * self.generator.random()  # Eq. 8
             M = B * (self.g_best.solution - self.pop[idx].solution)  # Eq. 7
             C = A * self.pop[idx].solution  # Eq. 5
             D = np.abs(C + M)  # Eq. 9
@@ -73,7 +73,7 @@ class DevSOA(Optimizer):
             yy = r * np.sin(k)
             zz = r * k
             pos_new = (
-                xx * yy * zz * D + self.generator.normal(0, 1) * self.g_best.solution
+                    xx * yy * zz * D + self.generator.normal(0, 1) * self.g_best.solution
             )  # Eq. 14
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -144,7 +144,7 @@ class OriginalSOA(Optimizer):
         uu = vv = 1
         pop_new = []
         for idx in range(0, self.pop_size):
-            B = 2 * A**2 * self.generator.random()  # Eq. 8
+            B = 2 * A ** 2 * self.generator.random()  # Eq. 8
             M = B * (self.g_best.solution - self.pop[idx].solution)  # Eq. 7
             C = A * self.pop[idx].solution  # Eq. 5
             D = np.abs(C + M)  # Eq. 9

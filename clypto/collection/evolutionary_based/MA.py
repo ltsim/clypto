@@ -51,15 +51,15 @@ class OriginalMA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pc: float = 0.85,
-        pm: float = 0.15,
-        p_local: float = 0.5,
-        max_local_gens: int = 10,
-        bits_per_param: int = 4,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pc: float = 0.85,
+            pm: float = 0.15,
+            p_local: float = 0.5,
+            max_local_gens: int = 10,
+            bits_per_param: int = 4,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -123,11 +123,11 @@ class OriginalMA(Optimizer):
         vector = np.ones(self.problem.n_dims)
         for idx in range(0, self.problem.n_dims):
             param = bitstring[
-                idx * self.bits_per_param : (idx + 1) * self.bits_per_param
+                idx * self.bits_per_param: (idx + 1) * self.bits_per_param
             ]  # Select 16 bit every time
             vector[idx] = self.problem.lb[idx] + (
-                (self.problem.ub[idx] - self.problem.lb[idx])
-                / ((2.0**self.bits_per_param) - 1)
+                    (self.problem.ub[idx] - self.problem.lb[idx])
+                    / ((2.0 ** self.bits_per_param) - 1)
             ) * int(param, 2)
         return vector
 

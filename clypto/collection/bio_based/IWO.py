@@ -53,15 +53,15 @@ class OriginalIWO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        seed_min: int = 2,
-        seed_max: int = 10,
-        exponent: int = 2,
-        sigma_start: float = 1.0,
-        sigma_end: float = 0.01,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            seed_min: int = 2,
+            seed_max: int = 10,
+            exponent: int = 2,
+            sigma_start: float = 1.0,
+            sigma_end: float = 0.01,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -107,7 +107,7 @@ class OriginalIWO(Optimizer):
         """
         # Update Standard Deviation
         sigma = (1.0 - epoch / self.epoch) ** self.exponent * (
-            self.sigma_start - self.sigma_end
+                self.sigma_start - self.sigma_end
         ) + self.sigma_end
         pop, list_best, list_worst = self.get_special_agents(
             self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax

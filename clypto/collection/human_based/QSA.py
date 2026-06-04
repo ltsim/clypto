@@ -38,7 +38,7 @@ class DevQSA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -91,7 +91,7 @@ class DevQSA(Optimizer):
             alpha = self.generator.uniform(-1, 1)
             E = self.generator.exponential(0.5, self.problem.n_dims)
             F1 = beta * alpha * (
-                E * np.abs(A - pop[idx].solution)
+                    E * np.abs(A - pop[idx].solution)
             ) + self.generator.exponential(0.5) * (A - pop[idx].solution)
             F2 = beta * alpha * (E * np.abs(A - pop[idx].solution))
             if case == 1:
@@ -99,7 +99,7 @@ class DevQSA(Optimizer):
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                    agent.target, pop[idx].target, self.problem.minmax
+                        agent.target, pop[idx].target, self.problem.minmax
                 ):
                     pop[idx] = agent
                 else:
@@ -109,7 +109,7 @@ class DevQSA(Optimizer):
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                    agent.target, pop[idx].target, self.problem.minmax
+                        agent.target, pop[idx].target, self.problem.minmax
                 ):
                     pop[idx] = agent
                 else:
@@ -137,11 +137,11 @@ class DevQSA(Optimizer):
                 i1, i2 = self.generator.choice(self.pop_size, 2, replace=False)
                 if self.generator.random() < cv:
                     X_new = pop[idx].solution + self.generator.exponential(0.5) * (
-                        pop[i1].solution - pop[i2].solution
+                            pop[i1].solution - pop[i2].solution
                     )
                 else:
                     X_new = pop[idx].solution + self.generator.exponential(0.5) * (
-                        A - pop[i1].solution
+                            A - pop[i1].solution
                     )
             else:
                 X_new = self.problem.generate_solution()
@@ -226,7 +226,7 @@ class OppoQSA(DevQSA):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -294,7 +294,7 @@ class LevyQSA(DevQSA):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -328,12 +328,12 @@ class LevyQSA(DevQSA):
                         beta=1.0, multiplier=0.001, case=-1
                     )
                     X_new = (
-                        pop[idx].solution
-                        + self.generator.normal(0, 1, self.problem.n_dims) * levy_step
+                            pop[idx].solution
+                            + self.generator.normal(0, 1, self.problem.n_dims) * levy_step
                     )
                 else:
                     X_new = pop[idx].solution + self.generator.exponential(0.5) * (
-                        A - pop[id1].solution
+                            A - pop[id1].solution
                     )
                 pos_new = self.correct_solution(X_new)
             else:
@@ -400,7 +400,7 @@ class ImprovedQSA(OppoQSA, LevyQSA):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -456,7 +456,7 @@ class OriginalQSA(DevQSA):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:

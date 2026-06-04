@@ -7,7 +7,6 @@
 from functools import reduce
 
 import numpy as np
-
 from clypto.optimizer.classic import Optimizer
 
 
@@ -48,7 +47,7 @@ class DevTLO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -74,7 +73,7 @@ class DevTLO(Optimizer):
             TF = self.generator.integers(1, 3)  # 1 or 2 (never 3)
             list_pos = np.array([agent.solution for agent in self.pop])
             DIFF_MEAN = self.generator.random(self.problem.n_dims) * (
-                self.g_best.solution - TF * np.mean(list_pos, axis=0)
+                    self.g_best.solution - TF * np.mean(list_pos, axis=0)
             )
             pos_new = self.pop[idx].solution + DIFF_MEAN
             pos_new = self.correct_solution(pos_new)
@@ -98,14 +97,14 @@ class DevTLO(Optimizer):
                 np.setxor1d(np.array(range(self.pop_size)), np.array([idx]))
             )
             if self.compare_target(
-                self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax
+                    self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax
             ):
                 pos_new += self.generator.random(self.problem.n_dims) * (
-                    self.pop[idx].solution - self.pop[id_partner].solution
+                        self.pop[idx].solution - self.pop[id_partner].solution
                 )
             else:
                 pos_new += self.generator.random(self.problem.n_dims) * (
-                    self.pop[id_partner].solution - self.pop[idx].solution
+                        self.pop[id_partner].solution - self.pop[idx].solution
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -157,7 +156,7 @@ class OriginalTLO(DevTLO):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -186,7 +185,7 @@ class OriginalTLO(DevTLO):
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
             ## Learning Phrase
@@ -195,19 +194,19 @@ class OriginalTLO(DevTLO):
             )
             #### Remove third loop here
             if self.compare_target(
-                self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax
+                    self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax
             ):
                 diff = self.pop[idx].solution - self.pop[id_partner].solution
             else:
                 diff = self.pop[id_partner].solution - self.pop[idx].solution
             pos_new = (
-                self.pop[idx].solution
-                + self.generator.uniform(0, 1, self.problem.n_dims) * diff
+                    self.pop[idx].solution
+                    + self.generator.uniform(0, 1, self.problem.n_dims) * diff
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
 
@@ -248,11 +247,11 @@ class ImprovedTLO(DevTLO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        n_teachers: int = 5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            n_teachers: int = 5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -275,7 +274,7 @@ class ImprovedTLO(DevTLO):
         sorted_pop = self.get_sorted_population(self.pop, self.problem.minmax)
         self.g_best = sorted_pop[0].copy()
         self.teachers = sorted_pop[: self.n_teachers].copy()
-        sorted_pop = sorted_pop[self.n_teachers :]
+        sorted_pop = sorted_pop[self.n_teachers:]
         idx_list = self.generator.permutation(range(0, self.n_students))
         self.teams = []
         for id_teacher in range(0, self.n_teachers):
@@ -305,25 +304,25 @@ class ImprovedTLO(DevTLO):
                 else:
                     TF = student.target.fitness / teacher.target.fitness
                 diff_mean = self.generator.random() * (
-                    teacher.solution - TF * mean_team
+                        teacher.solution - TF * mean_team
                 )  # Step 8
                 id2 = self.generator.choice(
                     list(set(range(0, self.n_teachers)) - {id_teach})
                 )
                 if self.compare_target(
-                    teacher.target, team[id2].target, self.problem.minmax
+                        teacher.target, team[id2].target, self.problem.minmax
                 ):
                     pos_new = (
-                        student.solution + diff_mean
-                    ) + self.generator.random() * (
-                        team[id2].solution - student.solution
-                    )
+                                      student.solution + diff_mean
+                              ) + self.generator.random() * (
+                                      team[id2].solution - student.solution
+                              )
                 else:
                     pos_new = (
-                        student.solution + diff_mean
-                    ) + self.generator.random() * (
-                        student.solution - team[id2].solution
-                    )
+                                      student.solution + diff_mean
+                              ) + self.generator.random() * (
+                                      student.solution - team[id2].solution
+                              )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
@@ -348,22 +347,22 @@ class ImprovedTLO(DevTLO):
                     list(set(range(0, self.n_students_in_team)) - {id_stud})
                 )
                 if self.compare_target(
-                    student.target, team[id2].target, self.problem.minmax
+                        student.target, team[id2].target, self.problem.minmax
                 ):
                     pos_new = (
-                        student.solution
-                        + self.generator.random()
-                        * (student.solution - team[id2].solution)
-                        + self.generator.random()
-                        * (teacher.solution - ef * team[id2].solution)
+                            student.solution
+                            + self.generator.random()
+                            * (student.solution - team[id2].solution)
+                            + self.generator.random()
+                            * (teacher.solution - ef * team[id2].solution)
                     )
                 else:
                     pos_new = (
-                        student.solution
-                        + self.generator.random()
-                        * (team[id2].solution - student.solution)
-                        + self.generator.random()
-                        * (teacher.solution - ef * student.solution)
+                            student.solution
+                            + self.generator.random()
+                            * (team[id2].solution - student.solution)
+                            + self.generator.random()
+                            * (teacher.solution - ef * student.solution)
                     )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)

@@ -48,7 +48,7 @@ class OriginalMPA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -87,23 +87,23 @@ class OriginalMPA(Optimizer):
             R = self.generator.random(self.problem.n_dims)
             if epoch < self.epoch / 3:  # Phase 1 (Eq.12)
                 step_size = RB[idx] * (
-                    self.g_best.solution - RB[idx] * self.pop[idx].solution
+                        self.g_best.solution - RB[idx] * self.pop[idx].solution
                 )
                 pos_new = self.pop[idx].solution + self.P * R * step_size
             elif self.epoch / 3 < epoch < 2 * self.epoch / 3:  # Phase 2 (Eqs. 13 & 14)
                 if idx > self.pop_size / 2:
                     step_size = RB[idx] * (
-                        RB[idx] * self.g_best.solution - self.pop[idx].solution
+                            RB[idx] * self.g_best.solution - self.pop[idx].solution
                     )
                     pos_new = self.g_best.solution + self.P * CF * step_size
                 else:
                     step_size = RL[idx] * (
-                        self.g_best.solution - RL[idx] * self.pop[idx].solution
+                            self.g_best.solution - RL[idx] * self.pop[idx].solution
                     )
                     pos_new = self.pop[idx].solution + self.P * R * step_size
             else:  # Phase 3 (Eq. 15)
                 step_size = RL[idx] * (
-                    RL[idx] * self.g_best.solution - self.pop[idx].solution
+                        RL[idx] * self.g_best.solution - self.pop[idx].solution
                 )
                 pos_new = self.g_best.solution + self.P * CF * step_size
             pos_new = self.correct_solution(pos_new)
@@ -112,19 +112,19 @@ class OriginalMPA(Optimizer):
                     self.generator.random(self.problem.n_dims) < self.FADS, 1, 0
                 )
                 pos_new = (
-                    pos_new
-                    + CF
-                    * (
-                        self.problem.lb
-                        + self.generator.random(self.problem.n_dims)
-                        * (self.problem.ub - self.problem.lb)
-                    )
-                    * u
+                        pos_new
+                        + CF
+                        * (
+                                self.problem.lb
+                                + self.generator.random(self.problem.n_dims)
+                                * (self.problem.ub - self.problem.lb)
+                        )
+                        * u
                 )
             else:
                 r = self.generator.random()
                 step_size = (self.FADS * (1 - r) + r) * (
-                    self.pop[per1[idx]].solution - self.pop[per2[idx]].solution
+                        self.pop[per1[idx]].solution - self.pop[per2[idx]].solution
                 )
                 pos_new = pos_new + step_size
             pos_new = self.correct_solution(pos_new)

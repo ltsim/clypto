@@ -65,11 +65,11 @@ class OriginalCircleSA(Optimizer):
             w = a * self.generator.random() - a
             if epoch > threshold:
                 x_new = self.g_best.solution + (
-                    self.g_best.solution - self.pop[idx].solution
+                        self.g_best.solution - self.pop[idx].solution
                 ) * np.tan(w * self.generator.random())
             else:
                 x_new = self.g_best.solution - (
-                    self.g_best.solution - self.pop[idx].solution
+                        self.g_best.solution - self.pop[idx].solution
                 ) * np.tan(w * p)
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)

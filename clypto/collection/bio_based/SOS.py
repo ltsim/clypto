@@ -60,32 +60,32 @@ class OriginalSOS(Optimizer):
             mutual_vector = (self.pop[idx].solution + self.pop[jdx].solution) / 2
             bf1, bf2 = self.generator.integers(1, 3, 2)
             xi_new = self.pop[idx].solution + self.generator.random() * (
-                self.g_best.solution - bf1 * mutual_vector
+                    self.g_best.solution - bf1 * mutual_vector
             )
             xj_new = self.pop[jdx].solution + self.generator.random() * (
-                self.g_best.solution - bf2 * mutual_vector
+                    self.g_best.solution - bf2 * mutual_vector
             )
             xi_new = self.correct_solution(xi_new)
             xj_new = self.correct_solution(xj_new)
             xi_target = self.get_target(xi_new)
             xj_target = self.get_target(xj_new)
             if self.compare_target(
-                xi_target, self.pop[idx].target, self.problem.minmax
+                    xi_target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx].update(solution=xi_new, target=xi_target)
             if self.compare_target(
-                xj_target, self.pop[jdx].target, self.problem.minmax
+                    xj_target, self.pop[jdx].target, self.problem.minmax
             ):
                 self.pop[jdx].update(solution=xj_new, target=xj_target)
             ## Commensalism phase
             jdx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
             xi_new = self.pop[idx].solution + self.generator.uniform(-1, 1) * (
-                self.g_best.solution - self.pop[jdx].solution
+                    self.g_best.solution - self.pop[jdx].solution
             )
             xi_new = self.correct_solution(xi_new)
             xi_target = self.get_target(xi_new)
             if self.compare_target(
-                xi_target, self.pop[idx].target, self.problem.minmax
+                    xi_target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx].update(solution=xi_new, target=xi_target)
             ## Parasitism phase
@@ -96,6 +96,6 @@ class OriginalSOS(Optimizer):
             xi_new = self.correct_solution(xi_new)
             xi_target = self.get_target(xi_new)
             if self.compare_target(
-                xi_target, self.pop[idx].target, self.problem.minmax
+                    xi_target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx].update(solution=xi_new, target=xi_target)

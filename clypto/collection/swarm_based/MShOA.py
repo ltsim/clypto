@@ -79,13 +79,13 @@ class OriginalMShOA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        polarization_rate: float = 0.5,
-        strike_factor: float = 1.5,
-        k_value: float = 0.3,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            polarization_rate: float = 0.5,
+            strike_factor: float = 1.5,
+            k_value: float = 0.3,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -209,7 +209,7 @@ class OriginalMShOA(Optimizer):
             0.0, self.k_value, size=(self.pop_size, 1)
         )  # k ~ U(0, k_value)
         defense_or_shelter = (
-            self.generator.random(self.pop_size) < 0.5
+                self.generator.random(self.pop_size) < 0.5
         )  # 50% defense, 50% shelter
         defense_or_shelter_expanded = defense_or_shelter[:, np.newaxis]
         # Defense: x_i(t+1) = x_best + k * x_best
@@ -225,10 +225,10 @@ class OriginalMShOA(Optimizer):
         # LPA_i = arccos((X_i(t) · X'_i(t)) / (||X_i(t)|| ||X'_i(t)||))
         # Normalize vectors for dot product calculation
         pop_pos_norm = pop_pos / (
-            np.linalg.norm(pop_pos, axis=1, keepdims=True) + 1e-10
+                np.linalg.norm(pop_pos, axis=1, keepdims=True) + 1e-10
         )
         pos_new_norm = pos_new / (
-            np.linalg.norm(pos_new, axis=1, keepdims=True) + 1e-10
+                np.linalg.norm(pos_new, axis=1, keepdims=True) + 1e-10
         )
         dot_product = np.sum(pop_pos_norm * pos_new_norm, axis=1)
         dot_product = np.clip(dot_product, -1.0, 1.0)  # Ensure valid range for arccos

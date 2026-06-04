@@ -47,7 +47,7 @@ class OriginalSHIO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -75,19 +75,19 @@ class OriginalSHIO(Optimizer):
         for idx in range(0, self.pop_size):
             a = a - 0.04
             x1 = b1.solution + (
-                a * 2 * self.generator.random(self.problem.n_dims) - a
+                    a * 2 * self.generator.random(self.problem.n_dims) - a
             ) * np.abs(
                 self.generator.random(self.problem.n_dims) * b1.solution
                 - self.pop[idx].solution
             )
             x2 = b2.solution + (
-                a * 2 * self.generator.random(self.problem.n_dims) - a
+                    a * 2 * self.generator.random(self.problem.n_dims) - a
             ) * np.abs(
                 self.generator.random(self.problem.n_dims) * b2.solution
                 - self.pop[idx].solution
             )
             x3 = b3.solution + (
-                a * 2 * self.generator.random(self.problem.n_dims) - a
+                    a * 2 * self.generator.random(self.problem.n_dims) - a
             ) * np.abs(
                 self.generator.random(self.problem.n_dims) * b3.solution
                 - self.pop[idx].solution

@@ -57,7 +57,7 @@ class OriginalSOO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -95,21 +95,21 @@ class OriginalSOO(Optimizer):
 
             # Calculate oscillation positions
             osc1 = (
-                scaler
-                * (caf * r1 - 1)
-                * (
-                    self.pop[idx].solution
-                    - np.abs(r1 * np.sin(r2) * np.abs(r3 * self.g_best.solution))
-                )
+                    scaler
+                    * (caf * r1 - 1)
+                    * (
+                            self.pop[idx].solution
+                            - np.abs(r1 * np.sin(r2) * np.abs(r3 * self.g_best.solution))
+                    )
             )
             osc1_pos = self.g_best.solution - r1 * r3 * osc1
             osc2 = (
-                scaler
-                * (caf * r1 - 1)
-                * (
-                    self.pop[idx].solution
-                    - np.abs(r1 * np.cos(r2) * np.abs(r3 * self.g_best.solution))
-                )
+                    scaler
+                    * (caf * r1 - 1)
+                    * (
+                            self.pop[idx].solution
+                            - np.abs(r1 * np.cos(r2) * np.abs(r3 * self.g_best.solution))
+                    )
             )
             osc2_pos = self.g_best.solution - r2 * r3 * osc2
             pos_new = r3 * (osc1_pos + osc2_pos) / 2
@@ -145,9 +145,9 @@ class OriginalSOO(Optimizer):
             # Generate new position based on oscillatory movement
             rf = self.generator.random()
             pos_new = avg3 + 0.5 * (
-                np.sin(rf * np.pi) * (self.pop[r1].solution - self.pop[r2].solution)
-                + np.cos((1 - rf) * np.pi)
-                * (self.pop[r1].solution - self.pop[r3].solution)
+                    np.sin(rf * np.pi) * (self.pop[r1].solution - self.pop[r2].solution)
+                    + np.cos((1 - rf) * np.pi)
+                    * (self.pop[r1].solution - self.pop[r3].solution)
             )
             ## Probabilistic update
             pos_new = np.where(

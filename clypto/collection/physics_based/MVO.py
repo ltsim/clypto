@@ -42,12 +42,12 @@ class DevMVO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        wep_min: float = 0.2,
-        wep_max: float = 1.0,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            wep_min: float = 0.2,
+            wep_max: float = 1.0,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -146,12 +146,12 @@ class OriginalMVO(DevMVO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        wep_min: float = 0.2,
-        wep_max: float = 1.0,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            wep_min: float = 0.2,
+            wep_max: float = 1.0,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -200,7 +200,7 @@ class OriginalMVO(DevMVO):
         tdr = 1 - epoch ** (1.0 / 6) / self.epoch ** (1.0 / 6)
         list_fitness_raw = np.array([item.target.fitness for item in self.pop])
         maxx = max(list_fitness_raw)
-        if maxx > (2**64 - 1):
+        if maxx > (2 ** 64 - 1):
             list_fitness_normalized = self.generator.uniform(0, 0.1, self.pop_size)
         else:
             ### Normalize inflation rates (NI in Eq. (3.1) in the paper)
@@ -226,14 +226,14 @@ class OriginalMVO(DevMVO):
                     r3 = self.generator.uniform()
                     if r3 < 0.5:
                         black_hole_pos[jdx] = self.g_best.solution[
-                            jdx
-                        ] + tdr * self.generator.uniform(
+                                                  jdx
+                                              ] + tdr * self.generator.uniform(
                             self.problem.lb[jdx], self.problem.ub[jdx]
                         )
                     else:
                         black_hole_pos[jdx] = self.g_best.solution[
-                            jdx
-                        ] - tdr * self.generator.uniform(
+                                                  jdx
+                                              ] - tdr * self.generator.uniform(
                             self.problem.lb[jdx], self.problem.ub[jdx]
                         )
             pos_new = self.correct_solution(black_hole_pos)

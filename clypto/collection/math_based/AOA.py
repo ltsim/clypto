@@ -46,14 +46,14 @@ class OriginalAOA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        alpha: float = 5,
-        miu: float = 0.5,
-        moa_min: float = 0.2,
-        moa_max: float = 0.9,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            alpha: float = 5,
+            miu: float = 0.5,
+            moa_min: float = 0.2,
+            moa_max: float = 0.9,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -82,10 +82,10 @@ class OriginalAOA(Optimizer):
             epoch (int): The current iteration
         """
         moa = self.moa_min + epoch * (
-            (self.moa_max - self.moa_min) / self.epoch
+                (self.moa_max - self.moa_min) / self.epoch
         )  # Eq. 2
         mop = 1 - ((epoch + 1) ** (1.0 / self.alpha)) / (
-            self.epoch ** (1.0 / self.alpha)
+                self.epoch ** (1.0 / self.alpha)
         )  # Eq. 4
         pop_new = []
         for idx in range(0, self.pop_size):
@@ -95,32 +95,32 @@ class OriginalAOA(Optimizer):
                 if r1 > moa:  # Exploration phase
                     if r2 < 0.5:
                         pos_new[j] = (
-                            self.g_best.solution[j]
-                            / (mop + self.EPSILON)
-                            * (
-                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu
-                                + self.problem.lb[j]
-                            )
+                                self.g_best.solution[j]
+                                / (mop + self.EPSILON)
+                                * (
+                                        (self.problem.ub[j] - self.problem.lb[j]) * self.miu
+                                        + self.problem.lb[j]
+                                )
                         )
                     else:
                         pos_new[j] = (
-                            self.g_best.solution[j]
-                            * mop
-                            * (
-                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu
-                                + self.problem.lb[j]
-                            )
+                                self.g_best.solution[j]
+                                * mop
+                                * (
+                                        (self.problem.ub[j] - self.problem.lb[j]) * self.miu
+                                        + self.problem.lb[j]
+                                )
                         )
                 else:  # Exploitation phase
                     if r3 < 0.5:
                         pos_new[j] = self.g_best.solution[j] - mop * (
-                            (self.problem.ub[j] - self.problem.lb[j]) * self.miu
-                            + self.problem.lb[j]
+                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu
+                                + self.problem.lb[j]
                         )
                     else:
                         pos_new[j] = self.g_best.solution[j] + mop * (
-                            (self.problem.ub[j] - self.problem.lb[j]) * self.miu
-                            + self.problem.lb[j]
+                                (self.problem.ub[j] - self.problem.lb[j]) * self.miu
+                                + self.problem.lb[j]
                         )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

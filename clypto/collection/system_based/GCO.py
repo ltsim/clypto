@@ -41,12 +41,12 @@ class DevGCO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        cr: float = 0.7,
-        wf: float = 1.25,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            cr: float = 0.7,
+            wf: float = 1.25,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -88,7 +88,7 @@ class DevGCO(Optimizer):
                 list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
             )
             pos_new = self.g_best.solution + self.wf * (
-                self.pop[r2].solution - self.pop[r1].solution
+                    self.pop[r2].solution - self.pop[r1].solution
             )
             condition = self.generator.random(self.problem.n_dims) < self.cr
             pos_new = np.where(condition, pos_new, self.pop[idx].solution)
@@ -100,7 +100,7 @@ class DevGCO(Optimizer):
         pop_new = self.update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.dyn_list_cell_counter[idx] += 10
                 self.pop[idx] = pop_new[idx].copy()
@@ -111,9 +111,9 @@ class DevGCO(Optimizer):
             fit_max = np.max(fit_list)
             fit_min = np.min(fit_list)
             self.dyn_list_cell_counter[idx] += (
-                10
-                * (self.pop[idx].target.fitness - fit_max)
-                / (fit_min - fit_max + self.EPSILON)
+                    10
+                    * (self.pop[idx].target.fitness - fit_max)
+                    / (fit_min - fit_max + self.EPSILON)
             )
 
 
@@ -155,12 +155,12 @@ class OriginalGCO(DevGCO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        cr: float = 0.7,
-        wf: float = 1.25,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            cr: float = 0.7,
+            wf: float = 1.25,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -191,7 +191,7 @@ class OriginalGCO(DevGCO):
                 list(set(range(0, self.pop_size))), 3, replace=False, p=p
             )
             pos_new = self.pop[r1].solution + self.wf * (
-                self.pop[r2].solution - self.pop[r3].solution
+                    self.pop[r2].solution - self.pop[r3].solution
             )
             condition = self.generator.random(self.problem.n_dims) < self.cr
             pos_new = np.where(condition, pos_new, self.pop[idx].solution)
@@ -199,7 +199,7 @@ class OriginalGCO(DevGCO):
             agent = self.generate_agent(pos_new)
             # for each pos_new, generate the fitness
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
                 self.dyn_list_life_signal[idx] += 10

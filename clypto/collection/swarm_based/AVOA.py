@@ -50,15 +50,15 @@ class OriginalAVOA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        p1: float = 0.6,
-        p2: float = 0.4,
-        p3: float = 0.6,
-        alpha: float = 0.8,
-        gama: float = 2.5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            p1: float = 0.6,
+            p2: float = 0.4,
+            p3: float = 0.6,
+            alpha: float = 0.8,
+            gama: float = 2.5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -84,9 +84,9 @@ class OriginalAVOA(Optimizer):
             epoch (int): The current iteration
         """
         a = self.generator.uniform(-2, 2) * (
-            (np.sin((np.pi / 2) * (epoch / self.epoch)) ** self.gama)
-            + np.cos((np.pi / 2) * (epoch / self.epoch))
-            - 1
+                (np.sin((np.pi / 2) * (epoch / self.epoch)) ** self.gama)
+                + np.cos((np.pi / 2) * (epoch / self.epoch))
+                - 1
         )
         ppp = (2 * self.generator.random() + 1) * (1 - epoch / self.epoch) + a
         _, best_list, _ = self.get_special_agents(
@@ -100,25 +100,25 @@ class OriginalAVOA(Optimizer):
             if np.abs(F) >= 1:  # Exploration
                 if self.generator.random() < self.p1:
                     pos_new = (
-                        rand_pos
-                        - (
-                            np.abs(
-                                (2 * self.generator.random()) * rand_pos
-                                - self.pop[idx].solution
+                            rand_pos
+                            - (
+                                np.abs(
+                                    (2 * self.generator.random()) * rand_pos
+                                    - self.pop[idx].solution
+                                )
                             )
-                        )
-                        * F
+                            * F
                     )
                 else:
                     pos_new = (
-                        rand_pos
-                        - F
-                        + self.generator.random()
-                        * (
-                            (self.problem.ub - self.problem.lb)
-                            * self.generator.random()
-                            + self.problem.lb
-                        )
+                            rand_pos
+                            - F
+                            + self.generator.random()
+                            * (
+                                    (self.problem.ub - self.problem.lb)
+                                    * self.generator.random()
+                                    + self.problem.lb
+                            )
                     )
             else:  # Exploitation
                 if np.abs(F) < 0.5:  # Phase 1
@@ -126,20 +126,20 @@ class OriginalAVOA(Optimizer):
                     best_x2 = best_list[1].solution
                     if self.generator.random() < self.p2:
                         A = (
-                            best_x1
-                            - (
-                                (best_x1 * self.pop[idx].solution)
-                                / (best_x1 - self.pop[idx].solution ** 2 + self.EPSILON)
-                            )
-                            * F
+                                best_x1
+                                - (
+                                        (best_x1 * self.pop[idx].solution)
+                                        / (best_x1 - self.pop[idx].solution ** 2 + self.EPSILON)
+                                )
+                                * F
                         )
                         B = (
-                            best_x2
-                            - (
-                                (best_x2 * self.pop[idx].solution)
-                                / (best_x2 - self.pop[idx].solution ** 2 + self.EPSILON)
-                            )
-                            * F
+                                best_x2
+                                - (
+                                        (best_x2 * self.pop[idx].solution)
+                                        / (best_x2 - self.pop[idx].solution ** 2 + self.EPSILON)
+                                )
+                                * F
                         )
                         pos_new = (A + B) / 2
                     else:
@@ -151,31 +151,31 @@ class OriginalAVOA(Optimizer):
                 else:  # Phase 2
                     if self.generator.random() < self.p3:
                         pos_new = (
-                            np.abs(
-                                (2 * self.generator.random()) * rand_pos
-                                - self.pop[idx].solution
-                            )
-                        ) * (F + self.generator.random()) - (
-                            rand_pos - self.pop[idx].solution
-                        )
+                                      np.abs(
+                                          (2 * self.generator.random()) * rand_pos
+                                          - self.pop[idx].solution
+                                      )
+                                  ) * (F + self.generator.random()) - (
+                                          rand_pos - self.pop[idx].solution
+                                  )
                     else:
                         s1 = (
-                            rand_pos
-                            * (
-                                self.generator.random()
-                                * self.pop[idx].solution
-                                / (2 * np.pi)
-                            )
-                            * np.cos(self.pop[idx].solution)
+                                rand_pos
+                                * (
+                                        self.generator.random()
+                                        * self.pop[idx].solution
+                                        / (2 * np.pi)
+                                )
+                                * np.cos(self.pop[idx].solution)
                         )
                         s2 = (
-                            rand_pos
-                            * (
-                                self.generator.random()
-                                * self.pop[idx].solution
-                                / (2 * np.pi)
-                            )
-                            * np.sin(self.pop[idx].solution)
+                                rand_pos
+                                * (
+                                        self.generator.random()
+                                        * self.pop[idx].solution
+                                        / (2 * np.pi)
+                                )
+                                * np.sin(self.pop[idx].solution)
                         )
                         pos_new = rand_pos - (s1 + s2)
             pos_new = self.correct_solution(pos_new)

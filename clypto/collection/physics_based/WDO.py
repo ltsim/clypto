@@ -54,15 +54,15 @@ class OriginalWDO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        RT: int = 3,
-        g_c: float = 0.2,
-        alp: float = 0.4,
-        c_e: float = 0.4,
-        max_v: float = 0.3,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            RT: int = 3,
+            g_c: float = 0.2,
+            alp: float = 0.4,
+            c_e: float = 0.4,
+            max_v: float = 0.3,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -102,12 +102,12 @@ class OriginalWDO(Optimizer):
             rand_dim = self.generator.integers(0, self.problem.n_dims)
             temp = self.dyn_list_velocity[idx][rand_dim] * np.ones(self.problem.n_dims)
             vel = (
-                (1 - self.alp) * self.dyn_list_velocity[idx]
-                - self.g_c * self.pop[idx].solution
-                + (1 - 1.0 / (idx + 1))
-                * self.RT
-                * (self.g_best.solution - self.pop[idx].solution)
-                + self.c_e * temp / (idx + 1)
+                    (1 - self.alp) * self.dyn_list_velocity[idx]
+                    - self.g_c * self.pop[idx].solution
+                    + (1 - 1.0 / (idx + 1))
+                    * self.RT
+                    * (self.g_best.solution - self.pop[idx].solution)
+                    + self.c_e * temp / (idx + 1)
             )
             vel = np.clip(vel, -self.max_v, self.max_v)
             # Update air parcel positions, check the bound and calculate pressure (fitness)

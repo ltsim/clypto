@@ -42,7 +42,7 @@ class OriginalHHO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -74,7 +74,7 @@ class OriginalHHO(Optimizer):
             if np.abs(E) >= 1:
                 # Harris' hawks perch randomly based on 2 strategy:
                 if (
-                    self.generator.random() >= 0.5
+                        self.generator.random() >= 0.5
                 ):  # perch based on other family members
                     X_rand = self.pop[
                         self.generator.integers(0, self.pop_size)
@@ -85,11 +85,11 @@ class OriginalHHO(Optimizer):
                 else:  # perch on a random tall tree (random site inside group's home range)
                     X_m = np.mean([x.solution for x in self.pop])
                     pos_new = (
-                        self.g_best.solution - X_m
-                    ) - self.generator.uniform() * (
-                        self.problem.lb
-                        + self.generator.uniform() * (self.problem.ub - self.problem.lb)
-                    )
+                                      self.g_best.solution - X_m
+                              ) - self.generator.uniform() * (
+                                      self.problem.lb
+                                      + self.generator.uniform() * (self.problem.ub - self.problem.lb)
+                              )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
                 pop_new.append(agent)
@@ -123,21 +123,21 @@ class OriginalHHO(Optimizer):
                     pos_Y = self.correct_solution(Y)
                     target_Y = self.get_target(pos_Y)
                     Z = (
-                        Y
-                        + self.generator.uniform(self.problem.lb, self.problem.ub)
-                        * LF_D
+                            Y
+                            + self.generator.uniform(self.problem.lb, self.problem.ub)
+                            * LF_D
                     )
                     pos_Z = self.correct_solution(Z)
                     target_Z = self.get_target(pos_Z)
                     if self.compare_target(
-                        target_Y, self.pop[idx].target, self.problem.minmax
+                            target_Y, self.pop[idx].target, self.problem.minmax
                     ):
                         agent = self.generate_empty_agent(pos_Y)
                         agent.target = target_Y
                         pop_new.append(agent)
                         continue
                     if self.compare_target(
-                        target_Z, self.pop[idx].target, self.problem.minmax
+                            target_Z, self.pop[idx].target, self.problem.minmax
                     ):
                         agent = self.generate_empty_agent(pos_Z)
                         agent.target = target_Z

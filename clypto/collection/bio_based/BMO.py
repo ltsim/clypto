@@ -67,8 +67,8 @@ class OriginalBMO(Optimizer):
             if temp[idx] <= self.pl:
                 p = self.generator.uniform(0, 1)
                 pos_new = (
-                    p * self.pop[k1[idx]].solution
-                    + (1 - p) * self.pop[k2[idx]].solution
+                        p * self.pop[k1[idx]].solution
+                        + (1 - p) * self.pop[k2[idx]].solution
                 )
             else:
                 pos_new = self.generator.uniform(0, 1) * self.pop[k2[idx]].solution

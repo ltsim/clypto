@@ -39,7 +39,7 @@ class OriginalMFO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -75,13 +75,13 @@ class OriginalMFO(Optimizer):
             b = 1
             # Update the position of the moth with respect to its corresponding flame, Eq.(3.12).
             temp_1 = (
-                distance_to_flame * np.exp(b * t) * np.cos(t * 2 * np.pi)
-                + pop_flames[idx].solution
+                    distance_to_flame * np.exp(b * t) * np.cos(t * 2 * np.pi)
+                    + pop_flames[idx].solution
             )
             # Update the position of the moth with respect to one flame Eq.(3.12).
             temp_2 = (
-                distance_to_flame * np.exp(b * t) * np.cos(t * 2 * np.pi)
-                + g_best.solution
+                    distance_to_flame * np.exp(b * t) * np.cos(t * 2 * np.pi)
+                    + g_best.solution
             )
             list_idx = idx * np.ones(self.problem.n_dims)
             pos_new = np.where(list_idx < num_flame, temp_1, temp_2)

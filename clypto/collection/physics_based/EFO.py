@@ -40,14 +40,14 @@ class DevEFO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        r_rate: float = 0.3,
-        ps_rate: float = 0.85,
-        p_field: float = 0.1,
-        n_field: float = 0.45,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            r_rate: float = 0.3,
+            ps_rate: float = 0.85,
+            p_field: float = 0.1,
+            n_field: float = 0.45,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -92,12 +92,12 @@ class DevEFO(Optimizer):
             )  # middle
             if self.generator.random() < self.ps_rate:
                 pos_new = (
-                    self.pop[r_idx1].solution
-                    + self.phi
-                    * self.generator.random()
-                    * (self.g_best.solution - self.pop[r_idx3].solution)
-                    + self.generator.random()
-                    * (self.g_best.solution - self.pop[r_idx2].solution)
+                        self.pop[r_idx1].solution
+                        + self.phi
+                        * self.generator.random()
+                        * (self.g_best.solution - self.pop[r_idx3].solution)
+                        + self.generator.random()
+                        * (self.g_best.solution - self.pop[r_idx2].solution)
                 )
             else:
                 pos_new = self.problem.generate_solution()
@@ -164,14 +164,14 @@ class OriginalEFO(DevEFO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        r_rate: float = 0.3,
-        ps_rate: float = 0.85,
-        p_field: float = 0.1,
-        n_field: float = 0.45,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            r_rate: float = 0.3,
+            ps_rate: float = 0.85,
+            p_field: float = 0.1,
+            n_field: float = 0.45,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -239,27 +239,27 @@ class OriginalEFO(DevEFO):
         for idx in range(0, self.problem.n_dims):
             if self.ps[idx, iter01] > self.ps_rate:
                 x_new[idx] = (
-                    self.pop[self.r_index3[idx, iter01]].solution[idx]
-                    + self.phi
-                    * r
-                    * (
-                        self.pop[self.r_index1[idx, iter01]].solution[idx]
-                        - self.pop[self.r_index3[idx, iter01]].solution[idx]
-                    )
-                    + r
-                    * (
                         self.pop[self.r_index3[idx, iter01]].solution[idx]
-                        - self.pop[self.r_index2[idx, iter01]].solution[idx]
-                    )
+                        + self.phi
+                        * r
+                        * (
+                                self.pop[self.r_index1[idx, iter01]].solution[idx]
+                                - self.pop[self.r_index3[idx, iter01]].solution[idx]
+                        )
+                        + r
+                        * (
+                                self.pop[self.r_index3[idx, iter01]].solution[idx]
+                                - self.pop[self.r_index2[idx, iter01]].solution[idx]
+                        )
                 )
             else:
                 x_new[idx] = self.pop[self.r_index1[idx, iter01]].solution[idx]
         # replacement of one electromagnet of generated particle with a random number (only for some generated particles) to bring diversity to the population
         if self.rp[iter01] < self.r_rate:
             x_new[self.RI] = (
-                self.problem.lb[self.RI]
-                + (self.problem.ub[self.RI] - self.problem.lb[self.RI])
-                * self.randomization[iter01]
+                    self.problem.lb[self.RI]
+                    + (self.problem.ub[self.RI] - self.problem.lb[self.RI])
+                    * self.randomization[iter01]
             )
             RI = self.RI + 1
             if RI >= self.problem.n_dims:

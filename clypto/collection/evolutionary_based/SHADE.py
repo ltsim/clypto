@@ -5,9 +5,8 @@
 # --------------------------------------------------%
 
 import numpy as np
-from scipy.stats import cauchy
-
 from clypto.optimizer.classic import Optimizer
+from scipy.stats import cauchy
 
 
 class OriginalSHADE(Optimizer):
@@ -47,12 +46,12 @@ class OriginalSHADE(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 750,
-        pop_size: int = 100,
-        miu_f: float = 0.5,
-        miu_cr: float = 0.5,
-        **kwargs: object
+            self,
+            epoch: int = 750,
+            pop_size: int = 100,
+            miu_f: float = 0.5,
+            miu_cr: float = 0.5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -79,7 +78,7 @@ class OriginalSHADE(Optimizer):
 
     ### Survivor Selection
     def weighted_lehmer_mean(self, list_objects, list_weights):
-        up = list_weights * list_objects**2
+        up = list_weights * list_objects ** 2
         down = list_weights * list_objects
         return np.sum(up) / np.sum(down)
 
@@ -124,9 +123,9 @@ class OriginalSHADE(Optimizer):
             x_r1 = self.pop[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
             x_new = (
-                self.pop[idx].solution
-                + f * (x_best.solution - self.pop[idx].solution)
-                + f * (x_r1 - x_r2)
+                    self.pop[idx].solution
+                    + f * (x_best.solution - self.pop[idx].solution)
+                    + f * (x_r1 - x_r2)
             )
             condition = self.generator.random(self.problem.n_dims) < cr
             pos_new = np.where(condition, x_new, self.pop[idx].solution)
@@ -140,7 +139,7 @@ class OriginalSHADE(Optimizer):
         pop = self.update_target_for_population(pop)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 list_cr.append(list_cr_new[idx])
                 list_f.append(list_f_new[idx])
@@ -222,12 +221,12 @@ class L_SHADE(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 750,
-        pop_size: int = 100,
-        miu_f: float = 0.5,
-        miu_cr: float = 0.5,
-        **kwargs: object
+            self,
+            epoch: int = 750,
+            pop_size: int = 100,
+            miu_f: float = 0.5,
+            miu_cr: float = 0.5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -255,7 +254,7 @@ class L_SHADE(Optimizer):
 
     ### Survivor Selection
     def weighted_lehmer_mean(self, list_objects, list_weights):
-        up = np.sum(list_weights * list_objects**2)
+        up = np.sum(list_weights * list_objects ** 2)
         down = np.sum(list_weights * list_objects)
         return up / down if down != 0 else 0.5
 
@@ -300,9 +299,9 @@ class L_SHADE(Optimizer):
             x_r1 = self.pop[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
             x_new = (
-                self.pop[idx].solution
-                + f * (x_best.solution - self.pop[idx].solution)
-                + f * (x_r1 - x_r2)
+                    self.pop[idx].solution
+                    + f * (x_best.solution - self.pop[idx].solution)
+                    + f * (x_r1 - x_r2)
             )
             pos_new = np.where(
                 self.generator.random(self.problem.n_dims) < cr,
@@ -319,7 +318,7 @@ class L_SHADE(Optimizer):
         pop = self.update_target_for_population(pop)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 list_cr.append(list_cr_new[idx])
                 list_f.append(list_f_new[idx])

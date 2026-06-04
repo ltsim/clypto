@@ -53,19 +53,19 @@ class OriginalCRO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        po: float = 0.4,
-        Fb: float = 0.9,
-        Fa: float = 0.1,
-        Fd: float = 0.1,
-        Pd: float = 0.5,
-        GCR: float = 0.1,
-        gamma_min: float = 0.02,
-        gamma_max: float = 0.2,
-        n_trials: int = 3,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            po: float = 0.4,
+            Fb: float = 0.9,
+            Fa: float = 0.1,
+            Fd: float = 0.1,
+            Pd: float = 0.5,
+            GCR: float = 0.1,
+            gamma_min: float = 0.02,
+            gamma_max: float = 0.2,
+            n_trials: int = 3,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -134,7 +134,7 @@ class OriginalCRO(Optimizer):
 
     def gaussian_mutation__(self, position):
         random_pos = position + self.G1 * (
-            self.problem.ub - self.problem.lb
+                self.problem.ub - self.problem.lb
         ) * self.generator.normal(0, 1, self.problem.n_dims)
         condition = self.generator.random(self.problem.n_dims) < self.GCR
         pos_new = np.where(condition, random_pos, position)
@@ -161,7 +161,7 @@ class OriginalCRO(Optimizer):
                     break
                 else:
                     if self.compare_target(
-                        larva.target, self.pop[pdx].target, self.problem.minmax
+                            larva.target, self.pop[pdx].target, self.problem.minmax
                     ):
                         self.pop[pdx] = larva
                         break
@@ -282,20 +282,20 @@ class OCRO(OriginalCRO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        po: float = 0.4,
-        Fb: float = 0.9,
-        Fa: float = 0.1,
-        Fd: float = 0.1,
-        Pd: float = 0.5,
-        GCR: float = 0.1,
-        gamma_min: float = 0.02,
-        gamma_max: float = 0.2,
-        n_trials: int = 3,
-        restart_count: int = 20,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            po: float = 0.4,
+            Fb: float = 0.9,
+            Fa: float = 0.1,
+            Fd: float = 0.1,
+            Pd: float = 0.5,
+            GCR: float = 0.1,
+            gamma_min: float = 0.02,
+            gamma_max: float = 0.2,
+            n_trials: int = 3,
+            restart_count: int = 20,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -391,7 +391,7 @@ class OCRO(OriginalCRO):
                 pos_oppo = self.generate_opposition_solution(self.pop[idx], self.g_best)
                 agent = self.generate_agent(pos_oppo)
                 if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+                        agent.target, self.pop[idx].target, self.problem.minmax
                 ):
                     self.pop[idx] = agent
                 else:
@@ -406,7 +406,7 @@ class OCRO(OriginalCRO):
         self.reset_count += 1
         local_best = self.get_best_agent(self.pop, self.problem.minmax)
         if self.compare_target(
-            local_best.target, self.g_best.target, self.problem.minmax
+                local_best.target, self.g_best.target, self.problem.minmax
         ):
             self.reset_count = 0
         if self.reset_count == self.restart_count:

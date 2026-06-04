@@ -55,20 +55,20 @@ class OriginalWHO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch=10000,
-        pop_size=100,
-        n_explore_step=3,
-        n_exploit_step=3,
-        eta=0.15,
-        p_hi=0.9,
-        local_alpha=0.9,
-        local_beta=0.3,
-        global_alpha=0.2,
-        global_beta=0.8,
-        delta_w=2.0,
-        delta_c=2.0,
-        **kwargs
+            self,
+            epoch=10000,
+            pop_size=100,
+            n_explore_step=3,
+            n_exploit_step=3,
+            eta=0.15,
+            p_hi=0.9,
+            local_alpha=0.9,
+            local_beta=0.3,
+            global_alpha=0.2,
+            global_beta=0.8,
+            delta_w=2.0,
+            delta_c=2.0,
+            **kwargs
     ):
         """
         Args:
@@ -140,8 +140,8 @@ class OriginalWHO(Optimizer):
             local_list = []
             for j in range(0, self.n_explore_step):
                 temp = self.pop[
-                    idx
-                ].solution + self.eta * self.generator.uniform() * self.generator.uniform(
+                           idx
+                       ].solution + self.eta * self.generator.uniform() * self.generator.uniform(
                     self.problem.lb, self.problem.ub
                 )
                 pos_new = self.correct_solution(temp)
@@ -152,7 +152,7 @@ class OriginalWHO(Optimizer):
             local_list = self.update_target_for_population(local_list)
             best_local = self.get_best_agent(local_list, self.problem.minmax)
             temp = self.local_alpha * best_local.solution + self.local_beta * (
-                self.pop[idx].solution - best_local.solution
+                    self.pop[idx].solution - best_local.solution
             )
             pos_new = self.correct_solution(temp)
             agent = self.generate_empty_agent(pos_new)
@@ -171,19 +171,19 @@ class OriginalWHO(Optimizer):
             ### 2. Herd instinct
             idr = self.generator.choice(range(0, self.pop_size))
             if (
-                self.compare_target(
-                    self.pop[idr].target, self.pop[idx].target, self.problem.minmax
-                )
-                and self.generator.random() < self.p_hi
+                    self.compare_target(
+                        self.pop[idr].target, self.pop[idx].target, self.problem.minmax
+                    )
+                    and self.generator.random() < self.p_hi
             ):
                 temp = (
-                    self.global_alpha * self.pop[idx].solution
-                    + self.global_beta * self.pop[idr].solution
+                        self.global_alpha * self.pop[idx].solution
+                        + self.global_beta * self.pop[idr].solution
                 )
                 pos_new = self.correct_solution(temp)
                 tar_new = self.get_target(pos_new)
                 if self.compare_target(
-                    tar_new, self.pop[idx].target, self.problem.minmax
+                        tar_new, self.pop[idx].target, self.problem.minmax
                 ):
                     self.pop[idx].update(solution=pos_new, target=tar_new)
 
@@ -198,7 +198,7 @@ class OriginalWHO(Optimizer):
             ### 3. Starvation avoidance
             if dist_to_worst < self.delta_w:
                 temp = self.pop[idx].solution + self.generator.uniform() * (
-                    self.problem.ub - self.problem.lb
+                        self.problem.ub - self.problem.lb
                 ) * self.generator.uniform(self.problem.lb, self.problem.ub)
                 pos_new = self.correct_solution(temp)
                 agent = self.generate_empty_agent(pos_new)

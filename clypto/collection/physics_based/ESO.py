@@ -38,7 +38,7 @@ class OriginalESO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -94,8 +94,8 @@ class OriginalESO(Optimizer):
                 beta = 0.5
             try:
                 fc = (
-                    np.exp(resistance)
-                    + np.exp(1 - resistance) * abs(np.log(resistance)) * beta
+                        np.exp(resistance)
+                        + np.exp(1 - resistance) * abs(np.log(resistance)) * beta
                 )
             except (OverflowError, ValueError):
                 fc = 1.0

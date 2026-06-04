@@ -42,7 +42,7 @@ class OriginalSSO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -70,10 +70,10 @@ class OriginalSSO(Optimizer):
                 c2_list = self.generator.random(self.problem.n_dims)
                 c3_list = self.generator.random(self.problem.n_dims)
                 pos_new_1 = self.g_best.solution + c1 * (
-                    (self.problem.ub - self.problem.lb) * c2_list + self.problem.lb
+                        (self.problem.ub - self.problem.lb) * c2_list + self.problem.lb
                 )
                 pos_new_2 = self.g_best.solution - c1 * (
-                    (self.problem.ub - self.problem.lb) * c2_list + self.problem.lb
+                        (self.problem.ub - self.problem.lb) * c2_list + self.problem.lb
                 )
                 pos_new = np.where(c3_list < 0.5, pos_new_1, pos_new_2)
             else:

@@ -46,7 +46,7 @@ class OriginalCGO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -73,8 +73,8 @@ class OriginalCGO(Optimizer):
                 range(0, self.pop_size), 3, replace=False
             )
             MG = (
-                self.pop[s1].solution + self.pop[s2].solution + self.pop[s3].solution
-            ) / 3
+                         self.pop[s1].solution + self.pop[s2].solution + self.pop[s3].solution
+                 ) / 3
             ## Calculating alpha based on Eq. 7
             alpha1 = self.generator.random()
             alpha2 = 2 * self.generator.random()
@@ -91,13 +91,13 @@ class OriginalCGO(Optimizer):
                 range(0, self.problem.n_dims), k, replace=False
             )
             seed1 = self.pop[idx].solution + alpha1 * (
-                beta[0] * self.g_best.solution - gama[0] * MG
+                    beta[0] * self.g_best.solution - gama[0] * MG
             )  # Eq. 3
             seed2 = self.g_best.solution + alpha2 * (
-                beta[1] * self.pop[idx].solution - gama[1] * MG
+                    beta[1] * self.pop[idx].solution - gama[1] * MG
             )  # Eq. 4
             seed3 = MG + alpha3 * (
-                beta[2] * self.pop[idx].solution - gama[2] * self.g_best.solution
+                    beta[2] * self.pop[idx].solution - gama[2] * self.g_best.solution
             )  # Eq. 5
             seed4 = self.pop[idx].solution.copy().astype(float)
             seed4[k_idx] += self.generator.uniform(0, 1, k)

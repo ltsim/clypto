@@ -50,12 +50,12 @@ class OriginalCDDO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pattern_size=10,
-        creativity_rate=0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pattern_size=10,
+            creativity_rate=0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -113,21 +113,21 @@ class OriginalCDDO(Optimizer):
             if self.pop[idx].solution[pp] <= hand_pressure:
                 # Update the drawings
                 pos_new = (
-                    self.list_gr[idx]
-                    + self.SR
-                    * self.generator.random(self.problem.n_dims)
-                    * (self.pop_local[idx].solution - self.pop[idx].solution)
-                    + self.LR
-                    * self.generator.random(self.problem.n_dims)
-                    * (self.g_best.solution - self.pop[idx].solution)
+                        self.list_gr[idx]
+                        + self.SR
+                        * self.generator.random(self.problem.n_dims)
+                        * (self.pop_local[idx].solution - self.pop[idx].solution)
+                        + self.LR
+                        * self.generator.random(self.problem.n_dims)
+                        * (self.g_best.solution - self.pop[idx].solution)
                 )
                 self.LR = self.generator.integers(6, 11) / 10
                 self.SR = self.generator.integers(6, 11) / 10
             elif 1.5 < self.list_gr[idx] < 2:
                 # Consider the learnt patterns
                 pos_new = (
-                    pattern[self.generator.integers(0, self.pattern_size)].solution
-                    - self.creativity_rate * self.pop_local[idx].solution
+                        pattern[self.generator.integers(0, self.pattern_size)].solution
+                        - self.creativity_rate * self.pop_local[idx].solution
                 )
                 self.LR = self.generator.integers(0, 6) / 10
                 self.SR = self.generator.integers(0, 6) / 10

@@ -46,12 +46,12 @@ class OriginalFPA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        p_s: float = 0.8,
-        levy_multiplier: float = 0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            p_s: float = 0.8,
+            levy_multiplier: float = 0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -91,14 +91,14 @@ class OriginalFPA(Optimizer):
                     multiplier=self.levy_multiplier, size=self.problem.n_dims, case=-1
                 )
                 pos_new = self.pop[idx].solution + 1.0 / np.sqrt(epoch) * levy * (
-                    self.pop[idx].solution - self.g_best.solution
+                        self.pop[idx].solution - self.g_best.solution
                 )
             else:
                 id1, id2 = self.generator.choice(
                     list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
                 )
                 pos_new = self.pop[idx].solution + self.generator.uniform() * (
-                    self.pop[id1].solution - self.pop[id2].solution
+                        self.pop[id1].solution - self.pop[id2].solution
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

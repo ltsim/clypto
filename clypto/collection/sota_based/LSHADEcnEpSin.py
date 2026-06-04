@@ -5,9 +5,8 @@
 # --------------------------------------------------%
 
 import numpy as np
-from scipy.stats import cauchy, norm
-
 from clypto.optimizer.classic import Optimizer
+from scipy.stats import cauchy, norm
 
 
 class OriginalLSHADEcnEpSin(Optimizer):
@@ -45,17 +44,17 @@ class OriginalLSHADEcnEpSin(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        miu_f: float = 0.5,
-        miu_cr: float = 0.5,
-        freq: float = 0.5,
-        memory_size: int = 5,
-        ps: float = 0.5,
-        pc: float = 0.4,
-        pop_size_min: int = 10,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            miu_f: float = 0.5,
+            miu_cr: float = 0.5,
+            freq: float = 0.5,
+            memory_size: int = 5,
+            ps: float = 0.5,
+            pc: float = 0.4,
+            pop_size_min: int = 10,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -158,9 +157,9 @@ class OriginalLSHADEcnEpSin(Optimizer):
         if config_type == 1:
             # Non-adaptive sinusoidal decreasing adjustment (Eq. 4)
             F = (
-                0.5
-                * np.sin(2 * np.pi * self.freq_fixed * (max_epoch - epoch) / max_epoch)
-                + 0.5
+                    0.5
+                    * np.sin(2 * np.pi * self.freq_fixed * (max_epoch - epoch) / max_epoch)
+                    + 0.5
             )
         else:
             # Adaptive sinusoidal increasing adjustment (Eq. 5)
@@ -184,9 +183,9 @@ class OriginalLSHADEcnEpSin(Optimizer):
 
         # Mutation
         pos_new = (
-            self.pop[idx].solution
-            + F * (pop_sorted[pbest_idx].solution - self.pop[idx].solution)
-            + F * (self.pop[r1].solution - pop_combined[r2].solution)
+                self.pop[idx].solution
+                + F * (pop_sorted[pbest_idx].solution - self.pop[idx].solution)
+                + F * (self.pop[r1].solution - pop_combined[r2].solution)
         )
         # Ensure the new position is within bounds
         pos_new = self.correct_solution(pos_new)
@@ -267,7 +266,7 @@ class OriginalLSHADEcnEpSin(Optimizer):
         # Avoid division by zero
         delta_f = np.maximum(delta_f, 1e-10)
         weights = delta_f / np.sum(delta_f)
-        numerator = np.sum(weights * S_values**2)
+        numerator = np.sum(weights * S_values ** 2)
         denominator = np.sum(weights * S_values)
         if denominator == 0:
             return 0.5
@@ -349,7 +348,7 @@ class OriginalLSHADEcnEpSin(Optimizer):
 
             # Selection
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):  # Success
                 delta = abs(self.pop[idx].target.fitness - agent.target.fitness)
                 S_F.append(F)

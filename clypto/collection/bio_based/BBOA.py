@@ -43,7 +43,7 @@ class OriginalBBOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -70,25 +70,25 @@ class OriginalBBOA(Optimizer):
         for idx in range(0, self.pop_size):
             if pp <= 1 / 3:  # Gait while walking
                 pos_new = self.pop[idx].solution + (
-                    -pp
-                    * self.generator.random(self.problem.n_dims)
-                    * self.pop[idx].solution
+                        -pp
+                        * self.generator.random(self.problem.n_dims)
+                        * self.pop[idx].solution
                 )
             elif 1 / 3 < pp <= 2 / 3:  # Careful Stepping
                 qq = pp * self.generator.random(self.problem.n_dims)
                 pos_new = self.pop[idx].solution + (
-                    qq
-                    * (
-                        self.g_best.solution
-                        - self.generator.integers(1, 3) * self.g_worst.solution
-                    )
+                        qq
+                        * (
+                                self.g_best.solution
+                                - self.generator.integers(1, 3) * self.g_worst.solution
+                        )
                 )
             else:
                 ww = 2 * pp * np.pi * self.generator.random(self.problem.n_dims)
                 pos_new = (
-                    self.pop[idx].solution
-                    + (ww * self.g_best.solution - np.abs(self.pop[idx].solution))
-                    - (ww * self.g_worst.solution - np.abs(self.pop[idx].solution))
+                        self.pop[idx].solution
+                        + (ww * self.g_best.solution - np.abs(self.pop[idx].solution))
+                        - (ww * self.g_worst.solution - np.abs(self.pop[idx].solution))
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -109,14 +109,14 @@ class OriginalBBOA(Optimizer):
         for idx in range(0, self.pop_size):
             kk = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
             if self.compare_target(
-                self.pop[idx].target, self.pop[kk].target, self.problem.minmax
+                    self.pop[idx].target, self.pop[kk].target, self.problem.minmax
             ):
                 pos_new = self.pop[idx].solution + self.generator.random() * (
-                    self.pop[idx].solution - self.pop[kk].solution
+                        self.pop[idx].solution - self.pop[kk].solution
                 )
             else:
                 pos_new = self.pop[idx].solution + self.generator.random() * (
-                    self.pop[kk].solution - self.pop[idx].solution
+                        self.pop[kk].solution - self.pop[idx].solution
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

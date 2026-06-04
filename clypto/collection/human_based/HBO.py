@@ -46,7 +46,7 @@ class OriginalHBO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, degree: int = 2, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, degree: int = 2, **kwargs: object
     ) -> None:
         """
         Args:
@@ -72,7 +72,7 @@ class OriginalHBO(Optimizer):
         for c in range(pop_size - 1, -1, -1):
             hi = int(np.ceil((np.log10(c * degree - c + 1) / np.log10(degree)))) - 1
             lowerLim = (degree * degree ** (hi - 1) - 1) / (degree - 1) + 1
-            upperLim = (degree * degree**hi - 1) / (degree - 1)
+            upperLim = (degree * degree ** hi - 1) / (degree - 1)
             friend_limits[c, 0] = lowerLim if lowerLim <= pop_size else pop_size
             friend_limits[c, 1] = upperLim if upperLim <= pop_size else pop_size
         return friend_limits.astype(int)
@@ -87,7 +87,7 @@ class OriginalHBO(Optimizer):
             while t > 0:
                 parent_id = int(np.floor((t + 1) / degree) - 1)
                 if self.compare_target(
-                    pop[parent_id].target, pop[t].target, self.problem.minmax
+                        pop[parent_id].target, pop[t].target, self.problem.minmax
                 ):
                     break
                 else:
@@ -150,9 +150,9 @@ class OriginalHBO(Optimizer):
                         )
                     else:
                         if self.compare_target(
-                            self.heap[friend_idx][0],
-                            self.heap[c][0],
-                            self.problem.minmax,
+                                self.heap[friend_idx][0],
+                                self.heap[c][0],
+                                self.problem.minmax,
                         ):
                             cur_agent.solution[jdx] = fri_agent.solution[jdx] + rn[
                                 jdx
@@ -161,16 +161,16 @@ class OriginalHBO(Optimizer):
                             )
                         else:
                             cur_agent.solution[jdx] += (
-                                rn[jdx]
-                                * gama
-                                * np.abs(
-                                    fri_agent.solution[jdx] - cur_agent.solution[jdx]
-                                )
+                                    rn[jdx]
+                                    * gama
+                                    * np.abs(
+                                fri_agent.solution[jdx] - cur_agent.solution[jdx]
+                            )
                             )
                 pos_new = self.correct_solution(cur_agent.solution)
                 cur_agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                    cur_agent.target, self.heap[c][0], self.problem.minmax
+                        cur_agent.target, self.heap[c][0], self.problem.minmax
                 ):
                     self.pop[self.heap[c][1]] = cur_agent
                     self.heap[c][0] = cur_agent.target.copy()
@@ -179,7 +179,7 @@ class OriginalHBO(Optimizer):
             while t > 1:
                 parent_id = int((t + 1) / self.degree)
                 if self.compare_target(
-                    self.heap[parent_id][0], self.heap[t][0], self.problem.minmax
+                        self.heap[parent_id][0], self.heap[t][0], self.problem.minmax
                 ):
                     break
                 else:

@@ -45,11 +45,11 @@ class OriginalMRFO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        somersault_range: float = 2.0,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            somersault_range: float = 2.0,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -79,41 +79,41 @@ class OriginalMRFO(Optimizer):
             if self.generator.random() < 0.5:
                 r1 = self.generator.uniform()
                 beta = (
-                    2
-                    * np.exp(r1 * (self.epoch - epoch) / self.epoch)
-                    * np.sin(2 * np.pi * r1)
+                        2
+                        * np.exp(r1 * (self.epoch - epoch) / self.epoch)
+                        * np.sin(2 * np.pi * r1)
                 )
 
                 if (epoch + 1) / self.epoch < self.generator.random():
                     x_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
                     if idx == 0:
                         x_t1 = (
-                            x_rand
-                            + self.generator.uniform()
-                            * (x_rand - self.pop[idx].solution)
-                            + beta * (x_rand - self.pop[idx].solution)
+                                x_rand
+                                + self.generator.uniform()
+                                * (x_rand - self.pop[idx].solution)
+                                + beta * (x_rand - self.pop[idx].solution)
                         )
                     else:
                         x_t1 = (
-                            x_rand
-                            + self.generator.uniform()
-                            * (self.pop[idx - 1].solution - self.pop[idx].solution)
-                            + beta * (x_rand - self.pop[idx].solution)
+                                x_rand
+                                + self.generator.uniform()
+                                * (self.pop[idx - 1].solution - self.pop[idx].solution)
+                                + beta * (x_rand - self.pop[idx].solution)
                         )
                 else:
                     if idx == 0:
                         x_t1 = (
-                            self.g_best.solution
-                            + self.generator.uniform()
-                            * (self.g_best.solution - self.pop[idx].solution)
-                            + beta * (self.g_best.solution - self.pop[idx].solution)
+                                self.g_best.solution
+                                + self.generator.uniform()
+                                * (self.g_best.solution - self.pop[idx].solution)
+                                + beta * (self.g_best.solution - self.pop[idx].solution)
                         )
                     else:
                         x_t1 = (
-                            self.g_best.solution
-                            + self.generator.uniform()
-                            * (self.pop[idx - 1].solution - self.pop[idx].solution)
-                            + beta * (self.g_best.solution - self.pop[idx].solution)
+                                self.g_best.solution
+                                + self.generator.uniform()
+                                * (self.pop[idx - 1].solution - self.pop[idx].solution)
+                                + beta * (self.g_best.solution - self.pop[idx].solution)
                         )
             # Chain foraging (Eq. 1,2)
             else:
@@ -121,15 +121,15 @@ class OriginalMRFO(Optimizer):
                 alpha = 2 * r * np.sqrt(np.abs(np.log(r)))
                 if idx == 0:
                     x_t1 = (
-                        self.pop[idx].solution
-                        + r * (self.g_best.solution - self.pop[idx].solution)
-                        + alpha * (self.g_best.solution - self.pop[idx].solution)
+                            self.pop[idx].solution
+                            + r * (self.g_best.solution - self.pop[idx].solution)
+                            + alpha * (self.g_best.solution - self.pop[idx].solution)
                     )
                 else:
                     x_t1 = (
-                        self.pop[idx].solution
-                        + r * (self.pop[idx - 1].solution - self.pop[idx].solution)
-                        + alpha * (self.g_best.solution - self.pop[idx].solution)
+                            self.pop[idx].solution
+                            + r * (self.pop[idx - 1].solution - self.pop[idx].solution)
+                            + alpha * (self.g_best.solution - self.pop[idx].solution)
                     )
             pos_new = self.correct_solution(x_t1)
             agent = self.generate_empty_agent(pos_new)
@@ -149,8 +149,8 @@ class OriginalMRFO(Optimizer):
         for idx in range(0, self.pop_size):
             # Somersault foraging   (Eq. 8)
             x_t1 = self.pop[idx].solution + self.somersault_range * (
-                self.generator.uniform() * g_best.solution
-                - self.generator.uniform() * self.pop[idx].solution
+                    self.generator.uniform() * g_best.solution
+                    - self.generator.uniform() * self.pop[idx].solution
             )
             pos_new = self.correct_solution(x_t1)
             agent = self.generate_empty_agent(pos_new)
@@ -204,12 +204,12 @@ class WMQIMRFO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        somersault_range: float = 2.0,
-        pm: float = 0.5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            somersault_range: float = 2.0,
+            pm: float = 0.5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -246,7 +246,7 @@ class WMQIMRFO(Optimizer):
             a = s_constant * (1.0 / s_constant) ** (1.0 - epoch / self.epoch)
             theta = self.generator.uniform(-2.5 * a, 2.5 * a)
             x = theta / a
-            w = np.exp(-(x**2) / 2) * np.cos(5 * x)
+            w = np.exp(-(x ** 2) / 2) * np.cos(5 * x)
             xichma = 1.0 / np.sqrt(a) * w
 
             if self.generator.random() < 0.5:  # Control parameter adjustment
@@ -254,9 +254,9 @@ class WMQIMRFO(Optimizer):
 
                 r1 = self.generator.uniform()
                 beta = (
-                    2
-                    * np.exp(r1 * (self.epoch - epoch) / self.epoch)
-                    * np.sin(2 * np.pi * r1)
+                        2
+                        * np.exp(r1 * (self.epoch - epoch) / self.epoch)
+                        * np.sin(2 * np.pi * r1)
                 )
 
                 if coef < self.generator.random():  # Cyclone foraging
@@ -264,76 +264,76 @@ class WMQIMRFO(Optimizer):
                     if self.generator.random() < self.pm:  # Morlet wavelet mutation
                         if idx == 0:
                             pos_new = (
-                                x_rand
-                                + self.generator.random() * (x_rand - x_t)
-                                + beta * (x_rand - x_t)
+                                    x_rand
+                                    + self.generator.random() * (x_rand - x_t)
+                                    + beta * (x_rand - x_t)
                             )
                         else:
                             pos_new = (
-                                x_rand
-                                + self.generator.random() * (x_t1 - x_t)
-                                + beta * (x_rand - x_t)
+                                    x_rand
+                                    + self.generator.random() * (x_t1 - x_t)
+                                    + beta * (x_rand - x_t)
                             )
                     else:
                         conditions = (
-                            self.generator.uniform(0, 1, self.problem.n_dims) > 0.5
+                                self.generator.uniform(0, 1, self.problem.n_dims) > 0.5
                         )
                         if idx == 0:
                             t1 = (
-                                x_rand
-                                + self.generator.random(self.problem.n_dims)
-                                * (x_rand - x_t)
-                                + beta * (x_rand - x_t)
-                                + xichma * (self.problem.ub - x_t)
+                                    x_rand
+                                    + self.generator.random(self.problem.n_dims)
+                                    * (x_rand - x_t)
+                                    + beta * (x_rand - x_t)
+                                    + xichma * (self.problem.ub - x_t)
                             )
                             t2 = (
-                                x_rand
-                                + self.generator.random(self.problem.n_dims)
-                                * (x_rand - x_t)
-                                + beta * (x_rand - x_t)
-                                + xichma * (x_t - self.problem.lb)
+                                    x_rand
+                                    + self.generator.random(self.problem.n_dims)
+                                    * (x_rand - x_t)
+                                    + beta * (x_rand - x_t)
+                                    + xichma * (x_t - self.problem.lb)
                             )
                         else:
                             t1 = (
-                                x_rand
-                                + self.generator.random(self.problem.n_dims)
-                                * (x_t1 - x_t)
-                                + beta * (x_rand - x_t)
-                                + xichma * (self.problem.ub - x_t)
+                                    x_rand
+                                    + self.generator.random(self.problem.n_dims)
+                                    * (x_t1 - x_t)
+                                    + beta * (x_rand - x_t)
+                                    + xichma * (self.problem.ub - x_t)
                             )
                             t2 = (
-                                x_rand
-                                + self.generator.random(self.problem.n_dims)
-                                * (x_t1 - x_t)
-                                + beta * (x_rand - x_t)
-                                + xichma * (x_t - self.problem.lb)
+                                    x_rand
+                                    + self.generator.random(self.problem.n_dims)
+                                    * (x_t1 - x_t)
+                                    + beta * (x_rand - x_t)
+                                    + xichma * (x_t - self.problem.lb)
                             )
                         pos_new = np.where(conditions, t1, t2)
                 else:
                     if idx == 0:
                         pos_new = (
-                            self.g_best.solution
-                            + self.generator.random() * (self.g_best.solution - x_t)
-                            + beta * (self.g_best.solution - x_t)
+                                self.g_best.solution
+                                + self.generator.random() * (self.g_best.solution - x_t)
+                                + beta * (self.g_best.solution - x_t)
                         )
                     else:
                         pos_new = (
-                            self.g_best.solution
-                            + self.generator.random() * (x_t1 - x_t)
-                            + beta * (self.g_best.solution - x_t)
+                                self.g_best.solution
+                                + self.generator.random() * (x_t1 - x_t)
+                                + beta * (self.g_best.solution - x_t)
                         )
             else:  # Chain foraging (Eq. 1,2)
                 r = self.generator.random()
                 alpha = 2 * r * np.sqrt(np.abs(np.log(r)))
                 if idx == 0:
                     pos_new = (
-                        x_t
-                        + r * (self.g_best.solution - x_t)
-                        + alpha * (self.g_best.solution - x_t)
+                            x_t
+                            + r * (self.g_best.solution - x_t)
+                            + alpha * (self.g_best.solution - x_t)
                     )
                 else:
                     pos_new = (
-                        x_t + r * (x_t1 - x_t) + alpha * (self.g_best.solution - x_t)
+                            x_t + r * (x_t1 - x_t) + alpha * (self.g_best.solution - x_t)
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -354,8 +354,8 @@ class WMQIMRFO(Optimizer):
         pop_child = []
         for idx in range(0, self.pop_size):
             pos_new = self.pop[idx].solution + self.somersault_range * (
-                self.generator.random() * g_best.solution
-                - self.generator.random() * self.pop[idx].solution
+                    self.generator.random() * g_best.solution
+                    - self.generator.random() * self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -391,13 +391,13 @@ class WMQIMRFO(Optimizer):
                 self.pop[idx3].solution,
             )
             a = (
-                f1 / ((x1 - x2) * (x1 - x3) + self.EPSILON)
-                + f2 / ((x2 - x1) * (x2 - x3) + self.EPSILON)
-                + f3 / ((x3 - x1) * (x3 - x2) + self.EPSILON)
+                    f1 / ((x1 - x2) * (x1 - x3) + self.EPSILON)
+                    + f2 / ((x2 - x1) * (x2 - x3) + self.EPSILON)
+                    + f3 / ((x3 - x1) * (x3 - x2) + self.EPSILON)
             )
             gx = (
-                (x3**2 - x2**2) * f1 + (x1**2 - x3**2) * f2 + (x2**2 - x1**2) * f3
-            ) / (2 * ((x3 - x2) * f1 + (x1 - x3) * f2 + (x2 - x1) * f3) + self.EPSILON)
+                         (x3 ** 2 - x2 ** 2) * f1 + (x1 ** 2 - x3 ** 2) * f2 + (x2 ** 2 - x1 ** 2) * f3
+                 ) / (2 * ((x3 - x2) * f1 + (x1 - x3) * f2 + (x2 - x1) * f3) + self.EPSILON)
             pos_new = np.where(a > 0, gx, x1)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

@@ -54,13 +54,13 @@ class OriginalWCA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        nsr: int = 4,
-        wc: float = 2.0,
-        dmax: float = 1e-6,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            nsr: int = 4,
+            wc: float = 2.0,
+            dmax: float = 1e-6,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -90,7 +90,7 @@ class OriginalWCA(Optimizer):
         self.pop_best = self.pop[
             : self.nsr
         ]  # Including sea and river (1st solution is sea)
-        self.pop_stream = self.pop[self.nsr :]  # Forming Stream
+        self.pop_stream = self.pop[self.nsr:]  # Forming Stream
 
         # Designate streams to rivers and sea
         cost_river_list = np.array([agent.target.fitness for agent in self.pop_best])
@@ -130,7 +130,7 @@ class OriginalWCA(Optimizer):
             stream_new = []
             for idx_stream, stream in enumerate(stream_list):
                 pos_new = stream.solution + self.generator.uniform() * self.wc * (
-                    self.pop_best[idx].solution - stream.solution
+                        self.pop_best[idx].solution - stream.solution
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -141,19 +141,19 @@ class OriginalWCA(Optimizer):
             self.streams[idx] = stream_new
             stream_best = self.get_best_agent(stream_new, self.problem.minmax)
             if self.compare_target(
-                stream_best.target, self.pop_best[idx].target, self.problem.minmax
+                    stream_best.target, self.pop_best[idx].target, self.problem.minmax
             ):
                 self.pop_best[idx] = stream_best.copy()
             # Update river
             pos_new = self.pop_best[
-                idx
-            ].solution + self.generator.uniform() * self.wc * (
-                self.g_best.solution - self.pop_best[idx].solution
-            )
+                          idx
+                      ].solution + self.generator.uniform() * self.wc * (
+                              self.g_best.solution - self.pop_best[idx].solution
+                      )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop_best[idx].target, self.problem.minmax
+                    agent.target, self.pop_best[idx].target, self.problem.minmax
             ):
                 self.pop_best[idx] = agent
         # Evaporation

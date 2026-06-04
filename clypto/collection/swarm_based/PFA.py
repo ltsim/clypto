@@ -42,7 +42,7 @@ class OriginalPFA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -70,11 +70,11 @@ class OriginalPFA(Optimizer):
         space = self.problem.ub - self.problem.lb
         ## Update the position of pathfinder and check the bound
         pos_new = (
-            self.pop[0].solution
-            + 2
-            * self.generator.uniform()
-            * (self.g_best.solution - self.pop[0].solution)
-            + A
+                self.pop[0].solution
+                + 2
+                * self.generator.uniform()
+                * (self.g_best.solution - self.pop[0].solution)
+                + A
         )
         pos_new = self.correct_solution(pos_new)
         agent = self.generate_agent(pos_new)
@@ -86,24 +86,24 @@ class OriginalPFA(Optimizer):
             pos_new = self.pop[idx].solution.copy().astype(float)
             for k in range(1, self.pop_size):
                 dist = (
-                    np.sqrt(
-                        np.sum((self.pop[k].solution - self.pop[idx].solution) ** 2)
-                    )
-                    / self.problem.n_dims
+                        np.sqrt(
+                            np.sum((self.pop[k].solution - self.pop[idx].solution) ** 2)
+                        )
+                        / self.problem.n_dims
                 )
                 t2 = (
-                    alpha
-                    * self.generator.uniform()
-                    * (self.pop[k].solution - self.pop[idx].solution)
+                        alpha
+                        * self.generator.uniform()
+                        * (self.pop[k].solution - self.pop[idx].solution)
                 )
                 ## First stabilize the distance
                 t3 = self.generator.uniform() * t * (dist / space)
                 pos_new += t2 + t3
             ## Second stabilize the population size
             t1 = (
-                beta
-                * self.generator.uniform()
-                * (self.g_best.solution - self.pop[idx].solution)
+                    beta
+                    * self.generator.uniform()
+                    * (self.g_best.solution - self.pop[idx].solution)
             )
             pos_new = (pos_new + t1) / self.pop_size
             pos_new = self.correct_solution(pos_new)

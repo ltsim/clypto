@@ -55,7 +55,7 @@ class OriginalTOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -87,13 +87,13 @@ class OriginalTOA(Optimizer):
         for idx in range(0, self.pop_size):
             # Stage 1: Supervisor guidance
             pos_new = self.pop[idx].solution + self.generator.random() * (
-                self.g_best.solution
-                - self.generator.integers(1, 3) * self.pop[idx].solution
+                    self.g_best.solution
+                    - self.generator.integers(1, 3) * self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
             # Stage 2: Information sharing
@@ -105,22 +105,22 @@ class OriginalTOA(Optimizer):
                 sf_pos = self.correct_solution(np.mean(sf_pos, axis=0))
                 sf = self.generate_agent(sf_pos)
             pos_new = self.pop[idx].solution + self.generator.random() * (
-                sf.solution - self.generator.integers(1, 3) * self.pop[idx].solution
+                    sf.solution - self.generator.integers(1, 3) * self.pop[idx].solution
             ) * np.sign(self.pop[idx].target.fitness - sf.target.fitness)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
             # Stage 3: Individual activity
             pos_new = (
-                self.pop[idx].solution
-                + (-0.01 + self.generator.random() * 0.02) * self.pop[idx].solution
+                    self.pop[idx].solution
+                    + (-0.01 + self.generator.random() * 0.02) * self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent

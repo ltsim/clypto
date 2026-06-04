@@ -45,12 +45,12 @@ class DevHS(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        c_r: float = 0.95,
-        pa_r: float = 0.05,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            c_r: float = 0.95,
+            pa_r: float = 0.05,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -148,12 +148,12 @@ class OriginalHS(DevHS):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        c_r: float = 0.95,
-        pa_r: float = 0.05,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            c_r: float = 0.95,
+            pa_r: float = 0.05,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -183,7 +183,7 @@ class OriginalHS(DevHS):
                 if self.generator.uniform() <= self.pa_r:
                     mean = (self.problem.lb + self.problem.ub) / 2
                     std_dev = (
-                        abs(self.problem.ub - self.problem.lb) / 6
+                            abs(self.problem.ub - self.problem.lb) / 6
                     )  # This assumes a range of +/- 3 standard deviations
                     delta = self.dyn_fw * self.generator.normal(
                         mean, std_dev

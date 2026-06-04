@@ -55,19 +55,19 @@ class OriginalCSO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        mixture_ratio: float = 0.15,
-        smp: int = 5,
-        spc: bool = False,
-        cdc: float = 0.8,
-        srd: float = 0.15,
-        c1: float = 0.4,
-        w_min: float = 0.5,
-        w_max: float = 0.9,
-        selected_strategy: int = 1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            mixture_ratio: float = 0.15,
+            smp: int = 5,
+            spc: bool = False,
+            cdc: float = 0.8,
+            srd: float = 0.15,
+            c1: float = 0.4,
+            w_min: float = 0.5,
+            w_max: float = 0.9,
+            selected_strategy: int = 1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -186,11 +186,11 @@ class OriginalCSO(Optimizer):
             # tracing mode
             if self.pop[idx].flag:
                 pos_new = (
-                    self.pop[idx].solution
-                    + w * self.pop[idx].velocity
-                    + self.generator.uniform()
-                    * self.c1
-                    * (self.g_best.solution - self.pop[idx].solution)
+                        self.pop[idx].solution
+                        + w * self.pop[idx].velocity
+                        + self.generator.uniform()
+                        * self.c1
+                        * (self.g_best.solution - self.pop[idx].solution)
                 )
                 pos_new = self.correct_solution(pos_new)
             else:

@@ -48,13 +48,13 @@ class OriginalACOR(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        sample_count: int = 25,
-        intent_factor: float = 0.5,
-        zeta: float = 1.0,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            sample_count: int = 25,
+            intent_factor: float = 0.5,
+            zeta: float = 1.0,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -90,7 +90,7 @@ class OriginalACOR(Optimizer):
         pop_rank = np.array([idx for idx in range(1, self.pop_size + 1)])
         qn = self.intent_factor * self.pop_size
         matrix_w = (
-            1 / (np.sqrt(2 * np.pi) * qn) * np.exp(-0.5 * ((pop_rank - 1) / qn) ** 2)
+                1 / (np.sqrt(2 * np.pi) * qn) * np.exp(-0.5 * ((pop_rank - 1) / qn) ** 2)
         )
         matrix_p = matrix_w / np.sum(matrix_w)  # Normalize to find the probability.
         # Means and Standard Deviations
@@ -112,8 +112,8 @@ class OriginalACOR(Optimizer):
             for jdx in range(0, self.problem.n_dims):
                 rdx = self.get_index_roulette_wheel_selection(matrix_p)
                 child[jdx] = (
-                    self.pop[rdx].solution[jdx]
-                    + self.generator.normal() * matrix_sigma[rdx, jdx]
+                        self.pop[rdx].solution[jdx]
+                        + self.generator.normal() * matrix_sigma[rdx, jdx]
                 )  # (1)
             pos_new = self.correct_solution(child)  # (2)
             agent = self.generate_empty_agent(pos_new)

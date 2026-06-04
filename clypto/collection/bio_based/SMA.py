@@ -41,11 +41,11 @@ class DevSMA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        p_t: float = 0.03,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            p_t: float = 0.03,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -105,8 +105,8 @@ class DevSMA(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
                 )
                 pos_1 = self.g_best.solution + vb * (
-                    self.weights[idx] * self.pop[id_a].solution
-                    - self.pop[id_b].solution
+                        self.weights[idx] * self.pop[id_a].solution
+                        - self.pop[id_b].solution
                 )
                 pos_2 = vc * self.pop[idx].solution
                 condition = self.generator.random(self.problem.n_dims) < p
@@ -218,8 +218,8 @@ class OriginalSMA(DevSMA):
                     )
                     if self.generator.uniform() < p:  # Eq.(2.1)
                         pos_new[jdx] = self.g_best.solution[jdx] + vb[jdx] * (
-                            self.weights[idx, jdx] * self.pop[id_a].solution[jdx]
-                            - self.pop[id_b].solution[jdx]
+                                self.weights[idx, jdx] * self.pop[id_a].solution[jdx]
+                                - self.pop[id_b].solution[jdx]
                         )
                     else:
                         pos_new[jdx] = vc[jdx] * pos_new[jdx]

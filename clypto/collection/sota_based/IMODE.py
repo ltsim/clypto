@@ -7,7 +7,6 @@
 from typing import Tuple, List
 
 import numpy as np
-
 from clypto.optimizer.classic import Optimizer
 
 
@@ -46,12 +45,12 @@ class OriginalIMODE(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        memory_size: int = 5,
-        archive_size: int = 20,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            memory_size: int = 5,
+            archive_size: int = 20,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -124,7 +123,7 @@ class OriginalIMODE(Optimizer):
         return op1_mask, op2_mask, op3_mask
 
     def _generate_random_indices(
-        self,
+            self,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List]:
         """Generate random indices for mutation"""
         combined_pop = self.pop + self.archive
@@ -163,10 +162,10 @@ class OriginalIMODE(Optimizer):
             pbest_indices = self.generator.integers(0, p_best_size, self.pop_size)
             matrix_pbest = matrix_pos[pbest_indices]
             matrix_mutant[op1_mask] = matrix_pos[op1_mask] + f[op1_mask, np.newaxis] * (
-                matrix_pbest[op1_mask]
-                - matrix_pos[op1_mask]
-                + matrix_pos[r1[op1_mask]]
-                - matrix_combined[r2[op1_mask]]
+                    matrix_pbest[op1_mask]
+                    - matrix_pos[op1_mask]
+                    + matrix_pos[r1[op1_mask]]
+                    - matrix_combined[r2[op1_mask]]
             )
         # Operator 2: DE/current-to-pbest/1/bin
         if np.any(op2_mask):
@@ -174,10 +173,10 @@ class OriginalIMODE(Optimizer):
             pbest_indices = self.generator.integers(0, p_best_size, self.pop_size)
             matrix_pbest = matrix_pos[pbest_indices]
             matrix_mutant[op2_mask] = matrix_pos[op2_mask] + f[op2_mask, np.newaxis] * (
-                matrix_pbest[op2_mask]
-                - matrix_pos[op2_mask]
-                + matrix_pos[r1[op2_mask]]
-                - matrix_pos[r3[op2_mask]]
+                    matrix_pbest[op2_mask]
+                    - matrix_pos[op2_mask]
+                    + matrix_pos[r1[op2_mask]]
+                    - matrix_pos[r3[op2_mask]]
             )
         # Operator 3: DE/rand-to-pbest/1
         if np.any(op3_mask):
@@ -187,8 +186,8 @@ class OriginalIMODE(Optimizer):
             matrix_mutant[op3_mask] = f[op3_mask, np.newaxis] * matrix_pos[
                 r1[op3_mask]
             ] + f[op3_mask, np.newaxis] * (
-                matrix_pbest[op3_mask] - matrix_pos[r3[op3_mask]]
-            )
+                                              matrix_pbest[op3_mask] - matrix_pos[r3[op3_mask]]
+                                      )
         return matrix_mutant
 
     def _handle_boundaries(self, vectors: np.ndarray) -> np.ndarray:
@@ -244,8 +243,8 @@ class OriginalIMODE(Optimizer):
         if self.generator.random() < 0.4:
             # Binomial crossover
             cross_mask = (
-                self.generator.random((self.pop_size, self.problem.n_dims))
-                <= cr[:, np.newaxis]
+                    self.generator.random((self.pop_size, self.problem.n_dims))
+                    <= cr[:, np.newaxis]
             )
             # Ensure at least one dimension is taken from mutant
             for idx in range(self.pop_size):
@@ -353,14 +352,14 @@ class OriginalIMODE(Optimizer):
                 weights = successful_improvements / np.sum(successful_improvements)
                 # Update F memory (Lehmer mean)
                 self.memory_f[self.memory_pos] = np.sum(
-                    weights * successful_f**2
+                    weights * successful_f ** 2
                 ) / np.sum(weights * successful_f)
                 # Update CR memory
                 if np.max(successful_cr) == 0:
                     self.memory_cr[self.memory_pos] = -1
                 else:
                     self.memory_cr[self.memory_pos] = np.sum(
-                        weights * successful_cr**2
+                        weights * successful_cr ** 2
                     ) / np.sum(weights * successful_cr)
                 # Update memory position
                 self.memory_pos = (self.memory_pos + 1) % self.memory_size

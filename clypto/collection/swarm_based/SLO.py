@@ -7,7 +7,6 @@
 from math import gamma
 
 import numpy as np
-
 from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
@@ -46,7 +45,7 @@ class OriginalSLO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -98,9 +97,9 @@ class OriginalSLO(Optimizer):
                     )
             else:
                 pos_new = (
-                    np.abs(self.g_best.solution - self.pop[idx].solution)
-                    * np.cos(2 * np.pi * self.generator.uniform(-1, 1))
-                    + self.g_best.solution
+                        np.abs(self.g_best.solution - self.pop[idx].solution)
+                        * np.cos(2 * np.pi * self.generator.uniform(-1, 1))
+                        + self.g_best.solution
                 )
             # In the paper doesn't check also doesn't update old solution at this point
             pos_new = self.correct_solution(pos_new)
@@ -148,7 +147,7 @@ class ModifiedSLO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -197,7 +196,7 @@ class ModifiedSLO(Optimizer):
         D = self.generator.uniform(self.problem.lb, self.problem.ub)
         levy = LB * D
         return (
-            current_pos - np.sqrt(epoch + 1) * np.sign(self.generator.random() - 0.5)
+                current_pos - np.sqrt(epoch + 1) * np.sign(self.generator.random() - 0.5)
         ) * levy
 
     def evolve(self, epoch):
@@ -219,9 +218,9 @@ class ModifiedSLO(Optimizer):
             agent = self.pop[idx].copy()
             if SP_leader >= 0.6:
                 pos_new = (
-                    np.cos(2 * np.pi * self.generator.normal(0, 1))
-                    * np.abs(self.g_best.solution - self.pop[idx].solution)
-                    + self.g_best.solution
+                        np.cos(2 * np.pi * self.generator.normal(0, 1))
+                        * np.abs(self.g_best.solution - self.pop[idx].solution)
+                        + self.g_best.solution
                 )
             else:
                 if self.generator.uniform() < pa:
@@ -247,11 +246,11 @@ class ModifiedSLO(Optimizer):
         pop_new = self.update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = pop_new[idx].copy()
                 if self.compare_target(
-                    pop_new[idx].target, self.pop[idx].local_target, self.problem.minmax
+                        pop_new[idx].target, self.pop[idx].local_target, self.problem.minmax
                 ):
                     self.pop[idx].local_solution = pop_new[idx].solution.copy()
                     self.pop[idx].local_target = pop_new[idx].target.copy()
@@ -291,12 +290,12 @@ class ImprovedSLO(ModifiedSLO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        c1: float = 1.2,
-        c2: float = 1.2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            c1: float = 1.2,
+            c2: float = 1.2,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -330,7 +329,7 @@ class ImprovedSLO(ModifiedSLO):
             agent = self.pop[idx].copy()
             if SP_leader < 0.5:
                 if (
-                    c < 1
+                        c < 1
                 ):  # Exploitation improved by historical movement + global best affect
                     # pos_new = g_best.solution - c * np.abs(2 * rand() * g_best.solution - pop[i].solution)
                     dif1 = np.abs(
@@ -342,10 +341,10 @@ class ImprovedSLO(ModifiedSLO):
                         - self.pop[idx].solution
                     )
                     pos_new = self.c1 * self.generator.random() * (
-                        self.pop[idx].solution - dif1
+                            self.pop[idx].solution - dif1
                     ) + self.c2 * self.generator.random() * (
-                        self.pop[idx].solution - dif2
-                    )
+                                      self.pop[idx].solution - dif2
+                              )
                 else:  # Exploration improved by opposition-based learning
                     # Create a new solution by equation below
                     # Then create an opposition solution of above solution
@@ -356,15 +355,15 @@ class ImprovedSLO(ModifiedSLO):
                     pos_new = self.correct_solution(pos_new)
                     target_new = self.get_target(pos_new)
                     pos_new_oppo = (
-                        self.problem.lb
-                        + self.problem.ub
-                        - self.g_best.solution
-                        + self.generator.random() * (self.g_best.solution - pos_new)
+                            self.problem.lb
+                            + self.problem.ub
+                            - self.g_best.solution
+                            + self.generator.random() * (self.g_best.solution - pos_new)
                     )
                     pos_new_oppo = self.correct_solution(pos_new_oppo)
                     target_new_oppo = self.get_target(pos_new_oppo)
                     if self.compare_target(
-                        target_new_oppo, target_new, self.problem.minmax
+                            target_new_oppo, target_new, self.problem.minmax
                     ):
                         pos_new = pos_new_oppo
             else:  # Exploitation
@@ -379,11 +378,11 @@ class ImprovedSLO(ModifiedSLO):
         pop_new = self.update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = pop_new[idx].copy()
                 if self.compare_target(
-                    pop_new[idx].target, self.pop[idx].local_target, self.problem.minmax
+                        pop_new[idx].target, self.pop[idx].local_target, self.problem.minmax
                 ):
                     self.pop[idx].local_solution = pop_new[idx].solution.copy()
                     self.pop[idx].local_target = pop_new[idx].target.copy()

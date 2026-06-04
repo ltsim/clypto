@@ -44,11 +44,11 @@ class OriginalNMRA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pb: float = 0.75,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pb: float = 0.75,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -78,14 +78,14 @@ class OriginalNMRA(Optimizer):
                 if self.generator.uniform() < self.pb:
                     alpha = self.generator.uniform()
                     pos_new = (1 - alpha) * self.pop[idx].solution + alpha * (
-                        self.g_best.solution - self.pop[idx].solution
+                            self.g_best.solution - self.pop[idx].solution
                     )
             else:  # working operators
                 t1, t2 = self.generator.choice(
                     range(self.size_b, self.pop_size), 2, replace=False
                 )
                 pos_new = self.pop[idx].solution + self.generator.uniform() * (
-                    self.pop[t1].solution - self.pop[t2].solution
+                        self.pop[t1].solution - self.pop[t2].solution
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)

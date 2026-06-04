@@ -47,11 +47,11 @@ class OriginalEP(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        bout_size: float = 0.05,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            bout_size: float = 0.05,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -92,9 +92,9 @@ class OriginalEP(Optimizer):
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             s_old = (
-                self.pop[idx].strategy
-                + self.generator.normal(0, 1.0, self.problem.n_dims)
-                * np.abs(self.pop[idx].strategy) ** 0.5
+                    self.pop[idx].strategy
+                    + self.generator.normal(0, 1.0, self.problem.n_dims)
+                    * np.abs(self.pop[idx].strategy) ** 0.5
             )
             agent.update(solution=pos_new, strategy=s_old, win=0)
             child.append(agent)
@@ -109,7 +109,7 @@ class OriginalEP(Optimizer):
             for idx in range(0, self.n_bout_size):
                 rand_idx = self.generator.integers(0, len(pop))
                 if self.compare_target(
-                    pop[i].target, pop[rand_idx].target, self.problem.minmax
+                        pop[i].target, pop[rand_idx].target, self.problem.minmax
                 ):
                     pop[i].win += 1
                 else:
@@ -149,11 +149,11 @@ class LevyEP(OriginalEP):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        bout_size: float = 0.05,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            bout_size: float = 0.05,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -178,9 +178,9 @@ class LevyEP(OriginalEP):
             ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
             pos_new = self.correct_solution(pos_new)
             s_old = (
-                self.pop[idx].strategy
-                + self.generator.normal(0, 1.0, self.problem.n_dims)
-                * np.abs(self.pop[idx].strategy) ** 0.5
+                    self.pop[idx].strategy
+                    + self.generator.normal(0, 1.0, self.problem.n_dims)
+                    * np.abs(self.pop[idx].strategy) ** 0.5
             )
             agent = self.generate_empty_agent(pos_new)
             agent.update(solution=pos_new, strategy=s_old, win=0)
@@ -196,7 +196,7 @@ class LevyEP(OriginalEP):
             for idx in range(0, self.n_bout_size):
                 rand_idx = self.generator.integers(0, len(pop))
                 if self.compare_target(
-                    pop[i].target, pop[rand_idx].target, self.problem.minmax
+                        pop[i].target, pop[rand_idx].target, self.problem.minmax
                 ):
                     pop[i].win += 1
                 else:
@@ -204,7 +204,7 @@ class LevyEP(OriginalEP):
         ## Keep the top population, but 50% of left population will make a comeback an take the good position
         pop = sorted(pop, key=lambda agent: agent.win, reverse=True)
         pop_new = pop[: self.pop_size]
-        pop_left = pop[self.pop_size :]
+        pop_left = pop[self.pop_size:]
         ## Choice random 50% of population left
         pop_comeback = []
         idx_list = self.generator.choice(

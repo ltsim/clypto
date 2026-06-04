@@ -48,7 +48,7 @@ class OriginalEVO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -80,13 +80,13 @@ class OriginalEVO(Optimizer):
             x_avg_pop = np.mean(pos_list, axis=0)
             eb = np.mean(fit_list)
             sl = (fit_list[idx] - self.g_best.target.fitness) / (
-                self.g_worst.target.fitness - self.g_best.target.fitness + self.EPSILON
+                    self.g_worst.target.fitness - self.g_best.target.fitness + self.EPSILON
             )
 
             pos_new1 = self.pop[idx].solution.copy()
             pos_new2 = self.pop[idx].solution.copy()
             if self.compare_fitness(
-                eb, self.pop[idx].target.fitness, self.problem.minmax
+                    eb, self.pop[idx].target.fitness, self.problem.minmax
             ):
                 if self.generator.random() > sl:
                     a1_idx = self.generator.integers(self.problem.n_dims)
@@ -103,7 +103,7 @@ class OriginalEVO(Optimizer):
                     ir = self.generator.uniform(0, 1, 2)
                     jr = self.generator.uniform(0, 1, self.problem.n_dims)
                     pos_new1 += (
-                        jr * (ir[0] * self.g_best.solution - ir[1] * x_avg_pop) / sl
+                            jr * (ir[0] * self.g_best.solution - ir[1] * x_avg_pop) / sl
                     )
                     ir = self.generator.uniform(0, 1, 2)
                     jr = self.generator.uniform(0, 1, self.problem.n_dims)
@@ -116,12 +116,12 @@ class OriginalEVO(Optimizer):
                 pop_new.append(agent2)
             else:
                 pos_new = (
-                    pos_new1
-                    + self.generator.random()
-                    * sl
-                    * self.generator.uniform(
-                        self.problem.lb, self.problem.ub, self.problem.n_dims
-                    )
+                        pos_new1
+                        + self.generator.random()
+                        * sl
+                        * self.generator.uniform(
+                    self.problem.lb, self.problem.ub, self.problem.n_dims
+                )
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)

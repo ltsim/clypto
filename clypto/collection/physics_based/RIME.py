@@ -47,7 +47,7 @@ class OriginalRIME(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, sr: float = 5.0, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, sr: float = 5.0, **kwargs: object
     ) -> None:
         """
         Args:
@@ -70,10 +70,10 @@ class OriginalRIME(Optimizer):
             epoch (int): The current iteration
         """
         rime_factor = (
-            (self.generator.random() - 0.5)
-            * 2
-            * np.cos(np.pi * epoch / (self.epoch / 10))
-            * (1 - np.round(epoch * self.sr / self.epoch) / self.sr)
+                (self.generator.random() - 0.5)
+                * 2
+                * np.cos(np.pi * epoch / (self.epoch / 10))
+                * (1 - np.round(epoch * self.sr / self.epoch) / self.sr)
         )
         ee = np.sqrt((epoch + 1) / self.epoch)
         fits = np.array([agent.target.fitness for agent in self.pop]).reshape((1, -1))
@@ -87,7 +87,7 @@ class OriginalRIME(Optimizer):
                 # Soft-rime search strategy
                 if self.generator.random() < ee:
                     pos_new[jdx] = self.g_best.solution[jdx] + rime_factor * (
-                        LB[jdx] + self.generator.random() * (UB[jdx] - LB[jdx])
+                            LB[jdx] + self.generator.random() * (UB[jdx] - LB[jdx])
                     )
                 # Hard-rime puncture mechanism
                 if self.generator.random() < fits_norm[0, idx]:

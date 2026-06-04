@@ -47,13 +47,13 @@ class OriginalBWO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pp: float = 0.6,
-        cr: float = 0.44,
-        pm: float = 0.4,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pp: float = 0.6,
+            cr: float = 0.44,
+            pm: float = 0.4,
+            **kwargs: object
     ) -> None:
         """
         Args:

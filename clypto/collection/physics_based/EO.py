@@ -43,7 +43,7 @@ class OriginalEO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -99,9 +99,9 @@ class OriginalEO(Optimizer):
             g0 = gcp * (c_eq - lamda * self.pop[idx].solution)  # Eq. 14
             g = g0 * f  # Eq. 13
             pos_new = (
-                c_eq
-                + (self.pop[idx].solution - c_eq) * f
-                + (g * self.V / lamda) * (1.0 - f)
+                    c_eq
+                    + (self.pop[idx].solution - c_eq) * f
+                    + (g * self.V / lamda) * (1.0 - f)
             )  # Eq. 16
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -151,7 +151,7 @@ class ModifiedEO(OriginalEO):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -192,9 +192,9 @@ class ModifiedEO(OriginalEO):
             g0 = gcp * (c_eq - lamda * self.pop[idx].solution)  # Eq. 14
             g = g0 * f  # Eq. 13
             pos_new = (
-                c_eq
-                + (self.pop[idx].solution - c_eq) * f
-                + (g * self.V / lamda) * (1.0 - f)
+                    c_eq
+                    + (self.pop[idx].solution - c_eq) * f
+                    + (g * self.V / lamda) * (1.0 - f)
             )  # Eq. 16
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -218,7 +218,7 @@ class ModifiedEO(OriginalEO):
         pop_s2_new = []
         for idx in range(0, self.pop_len):
             pos_new = pop_s2[idx].solution * (
-                1 + self.generator.normal(0, 1, self.problem.n_dims)
+                    1 + self.generator.normal(0, 1, self.problem.n_dims)
             )  # Eq. 12
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -240,8 +240,8 @@ class ModifiedEO(OriginalEO):
         pop_s3 = []
         for idx in range(0, self.pop_len):
             pos_new = (c_pool[0].solution - pos_s1_mean) - self.generator.random() * (
-                self.problem.lb
-                + self.generator.random() * (self.problem.ub - self.problem.lb)
+                    self.problem.lb
+                    + self.generator.random() * (self.problem.ub - self.problem.lb)
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -293,7 +293,7 @@ class AdaptiveEO(OriginalEO):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -335,12 +335,12 @@ class AdaptiveEO(OriginalEO):
             g = g0 * f
             fit_average = np.mean([item.target.fitness for item in self.pop])  # Eq. 19
             pos_new = (
-                c_eq
-                + (self.pop[idx].solution - c_eq) * f
-                + (g * self.V / lamda) * (1.0 - f)
+                    c_eq
+                    + (self.pop[idx].solution - c_eq) * f
+                    + (g * self.V / lamda) * (1.0 - f)
             )  # Eq. 9
             if self.compare_fitness(
-                self.pop[idx].target.fitness, fit_average, self.problem.minmax
+                    self.pop[idx].target.fitness, fit_average, self.problem.minmax
             ):
                 pos_new = np.multiply(
                     pos_new, (0.5 + self.generator.uniform(0, 1, self.problem.n_dims))

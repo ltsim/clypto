@@ -45,12 +45,12 @@ class DevGSKA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pb: float = 0.1,
-        kr: float = 0.7,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pb: float = 0.1,
+            kr: float = 0.7,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -92,18 +92,18 @@ class DevGSKA(Optimizer):
                         list(set(range(0, self.pop_size)) - {previ, idx, nexti})
                     )
                     if self.compare_target(
-                        self.pop[rand_idx].target,
-                        self.pop[idx].target,
-                        self.problem.minmax,
+                            self.pop[rand_idx].target,
+                            self.pop[idx].target,
+                            self.problem.minmax,
                     ):
                         pos_new = self.pop[idx].solution + self.generator.uniform(
                             0, 1, self.problem.n_dims
                         ) * (
-                            self.pop[previ].solution
-                            - self.pop[nexti].solution
-                            + self.pop[rand_idx].solution
-                            - self.pop[idx].solution
-                        )
+                                          self.pop[previ].solution
+                                          - self.pop[nexti].solution
+                                          + self.pop[rand_idx].solution
+                                          - self.pop[idx].solution
+                                  )
                     else:
                         pos_new = self.g_best.solution + self.generator.uniform(
                             0, 1, self.problem.n_dims
@@ -120,18 +120,18 @@ class DevGSKA(Optimizer):
                     )
                     rand_mid = self.generator.choice(list(set(range(id1, id2)) - {idx}))
                     if self.compare_target(
-                        self.pop[rand_mid].target,
-                        self.pop[idx].target,
-                        self.problem.minmax,
+                            self.pop[rand_mid].target,
+                            self.pop[idx].target,
+                            self.problem.minmax,
                     ):
                         pos_new = self.pop[idx].solution + self.generator.uniform(
                             0, 1, self.problem.n_dims
                         ) * (
-                            self.pop[rand_best].solution
-                            - self.pop[rand_worst].solution
-                            + self.pop[rand_mid].solution
-                            - self.pop[idx].solution
-                        )
+                                          self.pop[rand_best].solution
+                                          - self.pop[rand_worst].solution
+                                          + self.pop[rand_mid].solution
+                                          - self.pop[idx].solution
+                                  )
                     else:
                         pos_new = self.g_best.solution + self.generator.uniform(
                             0, 1, self.problem.n_dims
@@ -192,14 +192,14 @@ class OriginalGSKA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pb: float = 0.1,
-        kf: float = 0.5,
-        kr: float = 0.9,
-        kg: int = 5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pb: float = 0.1,
+            kf: float = 0.5,
+            kr: float = 0.9,
+            kg: int = 5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -250,22 +250,22 @@ class OriginalGSKA(Optimizer):
                 if j < dd:  # junior gaining and sharing
                     if self.generator.uniform() <= self.kr:
                         if self.compare_target(
-                            self.pop[rand_idx].target,
-                            self.pop[idx].target,
-                            self.problem.minmax,
+                                self.pop[rand_idx].target,
+                                self.pop[idx].target,
+                                self.problem.minmax,
                         ):
                             pos_new[j] = self.pop[idx].solution[j] + self.kf * (
-                                self.pop[previ].solution[j]
-                                - self.pop[nexti].solution[j]
-                                + self.pop[rand_idx].solution[j]
-                                - self.pop[idx].solution[j]
+                                    self.pop[previ].solution[j]
+                                    - self.pop[nexti].solution[j]
+                                    + self.pop[rand_idx].solution[j]
+                                    - self.pop[idx].solution[j]
                             )
                         else:
                             pos_new[j] = self.pop[idx].solution[j] + self.kf * (
-                                self.pop[previ].solution[j]
-                                - self.pop[nexti].solution[j]
-                                + self.pop[idx].solution[j]
-                                - self.pop[rand_idx].solution[j]
+                                    self.pop[previ].solution[j]
+                                    - self.pop[nexti].solution[j]
+                                    + self.pop[idx].solution[j]
+                                    - self.pop[rand_idx].solution[j]
                             )
                 else:  # senior gaining and sharing
                     if self.generator.uniform() <= self.kr:
@@ -281,22 +281,22 @@ class OriginalGSKA(Optimizer):
                             list(set(range(id1, id2)) - {idx})
                         )
                         if self.compare_target(
-                            self.pop[rand_mid].target,
-                            self.pop[idx].target,
-                            self.problem.minmax,
+                                self.pop[rand_mid].target,
+                                self.pop[idx].target,
+                                self.problem.minmax,
                         ):
                             pos_new[j] = self.pop[idx].solution[j] + self.kf * (
-                                self.pop[rand_best].solution[j]
-                                - self.pop[rand_worst].solution[j]
-                                + self.pop[rand_mid].solution[j]
-                                - self.pop[idx].solution[j]
+                                    self.pop[rand_best].solution[j]
+                                    - self.pop[rand_worst].solution[j]
+                                    + self.pop[rand_mid].solution[j]
+                                    - self.pop[idx].solution[j]
                             )
                         else:
                             pos_new[j] = self.pop[idx].solution[j] + self.kf * (
-                                self.pop[rand_best].solution[j]
-                                - self.pop[rand_worst].solution[j]
-                                + self.pop[idx].solution[j]
-                                - self.pop[rand_mid].solution[j]
+                                    self.pop[rand_best].solution[j]
+                                    - self.pop[rand_worst].solution[j]
+                                    + self.pop[idx].solution[j]
+                                    - self.pop[rand_mid].solution[j]
                             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

@@ -45,12 +45,12 @@ class OriginalSA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 2,
-        temp_init: float = 100,
-        step_size: float = 0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 2,
+            temp_init: float = 100,
+            step_size: float = 0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -81,13 +81,13 @@ class OriginalSA(Optimizer):
         # Perturb the current solution
 
         pos_new = (
-            self.agent_current.solution
-            + self.generator.standard_normal(self.problem.n_dims) * self.step_size
+                self.agent_current.solution
+                + self.generator.standard_normal(self.problem.n_dims) * self.step_size
         )
         agent = self.generate_agent(pos_new)
         # Accept or reject the new solution
         if self.compare_target(
-            agent.target, self.agent_current.target, self.problem.minmax
+                agent.target, self.agent_current.target, self.problem.minmax
         ):
             self.agent_current = agent
         else:
@@ -136,13 +136,13 @@ class GaussianSA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 2,
-        temp_init: float = 100,
-        cooling_rate: float = 0.99,
-        scale: float = 0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 2,
+            temp_init: float = 100,
+            cooling_rate: float = 0.99,
+            scale: float = 0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -181,7 +181,7 @@ class GaussianSA(Optimizer):
         agent = self.generate_agent(pos_new)
         # Accept or reject the new solution
         if self.compare_target(
-            agent.target, self.agent_current.target, self.problem.minmax
+                agent.target, self.agent_current.target, self.problem.minmax
         ):
             self.agent_current = agent
         else:
@@ -237,17 +237,17 @@ class SwarmSA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        max_sub_iter: int = 5,
-        t0: int = 1000,
-        t1: int = 1,
-        move_count: int = 5,
-        mutation_rate: float = 0.1,
-        mutation_step_size: float = 0.1,
-        mutation_step_size_damp: float = 0.99,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            max_sub_iter: int = 5,
+            t0: int = 1000,
+            t1: int = 1,
+            move_count: int = 5,
+            mutation_rate: float = 0.1,
+            mutation_step_size: float = 0.1,
+            mutation_step_size_damp: float = 0.99,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -317,7 +317,7 @@ class SwarmSA(Optimizer):
         # Initial Temperature
         self.dyn_t = self.t0  # Initial Temperature
         self.t_damp = (self.t1 / self.t0) ** (
-            1.0 / self.epoch
+                1.0 / self.epoch
         )  # Calculate Temperature Damp Rate
         self.dyn_sigma = self.mutation_step_size  # Initial Value of Step Size
         if self.pop is None:
@@ -352,7 +352,7 @@ class SwarmSA(Optimizer):
             for idx in range(0, self.pop_size):
                 # Check if new solution is better than current
                 if self.compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                        pop_new[idx].target, self.pop[idx].target, self.problem.minmax
                 ):
                     self.pop[idx] = pop_new[idx].copy()
                 else:

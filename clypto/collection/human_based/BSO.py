@@ -49,15 +49,15 @@ class ImprovedBSO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        m_clusters: int = 5,
-        p1: float = 0.25,
-        p2: float = 0.5,
-        p3: float = 0.75,
-        p4: float = 0.5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            m_clusters: int = 5,
+            p1: float = 0.25,
+            p2: float = 0.5,
+            p3: float = 0.75,
+            p4: float = 0.5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -118,8 +118,8 @@ class ImprovedBSO(Optimizer):
             if self.generator.uniform() < self.p2:  # p_6b
                 if self.generator.uniform() < self.p3:
                     pos_new = self.centers[
-                        cluster_id
-                    ].solution + epsilon * self.generator.normal(
+                                  cluster_id
+                              ].solution + epsilon * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
                 else:  # 2. Using levy flight here
@@ -127,7 +127,7 @@ class ImprovedBSO(Optimizer):
                         beta=1.0, multiplier=0.001, size=self.problem.n_dims, case=-1
                     )
                     pos_new = (
-                        self.pop_group[cluster_id][location_id].solution + levy_step
+                            self.pop_group[cluster_id][location_id].solution + levy_step
                     )
             else:
                 id1, id2 = self.generator.choice(
@@ -135,14 +135,14 @@ class ImprovedBSO(Optimizer):
                 )
                 if self.generator.uniform() < self.p4:
                     pos_new = 0.5 * (
-                        self.centers[id1].solution + self.centers[id2].solution
+                            self.centers[id1].solution + self.centers[id2].solution
                     ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
                 else:
                     rand_id1 = self.generator.integers(0, self.m_solution)
                     rand_id2 = self.generator.integers(0, self.m_solution)
                     pos_new = 0.5 * (
-                        self.pop_group[id1][rand_id1].solution
-                        + self.pop_group[id2][rand_id2].solution
+                            self.pop_group[id1][rand_id1].solution
+                            + self.pop_group[id2][rand_id2].solution
                     ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -207,16 +207,16 @@ class OriginalBSO(ImprovedBSO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        m_clusters: int = 5,
-        p1: float = 0.2,
-        p2: float = 0.8,
-        p3: float = 0.4,
-        p4: float = 0.5,
-        slope: int = 20,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            m_clusters: int = 5,
+            p1: float = 0.2,
+            p2: float = 0.8,
+            p3: float = 0.4,
+            p4: float = 0.5,
+            slope: int = 20,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -263,29 +263,29 @@ class OriginalBSO(ImprovedBSO):
                     cluster_id = self.generator.integers(0, self.m_clusters)
                 if self.generator.uniform() < self.p3:
                     pos_new = self.centers[
-                        cluster_id
-                    ].solution + epsilon * self.generator.normal(
+                                  cluster_id
+                              ].solution + epsilon * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
                 else:
                     rand_idx = self.generator.integers(0, self.m_solution)
                     pos_new = self.pop_group[cluster_id][
-                        rand_idx
-                    ].solution + self.generator.normal(0, 1, self.problem.n_dims)
+                                  rand_idx
+                              ].solution + self.generator.normal(0, 1, self.problem.n_dims)
             else:
                 id1, id2 = self.generator.choice(
                     range(0, self.m_clusters), 2, replace=False
                 )
                 if self.generator.uniform() < self.p4:
                     pos_new = 0.5 * (
-                        self.centers[id1].solution + self.centers[id2].solution
+                            self.centers[id1].solution + self.centers[id2].solution
                     ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
                 else:
                     rand_id1 = self.generator.integers(0, self.m_solution)
                     rand_id2 = self.generator.integers(0, self.m_solution)
                     pos_new = 0.5 * (
-                        self.pop_group[id1][rand_id1].solution
-                        + self.pop_group[id2][rand_id2].solution
+                            self.pop_group[id1][rand_id1].solution
+                            + self.pop_group[id2][rand_id2].solution
                     ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

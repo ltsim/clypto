@@ -54,7 +54,7 @@ class OriginalDOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -101,25 +101,25 @@ class OriginalDOA(Optimizer):
                     if self.generator.random() < 0.9:
                         # Forgetting and supplementation strategy
                         cos_term = (
-                            np.cos((epoch + self.epoch / 10) * np.pi / self.epoch) + 1
-                        ) / 2
+                                           np.cos((epoch + self.epoch / 10) * np.pi / self.epoch) + 1
+                                   ) / 2
                         for jdx in in_indices:
                             pos_new[jdx] = (
-                                pbest.solution[jdx]
-                                + (
-                                    self.generator.random()
-                                    * (self.problem.ub[jdx] - self.problem.lb[jdx])
-                                    + self.problem.lb[jdx]
-                                )
-                                * cos_term
+                                    pbest.solution[jdx]
+                                    + (
+                                            self.generator.random()
+                                            * (self.problem.ub[jdx] - self.problem.lb[jdx])
+                                            + self.problem.lb[jdx]
+                                    )
+                                    * cos_term
                             )
                             # Boundary handling
                             if (
-                                pos_new[jdx] > self.problem.ub[jdx]
-                                or pos_new[jdx] < self.problem.lb[jdx]
+                                    pos_new[jdx] > self.problem.ub[jdx]
+                                    or pos_new[jdx] < self.problem.lb[jdx]
                             ):
                                 if (
-                                    self.problem.n_dims > 15
+                                        self.problem.n_dims > 15
                                 ):  # For high-dimensional problems
                                     rdx = self.generator.choice(
                                         list(set(range(self.pop_size)) - {idx})
@@ -127,9 +127,9 @@ class OriginalDOA(Optimizer):
                                     pos_new[jdx] = self.pop[rdx].solution[jdx]
                                 else:  # For low-dimensional problems
                                     pos_new[jdx] = (
-                                        self.generator.random()
-                                        * (self.problem.ub[jdx] - self.problem.lb[jdx])
-                                        + self.problem.lb[jdx]
+                                            self.generator.random()
+                                            * (self.problem.ub[jdx] - self.problem.lb[jdx])
+                                            + self.problem.lb[jdx]
                                     )
                     else:  # Alternative update strategy
                         for jdx in in_indices:
@@ -158,18 +158,18 @@ class OriginalDOA(Optimizer):
                 for jdx in in_indices:
                     cos_term = (np.cos(epoch * np.pi / self.epoch) + 1) / 2
                     pos_new[jdx] = (
-                        pos_new[jdx]
-                        + (
-                            self.generator.random()
-                            * (self.problem.ub[idx] - self.problem.lb[idx])
-                            + self.problem.lb[idx]
-                        )
-                        * cos_term
+                            pos_new[jdx]
+                            + (
+                                    self.generator.random()
+                                    * (self.problem.ub[idx] - self.problem.lb[idx])
+                                    + self.problem.lb[idx]
+                            )
+                            * cos_term
                     )
                     # Boundary handling
                     if (
-                        pos_new[jdx] > self.problem.ub[jdx]
-                        or pos_new[jdx] < self.problem.lb[jdx]
+                            pos_new[jdx] > self.problem.ub[jdx]
+                            or pos_new[jdx] < self.problem.lb[jdx]
                     ):
                         if self.problem.n_dims > 15:
                             rdx = self.generator.choice(
@@ -178,9 +178,9 @@ class OriginalDOA(Optimizer):
                             pos_new[jdx] = self.pop[rdx].solution[jdx]
                         else:
                             pos_new[jdx] = (
-                                self.generator.random()
-                                * (self.problem.ub[jdx] - self.problem.lb[jdx])
-                                + self.problem.lb[jdx]
+                                    self.generator.random()
+                                    * (self.problem.ub[jdx] - self.problem.lb[jdx])
+                                    + self.problem.lb[jdx]
                             )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)

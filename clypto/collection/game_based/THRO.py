@@ -48,7 +48,7 @@ class OriginalTHRO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -66,7 +66,7 @@ class OriginalTHRO(Optimizer):
         # Split to two groups: tianji and king (50%-50%)
         self.n_pop = self.pop_size // 2
         self.pop_tianji = self.pop[: self.n_pop]
-        self.pop_king = self.pop[self.n_pop :]
+        self.pop_king = self.pop[self.n_pop:]
 
     def evolve(self, epoch):
         """
@@ -80,7 +80,7 @@ class OriginalTHRO(Optimizer):
         # Randomly shuffle and redistribute populations
         self.pop = self.rng.sample(self.pop, len(self.pop))
         self.pop_tianji = self.pop[: self.n_pop].copy()
-        self.pop_king = self.pop[self.n_pop :].copy()
+        self.pop_king = self.pop[self.n_pop:].copy()
 
         # Sort populations by fitness
         self.pop_tianji = self.get_sorted_population(
@@ -123,31 +123,31 @@ class OriginalTHRO(Optimizer):
         # Racing scenarios
         for idx in range(self.n_pop):
             tianji_alpha = (
-                1
-                + np.round(0.5 * (0.5 + self.generator.random()))
-                * self.generator.standard_normal()
+                    1
+                    + np.round(0.5 * (0.5 + self.generator.random()))
+                    * self.generator.standard_normal()
             )
             t_beta = (
-                np.round(0.5 * (0.1 + self.generator.random()))
-                * self.generator.standard_normal()
+                    np.round(0.5 * (0.1 + self.generator.random()))
+                    * self.generator.standard_normal()
             )
             king_alpha = (
-                1
-                + np.round(0.5 * (0.5 + self.generator.random()))
-                * self.generator.standard_normal()
+                    1
+                    + np.round(0.5 * (0.5 + self.generator.random()))
+                    * self.generator.standard_normal()
             )
             k_beta = (
-                np.round(0.5 * (0.1 + self.generator.random()))
-                * self.generator.standard_normal()
+                    np.round(0.5 * (0.1 + self.generator.random()))
+                    * self.generator.standard_normal()
             )
 
             tianji_r = (
-                self.get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
-                * t_b[idx]
+                    self.get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
+                    * t_b[idx]
             )
             king_r = (
-                self.get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
-                * k_b[idx]
+                    self.get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
+                    * k_b[idx]
             )
 
             fit_t = self.pop_tianji[tianji_slowest_id].target.fitness
@@ -174,45 +174,45 @@ class OriginalTHRO(Optimizer):
             if case == 1:
                 # Update Tianji's slowest horse
                 pos_new = (
-                    (
-                        p * self.pop_tianji[tianji_slowest_id].solution
-                        + (1 - p) * self.pop_tianji[0].solution
-                    )
-                    + tianji_r
-                    * (
-                        self.pop_tianji[0].solution
-                        - self.pop_tianji[tianji_slowest_id].solution
-                        + p * (tianji_mean - king_mean)
-                    )
-                ) * tianji_alpha + t_beta
+                                  (
+                                          p * self.pop_tianji[tianji_slowest_id].solution
+                                          + (1 - p) * self.pop_tianji[0].solution
+                                  )
+                                  + tianji_r
+                                  * (
+                                          self.pop_tianji[0].solution
+                                          - self.pop_tianji[tianji_slowest_id].solution
+                                          + p * (tianji_mean - king_mean)
+                                  )
+                          ) * tianji_alpha + t_beta
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                    agent.target,
-                    self.pop_tianji[tianji_slowest_id].target,
-                    self.problem.minmax,
+                        agent.target,
+                        self.pop_tianji[tianji_slowest_id].target,
+                        self.problem.minmax,
                 ):
                     self.pop_tianji[tianji_slowest_id] = agent
 
                 # Update King's slowest horse
                 pos_new = (
-                    (
-                        p * self.pop_king[king_slowest_id].solution
-                        + (1 - p) * self.pop_tianji[tianji_slowest_id].solution
-                    )
-                    + king_r
-                    * (
-                        self.pop_tianji[tianji_slowest_id].solution
-                        - self.pop_king[king_slowest_id].solution
-                        + p * (tianji_mean - king_mean)
-                    )
-                ) * king_alpha + k_beta
+                                  (
+                                          p * self.pop_king[king_slowest_id].solution
+                                          + (1 - p) * self.pop_tianji[tianji_slowest_id].solution
+                                  )
+                                  + king_r
+                                  * (
+                                          self.pop_tianji[tianji_slowest_id].solution
+                                          - self.pop_king[king_slowest_id].solution
+                                          + p * (tianji_mean - king_mean)
+                                  )
+                          ) * king_alpha + k_beta
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                    agent.target,
-                    self.pop_king[king_slowest_id].target,
-                    self.problem.minmax,
+                        agent.target,
+                        self.pop_king[king_slowest_id].target,
+                        self.problem.minmax,
                 ):
                     self.pop_king[king_slowest_id] = agent
 
@@ -226,45 +226,45 @@ class OriginalTHRO(Optimizer):
                 )
                 # Update Tianji's slowest horse
                 pos_new = (
-                    (
-                        p * self.pop_tianji[tianji_slowest_id].solution
-                        + (1 - p) * self.pop_tianji[tr1].solution
-                    )
-                    + tianji_r
-                    * (
-                        self.pop_tianji[tr1].solution
-                        - self.pop_tianji[tianji_slowest_id].solution
-                        + p * (tianji_mean - king_mean)
-                    )
-                ) * tianji_alpha + t_beta
+                                  (
+                                          p * self.pop_tianji[tianji_slowest_id].solution
+                                          + (1 - p) * self.pop_tianji[tr1].solution
+                                  )
+                                  + tianji_r
+                                  * (
+                                          self.pop_tianji[tr1].solution
+                                          - self.pop_tianji[tianji_slowest_id].solution
+                                          + p * (tianji_mean - king_mean)
+                                  )
+                          ) * tianji_alpha + t_beta
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                    agent.target,
-                    self.pop_tianji[tianji_slowest_id].target,
-                    self.problem.minmax,
+                        agent.target,
+                        self.pop_tianji[tianji_slowest_id].target,
+                        self.problem.minmax,
                 ):
                     self.pop_tianji[tianji_slowest_id] = agent
 
                 # Update King's fastest horse
                 pos_new = (
-                    (
-                        p * self.pop_king[king_fastest_id].solution
-                        + (1 - p) * self.pop_king[0].solution
-                    )
-                    + king_r
-                    * (
-                        self.pop_king[0].solution
-                        - self.pop_king[king_fastest_id].solution
-                        + p * (tianji_mean - king_mean)
-                    )
-                ) * king_alpha + k_beta
+                                  (
+                                          p * self.pop_king[king_fastest_id].solution
+                                          + (1 - p) * self.pop_king[0].solution
+                                  )
+                                  + king_r
+                                  * (
+                                          self.pop_king[0].solution
+                                          - self.pop_king[king_fastest_id].solution
+                                          + p * (tianji_mean - king_mean)
+                                  )
+                          ) * king_alpha + k_beta
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                    agent.target,
-                    self.pop_king[king_fastest_id].target,
-                    self.problem.minmax,
+                        agent.target,
+                        self.pop_king[king_fastest_id].target,
+                        self.problem.minmax,
                 ):
                     self.pop_king[king_fastest_id] = agent
 
@@ -293,45 +293,45 @@ class OriginalTHRO(Optimizer):
                 if case_fast == 1:
                     # Update Tianji's fastest horse
                     pos_new = (
-                        (
-                            p * self.pop_tianji[tianji_fastest_id].solution
-                            + (1 - p) * self.pop_tianji[0].solution
-                        )
-                        + tianji_r
-                        * (
-                            self.pop_tianji[0].solution
-                            - self.pop_tianji[tianji_fastest_id].solution
-                            + p * (tianji_mean - king_mean)
-                        )
-                    ) * tianji_alpha + t_beta
+                                      (
+                                              p * self.pop_tianji[tianji_fastest_id].solution
+                                              + (1 - p) * self.pop_tianji[0].solution
+                                      )
+                                      + tianji_r
+                                      * (
+                                              self.pop_tianji[0].solution
+                                              - self.pop_tianji[tianji_fastest_id].solution
+                                              + p * (tianji_mean - king_mean)
+                                      )
+                              ) * tianji_alpha + t_beta
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target,
-                        self.pop_tianji[tianji_fastest_id].target,
-                        self.problem.minmax,
+                            agent.target,
+                            self.pop_tianji[tianji_fastest_id].target,
+                            self.problem.minmax,
                     ):
                         self.pop_tianji[tianji_fastest_id] = agent
 
                     # Update King's fastest horse
                     pos_new = (
-                        (
-                            p * self.pop_king[king_fastest_id].solution
-                            + (1 - p) * self.pop_tianji[tianji_fastest_id].solution
-                        )
-                        + king_r
-                        * (
-                            self.pop_tianji[tianji_fastest_id].solution
-                            - self.pop_king[king_fastest_id].solution
-                            + p * (tianji_mean - king_mean)
-                        )
-                    ) * king_alpha + k_beta
+                                      (
+                                              p * self.pop_king[king_fastest_id].solution
+                                              + (1 - p) * self.pop_tianji[tianji_fastest_id].solution
+                                      )
+                                      + king_r
+                                      * (
+                                              self.pop_tianji[tianji_fastest_id].solution
+                                              - self.pop_king[king_fastest_id].solution
+                                              + p * (tianji_mean - king_mean)
+                                      )
+                              ) * king_alpha + k_beta
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target,
-                        self.pop_king[king_fastest_id].target,
-                        self.problem.minmax,
+                            agent.target,
+                            self.pop_king[king_fastest_id].target,
+                            self.problem.minmax,
                     ):
                         self.pop_king[king_fastest_id] = agent
 
@@ -346,45 +346,45 @@ class OriginalTHRO(Optimizer):
 
                     # Update Tianji's slowest horse
                     pos_new = (
-                        (
-                            p * self.pop_tianji[tianji_slowest_id].solution
-                            + (1 - p) * self.pop_tianji[tr2].solution
-                        )
-                        + tianji_r
-                        * (
-                            self.pop_tianji[tr2].solution
-                            - self.pop_tianji[tianji_slowest_id].solution
-                            + p * (tianji_mean - king_mean)
-                        )
-                    ) * tianji_alpha + t_beta
+                                      (
+                                              p * self.pop_tianji[tianji_slowest_id].solution
+                                              + (1 - p) * self.pop_tianji[tr2].solution
+                                      )
+                                      + tianji_r
+                                      * (
+                                              self.pop_tianji[tr2].solution
+                                              - self.pop_tianji[tianji_slowest_id].solution
+                                              + p * (tianji_mean - king_mean)
+                                      )
+                              ) * tianji_alpha + t_beta
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target,
-                        self.pop_tianji[tianji_slowest_id].target,
-                        self.problem.minmax,
+                            agent.target,
+                            self.pop_tianji[tianji_slowest_id].target,
+                            self.problem.minmax,
                     ):
                         self.pop_tianji[tianji_slowest_id] = agent
 
                     # Update King's fastest horse
                     pos_new = (
-                        (
-                            p * self.pop_king[king_fastest_id].solution
-                            + (1 - p) * self.pop_king[0].solution
-                        )
-                        + king_r
-                        * (
-                            self.pop_king[0].solution
-                            - self.pop_king[king_fastest_id].solution
-                            + p * (tianji_mean - king_mean)
-                        )
-                    ) * king_alpha + k_beta
+                                      (
+                                              p * self.pop_king[king_fastest_id].solution
+                                              + (1 - p) * self.pop_king[0].solution
+                                      )
+                                      + king_r
+                                      * (
+                                              self.pop_king[0].solution
+                                              - self.pop_king[king_fastest_id].solution
+                                              + p * (tianji_mean - king_mean)
+                                      )
+                              ) * king_alpha + k_beta
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target,
-                        self.pop_king[king_fastest_id].target,
-                        self.problem.minmax,
+                            agent.target,
+                            self.pop_king[king_fastest_id].target,
+                            self.problem.minmax,
                     ):
                         self.pop_king[king_fastest_id] = agent
 
@@ -399,45 +399,45 @@ class OriginalTHRO(Optimizer):
 
                     # Update Tianji's slowest horse
                     pos_new = (
-                        (
-                            p * self.pop_tianji[tianji_slowest_id].solution
-                            + (1 - p) * self.pop_tianji[tr3].solution
-                        )
-                        + tianji_r
-                        * (
-                            self.pop_tianji[tr3].solution
-                            - self.pop_tianji[tianji_slowest_id].solution
-                            + p * (tianji_mean - king_mean)
-                        )
-                    ) * tianji_alpha + t_beta
+                                      (
+                                              p * self.pop_tianji[tianji_slowest_id].solution
+                                              + (1 - p) * self.pop_tianji[tr3].solution
+                                      )
+                                      + tianji_r
+                                      * (
+                                              self.pop_tianji[tr3].solution
+                                              - self.pop_tianji[tianji_slowest_id].solution
+                                              + p * (tianji_mean - king_mean)
+                                      )
+                              ) * tianji_alpha + t_beta
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target,
-                        self.pop_tianji[tianji_slowest_id].target,
-                        self.problem.minmax,
+                            agent.target,
+                            self.pop_tianji[tianji_slowest_id].target,
+                            self.problem.minmax,
                     ):
                         self.pop_tianji[tianji_slowest_id] = agent
 
                     # Update King's fastest horse
                     pos_new = (
-                        (
-                            p * self.pop_king[king_fastest_id].solution
-                            + (1 - p) * self.pop_king[0].solution
-                        )
-                        + king_r
-                        * (
-                            self.pop_king[0].solution
-                            - self.pop_king[king_fastest_id].solution
-                            + p * (tianji_mean - king_mean)
-                        )
-                    ) * king_alpha + k_beta
+                                      (
+                                              p * self.pop_king[king_fastest_id].solution
+                                              + (1 - p) * self.pop_king[0].solution
+                                      )
+                                      + king_r
+                                      * (
+                                              self.pop_king[0].solution
+                                              - self.pop_king[king_fastest_id].solution
+                                              + p * (tianji_mean - king_mean)
+                                      )
+                              ) * king_alpha + k_beta
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target,
-                        self.pop_king[king_fastest_id].target,
-                        self.problem.minmax,
+                            agent.target,
+                            self.pop_king[king_fastest_id].target,
+                            self.problem.minmax,
                     ):
                         self.pop_king[king_fastest_id] = agent
 
@@ -463,23 +463,23 @@ class OriginalTHRO(Optimizer):
                         beta=1.5, multiplier=0.2, size=None, case=-1
                     )
                     pos_new[jdx] = pos_new[jdx] + lt * (
-                        self.pop_tianji[tr4].solution[jdx]
-                        - self.pop_tianji[tr5].solution[jdx]
+                            self.pop_tianji[tr4].solution[jdx]
+                            - self.pop_tianji[tr5].solution[jdx]
                     )
                 else:  # Best-guided training
                     mt = 0.5 * (
-                        1
-                        + 0.001
-                        * (1 - epoch / self.epoch) ** 2
-                        * np.sin(np.pi * self.generator.random())
+                            1
+                            + 0.001
+                            * (1 - epoch / self.epoch) ** 2
+                            * np.sin(np.pi * self.generator.random())
                     )
                     pos_new[jdx] = best_tianji.solution[jdx] + mt * (
-                        best_tianji.solution[jdx] - pos_new[jdx]
+                            best_tianji.solution[jdx] - pos_new[jdx]
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop_tianji[idx].target, self.problem.minmax
+                    agent.target, self.pop_tianji[idx].target, self.problem.minmax
             ):
                 self.pop_tianji[idx] = agent
 
@@ -494,23 +494,23 @@ class OriginalTHRO(Optimizer):
                         beta=1.5, multiplier=0.2, size=None, case=-1
                     )
                     pos_new[jdx] = pos_new[jdx] + lk * (
-                        self.pop_king[kr1].solution[jdx]
-                        - self.pop_king[kr2].solution[jdx]
+                            self.pop_king[kr1].solution[jdx]
+                            - self.pop_king[kr2].solution[jdx]
                     )
                 else:  # Best-guided training
                     mk = 0.5 * (
-                        1
-                        + 0.001
-                        * (1 - epoch / self.epoch) ** 2
-                        * np.sin(np.pi * self.generator.random())
+                            1
+                            + 0.001
+                            * (1 - epoch / self.epoch) ** 2
+                            * np.sin(np.pi * self.generator.random())
                     )
                     pos_new[jdx] = best_king.solution[jdx] + mk * (
-                        best_king.solution[jdx] - pos_new[jdx]
+                            best_king.solution[jdx] - pos_new[jdx]
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop_king[idx].target, self.problem.minmax
+                    agent.target, self.pop_king[idx].target, self.problem.minmax
             ):
                 self.pop_king[idx] = agent
 

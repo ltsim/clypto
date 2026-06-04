@@ -79,10 +79,10 @@ class OriginalARO(Optimizer):
             if A > 1:  # detour foraging strategy
                 rand_idx = self.generator.integers(0, self.pop_size)
                 pos_new = (
-                    self.pop[rand_idx].solution
-                    + R * (self.pop[idx].solution - self.pop[rand_idx].solution)
-                    + np.round(0.5 * (0.05 + self.generator.random()))
-                    * self.generator.normal(0, 1)
+                        self.pop[rand_idx].solution
+                        + R * (self.pop[idx].solution - self.pop[rand_idx].solution)
+                        + np.round(0.5 * (0.05 + self.generator.random()))
+                        * self.generator.normal(0, 1)
                 )  # Eq. 1
             else:  # Random hiding stage
                 gr = np.zeros(self.problem.n_dims)
@@ -95,7 +95,7 @@ class OriginalARO(Optimizer):
                 H = self.generator.normal(0, 1) * (epoch / self.epoch)  # Eq. 8
                 b = self.pop[idx].solution + H * gr * self.pop[idx].solution  # Eq. 13
                 pos_new = self.pop[idx].solution + R * (
-                    self.generator.random() * b - self.pop[idx].solution
+                        self.generator.random() * b - self.pop[idx].solution
                 )  # Eq. 11
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -181,10 +181,10 @@ class LARO(Optimizer):
             if A > 1:  # # detour foraging strategy
                 rand_idx = self.generator.integers(0, self.pop_size)
                 pos_new = (
-                    self.pop[rand_idx].solution
-                    + R * (self.pop[idx].solution - self.pop[rand_idx].solution)
-                    + np.round(0.5 * (0.05 + self.generator.random()))
-                    * self.generator.normal(0, 1)
+                        self.pop[rand_idx].solution
+                        + R * (self.pop[idx].solution - self.pop[rand_idx].solution)
+                        + np.round(0.5 * (0.05 + self.generator.random()))
+                        * self.generator.normal(0, 1)
                 )  # Eq. 1
             else:  # Random hiding stage
                 gr = np.zeros(self.problem.n_dims)
@@ -198,7 +198,7 @@ class LARO(Optimizer):
                 b = self.pop[idx].solution + H * gr * self.pop[idx].solution  # Eq. 13
                 levy = self.get_levy_flight_step(beta=1.5, multiplier=0.1)
                 pos_new = self.pop[idx].solution + R * (
-                    levy * b - self.pop[idx].solution
+                        levy * b - self.pop[idx].solution
                 )  # Eq. 11
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -221,7 +221,7 @@ class LARO(Optimizer):
                 idx_far = np.sign(dd - TS) < 0
                 n_df = np.sum(idx_far)
                 n_dc = np.sum(np.sign(dd - TS) > 0)
-                src = 1 - 6 * np.sum(dd**2) / np.dot(dd, (dd**2 - 1))
+                src = 1 - 6 * np.sum(dd ** 2) / np.dot(dd, (dd ** 2 - 1))
                 if len(dd[idx_far]) == 0:
                     df_lb, df_ub = np.min(dd), np.max(dd)
                 else:
@@ -231,7 +231,7 @@ class LARO(Optimizer):
                     pos_new = self.correct_solution(pos_new)
                     target = self.get_target(pos_new)
                     if self.compare_target(
-                        target, self.pop[idx].target, self.problem.minmax
+                            target, self.pop[idx].target, self.problem.minmax
                     ):
                         self.pop[idx].update(solution=pos_new, target=target)
 
@@ -306,10 +306,10 @@ class IARO(Optimizer):
             if A > 1:  # # detour foraging strategy
                 rand_idx = self.generator.integers(0, self.pop_size)
                 pos_new = (
-                    self.pop[rand_idx].solution
-                    + R * (self.pop[idx].solution - self.pop[rand_idx].solution)
-                    + np.round(0.5 * (0.05 + self.generator.random()))
-                    * self.generator.normal(0, 1)
+                        self.pop[rand_idx].solution
+                        + R * (self.pop[idx].solution - self.pop[rand_idx].solution)
+                        + np.round(0.5 * (0.05 + self.generator.random()))
+                        * self.generator.normal(0, 1)
                 )  # Eq. 1
             else:  # Random hiding stage
                 gr = np.zeros(self.problem.n_dims)
@@ -322,7 +322,7 @@ class IARO(Optimizer):
                 H = self.generator.normal(0, 1) * (epoch / self.epoch)  # Eq. 8
                 b = self.pop[idx].solution + H * gr * self.pop[idx].solution  # Eq. 13
                 pos_new = self.pop[idx].solution + R * (
-                    self.generator.random() * b - self.pop[idx].solution
+                        self.generator.random() * b - self.pop[idx].solution
                 )  # Eq. 11
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

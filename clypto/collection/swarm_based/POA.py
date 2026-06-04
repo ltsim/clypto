@@ -47,7 +47,7 @@ class OriginalPOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -73,34 +73,34 @@ class OriginalPOA(Optimizer):
         for idx in range(0, self.pop_size):
             # PHASE 1: Moving towards prey (exploration phase)
             if self.compare_target(
-                self.pop[kk].target, self.pop[idx].target, self.problem.minmax
+                    self.pop[kk].target, self.pop[idx].target, self.problem.minmax
             ):  # Eq. 4
                 pos_new = self.pop[idx].solution + self.generator.random() * (
-                    self.pop[kk].solution
-                    - self.generator.integers(1, 3) * self.pop[idx].solution
+                        self.pop[kk].solution
+                        - self.generator.integers(1, 3) * self.pop[idx].solution
                 )
             else:
                 pos_new = self.pop[idx].solution + self.generator.random() * (
-                    self.pop[idx].solution - self.pop[kk].solution
+                        self.pop[idx].solution - self.pop[kk].solution
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
 
             # PHASE 2: Winging on the water surface (exploitation phase)        # Eq. 6
             pos_new = (
-                self.pop[idx].solution
-                + 0.2
-                * (1 - epoch / self.epoch)
-                * (2 * self.generator.random(self.problem.n_dims) - 1)
-                * self.pop[idx].solution
+                    self.pop[idx].solution
+                    + 0.2
+                    * (1 - epoch / self.epoch)
+                    * (2 * self.generator.random(self.problem.n_dims) - 1)
+                    * self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent

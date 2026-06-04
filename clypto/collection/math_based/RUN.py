@@ -44,7 +44,7 @@ class OriginalRUN(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -65,16 +65,16 @@ class OriginalRUN(Optimizer):
         r2 = self.generator.random(dim)
         K1 = 0.5 * (self.generator.random() * xw - C * xb)
         K2 = 0.5 * (
-            self.generator.random() * (xw + r2 * K1 * delta_x / 2)
-            - (C * xb + r1 * K1 * delta_x / 2)
+                self.generator.random() * (xw + r2 * K1 * delta_x / 2)
+                - (C * xb + r1 * K1 * delta_x / 2)
         )
         K3 = 0.5 * (
-            self.generator.random() * (xw + r2 * K2 * delta_x / 2)
-            - (C * xb + r1 * K2 * delta_x / 2)
+                self.generator.random() * (xw + r2 * K2 * delta_x / 2)
+                - (C * xb + r1 * K2 * delta_x / 2)
         )
         K4 = 0.5 * (
-            self.generator.random() * (xw + r2 * K3 * delta_x)
-            - (C * xb + r1 * K3 * delta_x)
+                self.generator.random() * (xw + r2 * K3 * delta_x)
+                - (C * xb + r1 * K3 * delta_x)
         )
         return (K1 + 2 * K2 + 2 * K3 + K4) / 6
 
@@ -105,19 +105,19 @@ class OriginalRUN(Optimizer):
         for idx in range(0, self.pop_size):
             ## Determine Delta X (Eqs. 11.1 to 11.3)
             gama = (
-                self.generator.random()
-                * (
-                    self.pop[idx].solution
-                    - self.generator.uniform(0, 1, self.problem.n_dims)
-                    * (self.problem.ub - self.problem.lb)
-                )
-                * np.exp(-4 * epoch / self.epoch)
+                    self.generator.random()
+                    * (
+                            self.pop[idx].solution
+                            - self.generator.uniform(0, 1, self.problem.n_dims)
+                            * (self.problem.ub - self.problem.lb)
+                    )
+                    * np.exp(-4 * epoch / self.epoch)
             )
             stp = self.generator.uniform(0, 1, self.problem.n_dims) * (
-                (self.g_best.solution - self.generator.random() * x_average) + gama
+                    (self.g_best.solution - self.generator.random() * x_average) + gama
             )
             delta_x = (
-                2 * self.generator.uniform(0, 1, self.problem.n_dims) * np.abs(stp)
+                    2 * self.generator.uniform(0, 1, self.problem.n_dims) * np.abs(stp)
             )
             ## Determine Three Random Indices of Solutions
             a, b, c = self.generator.choice(
@@ -128,7 +128,7 @@ class OriginalRUN(Optimizer):
             )
             ## Determine Xb and Xw for using in Runge Kutta method
             if self.compare_target(
-                self.pop[idx].target, self.pop[id_min_x].target, self.problem.minmax
+                    self.pop[idx].target, self.pop[id_min_x].target, self.problem.minmax
             ):
                 xb, xw = self.pop[idx].solution, self.pop[id_min_x].solution
             else:
@@ -147,10 +147,10 @@ class OriginalRUN(Optimizer):
                 pos_new = xc + r * SF[idx] * g * xc + SF[idx] * SM + mu * (xm - xc)
             else:
                 pos_new = (
-                    xm
-                    + r * SF[idx] * g * xm
-                    + SF[idx] * SM
-                    + mu * (self.pop[a].solution - self.pop[b].solution)
+                        xm
+                        + r * SF[idx] * g * xm
+                        + SF[idx] * SM
+                        + mu * (self.pop[a].solution - self.pop[b].solution)
                 )
             pos_new = self.correct_solution(pos_new)
             tar_new = self.get_target(pos_new)
@@ -167,56 +167,56 @@ class OriginalRUN(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx}), 3, replace=False
                 )
                 x_ave = (
-                    self.pop[a].solution + self.pop[b].solution + self.pop[c].solution
-                ) / 3  # Eq.19-2
+                                self.pop[a].solution + self.pop[b].solution + self.pop[c].solution
+                        ) / 3  # Eq.19-2
                 beta = self.generator.random(self.problem.n_dims)
                 x_new1 = beta * self.g_best.solution + (1 - beta) * x_ave  # Eq.19-3
                 x_new2_temp1 = x_new1 + r * w * np.abs(
                     self.generator.normal(0, 1, self.problem.n_dims) + (x_new1 - x_ave)
                 )
                 x_new2_temp2 = (
-                    x_new1
-                    - x_ave
-                    + r
-                    * w
-                    * np.abs(
-                        self.generator.normal(0, 1, self.problem.n_dims)
-                        + u * x_new1
+                        x_new1
                         - x_ave
-                    )
+                        + r
+                        * w
+                        * np.abs(
+                    self.generator.normal(0, 1, self.problem.n_dims)
+                    + u * x_new1
+                    - x_ave
+                )
                 )
                 x_new2 = np.where(w < 1, x_new2_temp1, x_new2_temp2)
                 pos_new2 = self.correct_solution(x_new2)
                 tar_new2 = self.get_target(pos_new2)
                 if self.compare_target(
-                    tar_new2, self.pop[idx].target, self.problem.minmax
+                        tar_new2, self.pop[idx].target, self.problem.minmax
                 ):
                     self.pop[idx].update(solution=pos_new2, target=tar_new2)
                 else:
                     if (
-                        w[self.generator.integers(0, self.problem.n_dims)]
-                        > self.generator.random()
+                            w[self.generator.integers(0, self.problem.n_dims)]
+                            > self.generator.random()
                     ):
                         SM = self.runge_kutta__(
                             self.pop[idx].solution, pos_new2, delta_x
                         )
                         x_new3 = (
-                            pos_new2
-                            - self.generator.random() * pos_new2
-                            + SF[idx]
-                            * (
-                                SM
-                                + (
-                                    2
-                                    * self.generator.random(self.problem.n_dims)
-                                    * self.g_best.solution
-                                    - pos_new2
+                                pos_new2
+                                - self.generator.random() * pos_new2
+                                + SF[idx]
+                                * (
+                                        SM
+                                        + (
+                                                2
+                                                * self.generator.random(self.problem.n_dims)
+                                                * self.g_best.solution
+                                                - pos_new2
+                                        )
                                 )
-                            )
                         )  # Eq. 20
                         pos_new3 = self.correct_solution(x_new3)
                         tar_new3 = self.get_target(pos_new3)
                         if self.compare_target(
-                            tar_new3, self.pop[idx].target, self.problem.minmax
+                                tar_new3, self.pop[idx].target, self.problem.minmax
                         ):
                             self.pop[idx].update(solution=pos_new3, target=tar_new3)

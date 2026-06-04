@@ -47,13 +47,13 @@ class OriginalSFO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pp: float = 0.1,
-        AP: float = 4.0,
-        epsilon: float = 0.0001,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pp: float = 0.1,
+            AP: float = 4.0,
+            epsilon: float = 0.0001,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -95,10 +95,10 @@ class OriginalSFO(Optimizer):
         for idx in range(0, self.pop_size):
             lamda_i = 2 * self.generator.uniform() * PD - PD
             pos_new = self.s_gbest.solution - lamda_i * (
-                self.generator.uniform()
-                * (self.pop[idx].solution + self.s_gbest.solution)
-                / 2
-                - self.pop[idx].solution
+                    self.generator.uniform()
+                    * (self.pop[idx].solution + self.s_gbest.solution)
+                    / 2
+                    - self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -128,8 +128,8 @@ class OriginalSFO(Optimizer):
                         range(0, self.problem.n_dims), beta, replace=False
                     )
                     pos_new[list2] = (
-                        self.generator.uniform(0, 1, self.problem.n_dims)
-                        * (self.s_gbest.solution - self.s_pop[idx].solution + AP)
+                            self.generator.uniform(0, 1, self.problem.n_dims)
+                            * (self.s_gbest.solution - self.s_pop[idx].solution + AP)
                     )[list2]
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_empty_agent(pos_new)
@@ -140,7 +140,7 @@ class OriginalSFO(Optimizer):
             ### Update the position of all sardine using Eq.(9)
             for idx in range(0, self.s_size):
                 pos_new = self.generator.uniform() * (
-                    self.g_best.solution - self.s_pop[idx].solution + AP
+                        self.g_best.solution - self.s_pop[idx].solution + AP
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -160,7 +160,7 @@ class OriginalSFO(Optimizer):
             for jdx in range(0, self.s_size):
                 ### If there is a better position in sardine population.
                 if self.compare_target(
-                    self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                        self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax
                 ):
                     self.pop[idx] = self.s_pop[jdx].copy()
                     del self.s_pop[jdx]
@@ -209,7 +209,7 @@ class ImprovedSFO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, pp: float = 0.1, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, pp: float = 0.1, **kwargs: object
     ) -> None:
         """
         Args:
@@ -245,10 +245,10 @@ class ImprovedSFO(Optimizer):
             PD = 1 - len(self.pop) / (len(self.pop) + len(self.s_pop))
             lamda_i = 2 * self.generator.uniform() * PD - PD
             pos_new = self.s_gbest.solution - lamda_i * (
-                self.generator.uniform()
-                * (self.g_best.solution + self.s_gbest.solution)
-                / 2
-                - self.pop[idx].solution
+                    self.generator.uniform()
+                    * (self.g_best.solution + self.s_gbest.solution)
+                    / 2
+                    - self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -270,10 +270,10 @@ class ImprovedSFO(Optimizer):
             for idx in range(0, len(self.s_pop)):
                 temp = (self.g_best.solution + AP) / 2
                 pos_new = (
-                    self.problem.lb
-                    + self.problem.ub
-                    - temp
-                    + self.generator.uniform() * (temp - self.s_pop[idx].solution)
+                        self.problem.lb
+                        + self.problem.ub
+                        - temp
+                        + self.generator.uniform() * (temp - self.s_pop[idx].solution)
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -284,7 +284,7 @@ class ImprovedSFO(Optimizer):
             ### Update the position of all sardine using Eq.(9)
             for idx in range(0, len(self.s_pop)):
                 pos_new = self.generator.uniform() * (
-                    self.g_best.solution - self.s_pop[idx].solution + AP
+                        self.g_best.solution - self.s_pop[idx].solution + AP
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -304,7 +304,7 @@ class ImprovedSFO(Optimizer):
             for jdx in range(0, len(self.s_pop)):
                 ### If there is a better position in sardine population.
                 if self.compare_target(
-                    self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                        self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax
                 ):
                     self.pop[idx] = self.s_pop[jdx].copy()
                     del self.s_pop[jdx]

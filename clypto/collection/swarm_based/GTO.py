@@ -48,12 +48,12 @@ class OriginalGTO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        A: float = 0.4,
-        H: float = 2.0,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            A: float = 0.4,
+            H: float = 2.0,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -82,8 +82,8 @@ class OriginalGTO(Optimizer):
         for idx in range(0, self.pop_size):
             # Eq.(4)
             pos_new = self.g_best.solution * self.generator.random() + (
-                (self.problem.ub - self.problem.lb) * self.generator.random()
-                + self.problem.lb
+                    (self.problem.ub - self.problem.lb) * self.generator.random()
+                    + self.problem.lb
             ) * self.get_levy_flight_step(
                 beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
             )
@@ -109,7 +109,7 @@ class OriginalGTO(Optimizer):
         for idx in range(0, self.pop_size):
             r3 = self.generator.random()
             pos_new = (
-                self.g_best.solution * self.A * r3 + pos_m - self.pop[idx].solution * r3
+                    self.g_best.solution * self.A * r3 + pos_m - self.pop[idx].solution * r3
             )  # Eq. 7
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -139,11 +139,11 @@ class OriginalGTO(Optimizer):
             VD = np.sin(np.radians(theta1)) * dist  # Eq. 11
             # Eq. (13)
             pos_new = (
-                self.pop[idx].solution
-                * np.sin(np.radians(theta2))
-                * self.pop[idx].target.fitness
-                + VD
-                + H
+                    self.pop[idx].solution
+                    * np.sin(np.radians(theta2))
+                    * self.pop[idx].target.fitness
+                    + VD
+                    + H
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -200,7 +200,7 @@ class Matlab102GTO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -225,8 +225,8 @@ class Matlab102GTO(Optimizer):
         for idx in range(0, self.pop_size):
             # foraging movement patterns of giant trevallies are simulated using Eq.(4)
             pos_new = self.g_best.solution * self.generator.random() + (
-                (self.problem.ub - self.problem.lb) * self.generator.random()
-                + self.problem.lb
+                    (self.problem.ub - self.problem.lb) * self.generator.random()
+                    + self.problem.lb
             ) * self.get_levy_flight_step(
                 beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
             )
@@ -254,7 +254,7 @@ class Matlab102GTO(Optimizer):
             # the amount of food (seabirds) within the selected search space where they can hunt for prey.
             r3 = self.generator.random()
             pos_new = (
-                self.g_best.solution * A * r3 + pos_m - self.pop[idx].solution * r3
+                    self.g_best.solution * A * r3 + pos_m - self.pop[idx].solution * r3
             )  # Eq. 7
 
             pos_new = self.correct_solution(pos_new)
@@ -285,11 +285,11 @@ class Matlab102GTO(Optimizer):
             VD = np.sin(np.radians(theta1)) * dist  # Eq. 11
             # the behavior of giant trevally when chasing and jumping out of the water is mathematically simulated using (13)
             pos_new = (
-                self.pop[idx].solution
-                * np.sin(np.radians(theta2))
-                * self.pop[idx].target.fitness
-                + VD
-                + H
+                    self.pop[idx].solution
+                    * np.sin(np.radians(theta2))
+                    * self.pop[idx].target.fitness
+                    + VD
+                    + H
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -346,7 +346,7 @@ class Matlab101GTO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -374,8 +374,8 @@ class Matlab101GTO(Optimizer):
                     continue
                 # foraging movement patterns of giant trevallies are simulated using Eq.(4)
                 pos_new = self.g_best.solution * self.generator.random() + (
-                    (self.problem.ub - self.problem.lb) * self.generator.random()
-                    + self.problem.lb
+                        (self.problem.ub - self.problem.lb) * self.generator.random()
+                        + self.problem.lb
                 ) * self.get_levy_flight_step(
                     beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
                 )
@@ -400,7 +400,7 @@ class Matlab101GTO(Optimizer):
             # the amount of food (seabirds) within the selected search space where they can hunt for prey.
             r3 = self.generator.random()
             pos_new = (
-                self.g_best.solution * A * r3 + pos_m - self.pop[idx].solution * r3
+                    self.g_best.solution * A * r3 + pos_m - self.pop[idx].solution * r3
             )  # Eq. 7
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -435,11 +435,11 @@ class Matlab101GTO(Optimizer):
                 VD = np.sin(np.radians(theta1)) * dist  # Eq. 11
                 # the behavior of giant trevally when chasing and jumping out of the water is mathematically simulated using (13)
                 pos_new = (
-                    self.pop[idx].solution
-                    * np.sin(np.radians(theta2))
-                    * self.pop[idx].target.fitness
-                    + VD
-                    + H
+                        self.pop[idx].solution
+                        * np.sin(np.radians(theta2))
+                        * self.pop[idx].target.fitness
+                        + VD
+                        + H
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)

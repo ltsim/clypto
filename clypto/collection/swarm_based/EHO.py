@@ -47,13 +47,13 @@ class OriginalEHO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        alpha: float = 0.5,
-        beta: float = 0.5,
-        n_clans: int = 5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            alpha: float = 0.5,
+            beta: float = 0.5,
+            n_clans: int = 5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -95,7 +95,7 @@ class OriginalEHO(Optimizer):
             clan_idx = int(idx / self.n_individuals)
             pos_clan_idx = int(idx % self.n_individuals)
             if (
-                pos_clan_idx == 0
+                    pos_clan_idx == 0
             ):  # The best in clan, because all clans are sorted based on fitness
                 center = np.mean(
                     np.array([agent.solution for agent in self.pop_group[clan_idx]]),
@@ -104,11 +104,11 @@ class OriginalEHO(Optimizer):
                 pos_new = self.beta * center
             else:
                 pos_new = self.pop_group[clan_idx][
-                    pos_clan_idx
-                ].solution + self.alpha * self.generator.random() * (
-                    self.pop_group[clan_idx][0].solution
-                    - self.pop_group[clan_idx][pos_clan_idx].solution
-                )
+                              pos_clan_idx
+                          ].solution + self.alpha * self.generator.random() * (
+                                  self.pop_group[clan_idx][0].solution
+                                  - self.pop_group[clan_idx][pos_clan_idx].solution
+                          )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)

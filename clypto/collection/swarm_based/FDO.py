@@ -46,11 +46,11 @@ class OriginalFDO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        weight_factor=0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            weight_factor=0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -70,8 +70,8 @@ class OriginalFDO(Optimizer):
 
     def before_main_loop(self):
         self.pop_pace = [
-            0,
-        ] * self.pop_size
+                            0,
+                        ] * self.pop_size
 
     def get_fit_weight(self, best_fit, current_fit, weight_factor=0.1):
         """
@@ -152,7 +152,7 @@ class OriginalFDO(Optimizer):
             agent = self.generate_agent(pos_new)
             # Check if new position is better
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
             else:
@@ -163,7 +163,7 @@ class OriginalFDO(Optimizer):
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+                        agent.target, self.pop[idx].target, self.problem.minmax
                 ):
                     self.pop[idx] = agent
                 else:
@@ -176,6 +176,6 @@ class OriginalFDO(Optimizer):
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target, self.pop[idx].target, self.problem.minmax
+                            agent.target, self.pop[idx].target, self.problem.minmax
                     ):
                         self.pop[idx] = agent

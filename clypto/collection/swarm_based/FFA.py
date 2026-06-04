@@ -49,16 +49,16 @@ class OriginalFFA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        gamma: float = 0.001,
-        beta_base: float = 2,
-        alpha: float = 0.2,
-        alpha_damp: float = 0.99,
-        delta: float = 0.05,
-        exponent: int = 2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            gamma: float = 0.001,
+            beta_base: float = 2,
+            alpha: float = 0.2,
+            alpha_damp: float = 0.99,
+            delta: float = 0.05,
+            exponent: int = 2,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -113,11 +113,11 @@ class OriginalFFA(Optimizer):
             for j in range(idx + 1, self.pop_size):
                 # Move Towards Better Solutions
                 if self.compare_target(
-                    self.pop[j].target, agent.target, self.problem.minmax
+                        self.pop[j].target, agent.target, self.problem.minmax
                 ):
                     # Calculate Radius and Attraction Level
                     rij = np.linalg.norm(agent.solution - self.pop[j].solution) / dmax
-                    beta = self.beta_base * np.exp(-self.gamma * rij**self.exponent)
+                    beta = self.beta_base * np.exp(-self.gamma * rij ** self.exponent)
                     # Mutation Vector
                     mutation_vector = self.delta * self.generator.uniform(
                         0, 1, self.problem.n_dims
@@ -129,7 +129,7 @@ class OriginalFFA(Optimizer):
                         ),
                     )
                     pos_new = (
-                        agent.solution + self.dyn_alpha * mutation_vector + beta * temp
+                            agent.solution + self.dyn_alpha * mutation_vector + beta * temp
                     )
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
@@ -139,7 +139,7 @@ class OriginalFFA(Optimizer):
             local_best = self.get_best_agent(pop_child, self.problem.minmax)
             # Compare to Previous Solution
             if self.compare_target(
-                local_best.target, agent.target, self.problem.minmax
+                    local_best.target, agent.target, self.problem.minmax
             ):
                 self.pop[idx] = local_best
         self.pop.append(self.g_best)

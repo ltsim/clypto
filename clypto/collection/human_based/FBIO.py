@@ -37,7 +37,7 @@ class DevFBIO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -51,7 +51,7 @@ class DevFBIO(Optimizer):
         self.sort_flag = False
 
     def probability__(
-        self, list_fitness=None
+            self, list_fitness=None
     ):  # Eq.(3) in FBI Inspired Meta-Optimization
         max1 = np.max(list_fitness)
         min1 = np.min(list_fitness)
@@ -75,12 +75,12 @@ class DevFBIO(Optimizer):
             # Eq.(2) in FBI Inspired Meta - Optimization
             pos_a = self.pop[idx].solution.copy()
             pos_a[n_change] = self.pop[idx].solution[
-                n_change
-            ] + self.generator.normal() * (
-                self.pop[idx].solution[n_change]
-                - (self.pop[nb1].solution[n_change] + self.pop[nb2].solution[n_change])
-                / 2
-            )
+                                  n_change
+                              ] + self.generator.normal() * (
+                                      self.pop[idx].solution[n_change]
+                                      - (self.pop[nb1].solution[n_change] + self.pop[nb2].solution[n_change])
+                                      / 2
+                              )
             pos_a = self.correct_solution(pos_a)
             agent = self.generate_empty_agent(pos_a)
             pop_new.append(agent)
@@ -106,10 +106,10 @@ class DevFBIO(Optimizer):
                 )
                 ## Remove third loop here, the condition also not good, need to remove also. No need Rnd variable
                 temp = (
-                    self.g_best.solution
-                    + self.pop[r1].solution
-                    + self.generator.uniform()
-                    * (self.pop[r2].solution - self.pop[r3].solution)
+                        self.g_best.solution
+                        + self.pop[r1].solution
+                        + self.generator.uniform()
+                        * (self.pop[r2].solution - self.pop[r3].solution)
                 )
                 condition = self.generator.random(self.problem.n_dims) < 0.5
                 pos_new = np.where(condition, temp, self.pop[idx].solution)
@@ -137,8 +137,8 @@ class DevFBIO(Optimizer):
             pos_b = self.generator.uniform(0, 1, self.problem.n_dims) * self.pop[
                 idx
             ].solution + self.generator.uniform(0, 1, self.problem.n_dims) * (
-                self.g_best.solution - self.pop[idx].solution
-            )
+                            self.g_best.solution - self.pop[idx].solution
+                    )
             pos_b = self.correct_solution(pos_b)
             agent = self.generate_empty_agent(pos_b)
             pop_new.append(agent)
@@ -157,24 +157,24 @@ class DevFBIO(Optimizer):
         for idx in range(0, self.pop_size):
             rr = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
             if self.compare_target(
-                self.pop[idx].target, self.pop[rr].target, self.problem.minmax
+                    self.pop[idx].target, self.pop[rr].target, self.problem.minmax
             ):
                 ## Eq.(7) in FBI Inspired Meta-Optimization
                 pos_b = (
-                    self.pop[idx].solution
-                    + self.generator.uniform(0, 1, self.problem.n_dims)
-                    * (self.pop[rr].solution - self.pop[idx].solution)
-                    + self.generator.uniform()
-                    * (self.g_best.solution - self.pop[rr].solution)
+                        self.pop[idx].solution
+                        + self.generator.uniform(0, 1, self.problem.n_dims)
+                        * (self.pop[rr].solution - self.pop[idx].solution)
+                        + self.generator.uniform()
+                        * (self.g_best.solution - self.pop[rr].solution)
                 )
             else:
                 ## Eq.(8) in FBI Inspired Meta-Optimization
                 pos_b = (
-                    self.pop[idx].solution
-                    + self.generator.uniform(0, 1, self.problem.n_dims)
-                    * (self.pop[idx].solution - self.pop[rr].solution)
-                    + self.generator.uniform()
-                    * (self.g_best.solution - self.pop[idx].solution)
+                        self.pop[idx].solution
+                        + self.generator.uniform(0, 1, self.problem.n_dims)
+                        * (self.pop[idx].solution - self.pop[rr].solution)
+                        + self.generator.uniform()
+                        * (self.g_best.solution - self.pop[idx].solution)
                 )
             pos_b = self.correct_solution(pos_b)
             agent = self.generate_empty_agent(pos_b)
@@ -224,7 +224,7 @@ class OriginalFBIO(DevFBIO):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -258,12 +258,12 @@ class OriginalFBIO(DevFBIO):
             # Eq.(2) in FBI Inspired Meta - Optimization
             pos_a = self.pop[idx].solution.copy()
             pos_a[n_change] = self.pop[idx].solution[n_change] + (
-                self.generator.uniform() - 0.5
+                    self.generator.uniform() - 0.5
             ) * 2 * (
-                self.pop[idx].solution[n_change]
-                - (self.pop[nb1].solution[n_change] + self.pop[nb2].solution[n_change])
-                / 2
-            )
+                                      self.pop[idx].solution[n_change]
+                                      - (self.pop[nb1].solution[n_change] + self.pop[nb2].solution[n_change])
+                                      / 2
+                              )
             ## Not good move here, change only 1 variable but check bound of all variable in solution
             pos_a = self.correct_solution(pos_a)
             agent = self.generate_empty_agent(pos_a)
@@ -293,10 +293,10 @@ class OriginalFBIO(DevFBIO):
                 for j in range(0, self.problem.n_dims):
                     if self.generator.uniform() < self.generator.uniform() or Rnd == j:
                         pos_a[j] = (
-                            self.g_best.solution[j]
-                            + self.pop[r1].solution[j]
-                            + self.generator.uniform()
-                            * (self.pop[r2].solution[j] - self.pop[r3].solution[j])
+                                self.g_best.solution[j]
+                                + self.pop[r1].solution[j]
+                                + self.generator.uniform()
+                                * (self.pop[r2].solution[j] - self.pop[r3].solution[j])
                         )
                     ## In the original matlab code they do the else condition here, not good again because no need else here
                 ## Same here, they do check the bound of all variable in solution
@@ -326,8 +326,8 @@ class OriginalFBIO(DevFBIO):
                 pos_b[j] = self.generator.uniform() * self.pop[idx].solution[
                     j
                 ] + self.generator.uniform() * (
-                    self.g_best.solution[j] - self.pop[idx].solution[j]
-                )
+                                   self.g_best.solution[j] - self.pop[idx].solution[j]
+                           )
             pos_b = self.correct_solution(pos_b)
             agent = self.generate_empty_agent(pos_b)
             pop_new.append(agent)
@@ -346,24 +346,24 @@ class OriginalFBIO(DevFBIO):
         for idx in range(0, self.pop_size):
             rr = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
             if self.compare_target(
-                self.pop[idx].target, self.pop[rr].target, self.problem.minmax
+                    self.pop[idx].target, self.pop[rr].target, self.problem.minmax
             ):
                 ## Eq.(7) in FBI Inspired Meta-Optimization
                 pos_b = (
-                    self.pop[idx].solution
-                    + self.generator.uniform(0, 1, self.problem.n_dims)
-                    * (self.pop[rr].solution - self.pop[idx].solution)
-                    + self.generator.uniform()
-                    * (self.g_best.solution - self.pop[rr].solution)
+                        self.pop[idx].solution
+                        + self.generator.uniform(0, 1, self.problem.n_dims)
+                        * (self.pop[rr].solution - self.pop[idx].solution)
+                        + self.generator.uniform()
+                        * (self.g_best.solution - self.pop[rr].solution)
                 )
             else:
                 ## Eq.(8) in FBI Inspired Meta-Optimization
                 pos_b = (
-                    self.pop[idx].solution
-                    + self.generator.uniform(0, 1, self.problem.n_dims)
-                    * (self.pop[idx].solution - self.pop[rr].solution)
-                    + self.generator.uniform()
-                    * (self.g_best.solution - self.pop[idx].solution)
+                        self.pop[idx].solution
+                        + self.generator.uniform(0, 1, self.problem.n_dims)
+                        * (self.pop[idx].solution - self.pop[rr].solution)
+                        + self.generator.uniform()
+                        * (self.g_best.solution - self.pop[idx].solution)
                 )
             pos_b = self.correct_solution(pos_b)
             agent = self.generate_empty_agent(pos_b)

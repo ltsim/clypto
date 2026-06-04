@@ -39,7 +39,7 @@ class DevJA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -65,11 +65,11 @@ class DevJA(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             pos_new = (
-                self.pop[idx].solution
-                + self.generator.random(self.problem.n_dims)
-                * (g_best.solution - np.abs(self.pop[idx].solution))
-                + self.generator.normal()
-                * (g_worst.solution - np.abs(self.pop[idx].solution))
+                    self.pop[idx].solution
+                    + self.generator.random(self.problem.n_dims)
+                    * (g_best.solution - np.abs(self.pop[idx].solution))
+                    + self.generator.normal()
+                    * (g_worst.solution - np.abs(self.pop[idx].solution))
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -119,7 +119,7 @@ class OriginalJA(DevJA):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -141,11 +141,11 @@ class OriginalJA(DevJA):
         pop_new = []
         for idx in range(0, self.pop_size):
             pos_new = (
-                self.pop[idx].solution
-                + self.generator.uniform(0, 1, self.problem.n_dims)
-                * (g_best.solution - np.abs(self.pop[idx].solution))
-                - self.generator.uniform(0, 1, self.problem.n_dims)
-                * (g_worst.solution - np.abs(self.pop[idx].solution))
+                    self.pop[idx].solution
+                    + self.generator.uniform(0, 1, self.problem.n_dims)
+                    * (g_best.solution - np.abs(self.pop[idx].solution))
+                    - self.generator.uniform(0, 1, self.problem.n_dims)
+                    * (g_worst.solution - np.abs(self.pop[idx].solution))
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -192,7 +192,7 @@ class LevyJA(DevJA):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -217,9 +217,9 @@ class LevyJA(DevJA):
             L1 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, case=-1)
             L2 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, case=-1)
             pos_new = (
-                self.pop[idx].solution
-                + np.abs(L1) * (g_best.solution - np.abs(self.pop[idx].solution))
-                - np.abs(L2) * (g_worst.solution - np.abs(self.pop[idx].solution))
+                    self.pop[idx].solution
+                    + np.abs(L1) * (g_best.solution - np.abs(self.pop[idx].solution))
+                    - np.abs(L2) * (g_worst.solution - np.abs(self.pop[idx].solution))
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

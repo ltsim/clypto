@@ -64,12 +64,12 @@ class BaseGA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pc: float = 0.95,
-        pm: float = 0.025,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pc: float = 0.95,
+            pm: float = 0.025,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -425,16 +425,16 @@ class SingleGA(BaseGA):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pc: float = 0.95,
-        pm: float = 0.8,
-        selection: str = "roulette",
-        crossover: str = "uniform",
-        mutation: str = "swap",
-        k_way: float = 0.2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pc: float = 0.95,
+            pm: float = 0.8,
+            selection: str = "roulette",
+            crossover: str = "uniform",
+            mutation: str = "swap",
+            k_way: float = 0.2,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -577,19 +577,19 @@ class EliteSingleGA(SingleGA):
     """
 
     def __init__(
-        self,
-        epoch=10000,
-        pop_size=100,
-        pc=0.95,
-        pm=0.8,
-        selection="roulette",
-        crossover="uniform",
-        mutation="swap",
-        k_way=0.2,
-        elite_best=0.1,
-        elite_worst=0.3,
-        strategy=0,
-        **kwargs
+            self,
+            epoch=10000,
+            pop_size=100,
+            pc=0.95,
+            pm=0.8,
+            selection="roulette",
+            crossover="uniform",
+            mutation="swap",
+            k_way=0.2,
+            elite_best=0.1,
+            elite_worst=0.3,
+            strategy=0,
+            **kwargs
     ):
         super().__init__(
             epoch, pop_size, pc, pm, selection, crossover, mutation, k_way, **kwargs
@@ -643,7 +643,7 @@ class EliteSingleGA(SingleGA):
         """
         pop_new = self.pop[: self.n_elite_best]
         if self.strategy == 0:
-            pop_old = self.pop[self.n_elite_best :]
+            pop_old = self.pop[self.n_elite_best:]
             for idx in range(self.n_elite_best, self.pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_00__(pop_old)
@@ -662,9 +662,9 @@ class EliteSingleGA(SingleGA):
             self.pop = self.update_target_for_population(pop_new)
         else:
             pop_dad = self.pop[
-                self.n_elite_best : self.n_elite_best + self.n_elite_worst
+                self.n_elite_best: self.n_elite_best + self.n_elite_worst
             ]
-            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst :]
+            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst:]
             for idx in range(self.n_elite_best, self.pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_01__(pop_dad, pop_mom)
@@ -737,16 +737,16 @@ class MultiGA(BaseGA):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pc: float = 0.95,
-        pm: float = 0.025,
-        selection: str = "roulette",
-        crossover: str = "arithmetic",
-        mutation: str = "flip",
-        k_way: float = 0.2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pc: float = 0.95,
+            pm: float = 0.025,
+            selection: str = "roulette",
+            crossover: str = "arithmetic",
+            mutation: str = "flip",
+            k_way: float = 0.2,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -854,19 +854,19 @@ class EliteMultiGA(MultiGA):
     """
 
     def __init__(
-        self,
-        epoch=10000,
-        pop_size=100,
-        pc=0.95,
-        pm=0.8,
-        selection="roulette",
-        crossover="uniform",
-        mutation="swap",
-        k_way=0.2,
-        elite_best=0.1,
-        elite_worst=0.3,
-        strategy=0,
-        **kwargs
+            self,
+            epoch=10000,
+            pop_size=100,
+            pc=0.95,
+            pm=0.8,
+            selection="roulette",
+            crossover="uniform",
+            mutation="swap",
+            k_way=0.2,
+            elite_best=0.1,
+            elite_worst=0.3,
+            strategy=0,
+            **kwargs
     ):
         super().__init__(
             epoch, pop_size, pc, pm, selection, crossover, mutation, k_way, **kwargs
@@ -920,7 +920,7 @@ class EliteMultiGA(MultiGA):
         """
         pop_new = self.pop[: self.n_elite_best]
         if self.strategy == 0:
-            pop_old = self.pop[self.n_elite_best :]
+            pop_old = self.pop[self.n_elite_best:]
             for idx in range(self.n_elite_best, self.pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_00__(pop_old)
@@ -939,9 +939,9 @@ class EliteMultiGA(MultiGA):
             self.pop = self.update_target_for_population(pop_new)
         else:
             pop_dad = self.pop[
-                self.n_elite_best : self.n_elite_best + self.n_elite_worst
+                self.n_elite_best: self.n_elite_best + self.n_elite_worst
             ]
-            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst :]
+            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst:]
             for idx in range(self.n_elite_best, self.pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_01__(pop_dad, pop_mom)
@@ -1015,17 +1015,17 @@ class OriginalGA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pc: float = 0.95,
-        pm: float = 0.025,
-        selection: str = "tournament",
-        crossover: str = "uniform",
-        mutation: str = "flip",
-        k_way: float = 0.2,
-        mutation_multipoints: bool = True,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pc: float = 0.95,
+            pm: float = 0.025,
+            selection: str = "tournament",
+            crossover: str = "uniform",
+            mutation: str = "flip",
+            k_way: float = 0.2,
+            mutation_multipoints: bool = True,
+            **kwargs: object
     ) -> None:
         """
         Args:

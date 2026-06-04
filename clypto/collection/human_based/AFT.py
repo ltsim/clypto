@@ -42,7 +42,7 @@ class OriginalAFT(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -85,35 +85,35 @@ class OriginalAFT(Optimizer):
                     # Case 1: Follow global best with tracking distance
                     direction = np.sign(self.generator.random() - 0.5)
                     movement = (
-                        Td
-                        * (self.pop_best[idx].solution - self.pop[idx].solution)
-                        * self.generator.random()
-                        + Td
-                        * (
-                            self.pop[idx].solution
-                            - self.pop_best[random_followers[idx]].solution
-                        )
-                        * self.generator.random()
+                            Td
+                            * (self.pop_best[idx].solution - self.pop[idx].solution)
+                            * self.generator.random()
+                            + Td
+                            * (
+                                    self.pop[idx].solution
+                                    - self.pop_best[random_followers[idx]].solution
+                            )
+                            * self.generator.random()
                     )
                     pos_new = self.g_best.solution + movement * direction
                 else:
                     # Case 3: Random exploration within tracking distance
                     pos_new = self.problem.lb + Td * (
-                        self.problem.ub - self.problem.lb
+                            self.problem.ub - self.problem.lb
                     ) * self.generator.random(self.problem.n_dims)
             else:
                 # Thieves don't know where to search - opposite direction (Marjaneh's tricks)
                 direction = np.sign(self.generator.random() - 0.5)
                 movement = (
-                    Td
-                    * (self.pop_best[idx].solution - self.pop[idx].solution)
-                    * self.generator.random()
-                    + Td
-                    * (
-                        self.pop[idx].solution
-                        - self.pop_best[random_followers[idx]].solution
-                    )
-                    * self.generator.random()
+                        Td
+                        * (self.pop_best[idx].solution - self.pop[idx].solution)
+                        * self.generator.random()
+                        + Td
+                        * (
+                                self.pop[idx].solution
+                                - self.pop_best[random_followers[idx]].solution
+                        )
+                        * self.generator.random()
                 )
                 pos_new = self.g_best.solution - movement * direction
             # Clip to bounds

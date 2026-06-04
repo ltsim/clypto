@@ -49,15 +49,15 @@ class OriginalBES(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        a_factor: int = 10,
-        R_factor: float = 1.5,
-        alpha: float = 2.0,
-        c1: float = 2.0,
-        c2: float = 2.0,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            a_factor: int = 10,
+            R_factor: float = 1.5,
+            alpha: float = 2.0,
+            c1: float = 2.0,
+            c2: float = 2.0,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -115,7 +115,7 @@ class OriginalBES(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             pos_new = self.g_best.solution + self.alpha * self.generator.uniform() * (
-                pos_mean - self.pop[idx].solution
+                    pos_mean - self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -138,9 +138,9 @@ class OriginalBES(Optimizer):
         for idx in range(0, self.pop_size):
             idx_rand = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
             pos_new = (
-                self.pop[idx].solution
-                + y_list[idx] * (self.pop[idx].solution - self.pop[idx_rand].solution)
-                + x_list[idx] * (self.pop[idx].solution - pos_mean)
+                    self.pop[idx].solution
+                    + y_list[idx] * (self.pop[idx].solution - self.pop[idx_rand].solution)
+                    + x_list[idx] * (self.pop[idx].solution - pos_mean)
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -162,10 +162,10 @@ class OriginalBES(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             pos_new = (
-                self.generator.uniform() * self.g_best.solution
-                + x1_list[idx] * (self.pop[idx].solution - self.c1 * pos_mean)
-                + y1_list[idx]
-                * (self.pop[idx].solution - self.c2 * self.g_best.solution)
+                    self.generator.uniform() * self.g_best.solution
+                    + x1_list[idx] * (self.pop[idx].solution - self.c1 * pos_mean)
+                    + y1_list[idx]
+                    * (self.pop[idx].solution - self.c2 * self.g_best.solution)
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

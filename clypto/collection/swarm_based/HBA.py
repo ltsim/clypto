@@ -43,7 +43,7 @@ class OriginalHBA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -66,18 +66,18 @@ class OriginalHBA(Optimizer):
         si = np.zeros(size)
         for idx in range(0, size):
             di[idx] = (
-                np.linalg.norm(pop[idx].solution - best.solution) + self.EPSILON
-            ) ** 2
+                              np.linalg.norm(pop[idx].solution - best.solution) + self.EPSILON
+                      ) ** 2
             if idx == size - 1:
                 si[idx] = (
-                    np.linalg.norm(pop[idx].solution - self.pop[0].solution)
-                    + self.EPSILON
-                ) ** 2
+                                  np.linalg.norm(pop[idx].solution - self.pop[0].solution)
+                                  + self.EPSILON
+                          ) ** 2
             else:
                 si[idx] = (
-                    np.linalg.norm(pop[idx].solution - self.pop[idx + 1].solution)
-                    + self.EPSILON
-                ) ** 2
+                                  np.linalg.norm(pop[idx].solution - self.pop[idx + 1].solution)
+                                  + self.EPSILON
+                          ) ** 2
         r2 = self.generator.random(size)
         return r2 * si / (4 * np.pi * di)
 
@@ -102,13 +102,13 @@ class OriginalHBA(Optimizer):
             r6 = self.generator.random(self.problem.n_dims)
             r7 = self.generator.random(self.problem.n_dims)
             temp1 = (
-                self.g_best.solution
-                + F * self.beta * I[idx] * self.g_best.solution
-                + F
-                * r3
-                * alpha
-                * di
-                * np.abs(np.cos(2 * np.pi * r4) * (1 - np.cos(2 * np.pi * r5)))
+                    self.g_best.solution
+                    + F * self.beta * I[idx] * self.g_best.solution
+                    + F
+                    * r3
+                    * alpha
+                    * di
+                    * np.abs(np.cos(2 * np.pi * r4) * (1 - np.cos(2 * np.pi * r5)))
             )
             temp2 = self.g_best.solution + F * r7 * alpha * di
             pos_new = np.where(r6 < 0.5, temp1, temp2)

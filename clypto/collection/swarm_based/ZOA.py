@@ -49,7 +49,7 @@ class OriginalZOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -76,8 +76,8 @@ class OriginalZOA(Optimizer):
             pos_new = self.pop[idx].solution + self.generator.random(
                 self.problem.n_dims
             ) * (
-                self.g_best.solution - r1 * self.pop[idx].solution
-            )  # Eq. 3
+                              self.g_best.solution - r1 * self.pop[idx].solution
+                      )  # Eq. 3
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
@@ -100,11 +100,11 @@ class OriginalZOA(Optimizer):
                 # S1: the lion attacks the zebra and thus the zebra chooses an escape strategy
                 r2 = 0.1
                 pos_new = (
-                    self.pop[idx].solution
-                    + r2
-                    * (2 + self.generator.random(self.problem.n_dims) - 1)
-                    * (1 - epoch / self.epoch)
-                    * self.pop[idx].solution
+                        self.pop[idx].solution
+                        + r2
+                        * (2 + self.generator.random(self.problem.n_dims) - 1)
+                        * (1 - epoch / self.epoch)
+                        * self.pop[idx].solution
                 )
             else:
                 # S2: other predators attack the zebra and the zebra will choose the offensive strategy

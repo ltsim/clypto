@@ -46,12 +46,12 @@ class OriginalCHIO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        brr: float = 0.15,
-        max_age: int = 10,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            brr: float = 0.15,
+            max_age: int = 10,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -85,8 +85,8 @@ class OriginalCHIO(Optimizer):
         """
         pop_new = []
         is_corona_list = [
-            False,
-        ] * self.pop_size
+                             False,
+                         ] * self.pop_size
         for i in range(0, self.pop_size):
             pos_new = self.pop[i].solution.copy()
             for j in range(0, self.problem.n_dims):
@@ -101,7 +101,7 @@ class OriginalCHIO(Optimizer):
                         break
                     idx_selected = self.generator.choice(idx_candidates[0])
                     pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                        self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
                     )
                     is_corona_list[i] = True
                 elif (1.0 / 3) * self.brr <= rand < (2.0 / 3) * self.brr:
@@ -110,7 +110,7 @@ class OriginalCHIO(Optimizer):
                     )  # Susceptible list
                     idx_selected = self.generator.choice(idx_candidates[0])
                     pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                        self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
                     )
                 elif (2.0 / 3) * self.brr <= rand < self.brr:
                     idx_candidates = np.where(
@@ -123,7 +123,7 @@ class OriginalCHIO(Optimizer):
                         np.argmin(fit_list)
                     ]  # Found the index of best fitness
                     pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                        self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
                     )
             if self.finished:
                 break
@@ -139,7 +139,7 @@ class OriginalCHIO(Optimizer):
         for idx in range(0, self.pop_size):
             # Step 4: Update herd immunity population
             if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = pop_new[idx].copy()
             else:
@@ -148,22 +148,22 @@ class OriginalCHIO(Optimizer):
             fit_list = np.array([agent.target.fitness for agent in self.pop])
             delta_fx = np.mean(fit_list)
             if (
-                self.compare_fitness(
-                    pop_new[idx].target.fitness, delta_fx, self.problem.minmax
-                )
-                and self.immunity_type_list[idx] == 0
-                and is_corona_list[idx]
+                    self.compare_fitness(
+                        pop_new[idx].target.fitness, delta_fx, self.problem.minmax
+                    )
+                    and self.immunity_type_list[idx] == 0
+                    and is_corona_list[idx]
             ):
                 self.immunity_type_list[idx] = 1
                 self.age_list[idx] = 1
             if self.compare_fitness(
-                delta_fx, pop_new[idx].target.fitness, self.problem.minmax
+                    delta_fx, pop_new[idx].target.fitness, self.problem.minmax
             ) and (self.immunity_type_list[idx] == 1):
                 self.immunity_type_list[idx] = 2
                 self.age_list[idx] = 0
             # Step 5: Fatality condition
             if (self.age_list[idx] >= self.max_age) and (
-                self.immunity_type_list[idx] == 1
+                    self.immunity_type_list[idx] == 1
             ):
                 self.pop[idx] = self.generate_agent()
                 self.immunity_type_list[idx] = 0
@@ -199,12 +199,12 @@ class DevCHIO(OriginalCHIO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        brr: float = 0.15,
-        max_age: int = 10,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            brr: float = 0.15,
+            max_age: int = 10,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -224,8 +224,8 @@ class DevCHIO(OriginalCHIO):
         """
         pop_new = []
         is_corona_list = [
-            False,
-        ] * self.pop_size
+                             False,
+                         ] * self.pop_size
         for i in range(0, self.pop_size):
             pos_new = self.pop[i].solution.copy()
             for j in range(0, self.problem.n_dims):
@@ -244,7 +244,7 @@ class DevCHIO(OriginalCHIO):
                         idx_candidates = np.where(self.immunity_type_list == 1)
                     idx_selected = self.generator.choice(idx_candidates[0])
                     pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                        self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
                     )
                     is_corona_list[i] = True
                 elif (1.0 / 3) * self.brr <= rand < (2.0 / 3) * self.brr:
@@ -261,7 +261,7 @@ class DevCHIO(OriginalCHIO):
                         idx_candidates = np.where(self.immunity_type_list == 0)
                     idx_selected = self.generator.choice(idx_candidates[0])
                     pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                        self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
                     )
                 elif (2.0 / 3) * self.brr <= rand < self.brr:
                     idx_candidates = np.where(
@@ -274,7 +274,7 @@ class DevCHIO(OriginalCHIO):
                         np.argmin(fit_list)
                     ]  # Found the index of best fitness
                     pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                        self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
                     )
             if self.finished:
                 break
@@ -288,7 +288,7 @@ class DevCHIO(OriginalCHIO):
         for idx in range(0, self.pop_size):
             # Step 4: Update herd immunity population
             if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = pop_new[idx].copy()
             else:
@@ -297,22 +297,22 @@ class DevCHIO(OriginalCHIO):
             fit_list = np.array([agent.target.fitness for agent in self.pop])
             delta_fx = np.mean(fit_list)
             if (
-                self.compare_fitness(
-                    pop_new[idx].target.fitness, delta_fx, self.problem.minmax
-                )
-                and (self.immunity_type_list[idx] == 0)
-                and is_corona_list[idx]
+                    self.compare_fitness(
+                        pop_new[idx].target.fitness, delta_fx, self.problem.minmax
+                    )
+                    and (self.immunity_type_list[idx] == 0)
+                    and is_corona_list[idx]
             ):
                 self.immunity_type_list[idx] = 1
                 self.age_list[idx] = 1
             if self.compare_fitness(
-                delta_fx, pop_new[idx].target.fitness, self.problem.minmax
+                    delta_fx, pop_new[idx].target.fitness, self.problem.minmax
             ) and (self.immunity_type_list[idx] == 1):
                 self.immunity_type_list[idx] = 2
                 self.age_list[idx] = 0
             # Step 5: Fatality condition
             if (self.age_list[idx] >= self.max_age) and (
-                self.immunity_type_list[idx] == 1
+                    self.immunity_type_list[idx] == 1
             ):
                 self.pop[idx] = self.generate_agent()
                 self.immunity_type_list[idx] = 0

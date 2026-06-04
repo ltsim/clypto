@@ -47,12 +47,12 @@ class OriginalCEM(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        n_best: int = 20,
-        alpha: float = 0.7,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            n_best: int = 20,
+            alpha: float = 0.7,
+            **kwargs: object
     ) -> None:
         """
         Args:

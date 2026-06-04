@@ -47,12 +47,12 @@ class OriginalSSpiderO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        fp_min: float = 0.65,
-        fp_max: float = 0.9,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            fp_min: float = 0.65,
+            fp_max: float = 0.9,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -71,13 +71,13 @@ class OriginalSSpiderO(Optimizer):
 
     def initialization(self):
         fp_temp = (
-            self.fp_min + (self.fp_max - self.fp_min) * self.generator.uniform()
+                self.fp_min + (self.fp_max - self.fp_min) * self.generator.uniform()
         )  # Female Aleatory Percent
         self.n_f = int(self.pop_size * fp_temp)  # number of female
         self.n_m = self.pop_size - self.n_f  # number of male
         # Probabilities of attraction or repulsion Proper tuning for better results
         self.p_m = (self.epoch + 1 - np.array(range(1, self.epoch + 1))) / (
-            self.epoch + 1
+                self.epoch + 1
         )
 
         idx_males = self.generator.choice(
@@ -110,14 +110,14 @@ class OriginalSSpiderO(Optimizer):
         for idx in range(0, self.n_f):  # Move the females
             ## Find the position s
             id_min = None
-            dist_min = 2**16
+            dist_min = 2 ** 16
             for jdx in range(0, self.pop_size):
                 if self.pop_females[idx].weight < pop[jdx].weight:
                     dt = (
-                        np.linalg.norm(
-                            pop[jdx].solution - self.pop_females[idx].solution
-                        )
-                        / scale_distance
+                            np.linalg.norm(
+                                pop[jdx].solution - self.pop_females[idx].solution
+                            )
+                            / scale_distance
                     )
                     if dt < dist_min and dt != 0:
                         dist_min = dt
@@ -126,45 +126,45 @@ class OriginalSSpiderO(Optimizer):
             vibs = 0
             if id_min is not None:
                 vibs = 2 * (
-                    pop[id_min].weight
-                    * np.exp(-(self.generator.uniform() * dist_min**2))
+                        pop[id_min].weight
+                        * np.exp(-(self.generator.uniform() * dist_min ** 2))
                 )  # Vib for the shortest
                 x_s = pop[id_min].solution
 
             ## Find the position b
             dtb = (
-                np.linalg.norm(self.g_best.solution - self.pop_females[idx].solution)
-                / scale_distance
+                    np.linalg.norm(self.g_best.solution - self.pop_females[idx].solution)
+                    / scale_distance
             )
             vibb = 2 * (
-                self.g_best.weight * np.exp(-(self.generator.uniform() * dtb**2))
+                    self.g_best.weight * np.exp(-(self.generator.uniform() * dtb ** 2))
             )
 
             ## Do attraction or repulsion
             beta = self.generator.uniform(0, 1, self.problem.n_dims)
             gamma = self.generator.uniform(0, 1, self.problem.n_dims)
             rd_pos = (
-                2
-                * self.p_m[epoch - 1]
-                * (self.generator.uniform(0, 1, self.problem.n_dims) - 0.5)
+                    2
+                    * self.p_m[epoch - 1]
+                    * (self.generator.uniform(0, 1, self.problem.n_dims) - 0.5)
             )
             if self.generator.uniform() >= self.p_m[epoch - 1]:  # Do an attraction
                 pos_new = (
-                    self.pop_females[idx].solution
-                    + vibs * (x_s - self.pop_females[idx].solution) * beta
-                    + vibb
-                    * (self.g_best.solution - self.pop_females[idx].solution)
-                    * gamma
-                    + rd_pos
+                        self.pop_females[idx].solution
+                        + vibs * (x_s - self.pop_females[idx].solution) * beta
+                        + vibb
+                        * (self.g_best.solution - self.pop_females[idx].solution)
+                        * gamma
+                        + rd_pos
                 )
             else:  # Do a repulsion
                 pos_new = (
-                    self.pop_females[idx].solution
-                    - vibs * (x_s - self.pop_females[idx].solution) * beta
-                    - vibb
-                    * (self.g_best.solution - self.pop_females[idx].solution)
-                    * gamma
-                    + rd_pos
+                        self.pop_females[idx].solution
+                        - vibs * (x_s - self.pop_females[idx].solution) * beta
+                        - vibb
+                        * (self.g_best.solution - self.pop_females[idx].solution)
+                        * gamma
+                        + rd_pos
                 )
             pos_new = self.correct_solution(pos_new)
             self.pop_females[idx].solution = pos_new
@@ -186,9 +186,9 @@ class OriginalSSpiderO(Optimizer):
         for idx in range(0, self.n_m):
             delta = 2 * self.generator.uniform(0, 1, self.problem.n_dims) - 0.5
             rd_pos = (
-                2
-                * self.p_m[epoch - 1]
-                * (self.generator.random(self.problem.n_dims) - 0.5)
+                    2
+                    * self.p_m[epoch - 1]
+                    * (self.generator.random(self.problem.n_dims) - 0.5)
             )
 
             if self.pop_males[idx].weight >= my_median:  # Spider above the median
@@ -198,11 +198,11 @@ class OriginalSSpiderO(Optimizer):
                 for jdx in range(0, self.n_f):
                     if self.pop_females[jdx].weight > self.pop_males[idx].weight:
                         dt = (
-                            np.linalg.norm(
-                                self.pop_females[jdx].solution
-                                - self.pop_males[idx].solution
-                            )
-                            / scale_distance
+                                np.linalg.norm(
+                                    self.pop_females[jdx].solution
+                                    - self.pop_males[idx].solution
+                                )
+                                / scale_distance
                         )
                         if dt < dist_min and dt != 0:
                             dist_min = dt
@@ -212,21 +212,21 @@ class OriginalSSpiderO(Optimizer):
                 if id_min != None:
                     # Vib for the shortest
                     vibs = 2 * (
-                        self.pop_females[id_min].weight
-                        * np.exp(-(self.generator.uniform() * dist_min**2))
+                            self.pop_females[id_min].weight
+                            * np.exp(-(self.generator.uniform() * dist_min ** 2))
                     )
                     x_s = self.pop_females[id_min].solution
                 pos_new = (
-                    self.pop_males[idx].solution
-                    + vibs * (x_s - self.pop_males[idx].solution) * delta
-                    + rd_pos
+                        self.pop_males[idx].solution
+                        + vibs * (x_s - self.pop_males[idx].solution) * delta
+                        + rd_pos
                 )
             else:
                 # Spider below median, go to weighted mean
                 pos_new = (
-                    self.pop_males[idx].solution
-                    + delta * (mean - self.pop_males[idx].solution)
-                    + rd_pos
+                        self.pop_males[idx].solution
+                        + delta * (mean - self.pop_males[idx].solution)
+                        + rd_pos
                 )
             pos_new = self.correct_solution(pos_new)
             self.pop_males[idx].solution = pos_new
@@ -309,7 +309,7 @@ class OriginalSSpiderO(Optimizer):
         )
         for idx in range(0, n_child):
             if self.compare_target(
-                pop_child[idx].target, pop[idx].target, self.problem.minmax
+                    pop_child[idx].target, pop[idx].target, self.problem.minmax
             ):
                 pop[idx] = pop_child[idx].copy()
         return pop
@@ -323,7 +323,7 @@ class OriginalSSpiderO(Optimizer):
                 pop[idx].weight = self.generator.uniform(0.2, 0.8)
             else:
                 pop[idx].weight = 0.001 + (pop[idx].target.fitness - fit_worst) / (
-                    fit_best - fit_worst + self.EPSILON
+                        fit_best - fit_worst + self.EPSILON
                 )
         return pop
 

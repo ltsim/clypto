@@ -47,11 +47,11 @@ class OriginalCOA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        n_coyotes: int = 5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            n_coyotes: int = 5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -76,7 +76,7 @@ class OriginalCOA(Optimizer):
             self.pop, self.n_packs, self.n_coyotes
         )
         self.ps = 1.0 / self.problem.n_dims
-        self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
+        self.p_leave = 0.005 * (self.n_coyotes ** 2)  # Probability of leaving a pack
 
     def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
@@ -109,11 +109,11 @@ class OriginalCOA(Optimizer):
                 )
                 # Try to update the social condition according to the alpha and the pack tendency(Eq. 12)
                 pos_new = (
-                    self.pop_group[p][i].solution
-                    + self.generator.random()
-                    * (self.pop_group[p][0].solution - self.pop_group[p][rc1].solution)
-                    + self.generator.random()
-                    * (tendency - self.pop_group[p][rc2].solution)
+                        self.pop_group[p][i].solution
+                        + self.generator.random()
+                        * (self.pop_group[p][0].solution - self.pop_group[p][rc1].solution)
+                        + self.generator.random()
+                        * (tendency - self.pop_group[p][rc2].solution)
                 )
                 # Keep the coyotes in the search space (optimization problem constraint)
                 pos_new = self.correct_solution(pos_new)

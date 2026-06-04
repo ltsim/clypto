@@ -5,9 +5,8 @@
 # --------------------------------------------------%
 
 import numpy as np
-from scipy.stats import qmc
-
 from clypto.optimizer.classic import Optimizer
+from scipy.stats import qmc
 
 
 class OriginalPSS(Optimizer):
@@ -47,12 +46,12 @@ class OriginalPSS(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        acceptance_rate: float = 0.9,
-        sampling_method: str = "LHS",
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            acceptance_rate: float = 0.9,
+            sampling_method: str = "LHS",
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -92,7 +91,7 @@ class OriginalPSS(Optimizer):
         steps_mat = np.repeat(np.reshape(self.steps, (1, -1)), self.pop_size, axis=0)
         random_pop = self.create_population(self.pop_size)
         pop = (
-            np.round((lb_pop + random_pop * (ub_pop - lb_pop)) / steps_mat) * steps_mat
+                np.round((lb_pop + random_pop * (ub_pop - lb_pop)) / steps_mat) * steps_mat
         )
         self.pop = []
         for pos in pop:
@@ -131,12 +130,12 @@ class OriginalPSS(Optimizer):
                 if self.generator.random() <= self.acceptance_rate:
                     # choose a solution from the prominent domain
                     pos_new[k] = reduced_lb + pop_rand[idx, k] * (
-                        reduced_ub - reduced_lb
+                            reduced_ub - reduced_lb
                     )
                 else:
                     # choose a solution from the overall domain
                     pos_new[k] = self.problem.lb[k] + pop_rand[idx, k] * (
-                        self.problem.ub[k] - self.problem.lb[k]
+                            self.problem.ub[k] - self.problem.lb[k]
                     )
                 # Round for the step size
                 pos_new = np.round(pos_new / self.steps) * self.steps
@@ -149,7 +148,7 @@ class OriginalPSS(Optimizer):
         self.pop = self.update_target_for_population(pop_new)
         current_best = self.get_best_agent(pop_new, self.problem.minmax)
         if self.compare_target(
-            current_best.target, self.g_best.target, self.problem.minmax
+                current_best.target, self.g_best.target, self.problem.minmax
         ):
             self.new_solution = True
         else:

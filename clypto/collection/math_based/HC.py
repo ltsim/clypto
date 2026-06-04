@@ -47,11 +47,11 @@ class OriginalHC(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 2,
-        neighbour_size: int = 50,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 2,
+            neighbour_size: int = 50,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -79,8 +79,8 @@ class OriginalHC(Optimizer):
         pop_neighbours = []
         for idx in range(0, self.neighbour_size):
             pos_new = (
-                self.g_best.solution
-                + self.generator.uniform(self.problem.lb, self.problem.ub) * step_size
+                    self.g_best.solution
+                    + self.generator.uniform(self.problem.lb, self.problem.ub) * step_size
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -158,8 +158,8 @@ class SwarmHC(Optimizer):
             pop_neighbours = []
             for jdx in range(0, self.neighbour_size):
                 pos_new = (
-                    self.pop[idx].solution
-                    + self.generator.normal(0, 1, self.problem.n_dims) * ss[idx]
+                        self.pop[idx].solution
+                        + self.generator.normal(0, 1, self.problem.n_dims) * ss[idx]
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)

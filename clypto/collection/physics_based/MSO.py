@@ -42,7 +42,7 @@ class OriginalMSO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -104,8 +104,8 @@ class OriginalMSO(Optimizer):
             pos_new = np.zeros(self.problem.n_dims)
             for k in range(self.problem.n_dims):
                 h = (
-                    self.g_best.solution[k] - self.pop[idx].solution[k]
-                ) * self.generator.random()
+                            self.g_best.solution[k] - self.pop[idx].solution[k]
+                    ) * self.generator.random()
                 cmax = 1
                 hmax = 5 * self.atanh(-(self.nfe_counter / self.epoch) + 1) + cmax
                 if h > hmax:
@@ -150,16 +150,16 @@ class OriginalMSO(Optimizer):
         for idx in range(self.pop_size):
             if self.g_best == self.pop[idx]:
                 hh = (
-                    np.ones(self.problem.n_dims) * 0.05 * self.generator.choice([-1, 1])
+                        np.ones(self.problem.n_dims) * 0.05 * self.generator.choice([-1, 1])
                 )
             else:
                 hh = self.g_best.solution - self.pop[idx].solution
             zf = np.sign(hh)
             hh = np.abs(hh * self.generator.random(self.problem.n_dims))
             gama = (
-                self.generator.random(self.problem.n_dims)
-                * 90
-                * ((self.epoch - self.nfe_counter * 0.99) / self.epoch)
+                    self.generator.random(self.problem.n_dims)
+                    * 90
+                    * ((self.epoch - self.nfe_counter * 0.99) / self.epoch)
             )
             amax = self.atand(1.0 / (2 * self.tand(gama)))
             amin = self.atand(
@@ -168,11 +168,11 @@ class OriginalMSO(Optimizer):
             fai = (amax - amin) * self.generator.random() + amin
             omg = self.asind(self.generator.random() * self.sind(fai + gama))
             x = (hh / self.tand(gama)) - (
-                (
-                    (hh / self.sind(gama))
-                    - (hh * self.sind(fai)) / (self.cosd(fai + gama))
-                )
-                * self.cosd(omg)
+                    (
+                            (hh / self.sind(gama))
+                            - (hh * self.sind(fai)) / (self.cosd(fai + gama))
+                    )
+                    * self.cosd(omg)
             ) / self.cosd(omg - gama)
             pos_new = self.pop[idx].solution + x * zf
             pos_new = self.correct_solution(pos_new)

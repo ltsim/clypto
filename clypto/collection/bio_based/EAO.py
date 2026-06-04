@@ -45,7 +45,7 @@ class OriginalEAO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, ec: float = 0.1, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, ec: float = 0.1, **kwargs: object
     ) -> None:
         """
         Initialize the algorithm components.
@@ -93,13 +93,13 @@ class OriginalEAO(Optimizer):
                 size=self.problem.n_dims
             )
             exA = AF * (
-                self.ec
-                + (1 - self.ec) * self.generator.random(size=self.problem.n_dims)
+                    self.ec
+                    + (1 - self.ec) * self.generator.random(size=self.problem.n_dims)
             )
             posA = (
-                self.pop[idx].solution
-                + scA1 * (self.pop[j1].solution - self.pop[j2].solution)
-                + exA * (self.g_best.solution - self.pop[idx].solution)
+                    self.pop[idx].solution
+                    + scA1 * (self.pop[j1].solution - self.pop[j2].solution)
+                    + exA * (self.g_best.solution - self.pop[idx].solution)
             )
             posA = self.correct_solution(posA)
             agentA = self.generate_agent(posA)
@@ -108,9 +108,9 @@ class OriginalEAO(Optimizer):
             scB1 = self.ec + (1 - self.ec) * self.generator.random()
             exB = AF * (self.ec + (1 - self.ec) * self.generator.random())
             posB = (
-                self.pop[idx].solution
-                + scB1 * (self.pop[j1].solution - self.pop[j2].solution)
-                + exB * (self.g_best.solution - self.pop[idx].solution)
+                    self.pop[idx].solution
+                    + scB1 * (self.pop[j1].solution - self.pop[j2].solution)
+                    + exB * (self.g_best.solution - self.pop[idx].solution)
             )
             posB = self.correct_solution(posB)
             agentB = self.generate_agent(posB)

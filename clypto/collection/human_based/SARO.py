@@ -38,12 +38,12 @@ class DevSARO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        se: float = 0.5,
-        mu: int = 15,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            se: float = 0.5,
+            mu: int = 15,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -84,7 +84,7 @@ class DevSARO(Optimizer):
             epoch (int): The current iteration
         """
         pop_x = [agent.copy() for agent in self.pop[: self.pop_size]]
-        pop_m = [agent.copy() for agent in self.pop[self.pop_size :]]
+        pop_m = [agent.copy() for agent in self.pop[self.pop_size:]]
         pop_new = []
         for idx in range(self.pop_size):
             ## Social Phase
@@ -106,7 +106,7 @@ class DevSARO(Optimizer):
         pop_new = self.update_target_for_population(pop_new)
         for idx in range(self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, pop_x[idx].target, self.problem.minmax
+                    pop_new[idx].target, pop_x[idx].target, self.problem.minmax
             ):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
@@ -122,7 +122,7 @@ class DevSARO(Optimizer):
             )
             #### Remove third loop here, and flight back strategy now be a random
             pos_new = self.g_best.solution + self.generator.uniform() * (
-                pop[k1].solution - pop[k2].solution
+                    pop[k1].solution - pop[k2].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -132,7 +132,7 @@ class DevSARO(Optimizer):
         pop_new = self.update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, pop_x[idx].target, self.problem.minmax
+                    pop_new[idx].target, pop_x[idx].target, self.problem.minmax
             ):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
@@ -182,12 +182,12 @@ class OriginalSARO(DevSARO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        se: float = 0.5,
-        mu: int = 15,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            se: float = 0.5,
+            mu: int = 15,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -206,7 +206,7 @@ class OriginalSARO(DevSARO):
             epoch (int): The current iteration
         """
         pop_x = [agent.copy() for agent in self.pop[: self.pop_size]]
-        pop_m = [agent.copy() for agent in self.pop[self.pop_size :]]
+        pop_m = [agent.copy() for agent in self.pop[self.pop_size:]]
         pop_new = []
         for idx in range(self.pop_size):
             ## Social Phase
@@ -219,7 +219,7 @@ class OriginalSARO(DevSARO):
             for j in range(0, self.problem.n_dims):
                 if self.generator.uniform() < self.se or j == j_rand:
                     if self.compare_target(
-                        self.pop[k].target, pop_x[idx].target, self.problem.minmax
+                            self.pop[k].target, pop_x[idx].target, self.problem.minmax
                     ):
                         pos_new[j] = self.pop[k].solution[j] + r1 * sd[j]
                     else:
@@ -236,7 +236,7 @@ class OriginalSARO(DevSARO):
         pop_new = self.update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, pop_x[idx].target, self.problem.minmax
+                    pop_new[idx].target, pop_x[idx].target, self.problem.minmax
             ):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
@@ -252,7 +252,7 @@ class OriginalSARO(DevSARO):
                 list(set(range(0, 2 * self.pop_size)) - {idx}), 2, replace=False
             )
             pos_new = pop_x[idx].solution + self.generator.uniform() * (
-                pop[k].solution - pop[m].solution
+                    pop[k].solution - pop[m].solution
             )
             for j in range(0, self.problem.n_dims):
                 if pos_new[j] < self.problem.lb[j]:
@@ -267,7 +267,7 @@ class OriginalSARO(DevSARO):
         pop_new = self.update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, pop_x[idx].target, self.problem.minmax
+                    pop_new[idx].target, pop_x[idx].target, self.problem.minmax
             ):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx]
                 pop_x[idx] = pop_new[idx].copy()

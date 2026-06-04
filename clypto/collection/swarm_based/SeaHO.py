@@ -43,7 +43,7 @@ class OriginalSeaHO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -83,15 +83,15 @@ class OriginalSeaHO(Optimizer):
             xx, yy, zz = row * np.cos(theta), row * np.sin(theta), row * theta
             if self.generator.normal(0, 1) > 0:  # Eq. 4
                 pos_new = self.pop[idx].solution + step_length[idx] * (
-                    (self.g_best.solution - self.pop[idx].solution) * xx * yy * zz
-                    + self.g_best.solution
+                        (self.g_best.solution - self.pop[idx].solution) * xx * yy * zz
+                        + self.g_best.solution
                 )
             else:  # Eq. 7
                 pos_new = self.pop[idx].solution + self.generator.random(
                     self.problem.n_dims
                 ) * self.ll * beta * (
-                    self.g_best.solution - beta * self.g_best.solution
-                )
+                                  self.g_best.solution - beta * self.g_best.solution
+                          )
             pos_new = self.correct_solution(pos_new)
             pop_new.append(pos_new)
 
@@ -102,15 +102,15 @@ class OriginalSeaHO(Optimizer):
             r1 = self.generator.random(self.problem.n_dims)
             if self.generator.random() >= 0.1:
                 pos_new = (
-                    alpha * (self.g_best.solution - r1 * pop_new[idx])
-                    + (1 - alpha) * self.g_best.solution
+                        alpha * (self.g_best.solution - r1 * pop_new[idx])
+                        + (1 - alpha) * self.g_best.solution
                 )  # Eq. 10
             else:
                 pos_new = (1 - alpha) * (
-                    pop_new[idx] - r1 * self.g_best.solution
+                        pop_new[idx] - r1 * self.g_best.solution
                 ) + alpha * pop_new[
-                    idx
-                ]  # Eq. 11
+                              idx
+                          ]  # Eq. 11
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_child.append(agent)
@@ -124,7 +124,7 @@ class OriginalSeaHO(Optimizer):
 
         # The reproductive behavior of sea horses
         dads = pop_child[: int(self.pop_size / 2)]
-        moms = pop_child[int(self.pop_size / 2) :]
+        moms = pop_child[int(self.pop_size / 2):]
         pop_offspring = []
         for kdx in range(0, int(self.pop_size / 2)):
             r3 = self.generator.random()

@@ -44,11 +44,11 @@ class OriginalLCO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        r1: float = 2.35,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            r1: float = 2.35,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -89,19 +89,19 @@ class OriginalLCO(Optimizer):
                     self.g_best.solution if idx == 0 else self.pop[idx - 1].solution
                 )
                 best_diff = (
-                    f1 * self.r1 * (self.g_best.solution - self.pop[idx].solution)
+                        f1 * self.r1 * (self.g_best.solution - self.pop[idx].solution)
                 )
                 better_diff = f2 * self.r1 * (prev_pos - self.pop[idx].solution)
                 temp = (
-                    self.pop[idx].solution
-                    + self.generator.random() * better_diff
-                    + self.generator.random() * best_diff
+                        self.pop[idx].solution
+                        + self.generator.random() * better_diff
+                        + self.generator.random() * best_diff
                 )
             else:
                 temp = (
-                    self.problem.ub
-                    - (self.pop[idx].solution - self.problem.lb)
-                    * self.generator.random()
+                        self.problem.ub
+                        - (self.pop[idx].solution - self.problem.lb)
+                        * self.generator.random()
                 )
             pos_new = self.correct_solution(temp)
             agent = self.generate_empty_agent(pos_new)
@@ -149,11 +149,11 @@ class DevLCO(OriginalLCO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        r1: float = 2.35,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            r1: float = 2.35,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -186,21 +186,21 @@ class DevLCO(OriginalLCO):
                 f = epoch / self.epoch
                 if idx != 0:
                     better_diff = (
-                        f
-                        * self.r1
-                        * (self.pop[idx - 1].solution - self.pop[idx].solution)
+                            f
+                            * self.r1
+                            * (self.pop[idx - 1].solution - self.pop[idx].solution)
                     )
                 else:
                     better_diff = (
-                        f * self.r1 * (self.g_best.solution - self.pop[idx].solution)
+                            f * self.r1 * (self.g_best.solution - self.pop[idx].solution)
                     )
                 best_diff = (
-                    (1 - f) * self.r1 * (self.pop[0].solution - self.pop[idx].solution)
+                        (1 - f) * self.r1 * (self.pop[0].solution - self.pop[idx].solution)
                 )
                 temp = (
-                    self.pop[idx].solution
-                    + self.generator.random() * better_diff
-                    + self.generator.random() * best_diff
+                        self.pop[idx].solution
+                        + self.generator.random() * better_diff
+                        + self.generator.random() * best_diff
                 )
             else:
                 temp = self.problem.generate_solution()
@@ -249,7 +249,7 @@ class ImprovedLCO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -287,27 +287,27 @@ class ImprovedLCO(Optimizer):
                 f = epoch / self.epoch
                 if idx != 0:
                     better_diff = (
-                        f
-                        * self.generator.random()
-                        * (self.pop[idx - 1].solution - self.pop[idx].solution)
+                            f
+                            * self.generator.random()
+                            * (self.pop[idx - 1].solution - self.pop[idx].solution)
                     )
                 else:
                     better_diff = (
-                        f
-                        * self.generator.random()
-                        * (self.g_best.solution - self.pop[idx].solution)
+                            f
+                            * self.generator.random()
+                            * (self.g_best.solution - self.pop[idx].solution)
                     )
                 best_diff = (
-                    (1 - f)
-                    * self.generator.random()
-                    * (self.pop[0].solution - self.pop[idx].solution)
+                        (1 - f)
+                        * self.generator.random()
+                        * (self.pop[0].solution - self.pop[idx].solution)
                 )
                 pos_new = self.pop[idx].solution + better_diff + best_diff
             else:
                 pos_new = (
-                    self.problem.ub
-                    - (self.pop[idx].solution - self.problem.lb)
-                    * self.generator.random()
+                        self.problem.ub
+                        - (self.pop[idx].solution - self.problem.lb)
+                        * self.generator.random()
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -327,14 +327,14 @@ class ImprovedLCO(Optimizer):
         pop = self.get_sorted_population(self.pop, self.problem.minmax)
         local_best = pop[0].copy()
         pop_s1 = [agent.copy() for agent in pop[: self.pop_len]]
-        pop_s2 = [agent.copy() for agent in pop[self.pop_len :]]
+        pop_s2 = [agent.copy() for agent in pop[self.pop_len:]]
         ## Mutation scheme
         pop_child1 = []
         for idx in range(0, self.pop_len):
             pos_new = (
-                pop_s1[idx].solution
-                + self.generator.normal(0, 1, self.problem.n_dims)
-                * pop_s1[idx].solution
+                    pop_s1[idx].solution
+                    + self.generator.normal(0, 1, self.problem.n_dims)
+                    * pop_s1[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

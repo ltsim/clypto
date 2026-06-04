@@ -45,12 +45,12 @@ class OriginalBBO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        p_m: float = 0.01,
-        n_elites: int = 2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            p_m: float = 0.01,
+            n_elites: int = 2,
+            **kwargs: object
     ) -> None:
         """
         Initialize the algorithm components.
@@ -71,7 +71,7 @@ class OriginalBBO(Optimizer):
         self.set_parameters(["epoch", "pop_size", "p_m", "n_elites"])
         self.sort_flag = False
         self.mu = (self.pop_size + 1 - np.array(range(1, self.pop_size + 1))) / (
-            self.pop_size + 1
+                self.pop_size + 1
         )
         self.mr = 1 - self.mu
 
@@ -96,7 +96,7 @@ class OriginalBBO(Optimizer):
                     select = self.mu[0]
                     select_index = 0
                     while (random_number > select) and (
-                        select_index < self.pop_size - 1
+                            select_index < self.pop_size - 1
                     ):
                         select_index += 1
                         select += self.mu[select_index]
@@ -153,12 +153,12 @@ class DevBBO(OriginalBBO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        p_m: float = 0.01,
-        n_elites: int = 2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            p_m: float = 0.01,
+            n_elites: int = 2,
+            **kwargs: object
     ) -> None:
         """
         Initialize the algorithm components.

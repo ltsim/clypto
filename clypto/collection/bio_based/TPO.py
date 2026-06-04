@@ -54,13 +54,13 @@ class DevTPO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        alpha: float = 0.3,
-        beta: float = 50.0,
-        theta: float = 0.9,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            alpha: float = 0.3,
+            beta: float = 50.0,
+            theta: float = 0.9,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -110,9 +110,9 @@ class DevTPO(Optimizer):
             carbon_gain = self._theta * self.g_best.solution - pos_list
             roots_old = np.copy(self.roots)
             self.roots += (
-                self.alpha
-                * carbon_gain
-                * self.generator.uniform(-0.5, 0.5, (self.n_leafs, self.problem.n_dims))
+                    self.alpha
+                    * carbon_gain
+                    * self.generator.uniform(-0.5, 0.5, (self.n_leafs, self.problem.n_dims))
             )
             nutrient_value = self._theta * (self.roots - roots_old)
             pos_list_new = self.g_best.solution + self.beta * nutrient_value

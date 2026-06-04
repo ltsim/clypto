@@ -44,13 +44,13 @@ class OriginalGBO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pr: float = 0.5,
-        beta_min: float = 0.2,
-        beta_max: float = 1.2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pr: float = 0.5,
+            beta_min: float = 0.2,
+            beta_max: float = 1.2,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -78,8 +78,8 @@ class OriginalGBO(Optimizer):
         """
         # Eq.(14.2), Eq.(14.1)
         beta = (
-            self.beta_min
-            + (self.beta_max - self.beta_min) * (1 - (epoch / self.epoch) ** 3) ** 2
+                self.beta_min
+                + (self.beta_max - self.beta_min) * (1 - (epoch / self.epoch) ** 3) ** 2
         )
         alpha = np.abs(beta * np.sin(3 * np.pi / 2 + np.sin(beta * 3 * np.pi / 2)))
 
@@ -93,52 +93,52 @@ class OriginalGBO(Optimizer):
             )
             # Average of Four positions randomly selected from population
             r0 = (
-                self.pop[r1].solution
-                + self.pop[r2].solution
-                + self.pop[r3].solution
-                + self.pop[r4].solution
-            ) / 4
+                         self.pop[r1].solution
+                         + self.pop[r2].solution
+                         + self.pop[r3].solution
+                         + self.pop[r4].solution
+                 ) / 4
             # Randomization Epsilon
             epsilon = 5e-3 * self.generator.random()
             delta = 2 * self.generator.random() * np.abs(r0 - self.pop[idx].solution)
             step = (self.g_best.solution - self.pop[r1].solution + delta) / 2
             delta_x = self.generator.choice(range(0, self.pop_size)) * np.abs(step)
             x1 = (
-                self.pop[idx].solution
-                - self.generator.normal()
-                * p1
-                * 2
-                * delta_x
-                * self.pop[idx].solution
-                / (self.g_worst.solution - self.g_best.solution + epsilon)
-                + self.generator.random()
-                * p2
-                * (self.g_best.solution - self.pop[idx].solution)
+                    self.pop[idx].solution
+                    - self.generator.normal()
+                    * p1
+                    * 2
+                    * delta_x
+                    * self.pop[idx].solution
+                    / (self.g_worst.solution - self.g_best.solution + epsilon)
+                    + self.generator.random()
+                    * p2
+                    * (self.g_best.solution - self.pop[idx].solution)
             )
             z = self.pop[
-                idx
-            ].solution - self.generator.normal() * 2 * delta_x * self.pop[
-                idx
-            ].solution / (
-                self.g_worst.solution - self.g_best.solution + epsilon
-            )
+                    idx
+                ].solution - self.generator.normal() * 2 * delta_x * self.pop[
+                    idx
+                ].solution / (
+                        self.g_worst.solution - self.g_best.solution + epsilon
+                )
             y_p = self.generator.random() * (
-                (z + self.pop[idx].solution) / 2 + self.generator.random() * delta_x
+                    (z + self.pop[idx].solution) / 2 + self.generator.random() * delta_x
             )
             y_q = self.generator.random() * (
-                (z + self.pop[idx].solution) / 2 - self.generator.random() * delta_x
+                    (z + self.pop[idx].solution) / 2 - self.generator.random() * delta_x
             )
             x2 = (
-                self.g_best.solution
-                - self.generator.normal()
-                * p1
-                * 2
-                * delta_x
-                * self.pop[idx].solution
-                / (y_p - y_q + epsilon)
-                + self.generator.random()
-                * p2
-                * (self.pop[r1].solution - self.pop[r2].solution)
+                    self.g_best.solution
+                    - self.generator.normal()
+                    * p1
+                    * 2
+                    * delta_x
+                    * self.pop[idx].solution
+                    / (y_p - y_q + epsilon)
+                    + self.generator.random()
+                    * p2
+                    * (self.pop[r1].solution - self.pop[r2].solution)
             )
 
             x3 = self.pop[idx].solution - p1 * (x2 - x1)
@@ -160,27 +160,27 @@ class OriginalGBO(Optimizer):
                 x_m = L2 * x_p + (1 - L2) * x_rand
                 if self.generator.random() < 0.5:
                     pos_new = (
-                        pos_new
-                        + f1 * (u1 * self.g_best.solution - u2 * x_m)
-                        + f2
-                        * p1
-                        * (
-                            u3 * (x2 - x1)
-                            + u2 * (self.pop[r1].solution - self.pop[r2].solution)
-                        )
-                        / 2
+                            pos_new
+                            + f1 * (u1 * self.g_best.solution - u2 * x_m)
+                            + f2
+                            * p1
+                            * (
+                                    u3 * (x2 - x1)
+                                    + u2 * (self.pop[r1].solution - self.pop[r2].solution)
+                            )
+                            / 2
                     )
                 else:
                     pos_new = (
-                        self.g_best.solution
-                        + f1 * (u1 * self.g_best.solution - u2 * x_m)
-                        + f2
-                        * p1
-                        * (
-                            u3 * (x2 - x1)
-                            + u2 * (self.pop[r1].solution - self.pop[r2].solution)
-                        )
-                        / 2
+                            self.g_best.solution
+                            + f1 * (u1 * self.g_best.solution - u2 * x_m)
+                            + f2
+                            * p1
+                            * (
+                                    u3 * (x2 - x1)
+                                    + u2 * (self.pop[r1].solution - self.pop[r2].solution)
+                            )
+                            / 2
                     )
             # Check if solutions go outside the search space and bring them back
             pos_new = self.correct_solution(pos_new)

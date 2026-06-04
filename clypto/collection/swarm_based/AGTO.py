@@ -48,13 +48,13 @@ class OriginalAGTO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        p1: float = 0.03,
-        p2: float = 0.8,
-        beta: float = 3.0,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            p1: float = 0.03,
+            p2: float = 0.8,
+            beta: float = 3.0,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -96,10 +96,10 @@ class OriginalAGTO(Optimizer):
                         list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
                     )
                     pos_new = (
-                        self.pop[idx].solution
-                        - c * (c * self.pop[idx].solution - self.pop[id1].solution)
-                        + self.generator.random()
-                        * (self.pop[idx].solution - self.pop[id2].solution)
+                            self.pop[idx].solution
+                            - c * (c * self.pop[idx].solution - self.pop[id1].solution)
+                            + self.generator.random()
+                            * (self.pop[idx].solution - self.pop[id2].solution)
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -121,11 +121,11 @@ class OriginalAGTO(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             if a >= self.p2:
-                g = 2**c
+                g = 2 ** c
                 delta = (np.abs(np.mean(pos_list, axis=0)) ** g) ** (1.0 / g)
                 pos_new = (
-                    c * delta * (self.pop[idx].solution - self.g_best.solution)
-                    + self.pop[idx].solution
+                        c * delta * (self.pop[idx].solution - self.g_best.solution)
+                        + self.pop[idx].solution
                 )
             else:
                 if self.generator.random() >= 0.5:
@@ -134,7 +134,7 @@ class OriginalAGTO(Optimizer):
                     h = self.generator.normal(0, 1)
                 r1 = self.generator.random()
                 pos_new = self.g_best.solution - (2 * r1 - 1) * (
-                    self.g_best.solution - self.pop[idx].solution
+                        self.g_best.solution - self.pop[idx].solution
                 ) * (self.beta * h)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -184,11 +184,11 @@ class MGTO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        pp: float = 0.03,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            pp: float = 0.03,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -248,17 +248,17 @@ class MGTO(Optimizer):
                     pos_new = (self.generator.random() - C) * self.pop[
                         rand_idx
                     ].solution + L * self.generator.uniform(-C, C) * self.pop[
-                        idx
-                    ].solution
+                                  idx
+                              ].solution
                 else:
                     id1, id2 = self.generator.choice(
                         list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
                     )
                     pos_new = (
-                        self.pop[idx].solution
-                        - L * (L * self.pop[idx].solution - self.pop[id1].solution)
-                        + self.generator.random()
-                        * (self.pop[idx].solution - self.pop[id2].solution)
+                            self.pop[idx].solution
+                            - L * (L * self.pop[idx].solution - self.pop[id1].solution)
+                            + self.generator.random()
+                            * (self.pop[idx].solution - self.pop[id2].solution)
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -285,16 +285,16 @@ class MGTO(Optimizer):
                 # print(M)
                 p = self.generator.uniform(0, 1, self.problem.n_dims)
                 pos_new = (
-                    L
-                    * M
-                    * (self.pop[idx].solution - self.g_best.solution)
-                    * (0.01 * np.tan(np.pi * (p - 0.5)))
+                        L
+                        * M
+                        * (self.pop[idx].solution - self.g_best.solution)
+                        * (0.01 * np.tan(np.pi * (p - 0.5)))
                 )
             else:
                 Q = 2 * self.generator.random() - 1
                 v = self.generator.uniform(0, 1)
                 pos_new = self.g_best.solution - Q * (
-                    self.g_best.solution - self.pop[idx].solution
+                        self.g_best.solution - self.pop[idx].solution
                 ) * np.tan(v * np.pi / 2)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

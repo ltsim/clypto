@@ -42,7 +42,7 @@ class OriginalDO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -75,7 +75,7 @@ class OriginalDO(Optimizer):
         )
 
         r = (self.problem.ub - self.problem.lb) / 4 + (
-            (self.problem.ub - self.problem.lb) * (2 * epoch / self.epoch)
+                (self.problem.ub - self.problem.lb) * (2 * epoch / self.epoch)
         )
         w = 0.9 - epoch * ((0.9 - 0.4) / self.epoch)
         my_c = 0.1 - epoch * ((0.1 - 0) / (self.epoch / 2))
@@ -106,8 +106,8 @@ class OriginalDO(Optimizer):
             # Separation: Eq 3.1, Alignment: Eq 3.2, Cohesion: Eq 3.3
             if neighbours_num > 1:
                 S = (
-                    np.sum(pos_neighbours, axis=0)
-                    - neighbours_num * self.pop[idx].solution
+                        np.sum(pos_neighbours, axis=0)
+                        - neighbours_num * self.pop[idx].solution
                 )
                 A = np.sum(pos_neighbours_delta, axis=0) / neighbours_num
                 C_temp = np.sum(pos_neighbours, axis=0) / neighbours_num
@@ -136,18 +136,18 @@ class OriginalDO(Optimizer):
             if np.any(dist_to_food > r):
                 if neighbours_num > 1:
                     temp = (
-                        w * self.pop_delta[idx].solution
-                        + self.generator.uniform(0, 1, self.problem.n_dims) * A
-                        + self.generator.uniform(0, 1, self.problem.n_dims) * C
-                        + self.generator.uniform(0, 1, self.problem.n_dims) * S
+                            w * self.pop_delta[idx].solution
+                            + self.generator.uniform(0, 1, self.problem.n_dims) * A
+                            + self.generator.uniform(0, 1, self.problem.n_dims) * C
+                            + self.generator.uniform(0, 1, self.problem.n_dims) * S
                     )
                     temp = np.clip(temp, -1 * self.delta_max, self.delta_max)
                     pos_delta_new = temp.copy()
                     pos_new += temp
                 else:  # Eq. 3.8
                     pos_new += (
-                        self.get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
-                        * self.pop[idx].solution
+                            self.get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
+                            * self.pop[idx].solution
                     )
                     pos_delta_new = np.zeros(self.problem.n_dims)
             else:

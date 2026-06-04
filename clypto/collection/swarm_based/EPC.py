@@ -50,14 +50,14 @@ class DevEPC(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch=10000,
-        pop_size=100,
-        heat_damping_factor: float = 0.95,
-        mutation_factor: float = 0.5,
-        spiral_a: float = 1.0,
-        spiral_b: float = 0.5,
-        **kwargs
+            self,
+            epoch=10000,
+            pop_size=100,
+            heat_damping_factor: float = 0.95,
+            mutation_factor: float = 0.5,
+            spiral_a: float = 1.0,
+            spiral_b: float = 0.5,
+            **kwargs
     ):
         """
         Args:
@@ -101,10 +101,10 @@ class DevEPC(Optimizer):
         self.mu = 0.01  # Attenuation coefficient (can be tuned)
         # Calculate heat radiation using Stefan-Boltzmann law (Equation 6)
         self.heat_radiation = (
-            self.surface_area
-            * self.emissivity
-            * self.stefan_boltzmann
-            * (self.body_temperature**4)
+                self.surface_area
+                * self.emissivity
+                * self.stefan_boltzmann
+                * (self.body_temperature ** 4)
         )
 
     def calculate_attractiveness(self, heat_radiation: float, distance: float) -> float:
@@ -130,7 +130,7 @@ class DevEPC(Optimizer):
             return heat_radiation * np.exp(-self.mu * distance) / distance
 
     def spiral_movement(
-        self, penguin_i: np.ndarray, penguin_j: np.ndarray, attractiveness: float
+            self, penguin_i: np.ndarray, penguin_j: np.ndarray, attractiveness: float
     ) -> np.ndarray:
         """
         Calculate spiral-like movement from penguin i towards penguin j
@@ -172,10 +172,10 @@ class DevEPC(Optimizer):
             rotated_dir = direction
         # Calculate new position - Add random component (mutation) - Equation 19
         new_position = (
-            penguin_i
-            + move_distance * rotated_dir
-            + self.current_mutation_factor
-            * self.generator.uniform(-1, 1, self.problem.n_dims)
+                penguin_i
+                + move_distance * rotated_dir
+                + self.current_mutation_factor
+                * self.generator.uniform(-1, 1, self.problem.n_dims)
         )
         return new_position
 
@@ -197,7 +197,7 @@ class DevEPC(Optimizer):
             for jdx in range(self.pop_size):
                 # Move penguin i towards penguin j if j has better cost
                 if self.compare_target(
-                    self.pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                        self.pop[jdx].target, self.pop[idx].target, self.problem.minmax
                 ):
                     # Calculate distance between penguins
                     distance = np.linalg.norm(
@@ -217,6 +217,6 @@ class DevEPC(Optimizer):
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target, self.pop[idx].target, self.problem.minmax
+                            agent.target, self.pop[idx].target, self.problem.minmax
                     ):
                         self.pop[idx] = agent

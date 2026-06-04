@@ -43,7 +43,7 @@ class OriginalAEO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -84,19 +84,19 @@ class OriginalAEO(Optimizer):
             ### Herbivore
             if rand < 1.0 / 3:
                 x_t1 = self.pop[idx].solution + c * (
-                    self.pop[idx].solution - self.pop[0].solution
+                        self.pop[idx].solution - self.pop[0].solution
                 )  # Eq. 6
             ### Carnivore
             elif 1.0 / 3 <= rand and rand <= 2.0 / 3:
                 x_t1 = self.pop[idx].solution + c * (
-                    self.pop[idx].solution - self.pop[jdx].solution
+                        self.pop[idx].solution - self.pop[jdx].solution
                 )  # Eq. 7
             ### Omnivore
             else:
                 r2 = self.generator.uniform()
                 x_t1 = self.pop[idx].solution + c * (
-                    r2 * (self.pop[idx].solution - self.pop[0].solution)
-                    + (1 - r2) * (self.pop[idx].solution - self.pop[jdx].solution)
+                        r2 * (self.pop[idx].solution - self.pop[0].solution)
+                        + (1 - r2) * (self.pop[idx].solution - self.pop[jdx].solution)
                 )
             pos_new = self.correct_solution(x_t1)
             agent = self.generate_empty_agent(pos_new)
@@ -170,7 +170,7 @@ class ImprovedAEO(OriginalAEO):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -207,19 +207,19 @@ class ImprovedAEO(OriginalAEO):
             ### Herbivore
             if rand < 1.0 / 3:
                 x_t1 = self.pop[idx].solution + c * (
-                    self.pop[idx].solution - self.pop[0].solution
+                        self.pop[idx].solution - self.pop[0].solution
                 )  # Eq. 6
             ### Carnivore
             elif 1.0 / 3 <= rand and rand <= 2.0 / 3:
                 x_t1 = self.pop[idx].solution + c * (
-                    self.pop[idx].solution - self.pop[j].solution
+                        self.pop[idx].solution - self.pop[j].solution
                 )  # Eq. 7
             ### Omnivore
             else:
                 r2 = self.generator.uniform()
                 x_t1 = self.pop[idx].solution + c * (
-                    r2 * (self.pop[idx].solution - self.pop[0].solution)
-                    + (1 - r2) * (self.pop[idx].solution - self.pop[j].solution)
+                        r2 * (self.pop[idx].solution - self.pop[0].solution)
+                        + (1 - r2) * (self.pop[idx].solution - self.pop[j].solution)
                 )
             pos_new = self.correct_solution(x_t1)
             agent = self.generate_empty_agent(pos_new)
@@ -253,7 +253,7 @@ class ImprovedAEO(OriginalAEO):
                     x_new = beta * self.pop[idx].solution + (1 - beta) * x_r
             else:
                 x_new = best.solution + d * (
-                    e * best.solution - h * self.pop[idx].solution
+                        e * best.solution - h * self.pop[idx].solution
                 )
                 # x_new = best.solution + self.generator.normal() * best.solution
             pos_new = self.correct_solution(x_new)
@@ -304,7 +304,7 @@ class EnhancedAEO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -348,34 +348,34 @@ class EnhancedAEO(Optimizer):
             if rand <= 1.0 / 3:  # Eq. 15
                 if r4 <= 0.5:
                     x_t1 = self.pop[idx].solution + np.sin(r3) * c * (
-                        self.pop[idx].solution - self.pop[0].solution
+                            self.pop[idx].solution - self.pop[0].solution
                     )
                 else:
                     x_t1 = self.pop[idx].solution + np.cos(r3) * c * (
-                        self.pop[idx].solution - self.pop[0].solution
+                            self.pop[idx].solution - self.pop[0].solution
                     )
             ### Carnivore
             elif 1.0 / 3 <= rand and rand <= 2.0 / 3:  # Eq. 16
                 if r4 <= 0.5:
                     x_t1 = self.pop[idx].solution + np.sin(r3) * c * (
-                        self.pop[idx].solution - self.pop[j].solution
+                            self.pop[idx].solution - self.pop[j].solution
                     )
                 else:
                     x_t1 = self.pop[idx].solution + np.cos(r3) * c * (
-                        self.pop[idx].solution - self.pop[j].solution
+                            self.pop[idx].solution - self.pop[j].solution
                     )
             ### Omnivore
             else:  # Eq. 17
                 r5 = self.generator.random()
                 if r4 <= 0.5:
                     x_t1 = self.pop[idx].solution + np.sin(r5) * c * (
-                        r5 * (self.pop[idx].solution - self.pop[0].solution)
-                        + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
+                            r5 * (self.pop[idx].solution - self.pop[0].solution)
+                            + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
                     )
                 else:
                     x_t1 = self.pop[idx].solution + np.cos(r5) * c * (
-                        r5 * (self.pop[idx].solution - self.pop[0].solution)
-                        + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
+                            r5 * (self.pop[idx].solution - self.pop[0].solution)
+                            + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
                     )
             pos_new = self.correct_solution(x_t1)
             agent = self.generate_empty_agent(pos_new)
@@ -412,7 +412,7 @@ class EnhancedAEO(Optimizer):
                     x_new = (1 - beta) * x_r + beta * self.pop[idx].solution
             else:
                 x_new = best.solution + d * (
-                    e * best.solution - h * self.pop[idx].solution
+                        e * best.solution - h * self.pop[idx].solution
                 )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
@@ -463,7 +463,7 @@ class ModifiedAEO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -505,19 +505,19 @@ class ModifiedAEO(Optimizer):
             ### Herbivore
             if rand <= 1.0 / 3:  # Eq. 23
                 pos_new = self.pop[idx].solution + H * c * (
-                    self.pop[idx].solution - self.pop[0].solution
+                        self.pop[idx].solution - self.pop[0].solution
                 )
             ### Carnivore
             elif 1.0 / 3 <= rand and rand <= 2.0 / 3:  # Eq. 24
                 pos_new = self.pop[idx].solution + H * c * (
-                    self.pop[idx].solution - self.pop[j].solution
+                        self.pop[idx].solution - self.pop[j].solution
                 )
             ### Omnivore
             else:  # Eq. 25
                 r5 = self.generator.random()
                 pos_new = self.pop[idx].solution + H * c * (
-                    r5 * (self.pop[idx].solution - self.pop[0].solution)
-                    + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
+                        r5 * (self.pop[idx].solution - self.pop[0].solution)
+                        + (1 - r5) * (self.pop[idx].solution - self.pop[j].solution)
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -554,7 +554,7 @@ class ModifiedAEO(Optimizer):
                     x_new = (1 - beta) * x_r + beta * self.pop[idx].solution
             else:
                 x_new = best.solution + d * (
-                    e * best.solution - h * self.pop[idx].solution
+                        e * best.solution - h * self.pop[idx].solution
                 )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
@@ -605,7 +605,7 @@ class AugmentedAEO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -642,34 +642,34 @@ class AugmentedAEO(Optimizer):
                 rand = self.generator.random()
                 # Eq. 4, 5, 6
                 c = (
-                    0.5
-                    * self.generator.normal(0, 1)
-                    / np.abs(self.generator.normal(0, 1))
+                        0.5
+                        * self.generator.normal(0, 1)
+                        / np.abs(self.generator.normal(0, 1))
                 )  # Consumption factor
                 j = 1 if idx == 0 else self.generator.integers(0, idx)
                 ### Herbivore
                 if rand < 1.0 / 3:
                     pos_new = self.pop[idx].solution + wf * c * (
-                        self.pop[idx].solution - self.pop[0].solution
+                            self.pop[idx].solution - self.pop[0].solution
                     )  # Eq. 6
                 ### Omnivore
                 elif 1.0 / 3 <= rand <= 2.0 / 3:
                     pos_new = self.pop[idx].solution + wf * c * (
-                        self.pop[idx].solution - self.pop[j].solution
+                            self.pop[idx].solution - self.pop[j].solution
                     )  # Eq. 7
                 ### Carnivore
                 else:
                     r2 = self.generator.uniform()
                     pos_new = self.pop[idx].solution + wf * c * (
-                        r2 * (self.pop[idx].solution - self.pop[0].solution)
-                        + (1 - r2) * (self.pop[idx].solution - self.pop[j].solution)
+                            r2 * (self.pop[idx].solution - self.pop[0].solution)
+                            + (1 - r2) * (self.pop[idx].solution - self.pop[j].solution)
                     )
             else:
                 pos_new = self.pop[idx].solution + self.get_levy_flight_step(
                     1.0, 0.001, case=-1
                 ) * (1.0 / np.sqrt(epoch)) * np.sign(self.generator.random() - 0.5) * (
-                    self.pop[idx].solution - self.g_best.solution
-                )
+                                  self.pop[idx].solution - self.g_best.solution
+                          )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)

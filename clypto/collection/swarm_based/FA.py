@@ -49,15 +49,15 @@ class OriginalFA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        max_sparks: int = 100,
-        p_a: float = 0.04,
-        p_b: float = 0.8,
-        max_ea: int = 40,
-        m_sparks: int = 100,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            max_sparks: int = 100,
+            p_a: float = 0.04,
+            p_b: float = 0.8,
+            max_ea: int = 40,
+            m_sparks: int = 100,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -94,14 +94,14 @@ class OriginalFA(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             si = (
-                self.max_sparks
-                * (fit_list[-1] - self.pop[idx].target.fitness)
-                / (self.pop_size * fit_list[-1] - np.sum(fit_list) + self.EPSILON)
+                    self.max_sparks
+                    * (fit_list[-1] - self.pop[idx].target.fitness)
+                    / (self.pop_size * fit_list[-1] - np.sum(fit_list) + self.EPSILON)
             )
             Ai = (
-                self.max_ea
-                * (self.pop[idx].target.fitness - fit_list[0])
-                / (np.sum(fit_list) - fit_list[0] + self.EPSILON)
+                    self.max_ea
+                    * (self.pop[idx].target.fitness - fit_list[0])
+                    / (np.sum(fit_list) - fit_list[0] + self.EPSILON)
             )
             if si < self.p_a * self.max_sparks:
                 si_ = int(round(self.p_a * self.max_sparks) + 1)
@@ -148,7 +148,7 @@ class OriginalFA(Optimizer):
                 pos_new < self.problem.lb, pos_new > self.problem.ub
             )
             pos_true = self.problem.lb + np.abs(pos_new) % (
-                self.problem.ub - self.problem.lb
+                    self.problem.ub - self.problem.lb
             )
             pos_new = np.where(condition, pos_true, pos_new)
             pos_new = self.correct_solution(pos_new)

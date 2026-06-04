@@ -5,10 +5,9 @@
 # --------------------------------------------------%
 
 import numpy as np
-from scipy.spatial.distance import cdist
-
 from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
+from scipy.spatial.distance import cdist
 
 
 class OriginalSSpiderA(Optimizer):
@@ -51,13 +50,13 @@ class OriginalSSpiderA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        r_a: float = 1.0,
-        p_c: float = 0.7,
-        p_m: float = 0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            r_a: float = 1.0,
+            p_c: float = 0.7,
+            p_m: float = 0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -150,10 +149,10 @@ class OriginalSSpiderA(Optimizer):
             )
             ## Perform random walk
             pos_new = (
-                self.pop[idx].solution
-                + self.generator.normal()
-                * (self.pop[idx].solution - self.pop[idx].local_vector)
-                + (pos_new - self.pop[idx].solution) * self.generator.normal()
+                    self.pop[idx].solution
+                    + self.generator.normal()
+                    * (self.pop[idx].solution - self.pop[idx].local_vector)
+                    + (pos_new - self.pop[idx].solution) * self.generator.normal()
             )
             agent.solution = self.correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
@@ -166,10 +165,10 @@ class OriginalSSpiderA(Optimizer):
 
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx].local_vector = (
-                    pop_new[idx].solution - self.pop[idx].solution
+                        pop_new[idx].solution - self.pop[idx].solution
                 )
                 self.pop[idx].intensity = np.log(
                     1.0 / (np.abs(pop_new[idx].target.fitness) + self.EPSILON) + 1

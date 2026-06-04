@@ -42,7 +42,7 @@ class OriginalWOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -93,8 +93,8 @@ class OriginalWOA(Optimizer):
                 else:
                     D1 = abs(self.g_best.solution[jdx] - self.pop[idx].solution[jdx])
                     pos_new[jdx] = (
-                        D1 * np.exp(b * l) * np.cos(l * 2 * np.pi)
-                        + self.g_best.solution[jdx]
+                            D1 * np.exp(b * l) * np.cos(l * 2 * np.pi)
+                            + self.g_best.solution[jdx]
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -138,7 +138,7 @@ class DevWOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -241,11 +241,11 @@ class HI_WOA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        feedback_max: int = 10,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            feedback_max: int = 10,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -295,7 +295,7 @@ class HI_WOA(Optimizer):
             else:
                 D1 = np.abs(self.g_best.solution - self.pop[idx].solution)
                 pos_new = (
-                    self.g_best.solution + np.exp(b * l) * np.cos(2 * np.pi * l) * D1
+                        self.g_best.solution + np.exp(b * l) * np.cos(2 * np.pi * l) * D1
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

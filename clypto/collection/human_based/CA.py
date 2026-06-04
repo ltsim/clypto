@@ -45,11 +45,11 @@ class OriginalCA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        accepted_rate: float = 0.15,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            accepted_rate: float = 0.15,
+            **kwargs: object
     ) -> None:
         """
         Args:

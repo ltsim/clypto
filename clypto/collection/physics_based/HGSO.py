@@ -45,11 +45,11 @@ class OriginalHGSO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        n_clusters: int = 2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            n_clusters: int = 2,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -124,20 +124,20 @@ class OriginalHGSO(Optimizer):
                 S_ij = self.K * self.H_j * self.P_ij
                 gama = self.beta * np.exp(
                     -(
-                        (self.p_best[idx].target.fitness + self.epsilon)
-                        / (self.pop_group[idx][jdx].target.fitness + self.epsilon)
+                            (self.p_best[idx].target.fitness + self.epsilon)
+                            / (self.pop_group[idx][jdx].target.fitness + self.epsilon)
                     )
                 )
                 pos_new = (
-                    self.pop_group[idx][jdx].solution
-                    + F
-                    * self.generator.uniform()
-                    * gama
-                    * (self.p_best[idx].solution - self.pop_group[idx][jdx].solution)
-                    + F
-                    * self.generator.uniform()
-                    * self.alpha
-                    * (S_ij * self.g_best.solution - self.pop_group[idx][jdx].solution)
+                        self.pop_group[idx][jdx].solution
+                        + F
+                        * self.generator.uniform()
+                        * gama
+                        * (self.p_best[idx].solution - self.pop_group[idx][jdx].solution)
+                        + F
+                        * self.generator.uniform()
+                        * self.alpha
+                        * (S_ij * self.g_best.solution - self.pop_group[idx][jdx].solution)
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)

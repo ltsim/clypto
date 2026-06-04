@@ -52,14 +52,14 @@ class OriginalHCO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        wfp: float = 0.65,
-        wfv: float = 0.05,
-        c1: float = 1.4,
-        c2: float = 1.4,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            wfp: float = 0.65,
+            wfv: float = 0.05,
+            c1: float = 1.4,
+            c2: float = 1.4,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -103,16 +103,16 @@ class OriginalHCO(Optimizer):
             self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
         )
         pfit = (
-            worst.target.fitness - best.target.fitness
-        ) * self.wfp + best.target.fitness
+                       worst.target.fitness - best.target.fitness
+               ) * self.wfp + best.target.fitness
         for idx in range(0, self.pop_size):
             if self.compare_fitness(
-                pfit, self.pop[idx].target.fitness, self.problem.minmax
+                    pfit, self.pop[idx].target.fitness, self.problem.minmax
             ):
                 while True:
                     agent = self.generate_agent()
                     if self.compare_fitness(
-                        agent.target.fitness, pfit, self.problem.minmax
+                            agent.target.fitness, pfit, self.problem.minmax
                     ):
                         self.pop[idx] = agent
                         break
@@ -142,9 +142,9 @@ class OriginalHCO(Optimizer):
             a1 = self.pop_p[idx].solution - self.pop[idx].solution
             a2 = self.g_best.solution - self.pop[idx].solution
             self.vec[idx] = (
-                self.wfv * (VV[idx] + self.vec[idx])
-                + self.c1 * a1 * np.sin(2 * np.pi * epoch / self.epoch)
-                + self.c2 * a2 * np.sin(2 * np.pi * epoch / self.epoch)
+                    self.wfv * (VV[idx] + self.vec[idx])
+                    + self.c1 * a1 * np.sin(2 * np.pi * epoch / self.epoch)
+                    + self.c2 * a2 * np.sin(2 * np.pi * epoch / self.epoch)
             )
             pos_new = self.pop[idx].solution + self.vec[idx]
             pos_new = self.correct_solution(pos_new)
@@ -157,10 +157,10 @@ class OriginalHCO(Optimizer):
 
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = pop_new[idx].copy()
                 if self.compare_target(
-                    pop_new[idx].target, self.pop_p[idx].target, self.problem.minmax
+                        pop_new[idx].target, self.pop_p[idx].target, self.problem.minmax
                 ):
                     self.pop_p[idx] = pop_new[idx].copy()

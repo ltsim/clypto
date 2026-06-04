@@ -43,15 +43,15 @@ class OriginalSquirrelSA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        n_food_sources=4,
-        predator_prob=0.1,
-        gliding_constant=1.9,
-        scaling_factor=18,
-        beta=1.5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            n_food_sources=4,
+            predator_prob=0.1,
+            gliding_constant=1.9,
+            scaling_factor=18,
+            beta=1.5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -108,8 +108,8 @@ class OriginalSquirrelSA(Optimizer):
         C_D = 0.60  # Fixed drag coefficient
 
         # Calculate lift and drag forces
-        lift = 0.5 * self.rho * (self.velocity**2) * self.surface_area * C_L
-        drag = 0.5 * self.rho * (self.velocity**2) * self.surface_area * C_D
+        lift = 0.5 * self.rho * (self.velocity ** 2) * self.surface_area * C_L
+        drag = 0.5 * self.rho * (self.velocity ** 2) * self.surface_area * C_D
 
         # Calculate glide angle
         glide_angle = np.arctan(drag / lift)
@@ -135,7 +135,7 @@ class OriginalSquirrelSA(Optimizer):
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward hickory
                 pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                    self.g_best.solution - self.pop[idx].solution
+                        self.g_best.solution - self.pop[idx].solution
                 )
             else:
                 # Predator present: random location
@@ -152,7 +152,7 @@ class OriginalSquirrelSA(Optimizer):
         indices_random = np.array(list(range(self.pop_size - self.n_food_sources)))
         self.generator.shuffle(indices_random)
         indices_random = (
-            indices_random + self.n_food_sources
+                indices_random + self.n_food_sources
         )  # True indices of normal squirrels
         n_cut = self.generator.integers(1, self.pop_size - self.n_food_sources - 1)
         for idx in indices_random[n_cut:]:
@@ -162,7 +162,7 @@ class OriginalSquirrelSA(Optimizer):
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward acorn
                 pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                    self.pop[jdx].solution - self.pop[idx].solution
+                        self.pop[jdx].solution - self.pop[idx].solution
                 )
             else:
                 # Predator present: random location
@@ -181,7 +181,7 @@ class OriginalSquirrelSA(Optimizer):
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward hickory
                 pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                    self.pop[0].solution - self.pop[idx].solution
+                        self.pop[0].solution - self.pop[idx].solution
                 )
             else:
                 # Predator present: random location

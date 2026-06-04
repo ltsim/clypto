@@ -45,11 +45,11 @@ class OriginalCSA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        p_a: float = 0.3,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            p_a: float = 0.3,
+            **kwargs: object
     ) -> None:
         """
         Args:

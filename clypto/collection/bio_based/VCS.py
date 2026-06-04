@@ -44,12 +44,12 @@ class DevVCS(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        lamda: float = 0.5,
-        sigma: float = 1.5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            lamda: float = 0.5,
+            sigma: float = 1.5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -99,15 +99,15 @@ class DevVCS(Optimizer):
         pop = []
         for idx in range(0, self.pop_size):
             sigma = (np.log1p(epoch + 1) / self.epoch) * (
-                self.pop[idx].solution - self.g_best.solution
+                    self.pop[idx].solution - self.g_best.solution
             )
             gauss = self.generator.normal(
                 self.generator.normal(self.g_best.solution, np.abs(sigma))
             )
             pos_new = (
-                gauss
-                + self.generator.uniform() * self.g_best.solution
-                - self.generator.uniform() * self.pop[idx].solution
+                    gauss
+                    + self.generator.uniform() * self.g_best.solution
+                    - self.generator.uniform() * self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -152,9 +152,9 @@ class DevVCS(Optimizer):
                 list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
             )
             temp = (
-                self.pop[id1].solution
-                - (self.pop[id2].solution - self.pop[idx].solution)
-                * self.generator.uniform()
+                    self.pop[id1].solution
+                    - (self.pop[id2].solution - self.pop[idx].solution)
+                    * self.generator.uniform()
             )
             condition = self.generator.random(self.problem.n_dims) < pr
             pos_new = np.where(condition, self.pop[idx].solution, temp)
@@ -210,12 +210,12 @@ class OriginalVCS(DevVCS):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        lamda: float = 0.5,
-        sigma: float = 1.5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            lamda: float = 0.5,
+            sigma: float = 1.5,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -242,7 +242,7 @@ class OriginalVCS(DevVCS):
         pop = []
         for idx in range(0, self.pop_size):
             sigma = (np.log1p(epoch) / self.epoch) * (
-                self.pop[idx].solution - self.g_best.solution
+                    self.pop[idx].solution - self.g_best.solution
             )
             gauss = np.array(
                 [
@@ -251,9 +251,9 @@ class OriginalVCS(DevVCS):
                 ]
             )
             pos_new = (
-                gauss
-                + self.generator.uniform() * self.g_best.solution
-                - self.generator.uniform() * self.pop[idx].solution
+                    gauss
+                    + self.generator.uniform() * self.g_best.solution
+                    - self.generator.uniform() * self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -299,9 +299,9 @@ class OriginalVCS(DevVCS):
                         list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
                     )
                     pos_new[j] = (
-                        self.pop[id1].solution[j]
-                        - (self.pop[id2].solution[j] - self.pop[idx].solution[j])
-                        * self.generator.uniform()
+                            self.pop[id1].solution[j]
+                            - (self.pop[id2].solution[j] - self.pop[idx].solution[j])
+                            * self.generator.uniform()
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

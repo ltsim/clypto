@@ -42,7 +42,7 @@ class OriginalALO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -113,8 +113,8 @@ class OriginalALO(Optimizer):
             # RE is the random walk around the elite (the best antlion so far)
             RE = self.random_walk_antlion__(self.g_best.solution, epoch)
             temp = (
-                RA[:, epoch - 1] + RE[:, epoch - 1]
-            ) / 2  # Equation(2.13) in the paper
+                           RA[:, epoch - 1] + RE[:, epoch - 1]
+                   ) / 2  # Equation(2.13) in the paper
             # Bound checking (bring back the antlions of ants inside search space if they go beyonds the boundaries
             pos_new = self.correct_solution(temp)
             agent = self.generate_empty_agent(pos_new)
@@ -159,7 +159,7 @@ class DevALO(OriginalALO):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:

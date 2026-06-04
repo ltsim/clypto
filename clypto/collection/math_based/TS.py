@@ -49,13 +49,13 @@ class OriginalTS(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 2,
-        tabu_size: int = 5,
-        neighbour_size: int = 10,
-        perturbation_scale: float = 0.05,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 2,
+            tabu_size: int = 5,
+            neighbour_size: int = 10,
+            perturbation_scale: float = 0.05,
+            **kwargs: object
     ) -> None:
         """
         Args:

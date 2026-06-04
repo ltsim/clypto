@@ -48,12 +48,12 @@ class OriginalDMOA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        n_baby_sitter: int = 3,
-        peep: float = 2,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            n_baby_sitter: int = 3,
+            peep: float = 2,
+            **kwargs: object
     ) -> None:
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
@@ -90,12 +90,12 @@ class OriginalDMOA(Optimizer):
             ## Define Vocalization Coeff.
             phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
             new_pos = self.pop[alpha].solution + phi * (
-                self.pop[alpha].solution - self.pop[k].solution
+                    self.pop[alpha].solution - self.pop[k].solution
             )
             new_pos = self.correct_solution(new_pos)
             agent = self.generate_agent(new_pos)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
             else:
@@ -106,7 +106,7 @@ class OriginalDMOA(Optimizer):
             ## Define Vocalization Coeff.
             phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
             new_pos = self.pop[idx].solution + phi * (
-                self.pop[idx].solution - self.pop[k].solution
+                    self.pop[idx].solution - self.pop[k].solution
             )
             new_pos = self.correct_solution(new_pos)
             agent = self.generate_agent(new_pos)
@@ -115,7 +115,7 @@ class OriginalDMOA(Optimizer):
                 [agent.target.fitness, self.pop[idx].target.fitness]
             )
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
             else:
@@ -132,16 +132,16 @@ class OriginalDMOA(Optimizer):
             phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
             if new_tau > self.tau:
                 new_pos = self.pop[
-                    idx
-                ].solution - CF * phi * self.generator.random() * (
-                    self.pop[idx].solution - M
-                )
+                              idx
+                          ].solution - CF * phi * self.generator.random() * (
+                                  self.pop[idx].solution - M
+                          )
             else:
                 new_pos = self.pop[
-                    idx
-                ].solution + CF * phi * self.generator.random() * (
-                    self.pop[idx].solution - M
-                )
+                              idx
+                          ].solution + CF * phi * self.generator.random() * (
+                                  self.pop[idx].solution - M
+                          )
             self.tau = new_tau
             new_pos = self.correct_solution(new_pos)
             self.pop[idx] = self.generate_agent(new_pos)
@@ -177,7 +177,7 @@ class DevDMOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, peep: float = 2, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, peep: float = 2, **kwargs: object
     ) -> None:
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
@@ -211,12 +211,12 @@ class DevDMOA(Optimizer):
             ## Define Vocalization Coeff.
             phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
             new_pos = self.pop[alpha].solution + phi * (
-                self.pop[alpha].solution - self.pop[k].solution
+                    self.pop[alpha].solution - self.pop[k].solution
             )
             new_pos = self.correct_solution(new_pos)
             agent = self.generate_agent(new_pos)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
             else:
@@ -229,17 +229,17 @@ class DevDMOA(Optimizer):
             ## Define Vocalization Coeff.
             phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
             new_pos = self.pop[idx].solution + phi * (
-                self.pop[idx].solution - self.pop[k].solution
+                    self.pop[idx].solution - self.pop[k].solution
             )
             new_pos = self.correct_solution(new_pos)
             agent = self.generate_agent(new_pos)
             ## Sleeping mould
             SM[idx] = (agent.target.fitness - self.pop[idx].target.fitness) / (
-                np.max([agent.target.fitness, self.pop[idx].target.fitness])
-                + self.EPSILON
+                    np.max([agent.target.fitness, self.pop[idx].target.fitness])
+                    + self.EPSILON
             )
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
             else:
@@ -257,15 +257,15 @@ class DevDMOA(Optimizer):
             phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
             if new_tau > SM[idx]:
                 new_pos = self.g_best.solution - CF * phi * (
-                    self.g_best.solution - SM[idx] * self.pop[idx].solution
+                        self.g_best.solution - SM[idx] * self.pop[idx].solution
                 )
             else:
                 new_pos = self.pop[idx].solution + CF * phi * (
-                    self.g_best.solution - SM[idx] * self.pop[idx].solution
+                        self.g_best.solution - SM[idx] * self.pop[idx].solution
                 )
             new_pos = self.correct_solution(new_pos)
             agent = self.generate_agent(new_pos)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent

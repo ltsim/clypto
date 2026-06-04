@@ -55,16 +55,16 @@ class OriginalEOA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        p_c: float = 0.9,
-        p_m: float = 0.01,
-        n_best: int = 2,
-        alpha: float = 0.98,
-        beta: float = 0.9,
-        gama: float = 0.9,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            p_c: float = 0.9,
+            p_m: float = 0.01,
+            n_best: int = 2,
+            alpha: float = 0.98,
+            beta: float = 0.9,
+            gama: float = 0.9,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -111,16 +111,16 @@ class OriginalEOA(Optimizer):
         for idx in range(0, self.pop_size):
             ### Reproduction 1: the first way of reproducing
             x_t1 = (
-                self.problem.lb + self.problem.ub - self.alpha * self.pop[idx].solution
+                    self.problem.lb + self.problem.ub - self.alpha * self.pop[idx].solution
             )
 
             ### Reproduction 2: the second way of reproducing
             if (
-                idx >= self.n_best
+                    idx >= self.n_best
             ):  ### Select two parents to mate and create two children
                 idx = int(self.pop_size * 0.2)
                 if (
-                    self.generator.uniform() < 0.5
+                        self.generator.uniform() < 0.5
                 ):  ## 80% parents selected from best population
                     idx1, idx2 = self.generator.choice(range(0, idx), 2, replace=False)
                 else:  ## 20% left parents selected from worst population (make more diversity)
@@ -129,7 +129,7 @@ class OriginalEOA(Optimizer):
                     )
                 r = self.generator.uniform()
                 x_child = (
-                    r * self.pop[idx2].solution + (1 - r) * self.pop[idx1].solution
+                        r * self.pop[idx2].solution + (1 - r) * self.pop[idx1].solution
                 )
             else:
                 r1 = self.generator.integers(0, self.pop_size)
@@ -159,7 +159,7 @@ class OriginalEOA(Optimizer):
         cauchy_w = self.g_best.solution.copy()
         pop_new = []
         for idx in range(
-            self.n_best, self.pop_size
+                self.n_best, self.pop_size
         ):  # Don't allow the elites to be mutated
             condition = self.generator.random(self.problem.n_dims) < self.p_m
             cauchy_w = np.where(condition, x_mean, cauchy_w)
@@ -174,8 +174,8 @@ class OriginalEOA(Optimizer):
                 )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop[self.n_best :] = self.greedy_selection_population(
-                pop_new, self.pop[self.n_best :], self.problem.minmax
+            self.pop[self.n_best:] = self.greedy_selection_population(
+                pop_new, self.pop[self.n_best:], self.problem.minmax
             )
 
         ## Elitism Strategy: Replace the worst with the previous generation's elites.

@@ -45,16 +45,16 @@ class OriginalBCO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        c_min: float = 0.01,
-        c_max: float = 0.2,
-        n_chemotaxis: int = 1,
-        max_swim_steps: int = 4,
-        energy_threshold: float = 0.5,
-        migration_prob: float = 0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            c_min: float = 0.01,
+            c_max: float = 0.2,
+            n_chemotaxis: int = 1,
+            max_swim_steps: int = 4,
+            energy_threshold: float = 0.5,
+            migration_prob: float = 0.1,
+            **kwargs: object
     ) -> None:
         """
         Initialize the algorithm components.
@@ -113,7 +113,7 @@ class OriginalBCO(Optimizer):
             norm_fit = np.zeros(self.pop_size)
         else:
             norm_fit = (fits - worst.target.fitness) / (
-                best.target.fitness - worst.target.fitness
+                    best.target.fitness - worst.target.fitness
             )
         # Energy inversely proportional to fitness (lower fitness = higher energy)
         return 1 - norm_fit
@@ -135,8 +135,8 @@ class OriginalBCO(Optimizer):
 
         # Calculate adaptive chemotaxis step size
         step = (
-            self.c_min
-            + (self.c_max - self.c_min) * (1 - epoch / self.epoch) ** self.n_chemotaxis
+                self.c_min
+                + (self.c_max - self.c_min) * (1 - epoch / self.epoch) ** self.n_chemotaxis
         )
         pop = []
         ## Perform chemotaxis and communication
@@ -150,7 +150,7 @@ class OriginalBCO(Optimizer):
             # Tumbling (with random turbulence)
             turbulent = self.generator.normal(0, 0.1, self.problem.n_dims)
             pos_new = (
-                f_i * global_direction + (1 - f_i) * personal_direction + turbulent
+                    f_i * global_direction + (1 - f_i) * personal_direction + turbulent
             )
             for jdx in range(0, self.max_swim_steps):
                 # Swimming (no turbulence)
@@ -196,7 +196,7 @@ class OriginalBCO(Optimizer):
                 if self.compare_target(self.pop[idx].target, self.g_best.target):
                     # Move towards global best
                     self.pop[idx].solution += 0.1 * (
-                        self.g_best.solution - self.pop[idx].solution
+                            self.g_best.solution - self.pop[idx].solution
                     )
         self.pop = self.update_target_for_population(self.pop)
 
@@ -255,7 +255,7 @@ class OriginalBCO(Optimizer):
                     select = self.mu[0]
                     select_index = 0
                     while (random_number > select) and (
-                        select_index < self.pop_size - 1
+                            select_index < self.pop_size - 1
                     ):
                         select_index += 1
                         select += self.mu[select_index]

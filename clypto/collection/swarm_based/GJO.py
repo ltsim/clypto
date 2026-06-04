@@ -43,7 +43,7 @@ class OriginalGJO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -84,30 +84,30 @@ class OriginalGJO(Optimizer):
                 if np.abs(E) < 1:  # EXPLOITATION
                     t1 = np.abs(
                         (
-                            RL[idx, jdx] * male.solution[jdx]
-                            - self.pop[idx].solution[jdx]
+                                RL[idx, jdx] * male.solution[jdx]
+                                - self.pop[idx].solution[jdx]
                         )
                     )
                     male_pos[jdx] = male.solution[jdx] - E * t1
                     t2 = np.abs(
                         (
-                            RL[idx, jdx] * female.solution[jdx]
-                            - self.pop[idx].solution[jdx]
+                                RL[idx, jdx] * female.solution[jdx]
+                                - self.pop[idx].solution[jdx]
                         )
                     )
                     female_pos[jdx] = female.solution[jdx] - E * t2
                 else:  # EXPLORATION
                     t1 = np.abs(
                         (
-                            male.solution[jdx]
-                            - RL[idx, jdx] * self.pop[idx].solution[jdx]
+                                male.solution[jdx]
+                                - RL[idx, jdx] * self.pop[idx].solution[jdx]
                         )
                     )
                     male_pos[jdx] = male.solution[jdx] - E * t1
                     t2 = np.abs(
                         (
-                            female.solution[jdx]
-                            - RL[idx, jdx] * self.pop[idx].solution[jdx]
+                                female.solution[jdx]
+                                - RL[idx, jdx] * self.pop[idx].solution[jdx]
                         )
                     )
                     female_pos[jdx] = female.solution[jdx] - E * t2

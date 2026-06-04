@@ -45,11 +45,11 @@ class OriginalABC(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        n_limits: int = 25,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            n_limits: int = 25,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -81,12 +81,12 @@ class OriginalABC(Optimizer):
             # Generate a new solution by the equation x_{ij} = x_{ij} + phi_{ij} * (x_{tj} - x_{ij})
             phi = self.generator.uniform(low=-1, high=1, size=self.problem.n_dims)
             pos_new = self.pop[idx].solution + phi * (
-                self.pop[rdx].solution - self.pop[idx].solution
+                    self.pop[rdx].solution - self.pop[idx].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
                 self.trials[idx] = 0
@@ -106,12 +106,12 @@ class OriginalABC(Optimizer):
             # Generate a new solution by the equation x_{ij} = x_{ij} + phi_{ij} * (x_{tj} - x_{ij})
             phi = self.generator.uniform(low=-1, high=1, size=self.problem.n_dims)
             pos_new = self.pop[selected_bee].solution + phi * (
-                self.pop[rdx].solution - self.pop[selected_bee].solution
+                    self.pop[rdx].solution - self.pop[selected_bee].solution
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                agent.target, self.pop[selected_bee].target, self.problem.minmax
+                    agent.target, self.pop[selected_bee].target, self.problem.minmax
             ):
                 self.pop[selected_bee] = agent
                 self.trials[selected_bee] = 0

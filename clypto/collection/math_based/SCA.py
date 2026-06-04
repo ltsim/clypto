@@ -39,7 +39,7 @@ class DevSCA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -126,7 +126,7 @@ class OriginalSCA(DevSCA):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -227,7 +227,7 @@ class QTable:
 
     def update(self, state, action, reward, alpha=0.1, gama=0.9):
         self.table[state][action] += alpha * (
-            reward + gama * np.max(self.table[state]) - self.table[state][action]
+                reward + gama * np.max(self.table[state]) - self.table[state][action]
         )
 
 
@@ -268,12 +268,12 @@ class QleSCA(DevSCA):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        alpha: float = 0.1,
-        gama: float = 0.9,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            alpha: float = 0.1,
+            gama: float = 0.9,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -348,18 +348,18 @@ class QleSCA(DevSCA):
             r4 = self.generator.uniform()
             if r4 < 0.5:
                 pos_new = self.pop[idx].solution + r1 * np.sin(r2) * (
-                    r3 * self.g_best.solution - self.pop[idx].solution
+                        r3 * self.g_best.solution - self.pop[idx].solution
                 )
             else:
                 pos_new = self.pop[idx].solution + r1 * np.cos(r2) * (
-                    r3 * self.g_best.solution - self.pop[idx].solution
+                        r3 * self.g_best.solution - self.pop[idx].solution
                 )
             # Check the bound
             pos_new = self.correct_solution(pos_new)
             agent.solution = pos_new
             agent.target = self.get_target(pos_new)
             if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
                 self.pop[idx].q_table.update(

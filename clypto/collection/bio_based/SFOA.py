@@ -52,7 +52,7 @@ class OriginalSFOA(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, gp: float = 0.5, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, gp: float = 0.5, **kwargs: object
     ) -> None:
         """
         Args:
@@ -85,8 +85,8 @@ class OriginalSFOA(Optimizer):
                     # for nD is larger than 5
                     jp1 = self.generator.choice(self.problem.n_dims, 5, replace=False)
                     pm = (
-                        2 * self.generator.random(size=self.problem.n_dims) - 1
-                    ) * np.pi
+                                 2 * self.generator.random(size=self.problem.n_dims) - 1
+                         ) * np.pi
                     pos1 = pos_new + pm * (self.g_best.solution - pos_new) * np.cos(
                         theta
                     )
@@ -117,8 +117,8 @@ class OriginalSFOA(Optimizer):
                     pos_new[jp2] = tEO * pos_new[jp2] + rand1 * diff1 + rand2 * diff2
                     # Boundary check for individual dimension
                     if (
-                        pos_new[jp2] > self.problem.ub[jp2]
-                        or pos_new[jp2] < self.problem.lb[jp2]
+                            pos_new[jp2] > self.problem.ub[jp2]
+                            or pos_new[jp2] < self.problem.lb[jp2]
                     ):
                         pos_new[jp2] = self.pop[idx].solution[jp2]
                 pos_new = self.correct_solution(pos_new)
@@ -141,12 +141,12 @@ class OriginalSFOA(Optimizer):
                 r1, r2 = self.generator.random(size=2)
                 kp = self.generator.choice(5, size=2, replace=False)
                 pos_new = (
-                    self.pop[idx].solution + r1 * dm[kp[0]] + r2 * dm[kp[1]]
+                        self.pop[idx].solution + r1 * dm[kp[0]] + r2 * dm[kp[1]]
                 )  # exploitation
                 if idx == self.pop_size - 1:  # last individual
                     pos_new = (
-                        np.exp(-epoch * self.pop_size / self.epoch)
-                        * self.pop[idx].solution
+                            np.exp(-epoch * self.pop_size / self.epoch)
+                            * self.pop[idx].solution
                     )  # regeneration of starfish
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)

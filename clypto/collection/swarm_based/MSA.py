@@ -7,7 +7,6 @@
 from math import gamma
 
 import numpy as np
-
 from clypto.optimizer.classic import Optimizer
 
 
@@ -50,13 +49,13 @@ class OriginalMSA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        n_best: int = 5,
-        partition: float = 0.5,
-        max_step_size: float = 1.0,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            n_best: int = 5,
+            partition: float = 0.5,
+            max_step_size: float = 1.0,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -90,10 +89,10 @@ class OriginalMSA(Optimizer):
     def _levy_walk(self, iteration):
         beta = 1.5  # Eq. 2.23
         sigma = (
-            gamma(1 + beta)
-            * np.sin(np.pi * (beta - 1) / 2)
-            / (gamma(beta / 2) * (beta - 1) * 2 ** ((beta - 2) / 2))
-        ) ** (1 / (beta - 1))
+                        gamma(1 + beta)
+                        * np.sin(np.pi * (beta - 1) / 2)
+                        / (gamma(beta / 2) * (beta - 1) * 2 ** ((beta - 2) / 2))
+                ) ** (1 / (beta - 1))
         u = self.generator.uniform(self.problem.lb, self.problem.ub) * sigma
         v = self.generator.uniform(self.problem.lb, self.problem.ub)
         step = u / np.abs(v) ** (1.0 / (beta - 1))  # Eq. 2.21
@@ -125,8 +124,8 @@ class OriginalMSA(Optimizer):
                 temp_case2 = self.pop[idx].solution + self.generator.random(
                     self.problem.n_dims
                 ) * (1.0 / self.golden_ratio) * (
-                    self.g_best.solution - self.pop[idx].solution
-                )
+                                     self.g_best.solution - self.pop[idx].solution
+                             )
                 pos_new = np.where(
                     self.generator.random(self.problem.n_dims) < 0.5,
                     temp_case2,

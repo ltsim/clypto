@@ -46,12 +46,12 @@ class OriginalSHO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        h_factor: float = 5.0,
-        n_trials: int = 10,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            h_factor: float = 5.0,
+            n_trials: int = 10,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -97,7 +97,7 @@ class OriginalSHO(Optimizer):
                     pos_new = self.correct_solution(pos_temp)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                        agent.target, self.g_best.target, self.problem.minmax
+                            agent.target, self.g_best.target, self.problem.minmax
                     ):
                         N += 1
                         break

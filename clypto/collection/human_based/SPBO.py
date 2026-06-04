@@ -47,7 +47,7 @@ class OriginalSPBO(Optimizer):
     """
 
     def __init__(
-        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
@@ -84,11 +84,11 @@ class OriginalSPBO(Optimizer):
                         ) * (self.g_best.solution - self.pop[idx].solution)
                     else:
                         new_pos = (
-                            self.pop[idx].solution
-                            + self.generator.random(self.problem.n_dims)
-                            * (self.g_best.solution - self.pop[idx].solution)
-                            + self.generator.random()
-                            * (self.pop[idx].solution - x_mean)
+                                self.pop[idx].solution
+                                + self.generator.random(self.problem.n_dims)
+                                * (self.g_best.solution - self.pop[idx].solution)
+                                + self.generator.random()
+                                * (self.pop[idx].solution - x_mean)
                         )
                 else:
                     ## Average Student
@@ -170,9 +170,9 @@ class DevSPBO(OriginalSPBO):
                 else:
                     ra = self.generator.random(self.problem.n_dims)
                     new_pos = (
-                        self.pop[idx].solution
-                        + ra * (self.g_best.solution - self.pop[idx].solution)
-                        + (1 - ra) * (self.pop[idx].solution - x_mean)
+                            self.pop[idx].solution
+                            + ra * (self.g_best.solution - self.pop[idx].solution)
+                            + (1 - ra) * (self.pop[idx].solution - x_mean)
                     )
             elif idx < average:  ## Average Student
                 new_pos = self.pop[idx].solution + self.generator.normal(

@@ -50,12 +50,12 @@ class OriginalFOX(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        c1: float = 0.18,
-        c2: float = 0.82,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            c1: float = 0.18,
+            c2: float = 0.82,
+            **kwargs: object
     ) -> None:
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
@@ -84,7 +84,7 @@ class OriginalFOX(Optimizer):
                 dis = 0.5 * sps * t1
                 tt = np.mean(t1)
                 t = tt / 2
-                jump = 0.5 * 9.81 * t**2
+                jump = 0.5 * 9.81 * t ** 2
                 if self.generator.random() > 0.18:
                     pos_new = dis * jump * self.c1
                 else:
@@ -93,9 +93,9 @@ class OriginalFOX(Optimizer):
                     self.mint = tt
             else:
                 pos_new = (
-                    self.g_best.solution
-                    * self.generator.random(self.problem.n_dims)
-                    * (self.mint * aa)
+                        self.g_best.solution
+                        * self.generator.random(self.problem.n_dims)
+                        * (self.mint * aa)
                 )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -145,13 +145,13 @@ class DevFOX(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        c1: float = 0.18,
-        c2: float = 0.82,
-        pp=0.5,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            c1: float = 0.18,
+            c2: float = 0.82,
+            pp=0.5,
+            **kwargs: object
     ) -> None:
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
@@ -181,7 +181,7 @@ class DevFOX(Optimizer):
                 dis = 0.5 * sps * t1
                 tt = np.mean(t1)
                 t = tt / 2
-                jump = 0.5 * 9.81 * t**2
+                jump = 0.5 * 9.81 * t ** 2
                 if self.generator.random() > self.pp:
                     pos_new = dis * jump * self.c1
                 else:

@@ -73,7 +73,7 @@ class OriginalAO(Optimizer):
         x = r * np.sin(phi)  # Eq.(9)
         y = r * np.cos(phi)  # Eq.(10)
         QF = epoch ** (
-            (2 * self.generator.random() - 1) / (1 - self.epoch) ** 2
+                (2 * self.generator.random() - 1) / (1 - self.epoch) ** 2
         )  # Eq.(15)        Quality function
         pop_new = []
         for idx in range(0, self.pop_size):
@@ -82,35 +82,35 @@ class OriginalAO(Optimizer):
             if epoch <= (2 / 3) * self.epoch:  # Eq. 3, 4
                 if self.generator.random() < 0.5:
                     pos_new = self.g_best.solution * (
-                        1 - epoch / self.epoch
+                            1 - epoch / self.epoch
                     ) + self.generator.random() * (x_mean - self.g_best.solution)
                 else:
                     idx = self.generator.choice(
                         list(set(range(0, self.pop_size)) - {idx})
                     )
                     pos_new = (
-                        self.g_best.solution * levy_step
-                        + self.pop[idx].solution
-                        + self.generator.random() * (y - x)
+                            self.g_best.solution * levy_step
+                            + self.pop[idx].solution
+                            + self.generator.random() * (y - x)
                     )  # Eq. 5
             else:
                 if self.generator.random() < 0.5:
                     pos_new = (
-                        alpha * (self.g_best.solution - x_mean)
-                        - self.generator.random()
-                        * (
-                            self.generator.random()
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
-                        )
-                        * delta
+                            alpha * (self.g_best.solution - x_mean)
+                            - self.generator.random()
+                            * (
+                                    self.generator.random()
+                                    * (self.problem.ub - self.problem.lb)
+                                    + self.problem.lb
+                            )
+                            * delta
                     )  # Eq. 13
                 else:
                     pos_new = (
-                        QF * self.g_best.solution
-                        - (g2 * self.pop[idx].solution * self.generator.random())
-                        - g2 * levy_step
-                        + self.generator.random() * g1
+                            QF * self.g_best.solution
+                            - (g2 * self.pop[idx].solution * self.generator.random())
+                            - g2 * levy_step
+                            + self.generator.random() * g1
                     )  # Eq. 14
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -160,7 +160,7 @@ class AAO(Optimizer):
     """
 
     def __init__(
-        self, epoch=10000, pop_size=100, sharpness=10.0, sigmoid_midpoint=0.5, **kwargs
+            self, epoch=10000, pop_size=100, sharpness=10.0, sigmoid_midpoint=0.5, **kwargs
     ):
         """
         Args:
@@ -202,7 +202,7 @@ class AAO(Optimizer):
         x = r * np.sin(phi)  # Eq.(9)
         y = r * np.cos(phi)  # Eq.(10)
         QF = epoch ** (
-            (2 * self.generator.random() - 1) / (1 - self.epoch) ** 2
+                (2 * self.generator.random() - 1) / (1 - self.epoch) ** 2
         )  # Eq.(15)        Quality function
         pop_new = []
 
@@ -212,44 +212,44 @@ class AAO(Optimizer):
 
             # Dynamically balance the exploration and exploitation phases
             sigmoid_factor = 1 / (
-                1
-                + np.exp(-self.sharpness * (epoch / self.epoch - self.sigmoid_midpoint))
+                    1
+                    + np.exp(-self.sharpness * (epoch / self.epoch - self.sigmoid_midpoint))
             )
 
             if np.random.rand() <= (1 - sigmoid_factor):
                 if self.generator.random() < 0.5:
                     pos_new = self.g_best.solution * (
-                        1 - epoch / self.epoch
+                            1 - epoch / self.epoch
                     ) + self.generator.random() * (
-                        x_mean - self.g_best.solution
-                    )  # Eq. (3) and Eq. (4)
+                                      x_mean - self.g_best.solution
+                              )  # Eq. (3) and Eq. (4)
                 else:
                     idx = self.generator.choice(
                         list(set(range(0, self.pop_size)) - {idx})
                     )
                     pos_new = (
-                        self.g_best.solution * levy_step
-                        + self.pop[idx].solution
-                        + self.generator.random() * (y - x)
+                            self.g_best.solution * levy_step
+                            + self.pop[idx].solution
+                            + self.generator.random() * (y - x)
                     )  # Eq. 5
             else:
                 if self.generator.random() < 0.5:
                     pos_new = (
-                        alpha * (self.g_best.solution - x_mean)
-                        - self.generator.random()
-                        * (
-                            self.generator.random()
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
-                        )
-                        * delta
+                            alpha * (self.g_best.solution - x_mean)
+                            - self.generator.random()
+                            * (
+                                    self.generator.random()
+                                    * (self.problem.ub - self.problem.lb)
+                                    + self.problem.lb
+                            )
+                            * delta
                     )  # Eq. 13
                 else:
                     pos_new = (
-                        QF * self.g_best.solution
-                        - (g2 * self.pop[idx].solution * self.generator.random())
-                        - g2 * levy_step
-                        + self.generator.random() * g1
+                            QF * self.g_best.solution
+                            - (g2 * self.pop[idx].solution * self.generator.random())
+                            - g2 * levy_step
+                            + self.generator.random() * g1
                     )  # Eq. 14
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)

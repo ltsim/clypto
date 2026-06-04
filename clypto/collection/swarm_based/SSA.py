@@ -48,13 +48,13 @@ class DevSSA(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        ST: float = 0.8,
-        PD: float = 0.2,
-        SD: float = 0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            ST: float = 0.8,
+            PD: float = 0.2,
+            SD: float = 0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -114,9 +114,9 @@ class DevSSA(Optimizer):
                     )
                 else:
                     x_new = (
-                        g_best.solution
-                        + np.abs(self.pop[idx].solution - g_best.solution)
-                        * self.generator.normal()
+                            g_best.solution
+                            + np.abs(self.pop[idx].solution - g_best.solution)
+                            * self.generator.normal()
                     )
             pos_new = self.correct_solution(x_new)
             agent = self.generate_empty_agent(pos_new)
@@ -135,16 +135,16 @@ class DevSSA(Optimizer):
             self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
         )
         g_best, g_worst = best[0], worst[0]
-        pop2 = [agent.copy() for agent in self.pop[self.n2 :]]
+        pop2 = [agent.copy() for agent in self.pop[self.n2:]]
         child = []
         for idx in range(0, len(pop2)):
             #  Using equation (5) update the sparrow’s location;
             if self.compare_target(
-                self.pop[idx].target, g_best.target, self.problem.minmax
+                    self.pop[idx].target, g_best.target, self.problem.minmax
             ):
                 x_new = pop2[idx].solution + self.generator.uniform(-1, 1) * (
-                    np.abs(pop2[idx].solution - g_worst.solution)
-                    / (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON)
+                        np.abs(pop2[idx].solution - g_worst.solution)
+                        / (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON)
                 )
             else:
                 x_new = g_best.solution + self.generator.normal() * np.abs(
@@ -201,13 +201,13 @@ class OriginalSSA(DevSSA):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        ST: float = 0.8,
-        PD: float = 0.2,
-        SD: float = 0.1,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            ST: float = 0.8,
+            PD: float = 0.2,
+            SD: float = 0.1,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -233,7 +233,7 @@ class OriginalSSA(DevSSA):
             if idx < self.n1:
                 if r2 < self.ST:
                     des = (idx + 1) / (
-                        self.generator.uniform() * self.epoch + self.EPSILON
+                            self.generator.uniform() * self.epoch + self.EPSILON
                     )
                     if des > 5:
                         des = self.generator.uniform()
@@ -276,16 +276,16 @@ class OriginalSSA(DevSSA):
             self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
         )
         g_best, g_worst = best[0], worst[0]
-        pop2 = [agent.copy() for agent in self.pop[self.n2 :]]
+        pop2 = [agent.copy() for agent in self.pop[self.n2:]]
         child = []
         for idx in range(0, len(pop2)):
             #  Using equation (5) update the sparrow’s location;
             if self.compare_target(
-                self.pop[idx].target, g_best.target, self.problem.minmax
+                    self.pop[idx].target, g_best.target, self.problem.minmax
             ):
                 x_new = pop2[idx].solution + self.generator.uniform(-1, 1) * (
-                    np.abs(pop2[idx].solution - g_worst.solution)
-                    / (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON)
+                        np.abs(pop2[idx].solution - g_worst.solution)
+                        / (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON)
                 )
             else:
                 x_new = g_best.solution + self.generator.normal() * np.abs(

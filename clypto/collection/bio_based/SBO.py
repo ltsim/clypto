@@ -46,13 +46,13 @@ class DevSBO(Optimizer):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        alpha: float = 0.94,
-        p_m: float = 0.05,
-        psw: float = 0.02,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            alpha: float = 0.94,
+            p_m: float = 0.05,
+            psw: float = 0.02,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -90,13 +90,13 @@ class DevSBO(Optimizer):
             ### Calculating Step Size
             lamda = self.alpha * self.generator.uniform()
             pos_new = self.pop[idx].solution + lamda * (
-                (self.pop[rdx].solution + self.g_best.solution) / 2
-                - self.pop[idx].solution
+                    (self.pop[rdx].solution + self.g_best.solution) / 2
+                    - self.pop[idx].solution
             )
             ### Mutation
             temp = (
-                self.pop[idx].solution
-                + self.generator.normal(0, 1, self.problem.n_dims) * self.sigma
+                    self.pop[idx].solution
+                    + self.generator.normal(0, 1, self.problem.n_dims) * self.sigma
             )
             pos_new = np.where(
                 self.generator.random(self.problem.n_dims) < self.p_m, temp, pos_new
@@ -156,13 +156,13 @@ class OriginalSBO(DevSBO):
     """
 
     def __init__(
-        self,
-        epoch: int = 10000,
-        pop_size: int = 100,
-        alpha: float = 0.94,
-        p_m: float = 0.05,
-        psw: float = 0.02,
-        **kwargs: object
+            self,
+            epoch: int = 10000,
+            pop_size: int = 100,
+            alpha: float = 0.94,
+            p_m: float = 0.05,
+            psw: float = 0.02,
+            **kwargs: object
     ) -> None:
         """
         Args:
@@ -218,14 +218,14 @@ class OriginalSBO(DevSBO):
                 ### Calculating Step Size
                 lamda = self.alpha / (1 + prob_list[rdx])
                 pos_new[jdx] = self.pop[idx].solution[jdx] + lamda * (
-                    (self.pop[rdx].solution[jdx] + self.g_best.solution[jdx]) / 2
-                    - self.pop[idx].solution[jdx]
+                        (self.pop[rdx].solution[jdx] + self.g_best.solution[jdx]) / 2
+                        - self.pop[idx].solution[jdx]
                 )
                 ### Mutation
                 if self.generator.uniform() < self.p_m:
                     pos_new[jdx] = (
-                        self.pop[idx].solution[jdx]
-                        + self.generator.normal(0, 1) * self.sigma[jdx]
+                            self.pop[idx].solution[jdx]
+                            + self.generator.normal(0, 1) * self.sigma[jdx]
                     )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
