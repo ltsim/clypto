@@ -1,3 +1,6 @@
+import numbers as nb
+import numpy as np
+
 class LabelEncoder:
     """
     Encode categorical features as integer labels.

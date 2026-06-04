@@ -1,5 +1,7 @@
 import typing
 
+import numpy as np
+
 from clypto.utils.space.base import BaseVar
 
 
