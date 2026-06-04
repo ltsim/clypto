@@ -18,6 +18,7 @@ from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
+from clypto.types.array import NDArrayType
 
 
 class Optimizer(BaseOptimizer):
@@ -249,8 +250,8 @@ class Optimizer(BaseOptimizer):
 
     def solve(
         self,
-        problem: dict | Problem,
-        termination: dict | Termination | None = None,
+        problem: Problem,
+        termination: Termination | None = None,
         starting_solutions: (
             typing.Sequence[float] | npt.NDArray[np.float64] | None
         ) = None,
@@ -311,28 +312,28 @@ class Optimizer(BaseOptimizer):
     def track_optimize_process(self) -> None:
         pass
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None):
+    def generate_empty_agent(self, solution: typing.Optional[NDArrayType] = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
         return Agent(solution=solution)
 
-    def generate_agent(self, solution: np.ndarray | None = None):
+    def generate_agent(self, solution: typing.Optional[NDArrayType] = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
 
         return agent
 
-    def generate_population(self, pop_size: int | None = None) -> list[Agent]:
+    def generate_population(self, pop_size: typing.Optional[int] = None) -> list[Agent]:
         if pop_size is None:
             pop_size = self.pop_size
 
         return [self.generate_agent() for _ in range(0, pop_size)]
 
-    def amend_solution(self, solution: np.ndarray) -> np.ndarray:
+    def amend_solution(self, solution: NDArrayType) -> NDArrayType:
         return np.clip(solution, self.problem.lb, self.problem.ub)
 
-    def correct_solution(self, solution: np.ndarray) -> np.ndarray:
+    def correct_solution(self, solution: NDArrayType) -> NDArrayType:
         solution = self.amend_solution(solution)
 
         return self.problem.correct_solution(solution)
@@ -354,7 +355,7 @@ class Optimizer(BaseOptimizer):
 
         return pop
 
-    def get_target(self, solution: np.ndarray, counted: bool = True) -> Target:
+    def get_target(self, solution: NDArrayType, counted: bool = True) -> Target:
         if counted:
             self.__nfe_counter += 1
 
