@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -44,7 +44,13 @@ class OriginalES(Optimizer):
     [1] Beyer, H.G. and Schwefel, H.P., 2002. Evolution strategies–a comprehensive introduction. Natural computing, 1(1), pp.3-52.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, lamda: float = 0.75, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        lamda: float = 0.75,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -62,7 +68,7 @@ class OriginalES(Optimizer):
     def initialize_variables(self):
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance)
@@ -77,21 +83,25 @@ class OriginalES(Optimizer):
         """
         child = []
         for idx in range(0, self.n_child):
-            pos_new = self.pop[idx].solution + self.pop[idx].strategy * self.generator.normal(0, 1.0,
-                                                                                              self.problem.n_dims)
+            pos_new = self.pop[idx].solution + self.pop[
+                idx
+            ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
             pos_new = self.correct_solution(pos_new)
             tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
             tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
             strategy = np.exp(
-                tau_p * self.generator.normal(0, 1.0, self.problem.n_dims) + tau * self.generator.normal(0, 1.0,
-                                                                                                         self.problem.n_dims))
+                tau_p * self.generator.normal(0, 1.0, self.problem.n_dims)
+                + tau * self.generator.normal(0, 1.0, self.problem.n_dims)
+            )
             agent = self.generate_empty_agent(pos_new)
             agent.update(solution=pos_new, strategy=strategy)
             child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 child[-1].target = self.get_target(pos_new)
         child = self.update_target_for_population(child)
-        self.pop = self.get_sorted_and_trimmed_population(child + self.pop, self.pop_size, self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            child + self.pop, self.pop_size, self.problem.minmax
+        )
 
 
 class LevyES(OriginalES):
@@ -129,7 +139,13 @@ class LevyES(OriginalES):
     [1] Beyer, H.G. and Schwefel, H.P., 2002. Evolution strategies–a comprehensive introduction. Natural computing, 1(1), pp.3-52.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, lamda: float = 0.75, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        lamda: float = 0.75,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -147,14 +163,16 @@ class LevyES(OriginalES):
         """
         child = []
         for idx in range(0, self.n_child):
-            pos_new = self.pop[idx].solution + self.pop[idx].strategy * self.generator.normal(0, 1.0,
-                                                                                              self.problem.n_dims)
+            pos_new = self.pop[idx].solution + self.pop[
+                idx
+            ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
             pos_new = self.correct_solution(pos_new)
             tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
             tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
             strategy = np.exp(
-                tau_p * self.generator.normal(0, 1.0, self.problem.n_dims) + tau * self.generator.normal(0, 1.0,
-                                                                                                         self.problem.n_dims))
+                tau_p * self.generator.normal(0, 1.0, self.problem.n_dims)
+                + tau * self.generator.normal(0, 1.0, self.problem.n_dims)
+            )
             agent = self.generate_empty_agent(pos_new)
             agent.update(solution=pos_new, strategy=strategy)
             child.append(agent)
@@ -163,22 +181,30 @@ class LevyES(OriginalES):
         child = self.update_target_for_population(child)
         child_levy = []
         for idx in range(0, self.n_child):
-            pos_new = self.pop[idx].solution + self.get_levy_flight_step(multiplier=0.001, size=self.problem.n_dims,
-                                                                         case=-1)
+            pos_new = self.pop[idx].solution + self.get_levy_flight_step(
+                multiplier=0.001, size=self.problem.n_dims, case=-1
+            )
             pos_new = self.correct_solution(pos_new)
             tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
             tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
             stdevs = np.array(
-                [np.exp(tau_p * self.generator.normal(0, 1.0) + tau * self.generator.normal(0, 1.0)) for _ in
-                 range(self.problem.n_dims)])
+                [
+                    np.exp(
+                        tau_p * self.generator.normal(0, 1.0)
+                        + tau * self.generator.normal(0, 1.0)
+                    )
+                    for _ in range(self.problem.n_dims)
+                ]
+            )
             agent = self.generate_empty_agent(pos_new)
             agent.update(solution=pos_new, strategy=stdevs)
             child_levy.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 child_levy[-1].target = self.get_target(pos_new)
         child_levy = self.update_target_for_population(child_levy)
-        self.pop = self.get_sorted_and_trimmed_population(child + child_levy + self.pop, self.pop_size,
-                                                          self.problem.minmax)
+        self.pop = self.get_sorted_and_trimmed_population(
+            child + child_levy + self.pop, self.pop_size, self.problem.minmax
+        )
 
 
 class CMA_ES(Optimizer):
@@ -212,7 +238,9 @@ class CMA_ES(Optimizer):
     [1] Hansen, N., & Ostermeier, A. (2001). Completely derandomized self-adaptation in evolution strategies. Evolutionary computation, 9(2), 159-195.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -224,11 +252,13 @@ class CMA_ES(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        step = self.generator.multivariate_normal(np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims))
-        return BaseAgent(solution=solution, step=step)
+        step = self.generator.multivariate_normal(
+            np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
+        )
+        return Agent(solution=solution, step=step)
 
     def before_main_loop(self):
         self.mu = int(np.round(self.pop_size / 2))
@@ -237,27 +267,40 @@ class CMA_ES(Optimizer):
         self.pc = np.zeros(self.problem.n_dims)
         self.w = np.log(self.pop_size + 0.5) - np.log(np.arange(1, self.pop_size + 1))
         self.w = self.w / np.sum(self.w)
-        self.mu_eff = 1. / np.sum(self.w ** 2)  # Number of effective solutions
+        self.mu_eff = 1.0 / np.sum(self.w**2)  # Number of effective solutions
         # Step Size Control Parameters (c_sigma and d_sigma);
         sigma0 = 0.1 * (self.problem.ub - self.problem.lb)
         self.cs = (self.mu_eff + 2) / (self.problem.n_dims + self.mu_eff + 5)
-        self.ds = 1 + self.cs + 2 * np.max(np.sqrt((self.mu_eff - 1.) / (self.problem.n_dims + 1)) - 1, 0)
+        self.ds = (
+            1
+            + self.cs
+            + 2
+            * np.max(np.sqrt((self.mu_eff - 1.0) / (self.problem.n_dims + 1)) - 1, 0)
+        )
         self.ENN = np.sqrt(self.problem.n_dims) * (
-                1 - 1.0 / (4 * self.problem.n_dims) + 1.0 / (21 * self.problem.n_dims ** 2))
+            1 - 1.0 / (4 * self.problem.n_dims) + 1.0 / (21 * self.problem.n_dims**2)
+        )
         ## Covariance Update Parameters
         self.cc = (4 + self.mu_eff / self.problem.n_dims) / (
-                4 + self.problem.n_dims + 2 * self.mu_eff / self.problem.n_dims)
-        self.c1 = 2. / ((self.problem.n_dims + 1.3) ** 2 + self.mu_eff)
+            4 + self.problem.n_dims + 2 * self.mu_eff / self.problem.n_dims
+        )
+        self.c1 = 2.0 / ((self.problem.n_dims + 1.3) ** 2 + self.mu_eff)
         alpha_mu = 2
-        self.cmu = min(1 - self.c1, alpha_mu * (self.mu_eff - 2 + 1 / self.mu_eff) / (
-                (self.problem.n_dims + 2) ** 2 + alpha_mu * self.mu_eff / 2))
+        self.cmu = min(
+            1 - self.c1,
+            alpha_mu
+            * (self.mu_eff - 2 + 1 / self.mu_eff)
+            / ((self.problem.n_dims + 2) ** 2 + alpha_mu * self.mu_eff / 2),
+        )
         self.hth = (1.4 + 2 / (self.problem.n_dims + 1)) * self.ENN
         self.sigma = sigma0
-        self.x_mean = np.mean([agent.solution for agent in self.pop[:self.mu]], axis=0)
+        self.x_mean = np.mean([agent.solution for agent in self.pop[: self.mu]], axis=0)
 
     def update_step__(self, pop, cc):
         for idx in range(0, self.pop_size):
-            pop[idx].step = self.generator.multivariate_normal(np.zeros(self.problem.n_dims), cc)
+            pop[idx].step = self.generator.multivariate_normal(
+                np.zeros(self.problem.n_dims), cc
+            )
         return pop
 
     def evolve(self, epoch):
@@ -285,18 +328,35 @@ class CMA_ES(Optimizer):
         self.x_mean = self.x_mean + self.sigma * self.x_step
         # Update Step Size
         t11 = np.dot(self.x_step, np.linalg.inv(np.linalg.cholesky(self.C).T))
-        self.ps = (1 - self.cs) * self.ps + np.sqrt(self.cs * (2 - self.cs) * self.mu_eff) * t11
-        self.sigma = self.sigma * np.exp(self.cs / self.ds * (np.linalg.norm(self.ps) / self.ENN - 1)) ** 0.3
+        self.ps = (1 - self.cs) * self.ps + np.sqrt(
+            self.cs * (2 - self.cs) * self.mu_eff
+        ) * t11
+        self.sigma = (
+            self.sigma
+            * np.exp(self.cs / self.ds * (np.linalg.norm(self.ps) / self.ENN - 1))
+            ** 0.3
+        )
         # Update Covariance Matrix
-        if np.linalg.norm(self.ps) / np.sqrt(1 - (1 - self.cs) ** (2 * epoch)) < self.hth:
+        if (
+            np.linalg.norm(self.ps) / np.sqrt(1 - (1 - self.cs) ** (2 * epoch))
+            < self.hth
+        ):
             hs = 1
         else:
             hs = 0
         delta = (1 - hs) * self.cc * (2 - self.cc)
-        self.pc = (1 - self.cc) * self.pc + hs * np.sqrt(self.cc * (2 - self.cc) * self.mu_eff) * self.x_step
-        self.C = (1 - self.c1 - self.cmu) * self.C + self.c1 * (np.outer(self.pc, self.pc)) + delta * self.C
+        self.pc = (1 - self.cc) * self.pc + hs * np.sqrt(
+            self.cc * (2 - self.cc) * self.mu_eff
+        ) * self.x_step
+        self.C = (
+            (1 - self.c1 - self.cmu) * self.C
+            + self.c1 * (np.outer(self.pc, self.pc))
+            + delta * self.C
+        )
         for idx in range(0, self.mu):
-            self.C = self.C + self.cmu * self.w[idx] * np.outer(self.pop[idx].step, self.pop[idx].step)
+            self.C = self.C + self.cmu * self.w[idx] * np.outer(
+                self.pop[idx].step, self.pop[idx].step
+            )
         # If Covariance Matrix is not Positive Defenite or Near Singular
         E, V = np.linalg.eig(self.C)
         E = np.diag(E)
@@ -337,7 +397,9 @@ class Simple_CMA_ES(Optimizer):
     [1] Hansen, N., & Ostermeier, A. (2001). Completely derandomized self-adaptation in evolution strategies. Evolutionary computation, 9(2), 159-195.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -361,7 +423,7 @@ class Simple_CMA_ES(Optimizer):
         """
         pos_list = np.array([agent.solution for agent in self.pop]).T
         pop_sorted = self.get_sorted_population(self.pop, self.problem.minmax)
-        pos_topk = np.array([agent.solution for agent in pop_sorted[:self.mu]]).T
+        pos_topk = np.array([agent.solution for agent in pop_sorted[: self.mu]]).T
         # Covariance of top k but using mean of entire population
         centered = pos_list - pos_topk.mean(1, keepdims=True)
         C = (centered @ centered.T) / (self.mu - 1)
@@ -381,7 +443,11 @@ class Simple_CMA_ES(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 pop_new[-1].target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(pop_new[-1], self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    pop_new[-1], self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

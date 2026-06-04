@@ -8,12 +8,13 @@ from typing import Any
 
 import numpy as np
 
-from clypto.agents.base import BaseAgent
 from clypto.utils.target import Target
 
 
 class Agent:
-    def __init__(self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs) -> None:
+    def __init__(
+        self, solution: np.ndarray | None = None, target: Target | None = None, **kwargs
+    ) -> None:
         self.__solution = solution
         self.__target = target
         self.__kwargs = kwargs
@@ -39,11 +40,11 @@ class Agent:
     def __getattr__(self, name: str) -> Any:
         return self.__dict__.get(name, None)
 
-    def copy(self) -> 'BaseAgent':
+    def copy(self) -> "Agent":
         agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
 
         for attr, value in vars(self).items():
-            if attr not in ['target', 'solution', 'id', 'kwargs']:
+            if attr not in ["target", "solution", "id", "kwargs"]:
                 setattr(agent, attr, value)
 
         return agent
@@ -110,15 +111,15 @@ class Agent:
         return f"Agent(target={self.target}, solution={self.solution})"
 
     def __eq__(self, other):
-        """ Check if two agents are equal based on their solutions with a tolerance."""
+        """Check if two agents are equal based on their solutions with a tolerance."""
         if not isinstance(other, Agent):
             return False
 
         return np.allclose(self.solution, other.solution, atol=1e-6)
 
     def __hash__(self):
-        """ Generate a hash based on the solution of the agent.
-            This is useful for using agents in sets or as dictionary keys."""
+        """Generate a hash based on the solution of the agent.
+        This is useful for using agents in sets or as dictionary keys."""
         return hash(tuple(np.round(self.solution, 6)))
 
     def __float__(self) -> float:

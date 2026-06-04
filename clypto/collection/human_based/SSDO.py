@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -43,7 +43,9 @@ class OriginalSSDO(Optimizer):
     data using social ski driver algorithm. Neural Computing and Applications, 32(11), pp.6925-6938.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -55,7 +57,7 @@ class OriginalSSDO(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
@@ -71,7 +73,9 @@ class OriginalSSDO(Optimizer):
         """
         c = 2 - epoch * (2.0 / self.epoch)  # a decreases linearly from 2 to 0
         ## Calculate the mean of the best three solutions in each dimension. Eq 9
-        _, pop_best3, _ = self.get_special_agents(self.pop, n_best=3, minmax=self.problem.minmax)
+        _, pop_best3, _ = self.get_special_agents(
+            self.pop, n_best=3, minmax=self.problem.minmax
+        )
         pos_mean = np.mean(np.array([agent.solution for agent in pop_best3]))
         pop_new = [agent.copy() for agent in self.pop]
         # Updating velocity vectors
@@ -79,22 +83,30 @@ class OriginalSSDO(Optimizer):
         r2 = self.generator.uniform()
         for i in range(0, self.pop_size):
             if r2 <= 0.5:  ## Use Sine function to move
-                vel_new = c * np.sin(r1) * (self.pop[i].local_solution - self.pop[i].solution) + (2 - c) * np.sin(
-                    r1) * (pos_mean - self.pop[i].solution)
+                vel_new = c * np.sin(r1) * (
+                    self.pop[i].local_solution - self.pop[i].solution
+                ) + (2 - c) * np.sin(r1) * (pos_mean - self.pop[i].solution)
             else:  ## Use Cosine function to move
-                vel_new = c * np.cos(r1) * (self.pop[i].local_solution - self.pop[i].solution) + (2 - c) * np.cos(
-                    r1) * (pos_mean - self.pop[i].solution)
+                vel_new = c * np.cos(r1) * (
+                    self.pop[i].local_solution - self.pop[i].solution
+                ) + (2 - c) * np.cos(r1) * (pos_mean - self.pop[i].solution)
             pop_new[i].velocity = vel_new
         ## Reproduction
         for idx in range(0, self.pop_size):
-            pos_new = self.generator.normal(0, 1, self.problem.n_dims) * pop_new[
-                idx].solution + self.generator.random() * pop_new[idx].velocity
+            pos_new = (
+                self.generator.normal(0, 1, self.problem.n_dims) * pop_new[idx].solution
+                + self.generator.random() * pop_new[idx].velocity
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             agent.local_solution = self.pop[idx].solution.copy()
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, pop_new[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, pop_new[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

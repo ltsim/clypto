@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -54,9 +54,21 @@ class OriginalCSO(Optimizer):
     international conference on artificial intelligence (pp. 854-858). Springer, Berlin, Heidelberg.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, mixture_ratio: float = 0.15, smp: int = 5,
-                 spc: bool = False, cdc: float = 0.8, srd: float = 0.15, c1: float = 0.4,
-                 w_min: float = 0.5, w_max: float = 0.9, selected_strategy: int = 1, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        mixture_ratio: float = 0.15,
+        smp: int = 5,
+        spc: bool = False,
+        cdc: float = 0.8,
+        srd: float = 0.15,
+        c1: float = 0.4,
+        w_min: float = 0.5,
+        w_max: float = 0.9,
+        selected_strategy: int = 1,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -74,7 +86,9 @@ class OriginalCSO(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.mixture_ratio = self.validator.check_float("mixture_ratio", mixture_ratio, (0, 1.0))
+        self.mixture_ratio = self.validator.check_float(
+            "mixture_ratio", mixture_ratio, (0, 1.0)
+        )
         self.smp = self.validator.check_int("smp", smp, [2, 10000])
         self.spc = self.validator.check_bool("spc", spc, [True, False])
         self.cdc = self.validator.check_float("cdc", cdc, (0, 1.0))
@@ -82,12 +96,27 @@ class OriginalCSO(Optimizer):
         self.c1 = self.validator.check_float("c1", c1, (0, 3.0))
         self.w_min = self.validator.check_float("w_min", w_min, [0.1, 0.5])
         self.w_max = self.validator.check_float("w_max", w_max, [0.5, 2.0])
-        self.selected_strategy = self.validator.check_int("selected_strategy", selected_strategy, [0, 4])
-        self.set_parameters(["epoch", "pop_size", "mixture_ratio", "smp", "spc", "cdc", "srd", "c1", "w_min", "w_max",
-                             "selected_strategy"])
+        self.selected_strategy = self.validator.check_int(
+            "selected_strategy", selected_strategy, [0, 4]
+        )
+        self.set_parameters(
+            [
+                "epoch",
+                "pop_size",
+                "mixture_ratio",
+                "smp",
+                "spc",
+                "cdc",
+                "srd",
+                "c1",
+                "w_min",
+                "w_max",
+                "selected_strategy",
+            ]
+        )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         """
         + x: current position of cat
         + v: vector v of cat (same amount of dimension as x)
@@ -106,11 +135,16 @@ class OriginalCSO(Optimizer):
             candidate_cats.append(cat.copy())
             clone_cats = [cat.copy() for _ in range(self.smp - 1)]
         for clone in clone_cats:
-            idx = self.generator.choice(range(0, self.problem.n_dims), int(self.cdc * self.problem.n_dims),
-                                        replace=False)
+            idx = self.generator.choice(
+                range(0, self.problem.n_dims),
+                int(self.cdc * self.problem.n_dims),
+                replace=False,
+            )
             pos_new1 = clone.solution * (1 + self.srd)
             pos_new2 = clone.solution * (1 - self.srd)
-            pos_new = np.where(self.generator.random(self.problem.n_dims) < 0.5, pos_new1, pos_new2)
+            pos_new = np.where(
+                self.generator.random(self.problem.n_dims) < 0.5, pos_new1, pos_new2
+            )
             pos_new[idx] = clone.solution[idx]
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -128,7 +162,9 @@ class OriginalCSO(Optimizer):
             cats_k_way = [candidate_cats[_] for _ in idx]
             cat = self.get_best_agent(cats_k_way, self.problem.minmax)
         elif self.selected_strategy == 2:  ### Roul-wheel selection
-            list_fitness = [candidate_cats[u].target.fitness for u in range(0, len(candidate_cats))]
+            list_fitness = [
+                candidate_cats[u].target.fitness for u in range(0, len(candidate_cats))
+            ]
             idx = self.get_index_roulette_wheel_selection(list_fitness)
             cat = candidate_cats[idx]
         else:
@@ -149,13 +185,20 @@ class OriginalCSO(Optimizer):
             agent = self.pop[idx].copy()
             # tracing mode
             if self.pop[idx].flag:
-                pos_new = self.pop[idx].solution + w * self.pop[idx].velocity + \
-                          self.generator.uniform() * self.c1 * (self.g_best.solution - self.pop[idx].solution)
+                pos_new = (
+                    self.pop[idx].solution
+                    + w * self.pop[idx].velocity
+                    + self.generator.uniform()
+                    * self.c1
+                    * (self.g_best.solution - self.pop[idx].solution)
+                )
                 pos_new = self.correct_solution(pos_new)
             else:
                 pos_new = self.seeking_mode__(self.pop[idx])
             agent.solution = pos_new
-            agent.flag = True if self.generator.uniform() < self.mixture_ratio else False
+            agent.flag = (
+                True if self.generator.uniform() < self.mixture_ratio else False
+            )
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 pop_new[-1].target = self.get_target(pos_new)

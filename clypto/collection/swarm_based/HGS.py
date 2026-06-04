@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -46,8 +46,14 @@ class OriginalHGS(Optimizer):
     deep analysis, perspectives, and towards performance shifts. Expert Systems with Applications, 177, p.114864.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, PUP: float = 0.08, LH: float = 10000,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        PUP: float = 0.08,
+        LH: float = 10000,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -63,7 +69,7 @@ class OriginalHGS(Optimizer):
         self.set_parameters(["epoch", "pop_size", "PUP", "LH"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         hunger = 1.0
@@ -81,8 +87,13 @@ class OriginalHGS(Optimizer):
             r = self.generator.random()
             # space: since we pass lower bound and upper bound as list. Better take the np.mean of them.
             space = np.mean(self.problem.ub - self.problem.lb)
-            H = (pop[idx].target.fitness - g_best.target.fitness) / \
-                (g_worst.target.fitness - g_best.target.fitness + self.EPSILON) * r * 2 * space
+            H = (
+                (pop[idx].target.fitness - g_best.target.fitness)
+                / (g_worst.target.fitness - g_best.target.fitness + self.EPSILON)
+                * r
+                * 2
+                * space
+            )
             if H < self.LH:
                 H = self.LH * (1 + r)
             pop[idx].hunger += H
@@ -100,7 +111,9 @@ class OriginalHGS(Optimizer):
         """
         ## Eq. (2.2)
         ### Find the current best and current worst
-        _, (g_best,), (g_worst,) = self.get_special_agents(self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax)
+        _, (g_best,), (g_worst,) = self.get_special_agents(
+            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        )
         pop = self.update_hunger_value__(self.pop, g_best, g_worst)
 
         ## Eq. (2.4)
@@ -118,10 +131,19 @@ class OriginalHGS(Optimizer):
 
             ## Calculate the hungry weight of each position
             if self.generator.random() < self.PUP:
-                W1 = self.pop[idx].hunger * self.pop_size / (total_hunger + self.EPSILON) * self.generator.random()
+                W1 = (
+                    self.pop[idx].hunger
+                    * self.pop_size
+                    / (total_hunger + self.EPSILON)
+                    * self.generator.random()
+                )
             else:
                 W1 = 1
-            W2 = (1 - np.exp(-np.abs(self.pop[idx].hunger - total_hunger))) * self.generator.random() * 2
+            W2 = (
+                (1 - np.exp(-np.abs(self.pop[idx].hunger - total_hunger)))
+                * self.generator.random()
+                * 2
+            )
 
             ### Udpate position of individual Eq. (2.1)
             r1 = self.generator.random()
@@ -130,15 +152,23 @@ class OriginalHGS(Optimizer):
                 pos_new = self.pop[idx].solution * (1 + self.generator.normal(0, 1))
             else:
                 if r2 > E:
-                    pos_new = W1 * g_best.solution + R * W2 * np.abs(g_best.solution - self.pop[idx].solution)
+                    pos_new = W1 * g_best.solution + R * W2 * np.abs(
+                        g_best.solution - self.pop[idx].solution
+                    )
                 else:
-                    pos_new = W1 * g_best.solution - R * W2 * np.abs(g_best.solution - self.pop[idx].solution)
+                    pos_new = W1 * g_best.solution - R * W2 * np.abs(
+                        g_best.solution - self.pop[idx].solution
+                    )
             pos_new = self.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    self.pop[idx], agent, self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )

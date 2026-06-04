@@ -7,7 +7,7 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -50,8 +50,15 @@ class OriginalSSpiderA(Optimizer):
     [1] James, J.Q. and Li, V.O., 2015. A social spider algorithm for global optimization. Applied soft computing, 30, pp.614-627.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, r_a: float = 1.0, p_c: float = 0.7, p_m: float = 0.1,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        r_a: float = 1.0,
+        p_c: float = 0.7,
+        p_m: float = 0.1,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -69,7 +76,7 @@ class OriginalSSpiderA(Optimizer):
         self.set_parameters(["epoch", "pop_size", "r_a", "p_c", "p_m"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         """
         Overriding method in Optimizer class
             + x: The position of s on the web.
@@ -86,9 +93,14 @@ class OriginalSSpiderA(Optimizer):
         target_solution = solution.copy()
         local_vector = np.zeros(self.problem.n_dims)
         mask = np.zeros(self.problem.n_dims)
-        return Agent(solution=solution, target_solution=target_solution, local_vector=local_vector, mask=mask)
+        return Agent(
+            solution=solution,
+            target_solution=target_solution,
+            local_vector=local_vector,
+            mask=mask,
+        )
 
-    def generate_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_agent(self, solution: np.ndarray = None) -> Agent:
         """
         Generate new agent with full information
 
@@ -97,7 +109,9 @@ class OriginalSSpiderA(Optimizer):
         """
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
-        agent.intensity = np.log(1. / (np.abs(agent.target.fitness) + self.EPSILON) + 1)
+        agent.intensity = np.log(
+            1.0 / (np.abs(agent.target.fitness) + self.EPSILON) + 1
+        )
         return agent
 
     def evolve(self, epoch):
@@ -107,13 +121,18 @@ class OriginalSSpiderA(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        all_pos = np.array([agent.solution for agent in self.pop])  ## Matrix (pop_size, problem_size)
+        all_pos = np.array(
+            [agent.solution for agent in self.pop]
+        )  ## Matrix (pop_size, problem_size)
         base_distance = np.mean(np.std(all_pos, axis=0))  ## Number
-        dist = cdist(all_pos, all_pos, 'euclidean')
+        dist = cdist(all_pos, all_pos, "euclidean")
         intensity_source = np.array([it.intensity for it in self.pop])
-        intensity_attenuation = np.exp(-dist / (base_distance * self.r_a))  ## vector (pop_size)
-        intensity_receive = np.dot(np.reshape(intensity_source, (1, self.pop_size)),
-                                   intensity_attenuation)  ## vector (1, pop_size)
+        intensity_attenuation = np.exp(
+            -dist / (base_distance * self.r_a)
+        )  ## vector (pop_size)
+        intensity_receive = np.dot(
+            np.reshape(intensity_source, (1, self.pop_size)), intensity_attenuation
+        )  ## vector (1, pop_size)
         id_best_intensity = np.argmax(intensity_receive)
         pop_new = []
         for idx in range(0, self.pop_size):
@@ -121,23 +140,39 @@ class OriginalSSpiderA(Optimizer):
             if self.pop[id_best_intensity].intensity > self.pop[idx].intensity:
                 agent.target_solution = self.pop[id_best_intensity].target_solution
             if self.generator.uniform() > self.p_c:  ## changing mask
-                agent.mask = np.where(self.generator.uniform(0, 1, self.problem.n_dims) < self.p_m, 0, 1)
-            pos_new = np.where(self.pop[idx].mask == 0, self.pop[idx].target_solution,
-                               self.pop[self.generator.integers(0, self.pop_size)].solution)
+                agent.mask = np.where(
+                    self.generator.uniform(0, 1, self.problem.n_dims) < self.p_m, 0, 1
+                )
+            pos_new = np.where(
+                self.pop[idx].mask == 0,
+                self.pop[idx].target_solution,
+                self.pop[self.generator.integers(0, self.pop_size)].solution,
+            )
             ## Perform random walk
-            pos_new = self.pop[idx].solution + self.generator.normal() * (
-                    self.pop[idx].solution - self.pop[idx].local_vector) + \
-                      (pos_new - self.pop[idx].solution) * self.generator.normal()
+            pos_new = (
+                self.pop[idx].solution
+                + self.generator.normal()
+                * (self.pop[idx].solution - self.pop[idx].local_vector)
+                + (pos_new - self.pop[idx].solution) * self.generator.normal()
+            )
             agent.solution = self.correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(agent.solution)
-                agent.intensity = np.log(1. / (np.abs(agent.target.fitness) + self.EPSILON) + 1)
+                agent.intensity = np.log(
+                    1.0 / (np.abs(agent.target.fitness) + self.EPSILON) + 1
+                )
                 pop_new.append(agent)
         pop_new = self.update_target_for_population(pop_new)
 
         for idx in range(0, self.pop_size):
-            if self.compare_target(pop_new[idx].target, self.pop[idx].target, self.problem.minmax):
-                self.pop[idx].local_vector = pop_new[idx].solution - self.pop[idx].solution
-                self.pop[idx].intensity = np.log(1. / (np.abs(pop_new[idx].target.fitness) + self.EPSILON) + 1)
+            if self.compare_target(
+                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+            ):
+                self.pop[idx].local_vector = (
+                    pop_new[idx].solution - self.pop[idx].solution
+                )
+                self.pop[idx].intensity = np.log(
+                    1.0 / (np.abs(pop_new[idx].target.fitness) + self.EPSILON) + 1
+                )
                 self.pop[idx].solution = pop_new[idx].solution
                 self.pop[idx].target = pop_new[idx].target

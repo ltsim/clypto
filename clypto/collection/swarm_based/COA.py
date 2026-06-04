@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -46,7 +46,13 @@ class OriginalCOA(Optimizer):
     for global optimization problems. In 2018 IEEE congress on evolutionary computation (CEC) (pp. 1-8). IEEE.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, n_coyotes: int = 5, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        n_coyotes: int = 5,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -56,7 +62,9 @@ class OriginalCOA(Optimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.n_coyotes = self.validator.check_int("n_coyotes", n_coyotes, [2, int(self.pop_size / 2)])
+        self.n_coyotes = self.validator.check_int(
+            "n_coyotes", n_coyotes, [2, int(self.pop_size / 2)]
+        )
         self.set_parameters(["epoch", "pop_size", "n_coyotes"])
         self.n_packs = int(pop_size / self.n_coyotes)
         self.sort_flag = False
@@ -64,11 +72,13 @@ class OriginalCOA(Optimizer):
     def initialization(self):
         if self.pop is None:
             self.pop = self.generate_population(self.pop_size)
-        self.pop_group = self.generate_group_population(self.pop, self.n_packs, self.n_coyotes)
-        self.ps = 1. / self.problem.n_dims
-        self.p_leave = 0.005 * (self.n_coyotes ** 2)  # Probability of leaving a pack
+        self.pop_group = self.generate_group_population(
+            self.pop, self.n_packs, self.n_coyotes
+        )
+        self.ps = 1.0 / self.problem.n_dims
+        self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         age = 1
@@ -84,7 +94,9 @@ class OriginalCOA(Optimizer):
         # Execute the operations inside each pack
         for p in range(self.n_packs):
             # Get the coyotes that belong to each pack
-            self.pop_group[p] = self.get_sorted_population(self.pop_group[p], self.problem.minmax)
+            self.pop_group[p] = self.get_sorted_population(
+                self.pop_group[p], self.problem.minmax
+            )
             # Detect alphas according to the costs (Eq. 5)
             # Compute the social tendency of the pack (Eq. 6)
             tendency = np.mean([agent.solution for agent in self.pop_group[p]])
@@ -92,11 +104,17 @@ class OriginalCOA(Optimizer):
             #  Update coyotes' social condition
             pop_new = []
             for i in range(self.n_coyotes):
-                rc1, rc2 = self.generator.choice(list(set(range(0, self.n_coyotes)) - {i}), 2, replace=False)
+                rc1, rc2 = self.generator.choice(
+                    list(set(range(0, self.n_coyotes)) - {i}), 2, replace=False
+                )
                 # Try to update the social condition according to the alpha and the pack tendency(Eq. 12)
-                pos_new = self.pop_group[p][i].solution + self.generator.random() * (
-                        self.pop_group[p][0].solution - self.pop_group[p][rc1].solution) + \
-                          self.generator.random() * (tendency - self.pop_group[p][rc2].solution)
+                pos_new = (
+                    self.pop_group[p][i].solution
+                    + self.generator.random()
+                    * (self.pop_group[p][0].solution - self.pop_group[p][rc1].solution)
+                    + self.generator.random()
+                    * (tendency - self.pop_group[p][rc2].solution)
+                )
                 # Keep the coyotes in the search space (optimization problem constraint)
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -107,14 +125,21 @@ class OriginalCOA(Optimizer):
             # Evaluate the new social condition (Eq. 13)
             pop_new = self.update_target_for_population(pop_new)
             # Adaptation (Eq. 14)
-            self.pop_group[p] = self.greedy_selection_population(self.pop_group[p], pop_new, self.problem.minmax)
+            self.pop_group[p] = self.greedy_selection_population(
+                self.pop_group[p], pop_new, self.problem.minmax
+            )
 
             # Birth of a new coyote from random parents (Eq. 7 and Alg. 1)
-            id_dad, id_mom = self.generator.choice(list(range(0, self.n_coyotes)), 2, replace=False)
-            prob1 = (1. - self.ps) / 2.
+            id_dad, id_mom = self.generator.choice(
+                list(range(0, self.n_coyotes)), 2, replace=False
+            )
+            prob1 = (1.0 - self.ps) / 2.0
             # Generate the pup considering intrinsic and extrinsic influence
-            pup = np.where(self.generator.random(self.problem.n_dims) < prob1, self.pop_group[p][id_dad].solution,
-                           self.pop_group[p][id_mom].solution)
+            pup = np.where(
+                self.generator.random(self.problem.n_dims) < prob1,
+                self.pop_group[p][id_dad].solution,
+                self.pop_group[p][id_mom].solution,
+            )
             # Eventual noise
             pos_new = self.generator.normal(0, 1) * pup
             pos_new = self.correct_solution(pos_new)
@@ -135,10 +160,16 @@ class OriginalCOA(Optimizer):
         # A coyote can leave a pack and enter in another pack (Eq. 4)
         if self.n_packs > 1:
             if self.generator.random() < self.p_leave:
-                id_pack1, id_pack2 = self.generator.choice(list(range(0, self.n_packs)), 2, replace=False)
-                id1, id2 = self.generator.choice(list(range(0, self.n_coyotes)), 2, replace=False)
-                self.pop_group[id_pack1][id1], self.pop_group[id_pack2][id2] = self.pop_group[id_pack2][id2], \
-                    self.pop_group[id_pack1][id1]
+                id_pack1, id_pack2 = self.generator.choice(
+                    list(range(0, self.n_packs)), 2, replace=False
+                )
+                id1, id2 = self.generator.choice(
+                    list(range(0, self.n_coyotes)), 2, replace=False
+                )
+                self.pop_group[id_pack1][id1], self.pop_group[id_pack2][id2] = (
+                    self.pop_group[id_pack2][id2],
+                    self.pop_group[id_pack1][id1],
+                )
 
         # Update coyotes ages
         for id_pack in range(0, self.n_packs):

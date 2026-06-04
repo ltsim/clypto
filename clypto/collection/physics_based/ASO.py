@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -47,8 +47,14 @@ class OriginalASO(Optimizer):
     hydrogeologic parameter estimation problem. Knowledge-Based Systems, 163, pp.283-304.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, alpha: int = 10, beta: float = 0.2,
-                 **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        alpha: int = 10,
+        beta: float = 0.2,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -64,7 +70,7 @@ class OriginalASO(Optimizer):
         self.set_parameters(["epoch", "pop_size", "alpha", "beta"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
@@ -72,13 +78,18 @@ class OriginalASO(Optimizer):
         return Agent(solution=solution, velocity=velocity, mass=mass)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
+        condition = np.logical_and(
+            self.problem.lb <= solution, solution <= self.problem.ub
+        )
         rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
         return np.where(condition, solution, rand_pos)
 
     def update_mass__(self, population):
         list_fit = np.array([agent.target.fitness for agent in population])
-        list_fit = np.exp(-(list_fit - np.max(list_fit)) / (np.max(list_fit) - np.min(list_fit) + self.EPSILON))
+        list_fit = np.exp(
+            -(list_fit - np.max(list_fit))
+            / (np.max(list_fit) - np.min(list_fit) + self.EPSILON)
+        )
         list_fit = list_fit / np.sum(list_fit)
         for idx in range(0, self.pop_size):
             population[idx].mass = list_fit[idx]
@@ -103,9 +114,14 @@ class OriginalASO(Optimizer):
         eps = 2 ** (-52)
         pop = self.update_mass__(population)
         G = np.exp(-20.0 * iteration / self.epoch)
-        k_best = int(self.pop_size - (self.pop_size - 2) * (iteration / self.epoch) ** 0.5) + 1
+        k_best = (
+            int(self.pop_size - (self.pop_size - 2) * (iteration / self.epoch) ** 0.5)
+            + 1
+        )
         if self.problem.minmax == "min":
-            k_best_pop = sorted(pop, key=lambda agent: agent.mass, reverse=True)[:k_best].copy()
+            k_best_pop = sorted(pop, key=lambda agent: agent.mass, reverse=True)[
+                :k_best
+            ].copy()
         else:
             k_best_pop = sorted(pop, key=lambda agent: agent.mass)[:k_best].copy()
         mk_average = np.mean([agent.solution for agent in k_best_pop])
@@ -117,8 +133,11 @@ class OriginalASO(Optimizer):
                 # calculate LJ-potential
                 radius = np.linalg.norm(pop[idx].solution - atom.solution)
                 potential = self.find_LJ_potential__(iteration, dist_average, radius)
-                temp += potential * self.generator.uniform(0, 1, self.problem.n_dims) * (
-                        (atom.solution - pop[idx].solution) / (radius + eps))
+                temp += (
+                    potential
+                    * self.generator.uniform(0, 1, self.problem.n_dims)
+                    * ((atom.solution - pop[idx].solution) / (radius + eps))
+                )
             temp = self.alpha * temp + self.beta * (g_best.solution - pop[idx].solution)
             # calculate acceleration
             acc = G * temp / pop[idx].mass
@@ -138,7 +157,10 @@ class OriginalASO(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             agent = self.pop[idx].copy()
-            velocity = self.generator.random(self.problem.n_dims) * self.pop[idx].velocity + atom_acc_list[idx]
+            velocity = (
+                self.generator.random(self.problem.n_dims) * self.pop[idx].velocity
+                + atom_acc_list[idx]
+            )
             pos_new = self.pop[idx].solution + velocity
             # Relocate atom out of range
             pos_new = self.correct_solution(pos_new)
@@ -146,10 +168,16 @@ class OriginalASO(Optimizer):
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
         current_best = self.get_best_agent(pop_new, self.problem.minmax)
-        if self.compare_target(self.g_best.target, current_best.target, self.problem.minmax):
+        if self.compare_target(
+            self.g_best.target, current_best.target, self.problem.minmax
+        ):
             self.pop[self.generator.integers(0, self.pop_size)] = self.g_best.copy()

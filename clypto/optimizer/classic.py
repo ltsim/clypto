@@ -3,6 +3,7 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
+import collections
 import math
 import random
 import time
@@ -12,16 +13,14 @@ import numpy as np
 import numpy.typing as npt
 
 from clypto.agents import Agent
-from clypto.agents.base import BaseAgent
-from clypto.optimizer.optimizer import AbstractOtimizer
-from clypto.utils.history import TrackHistory
+from clypto.optimizer.optimizer import AbstractOptimizer
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
 
 
-class Optimizer(AbstractOtimizer):
+class Optimizer(AbstractOptimizer):
     """
     The base class of all classic algorithms. All methods in this class will be inherited
 
@@ -42,7 +41,8 @@ class Optimizer(AbstractOtimizer):
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
-        self.__history = TrackHistory()
+        self.__history_g_best = collections.deque()
+
         self.__validator = Validator()
         self.__nfe_counter: int = 1
         self.__name: str = kwargs.get("name", self.__class__.__name__)
@@ -62,10 +62,6 @@ class Optimizer(AbstractOtimizer):
         self.parameters: dict = {}
         self.is_parallelizable: bool = True
         self.rng = None
-
-    @property
-    def history(self) -> TrackHistory:
-        return self.__history
 
     @property
     def termination(self):
@@ -191,9 +187,6 @@ class Optimizer(AbstractOtimizer):
         if self.sort_flag:
             self.pop = pop_temp
 
-        ## Store initial best and worst solutions
-        # self.__history.store_initial_best_worst(self.g_best, self.g_worst)
-
     def before_main_loop(self):
         pass
 
@@ -282,19 +275,14 @@ class Optimizer(AbstractOtimizer):
             ## Evolve method will be called in child class
             self.evolve(epoch)
 
-            """
             # Update global best solution, the population is sorted or not depended on algorithm's strategy
-            pop_temp, self.g_best = self.update_global_best_agent(self.pop)
-
-            if self.sort_flag:
-                self.pop = pop_temp
-            """
-
             pop_temp = self.get_sorted_population(self.pop, self.problem.minmax)
             self.g_best = pop_temp[0]
 
             if self.sort_flag:
                 self.pop = pop_temp
+
+            self.__history_g_best.append(self.g_best.copy())
 
             time_epoch = time.perf_counter() - time_epoch
 
@@ -318,37 +306,10 @@ class Optimizer(AbstractOtimizer):
         epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
-        ## Save history data
-        if self.problem.save_population:
-            self.__history.population.append(Optimizer.duplicate_pop(pop))
-
-        self.__history.epoch_time.append(runtime)
-        self.__history.global_best_fit.append(
-            self.__history.global_best[-1].target.fitness
-        )
-        self.__history.current_best_fit.append(
-            self.__history.current_best[-1].target.fitness
-        )
-
-        # Save the exploration and exploitation data for later usage
-        pos_matrix = np.array([agent.solution for agent in pop])
-        div = np.mean(np.abs(np.median(pos_matrix, axis=0) - pos_matrix), axis=0)
-
-        self.__history.diversity.append(np.mean(div, axis=0))
+        pass
 
     def track_optimize_process(self) -> None:
-        self.__history.epoch = len(self.__history.diversity)
-
-        div_max = np.max(self.__history.diversity)
-
-        self.__history.exploration = 100 * (
-            np.array(self.__history.diversity) / div_max
-        )
-        self.__history.exploitation = 100 - self.__history.exploration
-        self.__history.global_best = self.__history.global_best[1:]
-        self.__history.current_best = self.__history.current_best[1:]
-        self.__history.global_worst = self.__history.global_worst[1:]
-        self.__history.current_worst = self.__history.current_worst[1:]
+        pass
 
     def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
@@ -636,58 +597,6 @@ class Optimizer(AbstractOtimizer):
         c_best, c_worst = sorted_pop[0], sorted_pop[-1]
 
         return sorted_pop, c_best
-
-        """
-        if save:
-            ## Save current best
-            self.__history.current_best.append(c_best)
-            better = self.get_better_agent(
-                c_best, self.__history.global_best[-1], self.problem.minmax
-            )
-
-            self.__history.global_best.append(better)
-
-            ## Save current worst
-            self.__history.current_worst.append(c_worst)
-
-            worse = self.get_better_agent(
-                c_worst,
-                self.__history.global_worst[-1],
-                self.problem.minmax,
-                reverse=True,
-            )
-            self.__history.global_worst.append(worse)
-
-            return sorted_pop, better
-        else:
-            ## Handle current best
-            local_better = self.get_better_agent(
-                c_best, self.__history.current_best[-1], self.problem.minmax
-            )
-            self.__history.current_best[-1] = local_better
-            global_better = self.get_better_agent(
-                c_best, self.__history.global_best[-1], self.problem.minmax
-            )
-            self.__history.global_best[-1] = global_better
-
-            ## Handle current worst
-            local_worst = self.get_better_agent(
-                c_worst,
-                self.__history.current_worst[-1],
-                self.problem.minmax,
-                reverse=True,
-            )
-            self.__history.current_worst[-1] = local_worst
-            global_worst = self.get_better_agent(
-                c_worst,
-                self.__history.global_worst[-1],
-                self.problem.minmax,
-                reverse=True,
-            )
-            self.__history.global_worst[-1] = global_worst
-
-            return sorted_pop, global_better
-    """
 
     ## Selection techniques
     def get_index_roulette_wheel_selection(self, list_fitness: np.array):

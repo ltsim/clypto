@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -42,7 +42,9 @@ class OriginalFOA(Optimizer):
     as an example. Knowledge-Based Systems, 26, pp.69-74.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -55,10 +57,15 @@ class OriginalFOA(Optimizer):
         self.sort_flag = False
 
     def norm_consecutive_adjacent__(self, position=None):
-        return np.array([np.linalg.norm([position[x], position[x + 1]]) for x in range(0, self.problem.n_dims - 1)] + \
-                        [np.linalg.norm([position[-1], position[0]])])
+        return np.array(
+            [
+                np.linalg.norm([position[x], position[x + 1]])
+                for x in range(0, self.problem.n_dims - 1)
+            ]
+            + [np.linalg.norm([position[-1], position[0]])]
+        )
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         solution = self.norm_consecutive_adjacent__(solution)
@@ -73,18 +80,25 @@ class OriginalFOA(Optimizer):
         """
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution + self.generator.random() * self.generator.normal(self.problem.lb,
-                                                                                               self.problem.ub)
+            pos_new = self.pop[
+                idx
+            ].solution + self.generator.random() * self.generator.normal(
+                self.problem.lb, self.problem.ub
+            )
             pos_new = self.norm_consecutive_adjacent__(pos_new)
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(pop_new, self.pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                pop_new, self.pop, self.problem.minmax
+            )
 
 
 class DevFOA(OriginalFOA):
@@ -116,7 +130,9 @@ class DevFOA(OriginalFOA):
     >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -134,17 +150,25 @@ class DevFOA(OriginalFOA):
         c = 1 - epoch / self.epoch
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution + self.generator.normal(self.problem.lb, self.problem.ub)
-            pos_new = c * self.generator.random() * self.norm_consecutive_adjacent__(pos_new)
+            pos_new = self.pop[idx].solution + self.generator.normal(
+                self.problem.lb, self.problem.ub
+            )
+            pos_new = (
+                c * self.generator.random() * self.norm_consecutive_adjacent__(pos_new)
+            )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(pop_new, self.pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                pop_new, self.pop, self.problem.minmax
+            )
 
 
 class WhaleFOA(OriginalFOA):
@@ -179,7 +203,9 @@ class WhaleFOA(OriginalFOA):
     fruit fly optimization and advances in real-world problems. Expert Systems with Applications, 159, p.113502.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, **kwargs: object) -> None:
+    def __init__(
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -194,7 +220,7 @@ class WhaleFOA(OriginalFOA):
         Args:
             epoch (int): The current iteration
         """
-        a = 2. - 2. * epoch / self.epoch  # linearly decreased from 2 to 0
+        a = 2.0 - 2.0 * epoch / self.epoch  # linearly decreased from 2 to 0
         pop_new = []
         for idx in range(0, self.pop_size):
             r = self.generator.random()
@@ -211,17 +237,23 @@ class WhaleFOA(OriginalFOA):
                     # select random 1 position in pop
                     x_rand = self.pop[self.generator.integers(self.pop_size)]
                     D = np.abs(C * x_rand.solution - self.pop[idx].solution)
-                    pos_new = (x_rand.solution - A * D)
+                    pos_new = x_rand.solution - A * D
             else:
                 D1 = np.abs(self.g_best.solution - self.pop[idx].solution)
-                pos_new = D1 * np.exp(b * l) * np.cos(2 * np.pi * l) + self.g_best.solution
+                pos_new = (
+                    D1 * np.exp(b * l) * np.cos(2 * np.pi * l) + self.g_best.solution
+                )
             smell = self.norm_consecutive_adjacent__(pos_new)
             pos_new = self.correct_solution(smell)
             agent = self.generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(pop_new, self.pop, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                pop_new, self.pop, self.problem.minmax
+            )

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import BaseAgent, Agent
+from clypto.agents.virtual import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -50,8 +50,18 @@ class OriginalArchOA(Optimizer):
     algorithm: a new metaheuristic algorithm for solving optimization problems. Applied Intelligence, 51(3), pp.1531-1551.
     """
 
-    def __init__(self, epoch: int = 10000, pop_size: int = 100, c1: float = 2, c2: float = 6,
-                 c3: float = 2, c4: float = 0.5, acc_max: float = 0.9, acc_min: float = 0.1, **kwargs: object) -> None:
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c1: float = 2,
+        c2: float = 6,
+        c3: float = 2,
+        c4: float = 0.5,
+        acc_max: float = 0.9,
+        acc_min: float = 0.1,
+        **kwargs: object
+    ) -> None:
         """
         Args:
             epoch (int): maximum number of iterations, default = 10000
@@ -72,16 +82,21 @@ class OriginalArchOA(Optimizer):
         self.c4 = self.validator.check_float("c4", c4, (0, 1.0))
         self.acc_max = self.validator.check_float("acc_max", acc_max, (0.3, 1.0))
         self.acc_min = self.validator.check_float("acc_min", acc_min, (0, 0.3))
-        self.set_parameters(["epoch", "pop_size", "c1", "c2", "c3", "c4", "acc_max", "acc_min"])
+        self.set_parameters(
+            ["epoch", "pop_size", "c1", "c2", "c3", "c4", "acc_max", "acc_min"]
+        )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> BaseAgent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         den = self.generator.uniform(self.problem.lb, self.problem.ub)  # Density
         vol = self.generator.uniform(self.problem.lb, self.problem.ub)  # Volume
-        acc = self.problem.lb + self.generator.uniform(self.problem.lb, self.problem.ub) * (
-                self.problem.ub - self.problem.lb)  # Acceleration
+        acc = self.problem.lb + self.generator.uniform(
+            self.problem.lb, self.problem.ub
+        ) * (
+            self.problem.ub - self.problem.lb
+        )  # Acceleration
         return Agent(solution=solution, den=den, vol=vol, acc=acc)
 
     def evolve(self, epoch):
@@ -94,20 +109,31 @@ class OriginalArchOA(Optimizer):
         ## Transfer operator Eq. 8
         tf = np.exp(epoch / self.epoch)
         ## Density decreasing factor Eq. 9
-        ddf = np.exp(1. - epoch / self.epoch) - epoch / self.epoch
+        ddf = np.exp(1.0 - epoch / self.epoch) - epoch / self.epoch
         list_acc = []
         ## Calculate new density, volume and acceleration
         for idx in range(0, self.pop_size):
             # Update density and volume of each object using Eq. 7
-            new_den = self.pop[idx].den + self.generator.uniform() * (self.g_best.den - self.pop[idx].den)
-            new_vol = self.pop[idx].vol + self.generator.uniform() * (self.g_best.vol - self.pop[idx].vol)
+            new_den = self.pop[idx].den + self.generator.uniform() * (
+                self.g_best.den - self.pop[idx].den
+            )
+            new_vol = self.pop[idx].vol + self.generator.uniform() * (
+                self.g_best.vol - self.pop[idx].vol
+            )
             # Exploration phase
             if tf <= 0.5:
                 # Update acceleration using Eq. 10 and normalize acceleration using Eq. 12
-                id_rand = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                new_acc = (self.pop[id_rand].den + self.pop[id_rand].vol * self.pop[id_rand].acc) / (new_den * new_vol)
+                id_rand = self.generator.choice(
+                    list(set(range(0, self.pop_size)) - {idx})
+                )
+                new_acc = (
+                    self.pop[id_rand].den
+                    + self.pop[id_rand].vol * self.pop[id_rand].acc
+                ) / (new_den * new_vol)
             else:
-                new_acc = (self.g_best.den + self.g_best.vol * self.g_best.acc) / (new_den * new_vol)
+                new_acc = (self.g_best.den + self.g_best.vol * self.g_best.acc) / (
+                    new_den * new_vol
+                )
             list_acc.append(new_acc)
             self.pop[idx].den = new_den
             self.pop[idx].vol = new_vol
@@ -115,26 +141,48 @@ class OriginalArchOA(Optimizer):
         max_acc = np.max(list_acc)
         ## Normalize acceleration using Eq. 12
         for idx in range(0, self.pop_size):
-            self.pop[idx].acc = self.acc_max * (list_acc[idx] - min_acc) / (
-                    max_acc - min_acc + self.EPSILON) + self.acc_min
+            self.pop[idx].acc = (
+                self.acc_max
+                * (list_acc[idx] - min_acc)
+                / (max_acc - min_acc + self.EPSILON)
+                + self.acc_min
+            )
         pop_new = []
         for idx in range(0, self.pop_size):
             agent = self.pop[idx].copy()
             if tf <= 0.5:  # update position using Eq. 13
-                id_rand = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                pos_new = self.pop[idx].solution + self.c1 * self.generator.uniform() * \
-                          self.pop[idx].acc * ddf * (self.pop[id_rand].solution - self.pop[idx].solution)
+                id_rand = self.generator.choice(
+                    list(set(range(0, self.pop_size)) - {idx})
+                )
+                pos_new = self.pop[
+                    idx
+                ].solution + self.c1 * self.generator.uniform() * self.pop[
+                    idx
+                ].acc * ddf * (
+                    self.pop[id_rand].solution - self.pop[idx].solution
+                )
             else:
                 p = 2 * self.generator.random() - self.c4
                 f = 1 if p <= 0.5 else -1
                 t = self.c3 * tf
-                pos_new = self.g_best.solution + f * self.c2 * self.generator.random() * self.pop[idx].acc * \
-                          ddf * (t * self.g_best.solution - self.pop[idx].solution)
+                pos_new = (
+                    self.g_best.solution
+                    + f
+                    * self.c2
+                    * self.generator.random()
+                    * self.pop[idx].acc
+                    * ddf
+                    * (t * self.g_best.solution - self.pop[idx].solution)
+                )
             agent.solution = self.correct_solution(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
                 agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(agent, self.pop[idx], self.problem.minmax)
+                self.pop[idx] = self.get_better_agent(
+                    agent, self.pop[idx], self.problem.minmax
+                )
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(self.pop, pop_new, self.problem.minmax)
+            self.pop = self.greedy_selection_population(
+                self.pop, pop_new, self.problem.minmax
+            )
