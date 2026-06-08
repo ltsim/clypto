@@ -14,8 +14,10 @@ SEQUENCE = list, tuple, np.ndarray
 DIGIT = int, np.integer
 REAL = float, np.floating
 
+T = typing.TypeVar("T")
 
-def is_in_bound(value, bound):
+
+def _is_in_bound(value: T, bound: tuple[T, T] | list[T]) -> bool:
     ops = None
 
     if type(bound) is tuple:
@@ -35,7 +37,7 @@ def is_in_bound(value, bound):
     return False
 
 
-def is_str_in_list(value: str, my_list: list[str]):
+def _is_str_in_list(value: str, my_list: list[str]) -> bool:
     if type(value) == str and my_list is not None:
         return True if value in my_list else False
 
@@ -43,77 +45,95 @@ def is_str_in_list(value: str, my_list: list[str]):
 
 
 class Validator:
-    def __init__(self, **kwargs):
-        def set_keyword_arguments(kwargs):
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-
-        set_keyword_arguments(kwargs)
-
     @staticmethod
-    def check_int(name: str, value: typing.Any | int, bound=None):
+    def check_int(
+        name: str,
+        value: int,
+        bound: typing.Optional[tuple[int, int] | list[int]] = None,
+    ) -> int:
         if isinstance(value, numbers.Number):
             if bound is None:
                 return int(value)
-            elif is_in_bound(value, bound):
+            elif _is_in_bound(value, bound):
                 return int(value)
 
         bound = "" if bound is None else f"and value should be in range: {bound}"
         raise TypeError(f"'{name}' is an integer {bound}.")
 
     @staticmethod
-    def check_float(name: str, value: typing.Any | float, bound=None):
+    def check_float(
+        name: str,
+        value: float,
+        bound: typing.Optional[tuple[float, float] | list[float]] = None,
+    ) -> float:
         if isinstance(value, numbers.Number):
             if bound is None:
                 return float(value)
-            elif is_in_bound(value, bound):
+            elif _is_in_bound(value, bound):
                 return float(value)
 
         bound = "" if bound is None else f"and value should be in range: {bound}"
         raise TypeError(f"'{name}' is a float {bound}.")
 
     @staticmethod
-    def check_str(name: str, value: typing.Any | str, bound=None):
+    def check_str(
+        name: str,
+        value: str,
+        bound: typing.Optional[tuple[str, str] | list[str]] = None,
+    ) -> str:
         if type(value) is str:
-            if bound is None or is_str_in_list(value, bound):
+            if bound is None or _is_str_in_list(value, bound):
                 return value
+
         bound = "" if bound is None else f"and value should be one of this: {bound}"
         raise TypeError(f"'{name}' is a string {bound}.")
 
     @staticmethod
-    def check_bool(name: str, value: typing.Any | bool, bound=(True, False)):
+    def check_bool(
+        name: str, value: bool, bound: tuple[bool, bool] = (True, False)
+    ) -> bool:
         if type(value) is bool:
             if value in bound:
                 return value
+
         bound = "" if bound is None else f"and value should be one of this: {bound}"
         raise TypeError(f"'{name}' is a boolean {bound}.")
 
     @staticmethod
-    def check_tuple_int(name: str, values: typing.Any | tuple[int, ...], bounds=None):
+    def check_tuple_int(
+        name: str,
+        values: tuple[int, ...],
+        bounds: typing.Optional[tuple[tuple[int, int] | list[int]]] = None,
+    ) -> tuple[int, ...]:
         if isinstance(values, SEQUENCE) and len(values) > 1:
             value_flag = [isinstance(item, DIGIT) for item in values]
+
             if np.all(value_flag):
                 if bounds is not None and len(bounds) == len(values):
                     value_flag = [
-                        is_in_bound(item, bound) for item, bound in zip(values, bounds)
+                        _is_in_bound(item, bound) for item, bound in zip(values, bounds)
                     ]
+
                     if np.all(value_flag):
                         return values
                 else:
                     return values
+
         bounds = "" if bounds is None else f"and values should be in range: {bounds}"
         raise TypeError(f"'{name}' are integer {bounds}.")
 
     @staticmethod
     def check_tuple_float(
-        name: str, values: typing.Any | tuple[float, ...], bounds=None
-    ):
+        name: str,
+        values: tuple[float, ...],
+        bounds: typing.Optional[tuple[tuple[float, float] | list[float]]] = None,
+    ) -> tuple[float, ...]:
         if isinstance(values, SEQUENCE) and len(values) > 1:
             value_flag = [isinstance(item, numbers.Number) for item in values]
             if np.all(value_flag):
                 if bounds is not None and len(bounds) == len(values):
                     value_flag = [
-                        is_in_bound(item, bound) for item, bound in zip(values, bounds)
+                        _is_in_bound(item, bound) for item, bound in zip(values, bounds)
                     ]
                     if np.all(value_flag):
                         return values
@@ -124,8 +144,8 @@ class Validator:
 
     @staticmethod
     def check_list_tuple(
-        name: str, value: typing.Any | list[tuple[typing.Any, ...]], data_type: str
-    ):
+        name: str, value: list[tuple[T, ...]], data_type: str
+    ) -> list[tuple[T, ...]]:
         if type(value) in (tuple, list) and len(value) >= 1:
             return list(value)
         raise TypeError(
@@ -133,7 +153,7 @@ class Validator:
         )
 
     @staticmethod
-    def check_is_instance(name: str, value: typing.Any, class_type: typing.Type):
+    def check_is_instance(name: str, value: T, class_type: typing.Type) -> T:
         if isinstance(value, class_type):
             return value
 
@@ -141,16 +161,16 @@ class Validator:
 
     @staticmethod
     def check_is_int_and_float(
-        name: str, value: typing.Any | int | float, bound_int=None, bound_float=None
-    ):
+        name: str, value: T, bound_int=None, bound_float=None
+    ) -> T:
         if type(value) is int:
-            if bound_int is None or is_in_bound(value, bound_int):
+            if bound_int is None or _is_in_bound(value, bound_int):
                 return int(value)
 
         bound_int_str = "" if bound_int is None else f"and value in range: {bound_int}"
 
         if type(value) is float:
-            if bound_float is None or is_in_bound(value, bound_float):
+            if bound_float is None or _is_in_bound(value, bound_float):
                 return float(value)
 
         bound_float_str = (
