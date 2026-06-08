@@ -8,7 +8,7 @@ from clypto.utils.chaotic import ChaoticMap
 from clypto.utils.fuzzy import FuzzySystem
 from clypto.utils.problem import Problem
 from clypto.utils.termination import Termination
-from clypto.utils.validator import Validator, _is_in_bound, _is_str_in_list
+from clypto.utils.validator import Validator
 
 __all__ = [
     "ChaoticMap",
@@ -16,6 +16,4 @@ __all__ = [
     "Problem",
     "Termination",
     "Validator",
-    "_is_in_bound",
-    "_is_str_in_list",
 ]

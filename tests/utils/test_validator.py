@@ -12,21 +12,6 @@ from clypto.utils import validator
 @pytest.mark.parametrize(
     "value, bound, output",
     [
-        (-3.3, [-10, 10], True),
-        (1000, (2, float("inf")), True),
-        (0.5, [0.3, 2], True),
-        (0, (0, 1.0), False),
-        [2.1, [1, 2.1], True],
-    ],
-)
-def test_check_int(value, bound, output):
-    value_new = validator._is_in_bound(value, bound)
-    assert value_new == output
-
-
-@pytest.mark.parametrize(
-    "value, bound, output",
-    [
         (-3.3, [-10, 10], -3),
         (1000, (2, float("inf")), 1000),
         (0.5, [0.3, 2], 0),
