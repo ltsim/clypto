@@ -10,6 +10,7 @@ import time
 import typing
 
 import numpy as np
+import numpy.random as npr
 import numpy.typing as npt
 
 from clypto.agents import Agent
@@ -44,11 +45,10 @@ class Optimizer(BaseOptimizer):
     def __init__(self, **kwargs):
         self.__history_g_best = collections.deque()
 
-        self.__validator = Validator()
         self.__nfe_counter: int = 1
         self.__name: str = kwargs.get("name", self.__class__.__name__)
         self.__params_name_ordered = None
-        self.__generator = None
+        self.__generator: typing.Optional[npr.Generator] = None
         self.__termination: typing.Optional[Termination] = None
 
         self.mode: typing.Optional[typing.Literal["swarm", "process", "thread"]] = None
@@ -62,7 +62,7 @@ class Optimizer(BaseOptimizer):
         self.sort_flag: bool = False
         self.parameters: dict = {}
         self.is_parallelizable: bool = True
-        self.rng = None
+        self.rng: typing.Optional[random.Random] = None
 
     @property
     def termination(self):
@@ -78,7 +78,7 @@ class Optimizer(BaseOptimizer):
 
     @property
     def validator(self) -> Validator:
-        return self.__validator
+        return Validator()
 
     @property
     def nf_counter(self):
