@@ -48,8 +48,7 @@ class Agent:
         self.__target = target
 
     def update(self, **kwargs) -> None:
-        for attr, value in kwargs.items():
-            setattr(self, attr, value)
+        self.update_agent(**kwargs)
 
     def sync_if_duplicate(self, other: "Agent") -> bool:
         """
