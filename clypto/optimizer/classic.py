@@ -13,12 +13,12 @@ import numpy as np
 import numpy.typing as npt
 
 from clypto.agents import Agent
+from clypto.hints.array import NDArrayType
 from clypto.optimizer.base import BaseOptimizer
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
-from clypto.types.array import NDArrayType
 
 
 class Optimizer(BaseOptimizer):

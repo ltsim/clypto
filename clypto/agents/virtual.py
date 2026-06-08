@@ -7,20 +7,19 @@ import typing
 
 import numpy as np
 
-from clypto.types.sense import SenseType
+from clypto.hints.array import NDArrayType
+from clypto.hints.sense import SenseType
 from clypto.utils.target import Target
-from clypto.types.array import NDArrayType
 
 
 class Agent:
     def __init__(
-        self, solution: typing.Optional[NDArrayType] = None, target: typing.Optional[Target] = None, **kwargs
+        self,
+        solution: typing.Optional[NDArrayType] = None,
+        target: typing.Optional[Target] = None,
     ) -> None:
         self.__solution = solution
         self.__target = target
-        self.__kwargs = kwargs
-
-        self.__dict__.update(kwargs)
 
     @property
     def target(self) -> Target | None:
@@ -42,13 +41,7 @@ class Agent:
         return self.__dict__.get(name, None)
 
     def copy(self) -> "Agent":
-        agent = Agent(self.solution, self.target.copy(), **self.__kwargs)
-
-        for attr, value in vars(self).items():
-            if attr not in ["target", "solution", "id", "kwargs"]:
-                setattr(agent, attr, value)
-
-        return agent
+        return Agent(self.solution, self.target.copy())
 
     def update_agent(self, solution: NDArrayType, target: Target) -> None:
         self.__solution = solution

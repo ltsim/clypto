@@ -9,6 +9,8 @@ import typing
 
 import numpy as np
 
+from clypto.hints.array import NDArrayType
+from clypto.hints.sense import SenseType
 from clypto.utils.space import (
     BaseVar,
     IntegerVar,
@@ -23,8 +25,6 @@ from clypto.utils.space import (
     TransferBoolVar,
 )
 from clypto.utils.target import Target
-from clypto.types.array import NDArrayType
-from clypto.types.sense import SenseType
 
 
 class Problem:
@@ -43,7 +43,10 @@ class Problem:
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, NDArrayType
 
     def __init__(
-        self, bounds: list | tuple | NDArrayType | BaseVar, minmax: SenseType = "min", **kwargs
+        self,
+        bounds: list | tuple | NDArrayType | BaseVar,
+        minmax: SenseType = "min",
+        **kwargs,
     ) -> None:
         self.__obj_func = kwargs.get("obj_func", lambda _: 0)
         self.__name = kwargs.get("name", "Problem")

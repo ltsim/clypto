@@ -5,10 +5,10 @@ import numpy as np
 import numpy.typing as npt
 
 from clypto.agents import Agent
+from clypto.hints.array import NDArrayType
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
-from clypto.types.array import NDArrayType
 
 
 class BaseOptimizer(abc.ABC):
@@ -57,9 +57,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def before_initialization(
         self,
-        starting_solutions: (
-            typing.Sequence[float] | NDArrayType | None
-        ) = None,
+        starting_solutions: typing.Sequence[float] | NDArrayType | None = None,
     ) -> None:
         """
         Hook executed immediately before population initialization.
@@ -137,7 +135,12 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def check_termination(self, mode="start", termination: typing.Optional[Termination] = None, epoch: typing.Optional[int] = None):
+    def check_termination(
+        self,
+        mode="start",
+        termination: typing.Optional[Termination] = None,
+        epoch: typing.Optional[int] = None,
+    ):
         """
         Configure and evaluate termination conditions.
 
@@ -227,7 +230,9 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_empty_agent(self, solution: typing.Optional[NDArrayType] = None) -> "Agent":
+    def generate_empty_agent(
+        self, solution: typing.Optional[NDArrayType] = None
+    ) -> "Agent":
         """
         Create a new agent skeleton without evaluating its target.
 
@@ -263,7 +268,9 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_population(self, pop_size: typing.Optional[int] = None) -> list["Agent"]:
+    def generate_population(
+        self, pop_size: typing.Optional[int] = None
+    ) -> list["Agent"]:
         """
         Generate a population of fully evaluated agents.
 
