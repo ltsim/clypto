@@ -20,7 +20,7 @@ from clypto.utils import validator
     ],
 )
 def test_check_int(value, bound, output):
-    value_new = validator.is_in_bound(value, bound)
+    value_new = validator._is_in_bound(value, bound)
     assert value_new == output
 
 
