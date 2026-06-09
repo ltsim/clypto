@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -69,11 +69,11 @@ class OriginalHGS(Optimizer):
         self.set_parameters(["epoch", "pop_size", "PUP", "LH"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         hunger = 1.0
-        return Agent(solution=solution, hunger=hunger)
+        return AgentStatic(solution=solution, hunger=hunger)
 
     def sech__(self, x):
         if np.abs(x) > 50:

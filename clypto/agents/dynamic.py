@@ -1,44 +1,51 @@
 #!/usr/bin/env python
-# Created by "Thieu" at 04:18, 28/09/2023 ----------%
-#       Email: nguyenthieu2102@gmail.com            %
-#       Github: https://github.com/thieu1995        %
+# Created by "LTSIM" at 07:31, 06/08/2026 ----------%
+#       Email: tsim@cucei.udg.mx                    %
+#       Github: https://github.com/ltsim            %
 # --------------------------------------------------%
 import typing
 
 import numpy as np
-
 from clypto.agents.base import BaseAgent
 from clypto.hints.array import NDArrayType
 from clypto.hints.sense import SenseType
 from clypto.utils.target import Target
 
 
-class Agent(BaseAgent):
+class AgentDynamic(BaseAgent):
     def __init__(
         self,
         solution: typing.Optional[NDArrayType] = None,
         target: typing.Optional[Target] = None,
+        **kwargs,
     ) -> None:
         self.solution = solution
         self.target = target
+        self.__kwargs = kwargs
+
+        self.__dict__.update(kwargs)
 
     def __getattr__(self, name: str) -> typing.Any:
         return self.__dict__.get(name, None)
 
-    def copy(self) -> "Agent":
-        return Agent(self.solution, self.target.copy())
+    def copy(self) -> "BaseAgent":
+        agent = AgentDynamic(self.solution, self.target.copy(), **self.__kwargs)
+
+        for attr, value in vars(self).items():
+            if attr not in ["target", "solution", "id", "kwargs"]:
+                setattr(agent, attr, value)
+
+        return agent
 
     def update_agent(self, solution: NDArrayType, target: Target) -> None:
         self.solution = solution
         self.target = target
 
     def update(self, *args, **kwargs) -> None:
-        self.update_agent(
-            solution=kwargs.get("solution", self.solution),
-            target=kwargs.get("target", self.target),
-        )
+        for attr, value in kwargs.items():
+            setattr(self, attr, value)
 
-    def sync_if_duplicate(self, other: "Agent") -> bool:
+    def sync_if_duplicate(self, other: "BaseAgent") -> bool:
         """
         Check if two agents are equal (using __eq__), and if so, synchronize the target from the other agent.
 
@@ -52,7 +59,7 @@ class Agent(BaseAgent):
 
         return is_eq
 
-    def _compare_fitness(self, other: "Agent", minmax: SenseType = "min") -> int:
+    def _compare_fitness(self, other: "BaseAgent", minmax: SenseType = "min") -> int:
         """
         Compare fitness between self and other.
 
@@ -68,7 +75,9 @@ class Agent(BaseAgent):
         else:
             return -1 if self.target.fitness > other.target.fitness else 1
 
-    def get_better_solution(self, other: "Agent", minmax: SenseType = "min") -> "Agent":
+    def get_better_solution(
+        self, other: "BaseAgent", minmax: SenseType = "min"
+    ) -> "BaseAgent":
         """
         Return better solution
 
@@ -78,7 +87,7 @@ class Agent(BaseAgent):
         """
         return self if self._compare_fitness(other, minmax) <= 0 else other
 
-    def is_better_than(self, other: "Agent", minmax: SenseType = "min") -> bool:
+    def is_better_than(self, other: "BaseAgent", minmax: SenseType = "min") -> bool:
         """
         Compare the current agent with other agent. Return True if current agent is better and False otherwise
 
@@ -93,7 +102,7 @@ class Agent(BaseAgent):
 
     def __eq__(self, other: typing.Any):
         """Check if two agents are equal based on their solutions with a tolerance."""
-        if not isinstance(other, Agent):
+        if not isinstance(other, AgentDynamic):
             return False
 
         return np.allclose(self.solution, other.solution, atol=1e-6)

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -51,17 +51,17 @@ class OriginalESOA(Optimizer):
         self.is_parallelizable = False
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
         m = np.zeros(self.problem.n_dims)
         v = np.zeros(self.problem.n_dims)
-        return Agent(
+        return AgentStatic(
             solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v
         )
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> AgentStatic:
         """
         ID_WEI = 2
         ID_LOC_X = 3

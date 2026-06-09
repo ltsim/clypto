@@ -1,3 +1,3 @@
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 
-__all__ = ["Agent"]
+__all__ = ["AgentStatic"]

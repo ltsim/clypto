@@ -5,10 +5,9 @@
 # --------------------------------------------------%
 
 import numpy as np
-from scipy.stats import cauchy
-
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
+from scipy.stats import cauchy
 
 
 class OriginalDE(Optimizer):
@@ -586,7 +585,7 @@ class SAP_DE(Optimizer):
         else:  # elif self.branch == "REL":
             pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
 
-        return Agent(
+        return AgentStatic(
             solution=solution,
             crossover=crossover_rate,
             mutation=mutation_rate,

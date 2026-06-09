@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -65,11 +65,11 @@ class OriginalFOA(Optimizer):
             + [np.linalg.norm([position[-1], position[0]])]
         )
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         solution = self.norm_consecutive_adjacent__(solution)
-        return Agent(solution=solution)
+        return AgentStatic(solution=solution)
 
     def evolve(self, epoch):
         """

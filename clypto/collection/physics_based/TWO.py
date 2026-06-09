@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -66,7 +66,7 @@ class OriginalTWO(Optimizer):
             self.pop = self.generate_population(self.pop_size)
         self.pop = self.update_weight__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         """
         Generate new agent with solution
 
@@ -75,7 +75,7 @@ class OriginalTWO(Optimizer):
         """
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        return Agent(solution=solution, weight=0.0)
+        return AgentStatic(solution=solution, weight=0.0)
 
     def update_weight__(self, teams):
         list_fits = np.array([agent.target.fitness for agent in teams])

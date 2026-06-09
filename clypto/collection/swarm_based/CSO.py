@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -116,7 +116,7 @@ class OriginalCSO(Optimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         """
         + x: current position of cat
         + v: vector v of cat (same amount of dimension as x)
@@ -126,7 +126,7 @@ class OriginalCSO(Optimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         flag = True if self.generator.uniform() < self.mixture_ratio else False
-        return Agent(solution=solution, velocity=velocity, flag=flag)
+        return AgentStatic(solution=solution, velocity=velocity, flag=flag)
 
     def seeking_mode__(self, cat):
         candidate_cats = []

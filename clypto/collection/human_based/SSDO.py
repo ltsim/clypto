@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -57,12 +57,14 @@ class OriginalSSDO(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         pos_local = solution.copy()
-        return Agent(solution=solution, velocity=velocity, local_solution=pos_local)
+        return AgentStatic(
+            solution=solution, velocity=velocity, local_solution=pos_local
+        )
 
     def evolve(self, epoch):
         """

@@ -5,10 +5,9 @@
 # --------------------------------------------------%
 
 import numpy as np
-from scipy.spatial.distance import cdist
-
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
+from scipy.spatial.distance import cdist
 
 
 class DevBRO(Optimizer):
@@ -68,11 +67,11 @@ class DevBRO(Optimizer):
         self.problem.lb_updated = self.problem.lb.copy()
         self.problem.ub_updated = self.problem.ub.copy()
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         damage = 0
-        return Agent(solution=solution, damage=damage)
+        return AgentStatic(solution=solution, damage=damage)
 
     def get_idx_min__(self, data):
         k_zero = np.count_nonzero(data == 0)

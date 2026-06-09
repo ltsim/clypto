@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -80,14 +80,14 @@ class OriginalBA(Optimizer):
         self.alpha = self.gamma = 0.9
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         pulse_frequency = (
             self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
         )
-        return Agent(
+        return AgentStatic(
             solution=solution, velocity=velocity, pulse_frequency=pulse_frequency
         )
 
@@ -222,13 +222,13 @@ class AdaptiveBA(Optimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
         pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
-        return Agent(
+        return AgentStatic(
             solution=solution,
             velocity=velocity,
             loudness=loudness,

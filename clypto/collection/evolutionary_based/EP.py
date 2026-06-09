@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -70,12 +70,12 @@ class OriginalEP(Optimizer):
         self.n_bout_size = int(self.bout_size * self.pop_size)
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance, self.problem.n_dims)
         times_win = 0
-        return Agent(solution=solution, strategy=strategy, win=times_win)
+        return AgentStatic(solution=solution, strategy=strategy, win=times_win)
 
     def evolve(self, epoch):
         """

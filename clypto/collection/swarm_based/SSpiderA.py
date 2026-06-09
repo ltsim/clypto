@@ -5,10 +5,9 @@
 # --------------------------------------------------%
 
 import numpy as np
-from scipy.spatial.distance import cdist
-
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
+from scipy.spatial.distance import cdist
 
 
 class OriginalSSpiderA(Optimizer):
@@ -76,7 +75,7 @@ class OriginalSSpiderA(Optimizer):
         self.set_parameters(["epoch", "pop_size", "r_a", "p_c", "p_m"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         """
         Overriding method in Optimizer class
             + x: The position of s on the web.
@@ -93,14 +92,14 @@ class OriginalSSpiderA(Optimizer):
         target_solution = solution.copy()
         local_vector = np.zeros(self.problem.n_dims)
         mask = np.zeros(self.problem.n_dims)
-        return Agent(
+        return AgentStatic(
             solution=solution,
             target_solution=target_solution,
             local_vector=local_vector,
             mask=mask,
         )
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> AgentStatic:
         """
         Generate new agent with full information
 

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -115,13 +115,13 @@ class OriginalBFO(Optimizer):
         self.is_parallelizable = False
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         cost = 0.0
         interaction = 0.0
         nutrients = 0.0
-        return Agent(
+        return AgentStatic(
             solution=solution, cost=cost, interaction=interaction, nutrients=nutrients
         )
 
@@ -271,16 +271,16 @@ class ABFO(Optimizer):
         self.C_s = self.C_s * (self.problem.ub - self.problem.lb)
         self.C_e = self.C_e * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         nutrients = 0  # total nutrient gained by the bacterium in its whole searching process.(int number)
         local_solution = solution.copy()
-        return Agent(
+        return AgentStatic(
             solution=solution, nutrients=nutrients, local_solution=local_solution
         )
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> AgentStatic:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()

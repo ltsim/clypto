@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -68,11 +68,11 @@ class OriginalES(Optimizer):
     def initialize_variables(self):
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance)
-        return Agent(solution=solution, strategy=strategy)
+        return AgentStatic(solution=solution, strategy=strategy)
 
     def evolve(self, epoch):
         """
@@ -252,13 +252,13 @@ class CMA_ES(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         step = self.generator.multivariate_normal(
             np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
         )
-        return Agent(solution=solution, step=step)
+        return AgentStatic(solution=solution, step=step)
 
     def before_main_loop(self):
         self.mu = int(np.round(self.pop_size / 2))

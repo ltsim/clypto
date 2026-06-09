@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -70,12 +70,12 @@ class OriginalASO(Optimizer):
         self.set_parameters(["epoch", "pop_size", "alpha", "beta"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         mass = 0.0
-        return Agent(solution=solution, velocity=velocity, mass=mass)
+        return AgentStatic(solution=solution, velocity=velocity, mass=mass)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         condition = np.logical_and(

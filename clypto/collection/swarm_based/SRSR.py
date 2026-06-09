@@ -6,17 +6,8 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.dynamic import AgentDynamic
 from clypto.optimizer.classic import Optimizer
-
-
-class AgentSRSR(Agent):
-    def __init__(self, mu, sigma, solution_new, target_move, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.mu = mu
-        self.sigma = sigma
-        self.solution_new = solution_new
-        self.target_move = target_move
 
 
 class OriginalSRSR(Optimizer):
@@ -65,7 +56,7 @@ class OriginalSRSR(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
@@ -74,7 +65,7 @@ class OriginalSRSR(Optimizer):
         x_new = solution.copy()
         target_move = 0
 
-        return Agent(
+        return AgentDynamic(
             solution=solution,
             mu=mu,
             sigma=sigma,
@@ -82,7 +73,7 @@ class OriginalSRSR(Optimizer):
             target_move=target_move,
         )
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.target_new = agent.target.copy()

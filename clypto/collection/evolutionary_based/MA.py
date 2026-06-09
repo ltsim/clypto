@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.klass import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -99,7 +99,7 @@ class OriginalMA(Optimizer):
     def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = "".join(
@@ -108,7 +108,7 @@ class OriginalMA(Optimizer):
                 for _ in range(0, self.bits_total)
             ]
         )
-        return Agent(solution=solution, bitstring=bitstring)
+        return AgentStatic(solution=solution, bitstring=bitstring)
 
     def decode__(self, bitstring: str = None) -> np.ndarray:
         """
