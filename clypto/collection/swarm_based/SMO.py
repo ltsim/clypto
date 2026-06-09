@@ -53,12 +53,12 @@ class DevSMO(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch=10000,
-            pop_size=100,
-            max_groups: int = 5,
-            perturbation_rate: float = 0.7,
-            **kwargs
+        self,
+        epoch=10000,
+        pop_size=100,
+        max_groups: int = 5,
+        perturbation_rate: float = 0.7,
+        **kwargs
     ):
         """
         Args:
@@ -87,7 +87,7 @@ class DevSMO(Optimizer):
         gsize = -(-n // n_groups)  # ceil(n/k)
         # Cắt lát theo chỉ số group i
         return [
-            pop[i * gsize: (i + 1) * gsize] for i in range(n_groups) if i * gsize < n
+            pop[i * gsize : (i + 1) * gsize] for i in range(n_groups) if i * gsize < n
         ]
 
     def merge_groups(self, groups):
@@ -112,9 +112,7 @@ class DevSMO(Optimizer):
         self.groups = self.split_fill_by_group(self.pop, self.num_groups)
         # Get local leaders
         self.local_leaders = [
-            self.get_sorted_population(group, self.problem.minmax, return_index=False)[
-                0
-            ]
+            self.get_sorted_indices_population(group, self.problem.minmax)[0]
             for group in self.groups
         ]
 
@@ -132,11 +130,11 @@ class DevSMO(Optimizer):
                     [group[jdx].solution[kdx] for kdx, jdx in enumerate(list_rand)]
                 )
                 pos_new = (
-                        group[idx].solution
-                        + self.generator.uniform(0, 1, self.problem.n_dims)
-                        * (self.local_leaders[group_idx].solution - group[idx].solution)
-                        + self.generator.uniform(-1, 1, self.problem.n_dims)
-                        * (vector - group[idx].solution)
+                    group[idx].solution
+                    + self.generator.uniform(0, 1, self.problem.n_dims)
+                    * (self.local_leaders[group_idx].solution - group[idx].solution)
+                    + self.generator.uniform(-1, 1, self.problem.n_dims)
+                    * (vector - group[idx].solution)
                 )
                 pos_new = np.where(
                     self.generator.uniform(0, 1, self.problem.n_dims)
@@ -147,7 +145,7 @@ class DevSMO(Optimizer):
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                        agent.target, group[idx].target, self.problem.minmax
+                    agent.target, group[idx].target, self.problem.minmax
                 ):
                     self.groups[group_idx][idx] = agent
         self.pop = self.merge_groups(self.groups)
@@ -182,18 +180,18 @@ class DevSMO(Optimizer):
                         pos_new = agent.solution.copy()
                         # Update using equation (4)
                         pos_new[k] = (
-                                pos_new[k]
-                                + self.generator.uniform(0, 1)
-                                * (self.g_best.solution[k] - pos_new[k])
-                                + self.generator.uniform(-1, 1)
-                                * (group[jdx].solution[k] - pos_new[k])
+                            pos_new[k]
+                            + self.generator.uniform(0, 1)
+                            * (self.g_best.solution[k] - pos_new[k])
+                            + self.generator.uniform(-1, 1)
+                            * (group[jdx].solution[k] - pos_new[k])
                         )
                         # Apply bounds
                         pos_new = self.correct_solution(pos_new)
                         agent = self.generate_agent(pos_new)
                         # Greedy selection
                         if self.compare_target(
-                                agent.target, self.g_best.target, self.problem.minmax
+                            agent.target, self.g_best.target, self.problem.minmax
                         ):
                             self.groups[group_idx][idx] = agent
 
@@ -208,9 +206,9 @@ class DevSMO(Optimizer):
         for group_idx, group in enumerate(self.groups):
             # Update local limit count
             if self.compare_target(
-                    self.local_leaders[group_idx].target,
-                    local_leaders_new[group_idx].target,
-                    self.problem.minmax,
+                self.local_leaders[group_idx].target,
+                local_leaders_new[group_idx].target,
+                self.problem.minmax,
             ):
                 self.local_limit_counts[group_idx] += 1
             else:
@@ -228,11 +226,11 @@ class DevSMO(Optimizer):
                     )
                     # Update using equation (5)
                     pos_new_02 = (
-                            agent.solution
-                            + self.generator.uniform(0, 1, self.problem.n_dims)
-                            * (self.g_best.solution - agent.solution)
-                            + self.generator.uniform(0, 1, self.problem.n_dims)
-                            * (agent.solution - self.local_leaders[group_idx].solution)
+                        agent.solution
+                        + self.generator.uniform(0, 1, self.problem.n_dims)
+                        * (self.g_best.solution - agent.solution)
+                        + self.generator.uniform(0, 1, self.problem.n_dims)
+                        * (agent.solution - self.local_leaders[group_idx].solution)
                     )
                     pos_new = np.where(
                         self.generator.uniform(0, 1, self.problem.n_dims)
@@ -274,7 +272,7 @@ class DevSMO(Optimizer):
             self.pop, self.problem.minmax, return_index=False
         )[0]
         if self.compare_target(
-                g_best_current.target, self.g_best.target, self.problem.minmax
+            g_best_current.target, self.g_best.target, self.problem.minmax
         ):
             self.g_best = g_best_current
             # Update global limit count

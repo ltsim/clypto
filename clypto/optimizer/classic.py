@@ -405,6 +405,31 @@ class Optimizer(BaseOptimizer):
         return pop_new
 
     @staticmethod
+    def get_sorted_indices_population(
+        pop: list[Agent], minmax: str = "min"
+    ) -> tuple[list[Agent], list[int]]:
+        """
+        Get sorted indices population based on type (minmax) of problem
+
+        Args:
+            pop: The population
+            minmax: The type of the problem
+
+        Returns:
+            Sorted population (1st agent is the best, last agent is the worst
+        """
+
+        list_fits = [agent.target.fitness for agent in pop]
+        indices = np.argsort(list_fits).tolist()
+
+        if minmax == "max":
+            indices = indices[::-1]
+
+        pop_new = [pop[idx] for idx in indices]
+
+        return pop_new, indices
+
+    @staticmethod
     def get_best_agent(pop: list[Agent], minmax: str = "min") -> Agent:
         """
         Args:
