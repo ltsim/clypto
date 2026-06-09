@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.klass import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -48,12 +48,12 @@ class OriginalASO(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            alpha: int = 10,
-            beta: float = 0.2,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        alpha: int = 10,
+        beta: float = 0.2,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -115,8 +115,8 @@ class OriginalASO(Optimizer):
         pop = self.update_mass__(population)
         G = np.exp(-20.0 * iteration / self.epoch)
         k_best = (
-                int(self.pop_size - (self.pop_size - 2) * (iteration / self.epoch) ** 0.5)
-                + 1
+            int(self.pop_size - (self.pop_size - 2) * (iteration / self.epoch) ** 0.5)
+            + 1
         )
         if self.problem.minmax == "min":
             k_best_pop = sorted(pop, key=lambda agent: agent.mass, reverse=True)[
@@ -134,9 +134,9 @@ class OriginalASO(Optimizer):
                 radius = np.linalg.norm(pop[idx].solution - atom.solution)
                 potential = self.find_LJ_potential__(iteration, dist_average, radius)
                 temp += (
-                        potential
-                        * self.generator.uniform(0, 1, self.problem.n_dims)
-                        * ((atom.solution - pop[idx].solution) / (radius + eps))
+                    potential
+                    * self.generator.uniform(0, 1, self.problem.n_dims)
+                    * ((atom.solution - pop[idx].solution) / (radius + eps))
                 )
             temp = self.alpha * temp + self.beta * (g_best.solution - pop[idx].solution)
             # calculate acceleration
@@ -158,8 +158,8 @@ class OriginalASO(Optimizer):
         for idx in range(0, self.pop_size):
             agent = self.pop[idx].copy()
             velocity = (
-                    self.generator.random(self.problem.n_dims) * self.pop[idx].velocity
-                    + atom_acc_list[idx]
+                self.generator.random(self.problem.n_dims) * self.pop[idx].velocity
+                + atom_acc_list[idx]
             )
             pos_new = self.pop[idx].solution + velocity
             # Relocate atom out of range
@@ -178,6 +178,6 @@ class OriginalASO(Optimizer):
             )
         current_best = self.get_best_agent(pop_new, self.problem.minmax)
         if self.compare_target(
-                self.g_best.target, current_best.target, self.problem.minmax
+            self.g_best.target, current_best.target, self.problem.minmax
         ):
             self.pop[self.generator.integers(0, self.pop_size)] = self.g_best.copy()

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.klass import Agent
 from clypto.optimizer.classic import Optimizer
 
 

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.klass import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -51,16 +51,16 @@ class OriginalArchOA(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            c1: float = 2,
-            c2: float = 6,
-            c3: float = 2,
-            c4: float = 0.5,
-            acc_max: float = 0.9,
-            acc_min: float = 0.1,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        c1: float = 2,
+        c2: float = 6,
+        c3: float = 2,
+        c4: float = 0.5,
+        acc_max: float = 0.9,
+        acc_min: float = 0.1,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -95,8 +95,8 @@ class OriginalArchOA(Optimizer):
         acc = self.problem.lb + self.generator.uniform(
             self.problem.lb, self.problem.ub
         ) * (
-                      self.problem.ub - self.problem.lb
-              )  # Acceleration
+            self.problem.ub - self.problem.lb
+        )  # Acceleration
         return Agent(solution=solution, den=den, vol=vol, acc=acc)
 
     def evolve(self, epoch):
@@ -115,10 +115,10 @@ class OriginalArchOA(Optimizer):
         for idx in range(0, self.pop_size):
             # Update density and volume of each object using Eq. 7
             new_den = self.pop[idx].den + self.generator.uniform() * (
-                    self.g_best.den - self.pop[idx].den
+                self.g_best.den - self.pop[idx].den
             )
             new_vol = self.pop[idx].vol + self.generator.uniform() * (
-                    self.g_best.vol - self.pop[idx].vol
+                self.g_best.vol - self.pop[idx].vol
             )
             # Exploration phase
             if tf <= 0.5:
@@ -127,12 +127,12 @@ class OriginalArchOA(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx})
                 )
                 new_acc = (
-                                  self.pop[id_rand].den
-                                  + self.pop[id_rand].vol * self.pop[id_rand].acc
-                          ) / (new_den * new_vol)
+                    self.pop[id_rand].den
+                    + self.pop[id_rand].vol * self.pop[id_rand].acc
+                ) / (new_den * new_vol)
             else:
                 new_acc = (self.g_best.den + self.g_best.vol * self.g_best.acc) / (
-                        new_den * new_vol
+                    new_den * new_vol
                 )
             list_acc.append(new_acc)
             self.pop[idx].den = new_den
@@ -142,10 +142,10 @@ class OriginalArchOA(Optimizer):
         ## Normalize acceleration using Eq. 12
         for idx in range(0, self.pop_size):
             self.pop[idx].acc = (
-                    self.acc_max
-                    * (list_acc[idx] - min_acc)
-                    / (max_acc - min_acc + self.EPSILON)
-                    + self.acc_min
+                self.acc_max
+                * (list_acc[idx] - min_acc)
+                / (max_acc - min_acc + self.EPSILON)
+                + self.acc_min
             )
         pop_new = []
         for idx in range(0, self.pop_size):
@@ -155,24 +155,24 @@ class OriginalArchOA(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx})
                 )
                 pos_new = self.pop[
-                              idx
-                          ].solution + self.c1 * self.generator.uniform() * self.pop[
-                              idx
-                          ].acc * ddf * (
-                                  self.pop[id_rand].solution - self.pop[idx].solution
-                          )
+                    idx
+                ].solution + self.c1 * self.generator.uniform() * self.pop[
+                    idx
+                ].acc * ddf * (
+                    self.pop[id_rand].solution - self.pop[idx].solution
+                )
             else:
                 p = 2 * self.generator.random() - self.c4
                 f = 1 if p <= 0.5 else -1
                 t = self.c3 * tf
                 pos_new = (
-                        self.g_best.solution
-                        + f
-                        * self.c2
-                        * self.generator.random()
-                        * self.pop[idx].acc
-                        * ddf
-                        * (t * self.g_best.solution - self.pop[idx].solution)
+                    self.g_best.solution
+                    + f
+                    * self.c2
+                    * self.generator.random()
+                    * self.pop[idx].acc
+                    * ddf
+                    * (t * self.g_best.solution - self.pop[idx].solution)
                 )
             agent.solution = self.correct_solution(pos_new)
             pop_new.append(agent)

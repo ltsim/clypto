@@ -7,35 +7,20 @@ import typing
 
 import numpy as np
 
+from clypto.agents.base import BaseAgent
 from clypto.hints.array import NDArrayType
 from clypto.hints.sense import SenseType
 from clypto.utils.target import Target
 
 
-class Agent:
+class Agent(BaseAgent):
     def __init__(
         self,
         solution: typing.Optional[NDArrayType] = None,
         target: typing.Optional[Target] = None,
     ) -> None:
-        self.__solution = solution
-        self.__target = target
-
-    @property
-    def target(self) -> Target | None:
-        return self.__target
-
-    @target.setter
-    def target(self, target: Target | None) -> None:
-        self.__target = target
-
-    @property
-    def solution(self) -> NDArrayType | None:
-        return self.__solution
-
-    @solution.setter
-    def solution(self, solution: NDArrayType):
-        self.__solution = solution
+        self.solution = solution
+        self.target = target
 
     def __getattr__(self, name: str) -> typing.Any:
         return self.__dict__.get(name, None)
@@ -44,11 +29,14 @@ class Agent:
         return Agent(self.solution, self.target.copy())
 
     def update_agent(self, solution: NDArrayType, target: Target) -> None:
-        self.__solution = solution
-        self.__target = target
+        self.solution = solution
+        self.target = target
 
-    def update(self, **kwargs) -> None:
-        self.update_agent(**kwargs)
+    def update(self, *args, **kwargs) -> None:
+        self.update_agent(
+            solution=kwargs.get("solution", self.solution),
+            target=kwargs.get("target", self.target),
+        )
 
     def sync_if_duplicate(self, other: "Agent") -> bool:
         """
@@ -60,7 +48,7 @@ class Agent:
         is_eq = self == other
 
         if is_eq:  # use __eq__
-            self.__target = other.target
+            self.target = other.target
 
         return is_eq
 

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.klass import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -47,12 +47,12 @@ class OriginalHGS(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            PUP: float = 0.08,
-            LH: float = 10000,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        PUP: float = 0.08,
+        LH: float = 10000,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -88,11 +88,11 @@ class OriginalHGS(Optimizer):
             # space: since we pass lower bound and upper bound as list. Better take the np.mean of them.
             space = np.mean(self.problem.ub - self.problem.lb)
             H = (
-                    (pop[idx].target.fitness - g_best.target.fitness)
-                    / (g_worst.target.fitness - g_best.target.fitness + self.EPSILON)
-                    * r
-                    * 2
-                    * space
+                (pop[idx].target.fitness - g_best.target.fitness)
+                / (g_worst.target.fitness - g_best.target.fitness + self.EPSILON)
+                * r
+                * 2
+                * space
             )
             if H < self.LH:
                 H = self.LH * (1 + r)
@@ -132,17 +132,17 @@ class OriginalHGS(Optimizer):
             ## Calculate the hungry weight of each position
             if self.generator.random() < self.PUP:
                 W1 = (
-                        self.pop[idx].hunger
-                        * self.pop_size
-                        / (total_hunger + self.EPSILON)
-                        * self.generator.random()
+                    self.pop[idx].hunger
+                    * self.pop_size
+                    / (total_hunger + self.EPSILON)
+                    * self.generator.random()
                 )
             else:
                 W1 = 1
             W2 = (
-                    (1 - np.exp(-np.abs(self.pop[idx].hunger - total_hunger)))
-                    * self.generator.random()
-                    * 2
+                (1 - np.exp(-np.abs(self.pop[idx].hunger - total_hunger)))
+                * self.generator.random()
+                * 2
             )
 
             ### Udpate position of individual Eq. (2.1)

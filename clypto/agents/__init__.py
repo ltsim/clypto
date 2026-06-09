@@ -1,3 +1,3 @@
-from clypto.agents.virtual import Agent
+from clypto.agents.klass import Agent
 
 __all__ = ["Agent"]

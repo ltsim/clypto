@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.klass import Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -51,17 +51,17 @@ class OriginalBSA(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            ff: int = 10,
-            pff: float = 0.8,
-            c1: float = 1.5,
-            c2: float = 1.5,
-            a1: float = 1.0,
-            a2: float = 1.0,
-            fc: float = 0.5,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        ff: int = 10,
+        pff: float = 0.8,
+        c1: float = 1.5,
+        c2: float = 1.5,
+        a1: float = 1.0,
+        a2: float = 1.0,
+        fc: float = 0.5,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -119,17 +119,17 @@ class OriginalBSA(Optimizer):
             for idx in range(0, self.pop_size):
                 agent = self.pop[idx].copy()
                 prob = (
-                        self.generator.uniform() * 0.2 + self.pff
+                    self.generator.uniform() * 0.2 + self.pff
                 )  # The probability of foraging for food
                 if self.generator.uniform() < prob:  # Birds forage for food. Eq. 1
                     x_new = (
-                            self.pop[idx].solution
-                            + self.c1
-                            * self.generator.uniform()
-                            * (self.pop[idx].local_solution - self.pop[idx].solution)
-                            + self.c2
-                            * self.generator.uniform()
-                            * (self.g_best.solution - self.pop[idx].solution)
+                        self.pop[idx].solution
+                        + self.c1
+                        * self.generator.uniform()
+                        * (self.pop[idx].local_solution - self.pop[idx].solution)
+                        + self.c2
+                        * self.generator.uniform()
+                        * (self.g_best.solution - self.pop[idx].solution)
                     )
                 else:  # Birds keep vigilance. Eq. 2
                     A1 = self.a1 * np.exp(
@@ -141,19 +141,19 @@ class OriginalBSA(Optimizer):
                         list(set(range(0, self.pop_size)) - {idx})
                     )
                     t1 = (fit_list[idx] - fit_list[k]) / (
-                            abs(fit_list[idx] - fit_list[k]) + self.EPSILON
+                        abs(fit_list[idx] - fit_list[k]) + self.EPSILON
                     )
                     A2 = self.a2 * np.exp(
                         t1 * self.pop_size * fit_list[k] / (fit_sum + self.EPSILON)
                     )
                     x_new = (
-                            self.pop[idx].solution
-                            + A1
-                            * self.generator.uniform(0, 1)
-                            * (pos_mean - self.pop[idx].solution)
-                            + A2
-                            * self.generator.uniform(-1, 1)
-                            * (self.g_best.solution - self.pop[idx].solution)
+                        self.pop[idx].solution
+                        + A1
+                        * self.generator.uniform(0, 1)
+                        * (pos_mean - self.pop[idx].solution)
+                        + A2
+                        * self.generator.uniform(-1, 1)
+                        * (self.g_best.solution - self.pop[idx].solution)
                     )
                 agent.solution = self.correct_solution(x_new)
                 pop_new.append(agent)
@@ -186,17 +186,17 @@ class OriginalBSA(Optimizer):
                 for idx in range(int(self.pop_size / 2 + 1), self.pop_size):
                     agent = self.pop[idx].copy()
                     x_new = (
-                            self.pop[idx].solution
-                            + self.generator.uniform(self.problem.lb, self.problem.ub)
-                            * self.pop[idx].solution
+                        self.pop[idx].solution
+                        + self.generator.uniform(self.problem.lb, self.problem.ub)
+                        * self.pop[idx].solution
                     )
                     agent.solution = self.correct_solution(x_new)
                     pop_new[idx] = agent
                 if choose == 1:
                     x_new = (
-                            self.pop[min_idx].solution
-                            + self.generator.uniform(self.problem.lb, self.problem.ub)
-                            * self.pop[min_idx].solution
+                        self.pop[min_idx].solution
+                        + self.generator.uniform(self.problem.lb, self.problem.ub)
+                        * self.pop[min_idx].solution
                     )
                     agent = self.pop[min_idx].copy()
                     agent.solution = self.correct_solution(x_new)
@@ -209,8 +209,8 @@ class OriginalBSA(Optimizer):
                             0.5 * self.pop_size + 1, self.pop_size
                         )
                         x_new = (
-                                self.pop[i].solution
-                                + (self.pop[idx].solution - self.pop[i].solution) * FL
+                            self.pop[i].solution
+                            + (self.pop[idx].solution - self.pop[i].solution) * FL
                         )
                         agent.solution = self.correct_solution(x_new)
                         pop_new[i] = agent
@@ -218,18 +218,18 @@ class OriginalBSA(Optimizer):
                 for i in range(0, int(0.5 * self.pop_size)):
                     agent = self.pop[i].copy()
                     x_new = (
-                            self.pop[i].solution
-                            + self.generator.uniform(self.problem.lb, self.problem.ub)
-                            * self.pop[i].solution
+                        self.pop[i].solution
+                        + self.generator.uniform(self.problem.lb, self.problem.ub)
+                        * self.pop[i].solution
                     )
                     agent.solution = self.correct_solution(x_new)
                     pop_new[i] = agent
                 if choose == 4:
                     agent = self.pop[min_idx].copy()
                     x_new = (
-                            self.pop[min_idx].solution
-                            + self.generator.uniform(self.problem.lb, self.problem.ub)
-                            * self.pop[min_idx].solution
+                        self.pop[min_idx].solution
+                        + self.generator.uniform(self.problem.lb, self.problem.ub)
+                        * self.pop[min_idx].solution
                     )
                     agent.solution = self.correct_solution(x_new)
                 for i in range(int(self.pop_size / 2 + 1), self.pop_size):
@@ -238,8 +238,8 @@ class OriginalBSA(Optimizer):
                         FL = self.generator.uniform() * 0.4 + self.fc
                         idx = self.generator.integers(0, 0.5 * self.pop_size)
                         x_new = (
-                                self.pop[i].solution
-                                + (self.pop[idx].solution - self.pop[i].solution) * FL
+                            self.pop[i].solution
+                            + (self.pop[idx].solution - self.pop[i].solution) * FL
                         )
                         agent.solution = self.correct_solution(x_new)
                         pop_new[i] = agent
