@@ -5,9 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.agents.static import AgentStatic
-from clypto.optimizer.classic import Optimizer
 from scipy.stats import cauchy
+
+from clypto.agents.dynamic import AgentDynamic as AgentStatic
+from clypto.optimizer.classic import Optimizer
 
 
 class OriginalDE(Optimizer):

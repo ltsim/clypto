@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.static import AgentStatic
+from clypto.agents.dynamic import AgentDynamic as Agent
 from clypto.optimizer.classic import Optimizer
 
 
@@ -87,7 +87,7 @@ class OriginalArchOA(Optimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         den = self.generator.uniform(self.problem.lb, self.problem.ub)  # Density
@@ -97,7 +97,7 @@ class OriginalArchOA(Optimizer):
         ) * (
             self.problem.ub - self.problem.lb
         )  # Acceleration
-        return AgentStatic(solution=solution, den=den, vol=vol, acc=acc)
+        return Agent(solution=solution, den=den, vol=vol, acc=acc)
 
     def evolve(self, epoch):
         """

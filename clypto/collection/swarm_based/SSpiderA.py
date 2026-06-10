@@ -5,9 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.agents.static import AgentStatic
-from clypto.optimizer.classic import Optimizer
 from scipy.spatial.distance import cdist
+
+from clypto.agents.dynamic import AgentDynamic as AgentStatic
+from clypto.optimizer.classic import Optimizer
 
 
 class OriginalSSpiderA(Optimizer):
