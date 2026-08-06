@@ -26,7 +26,10 @@ def get_ext_modules():
             "language_level": "3",
             "always_allow_keywords": True,
             "boundscheck": False,
-            "wraparound": False,
+            # wraparound must stay True: the codebase uses negative list indexing
+            # (e.g. `pop[-1]`) extensively on plain Python lists, and disabling
+            # wraparound corrupts memory on those accesses once compiled.
+            "wraparound": True,
             "nonecheck": False,
             "initializedcheck": False,
             "cdivision": True,
@@ -117,6 +120,7 @@ setup(
     install_requires=[
         "numpy>=2.0.2",
         "scipy>=1.15.3",
+        "Cython>=3.0.0",
     ],
     extras_require={
         "dev": [

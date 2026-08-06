@@ -684,7 +684,10 @@ class Optimizer(BaseOptimizer):
         if 0 < k_way < 1:
             k_way = int(k_way * len(pop))
 
-        list_id = self.__generator.choice(range(len(pop)), k_way, replace=False)
+        k_way_count: int = int(k_way)
+        list_id = self.__generator.choice(
+            range(len(pop)), k_way_count, replace=False
+        )
         list_parents = [[idx, pop[idx].target.fitness] for idx in list_id]
 
         if self.problem.minmax == "min":

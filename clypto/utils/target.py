@@ -6,11 +6,17 @@
 
 import numbers
 
+import cython
 import numpy as np
 
 
+@cython.cclass
 class Target:
     SUPPORTED_ARRAY = tuple, list, np.ndarray
+
+    objectives: object = cython.declare(object, visibility="readonly")
+    weights: object = cython.declare(object, visibility="readonly")
+    fitness: cython.double = cython.declare(cython.double, visibility="readonly")
 
     def __init__(
         self,
@@ -24,72 +30,46 @@ class Target:
             objectives: The list of objective values.
             weights: The weights for calculating fitness value
         """
+        if objectives is None:
+            raise ValueError(
+                f"Invalid objectives. It should be a list, tuple, np.ndarray, int or float."
+            )
+        else:
+            if type(objectives) not in self.SUPPORTED_ARRAY:
+                if isinstance(objectives, numbers.Number):
+                    objectives = [objectives]
+                else:
+                    raise ValueError(
+                        f"Invalid objectives. It should be a list, tuple, np.ndarray, int or float."
+                    )
+            objectives = np.array(objectives).flatten()
+        self.objectives = objectives
 
-        def set_objectives(objs):
-            if objs is None:
-                raise ValueError(
-                    f"Invalid objectives. It should be a list, tuple, np.ndarray, int or float."
-                )
-            else:
-                if type(objs) not in self.SUPPORTED_ARRAY:
-                    if isinstance(objs, numbers.Number):
-                        objs = [objs]
-                    else:
-                        raise ValueError(
-                            f"Invalid objectives. It should be a list, tuple, np.ndarray, int or float."
-                        )
-                objs = np.array(objs).flatten()
-            self.__objectives = objs
+        if weights is None:
+            weights = len(self.objectives)
+        else:
+            if type(weights) not in self.SUPPORTED_ARRAY:
+                if isinstance(weights, numbers.Number):
+                    weights = [
+                        weights,
+                    ] * len(self.objectives)
+                else:
+                    raise ValueError(
+                        f"Invalid weights. It should be a list, tuple, np.ndarray."
+                    )
+            weights = np.array(weights).flatten()
+        self.weights = weights
 
-        def set_weights(weights):
-            if weights is None:
-                self.__weights = len(self.objectives)
-            else:
-                if type(weights) not in self.SUPPORTED_ARRAY:
-                    if isinstance(weights, numbers.Number):
-                        weights = [
-                            weights,
-                        ] * len(self.objectives)
-                    else:
-                        raise ValueError(
-                            f"Invalid weights. It should be a list, tuple, np.ndarray."
-                        )
-                weights = np.array(weights).flatten()
-            self.__weights = weights
-
-        def calculate_fitness(weights):
-            if not (
-                type(weights) in self.SUPPORTED_ARRAY
-                and len(weights) == len(self.objectives)
-            ):
-                weights = len(self.objectives) * (1.0,)
-            self.__fitness = np.dot(weights, self.objectives)
-
-        self.__objectives = None
-        self.__weights = None
-        self.__fitness = None
-
-        set_objectives(objectives)
-        set_weights(weights)
-        calculate_fitness(self.weights)
+        fitness_weights = self.weights
+        if not (
+            type(fitness_weights) in self.SUPPORTED_ARRAY
+            and len(fitness_weights) == len(self.objectives)
+        ):
+            fitness_weights = len(self.objectives) * (1.0,)
+        self.fitness = np.dot(fitness_weights, self.objectives)
 
     def copy(self) -> "Target":
         return Target(self.objectives, self.weights)
-
-    @property
-    def objectives(self):
-        """Returns the list of objective values."""
-        return self.__objectives
-
-    @property
-    def weights(self):
-        """Returns the list of weight values."""
-        return self.__weights
-
-    @property
-    def fitness(self):
-        """Returns the fitness value."""
-        return self.__fitness
 
     def __str__(self):
         return f"Objectives: {self.objectives}, Fitness: {self.fitness}"
