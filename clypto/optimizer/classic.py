@@ -48,17 +48,25 @@ class Optimizer(BaseOptimizer):
         self.__nfe_counter: int = 1
         self.__name: str = kwargs.get("name", self.__class__.__name__)
         self.__params_name_ordered = None
-        self.__generator: typing.Optional[npr.Generator] = None
+        # __generator/problem/pop/g_best/g_worst/epoch/pop_size are None only in this
+        # brief window before solve() -> check_problem()/initialization()/
+        # after_initialization() run; every algorithm's evolve() (and everything else
+        # that reads these) only ever executes after that point, so they're declared
+        # as their steady-state (non-Optional) type here rather than as Optional,
+        # which would otherwise force a None-check at every one of their ~150 call
+        # sites across the algorithm collection for an invariant that always holds
+        # by the time those call sites run.
+        self.__generator: npr.Generator = None  # type: ignore[assignment]
         self.__termination: typing.Optional[Termination] = None
 
         self.mode: typing.Optional[typing.Literal["swarm", "process", "thread"]] = None
-        self.epoch: typing.Optional[int] = None
-        self.pop_size: typing.Optional[int] = None
+        self.epoch: int = None  # type: ignore[assignment]
+        self.pop_size: int = None  # type: ignore[assignment]
         self.n_workers: typing.Optional[int] = None
-        self.pop: typing.Optional[list[BaseAgent]] = None
-        self.g_best: typing.Optional[BaseAgent] = AgentStatic()
-        self.g_worst: typing.Optional[BaseAgent] = None
-        self.problem: typing.Optional[Problem] = None
+        self.pop: list[BaseAgent] = None  # type: ignore[assignment]
+        self.g_best: BaseAgent = AgentStatic()
+        self.g_worst: BaseAgent = None  # type: ignore[assignment]
+        self.problem: Problem = None  # type: ignore[assignment]
         self.sort_flag: bool = False
         self.parameters: dict = {}
         self.is_parallelizable: bool = True
@@ -207,7 +215,9 @@ class Optimizer(BaseOptimizer):
         self.__generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
 
-        self.pop, self.g_best, self.g_worst = None, None, None
+        # Reset for this solve() call; initialization()/after_initialization() (called
+        # immediately after, still within solve(), before any evolve()) set these back.
+        self.pop, self.g_best, self.g_worst = None, None, None  # type: ignore[assignment]
 
     def check_termination(self, mode="start", termination=None, epoch=None):
         if mode == "start":
@@ -467,7 +477,7 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_agents(
-        pop: list[BaseAgent] | None = None,
+        pop: list[BaseAgent],
         n_best: int = 3,
         n_worst: int = 3,
         minmax: str = "min",
@@ -503,7 +513,7 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_fitness(
-        pop: list[BaseAgent] | None = None, minmax: str = "min"
+        pop: list[BaseAgent], minmax: str = "min"
     ) -> tuple[float | np.ndarray, float, float]:
         """
         Get special target include the total fitness, the best fitness, and the worst fitness
