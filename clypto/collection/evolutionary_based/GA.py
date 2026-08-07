@@ -341,7 +341,7 @@ class BaseGA(Optimizer):
         """
         list_fitness = np.array([agent.target.fitness for agent in self.pop])
         pop_new = []
-        for i in range(0, int(self.pop_size / 2)):
+        for i in range(0, -(-self.pop_size // 2)):  # ceil division, safe for odd pop_size
             ### Selection
             child1, child2 = self.selection_process__(list_fitness)
 
@@ -365,6 +365,7 @@ class BaseGA(Optimizer):
             if self.mode not in self.AVAILABLE_MODES:
                 pop_new[-2].target = self.get_target(child1)
                 pop_new[-1].target = self.get_target(child2)
+        pop_new = pop_new[: self.pop_size]
         if self.mode in self.AVAILABLE_MODES:
             pop_new = self.update_target_for_population(pop_new)
         ### Survivor Selection
