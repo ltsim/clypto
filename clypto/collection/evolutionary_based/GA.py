@@ -142,8 +142,12 @@ class BaseGA(Optimizer):
         if self.selection == "roulette":
             id_c1 = self.get_index_roulette_wheel_selection(list_fitness)
             id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
-            while id_c2 == id_c1:
-                id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
+            if id_c2 == id_c1:
+                # Fall back to a uniform pick among the remaining indices instead of
+                # retrying roulette selection, which can loop forever once floating-point
+                # underflow drives every other candidate's probability to exactly 0.0.
+                others = [i for i in range(len(list_fitness)) if i != id_c1]
+                id_c2 = self.generator.choice(others)
         elif self.selection == "random":
             id_c1, id_c2 = self.generator.choice(range(self.pop_size), 2, replace=False)
         else:  ## tournament
@@ -170,8 +174,12 @@ class BaseGA(Optimizer):
             list_fitness = np.array([agent.target.fitness for agent in pop_selected])
             id_c1 = self.get_index_roulette_wheel_selection(list_fitness)
             id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
-            while id_c2 == id_c1:
-                id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
+            if id_c2 == id_c1:
+                # Fall back to a uniform pick among the remaining indices instead of
+                # retrying roulette selection, which can loop forever once floating-point
+                # underflow drives every other candidate's probability to exactly 0.0.
+                others = [i for i in range(len(list_fitness)) if i != id_c1]
+                id_c2 = self.generator.choice(others)
         elif self.selection == "random":
             id_c1, id_c2 = self.generator.choice(
                 range(len(pop_selected)), 2, replace=False
