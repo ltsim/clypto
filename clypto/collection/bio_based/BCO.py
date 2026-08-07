@@ -75,7 +75,7 @@ class OriginalBCO(Optimizer):
         self.c_min = self.validator.check_float("c_min", c_min, (0.0, 1.0))
         self.c_max = self.validator.check_int("c_max", c_max, (c_min, 10.0))
         self.n_chemotaxis = self.validator.check_int(
-            "n_chemotaxis", n_chemotaxis, (1, 5)
+            "n_chemotaxis", n_chemotaxis, [1, 5]
         )
         self.max_swim_steps = self.validator.check_int(
             "max_swim_steps", max_swim_steps, (2, 10)
