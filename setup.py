@@ -1,7 +1,16 @@
+from pathlib import Path
+
 from Cython.Build import cythonize
 from setuptools import setup, find_packages
 
-_VERSION = "2026.2"
+init_path = Path(__file__).parent / "clypto" / "__init__.py"
+init_content = init_path.read_text(encoding="utf-8")
+
+_VERSION = "0.0.0"
+for line in init_content.splitlines():
+    if line.startswith("__version__"):
+        _VERSION = line.split("=")[1].strip().strip("\"'")
+        break
 
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
@@ -9,15 +18,18 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 def get_ext_modules():
     return cythonize(
-        "mealpy/**/*.py",
+        "clypto/**/*.py",
         exclude=[
-            "mealpy/**/__init__.py",
+            "clypto/**/__init__.py",
         ],
         compiler_directives={
             "language_level": "3",
             "always_allow_keywords": True,
             "boundscheck": False,
-            "wraparound": False,
+            # wraparound must stay True: the codebase uses negative list indexing
+            # (e.g. `pop[-1]`) extensively on plain Python lists, and disabling
+            # wraparound corrupts memory on those accesses once compiled.
+            "wraparound": True,
             "nonecheck": False,
             "initializedcheck": False,
             "cdivision": True,
@@ -32,14 +44,12 @@ def get_ext_modules():
 setup(
     name="clypto",
     version=_VERSION,
-    description="An Open-source Library for Latest Meta-heuristic Algorithms in Python",
+    description="An Open-source Library for Latest Meta-heuristic Algorithms in Cython",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT",
-    author="Thieu",
-    author_email="nguyenthieu2102@gmail.com",
-    maintainer="ltsim",
-    maintainer_email="tsim@cucei.udg.mx",
+    author="Thieu, LTSIM",
+    author_email="nguyenthieu2102@gmail.com, tsim@cucei.udg.mx",
     url="https://github.com/ltsim/clypto",
     project_urls={
         "Homepage": "https://github.com/ltsim/clypto",
@@ -48,15 +58,33 @@ setup(
         "Change Log": "https://github.com/ltsim/clypto/blob/master/CHANGELOG.md",
     },
     keywords=[
-        "optimization", "metaheuristics", "MHA", "mathematical optimization",
-        "nature-inspired algorithms", "evolutionary computation", "soft computing",
-        "population-based algorithms", "Stochastic optimization", "Global optimization",
-        "Convergence analysis", "Search space exploration", "Local search",
-        "Computational intelligence", "Black-box optimization", "Robust optimization",
-        "Hybrid algorithms", "Benchmark functions", "Metaheuristic design",
-        "Performance analysis", "Exploration versus exploitation", "Self-adaptation",
-        "Constrained optimization", "Intelligent optimization", "Adaptive search",
-        "Simulations", "Algorithm selection",
+        "optimization",
+        "metaheuristics",
+        "MHA",
+        "mathematical optimization",
+        "nature-inspired algorithms",
+        "evolutionary computation",
+        "soft computing",
+        "population-based algorithms",
+        "Stochastic optimization",
+        "Global optimization",
+        "Convergence analysis",
+        "Search space exploration",
+        "Local search",
+        "Computational intelligence",
+        "Black-box optimization",
+        "Robust optimization",
+        "Hybrid algorithms",
+        "Benchmark functions",
+        "Metaheuristic design",
+        "Performance analysis",
+        "Exploration versus exploitation",
+        "Self-adaptation",
+        "Constrained optimization",
+        "Intelligent optimization",
+        "Adaptive search",
+        "Simulations",
+        "Algorithm selection",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
@@ -92,6 +120,7 @@ setup(
     install_requires=[
         "numpy>=2.0.2",
         "scipy>=1.15.3",
+        "Cython>=3.0.0",
     ],
     extras_require={
         "dev": [
@@ -102,6 +131,7 @@ setup(
             "flake8>=7.0",
             "pandas-stubs>=2.2.3",
             "scipy-stubs>=1.15.0",
+            "black>=26.5.1",
         ],
     },
 )

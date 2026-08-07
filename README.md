@@ -1,4 +1,4 @@
-# clypto
+# Cythonized Library for Yet-another Performance Tool for Optimization 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 ![PyPI - Version](https://img.shields.io/pypi/v/clypto?style=flat-square)
@@ -11,9 +11,11 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/mealpy-legacy-collection/publish.yml?style=flat-square&logo=pypi&label=Publish)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/mealpy-legacy-collection/test.yml?style=flat-square&logo=pytest&label=Testing)
 
-Is a lightweight, heavily refactored fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core. It serves as a pure, bloat-free repository that preserves the historical collection of population-based metaheuristic algorithms (PBM), acting as an open architectural catalog for educational purposes, clean research, and rapid prototyping within our ecosystem.
+Is a high-performance, heavily compiled fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core and fully optimized via Cython.
 
-Unlike monolithic optimization frameworks, **clypto** cuts out all secondary overhead such as visualization tools, complex logging, and heavy external dependencies focusing strictly on the raw algorithmic logic and mathematical transition operators of these legacy implementations. This ensures a clean, decoupled foundation for developers to study, test, and benchmark classic metaheuristics without the friction of modern software bloat.
+The entire original monolithic framework has been aggressively reduced, cutting out all secondary overhead—such as visualization tools, complex logging, and heavy external dependencies—to isolate exclusively the core population-based metaheuristic optimizers (PBM). By translating these raw algorithmic structures and transition operators into native C-extensions, clypto eliminates Python's runtime friction, bypassing the GIL to deliver blazing-fast execution speeds.
+
+This leaves a pure, ultra-lightweight, and bloat-free catalog of compiled legacy implementations. It serves as a high-speed, decoupled foundation engineered specifically to power heavy taxonomic processing and intensive benchmarks within the cmenpy ecosystem.
 
 ## Why?
 
