@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-__version__ = "2026b0"
+__version__ = "2026a0"
 
 import functools
 import inspect
