@@ -193,10 +193,11 @@ class OppoTWO(OriginalTWO):
     def initialization(self):
         if self.pop is None:
             self.pop = self.generate_population(self.pop_size)
+        half_size = -(-self.pop_size // 2)  # ceil division, safe for odd pop_size
         list_idx = self.generator.choice(
-            range(0, self.pop_size), int(self.pop_size / 2), replace=False
+            range(0, self.pop_size), half_size, replace=False
         )
-        pop_temp = [self.pop[list_idx[idx]] for idx in range(0, int(self.pop_size / 2))]
+        pop_temp = [self.pop[list_idx[idx]] for idx in range(0, half_size)]
         pop_oppo = []
         for idx in range(len(pop_temp)):
             pos_opposite = self.problem.ub + self.problem.lb - pop_temp[idx].solution
@@ -206,7 +207,7 @@ class OppoTWO(OriginalTWO):
             if self.mode not in self.AVAILABLE_MODES:
                 pop_oppo[-1].target = self.get_target(pos_opposite)
         pop_oppo = self.update_target_for_population(pop_oppo)
-        self.pop = pop_temp + pop_oppo
+        self.pop = (pop_temp + pop_oppo)[: self.pop_size]
         self.pop = self.update_weight__(self.pop)
 
     def evolve(self, epoch):
