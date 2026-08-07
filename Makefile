@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-cython clean-pyc install compile all
+.PHONY: clean clean-build clean-cython clean-pyc install compile all uv-sync uv-lock uv-test
 
 clean: clean-build clean-cython clean-pyc
 
@@ -30,3 +30,15 @@ install:
 	python -m pip install -e .
 
 all: clean compile install
+
+# uv-based workflow (reads pyproject.toml's [project] table, resolves/pins
+# exact versions into uv.lock). Builds the Cython extension via setup.py's
+# ext_modules as part of the editable install, same as `make compile`.
+uv-lock:
+	uv lock
+
+uv-sync:
+	uv sync --extra dev
+
+uv-test:
+	uv run pytest tests/

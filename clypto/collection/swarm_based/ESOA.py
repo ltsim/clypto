@@ -51,7 +51,7 @@ class OriginalESOA(Optimizer):
         self.is_parallelizable = False
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
@@ -61,7 +61,7 @@ class OriginalESOA(Optimizer):
             solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v
         )
 
-    def generate_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         """
         ID_WEI = 2
         ID_LOC_X = 3

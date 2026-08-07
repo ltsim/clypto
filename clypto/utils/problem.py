@@ -179,7 +179,9 @@ class Problem:
         return self.__class__.__name__
 
     @staticmethod
-    def encode_solution_with_bounds(x, bounds):
+    def encode_solution_with_bounds(
+        x: list | tuple | np.ndarray, bounds: list | tuple | np.ndarray
+    ) -> np.ndarray:
         x_new = []
 
         for idx, var in enumerate(bounds):
@@ -262,6 +264,10 @@ class Problem:
         """
         return self.correct_solution_with_bounds(x, self.bounds)
 
+    @typing.overload
+    def generate_solution(self, encoded: typing.Literal[True] = ...) -> np.ndarray: ...
+    @typing.overload
+    def generate_solution(self, encoded: typing.Literal[False]) -> list: ...
     def generate_solution(self, encoded: bool = True) -> list | np.ndarray:
         """
         Generate the solution.
