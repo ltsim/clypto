@@ -161,8 +161,8 @@ class OriginalDOA(Optimizer):
                             pos_new[jdx]
                             + (
                                     self.generator.random()
-                                    * (self.problem.ub[idx] - self.problem.lb[idx])
-                                    + self.problem.lb[idx]
+                                    * (self.problem.ub[jdx] - self.problem.lb[jdx])
+                                    + self.problem.lb[jdx]
                             )
                             * cos_term
                     )
