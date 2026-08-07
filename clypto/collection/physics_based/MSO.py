@@ -159,7 +159,7 @@ class OriginalMSO(Optimizer):
             gama = (
                     self.generator.random(self.problem.n_dims)
                     * 90
-                    * ((self.epoch - self.nfe_counter * 0.99) / self.epoch)
+                    * ((self.epoch - self.nf_counter * 0.99) / self.epoch)
             )
             amax = self.atand(1.0 / (2 * self.tand(gama)))
             amin = self.atand(
