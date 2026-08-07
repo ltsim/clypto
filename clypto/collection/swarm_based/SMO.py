@@ -112,8 +112,7 @@ class DevSMO(Optimizer):
         self.groups = self.split_fill_by_group(self.pop, self.num_groups)
         # Get local leaders
         self.local_leaders = [
-            self.get_sorted_indices_population(group, self.problem.minmax)[0]
-            for group in self.groups
+            self.get_best_agent(group, self.problem.minmax) for group in self.groups
         ]
 
     def local_leader_phase(self):
@@ -198,10 +197,7 @@ class DevSMO(Optimizer):
     def local_leader_decision_phase(self):
         """Local Leader Decision Phase - handle stagnated local leaders"""
         local_leaders_new = [
-            self.get_sorted_population(group, self.problem.minmax, return_index=False)[
-                0
-            ]
-            for group in self.groups
+            self.get_best_agent(group, self.problem.minmax) for group in self.groups
         ]
         for group_idx, group in enumerate(self.groups):
             # Update local limit count
@@ -259,18 +255,14 @@ class DevSMO(Optimizer):
             # Update local leaders after fission/fusion
             self.local_limit_counts = [0] * self.num_groups
             self.local_leaders = [
-                self.get_sorted_population(
-                    group, self.problem.minmax, return_index=False
-                )[0]
+                self.get_best_agent(group, self.problem.minmax)
                 for group in self.groups
             ]
 
     def update_leaders(self):
         self.pop = self.merge_groups(self.groups)
         # Update global leader
-        g_best_current = self.get_sorted_population(
-            self.pop, self.problem.minmax, return_index=False
-        )[0]
+        g_best_current = self.get_best_agent(self.pop, self.problem.minmax)
         if self.compare_target(
             g_best_current.target, self.g_best.target, self.problem.minmax
         ):
