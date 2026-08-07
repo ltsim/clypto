@@ -198,9 +198,10 @@ class OriginalMA(Optimizer):
             children.append(self.pop[idx_offspring].copy())
         pop = []
         for idx in range(0, self.pop_size):
-            ancient = children[idx + 1] if idx % 2 == 0 else children[idx - 1]
             if idx == self.pop_size - 1:
                 ancient = children[0]
+            else:
+                ancient = children[idx + 1] if idx % 2 == 0 else children[idx - 1]
             bitstring_new = self.crossover__(children[idx].bitstring, ancient.bitstring)
             bitstring_new = self.point_mutation__(bitstring_new)
             pos_new = self.decode__(bitstring_new)
