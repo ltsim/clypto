@@ -45,7 +45,7 @@ class OriginalWarSO(Optimizer):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, rr: float = 0.1, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, rr: float = 0.1, **kwargs: object
     ) -> None:
         """
         Args:
@@ -72,8 +72,8 @@ class OriginalWarSO(Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        pop_sorted, indices = self.get_sorted_population(
-            self.pop, self.problem.minmax, return_index=True
+        pop_sorted, indices = self.get_sorted_indices_population(
+            self.pop, self.problem.minmax
         )
         self.wl = self.wl[indices]
         self.wg = self.wg[indices]
@@ -82,20 +82,20 @@ class OriginalWarSO(Optimizer):
             r1 = self.generator.random()
             if r1 < self.rr:
                 pos_new = 2 * r1 * (
-                        self.g_best.solution - self.pop[com[idx]].solution
+                    self.g_best.solution - self.pop[com[idx]].solution
                 ) + self.wl[idx] * self.generator.random() * (
-                                  pop_sorted[idx].solution - self.pop[idx].solution
-                          )
+                    pop_sorted[idx].solution - self.pop[idx].solution
+                )
             else:
                 pos_new = 2 * r1 * (
-                        pop_sorted[idx].solution - self.g_best.solution
+                    pop_sorted[idx].solution - self.g_best.solution
                 ) + self.generator.random() * (
-                                  self.wl[idx] * self.g_best.solution - self.pop[idx].solution
-                          )
+                    self.wl[idx] * self.g_best.solution - self.pop[idx].solution
+                )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+                agent.target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx] = agent
                 self.wg[idx] += 1

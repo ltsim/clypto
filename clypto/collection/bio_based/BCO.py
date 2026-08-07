@@ -75,7 +75,7 @@ class OriginalBCO(Optimizer):
         self.c_min = self.validator.check_float("c_min", c_min, (0.0, 1.0))
         self.c_max = self.validator.check_int("c_max", c_max, (c_min, 10.0))
         self.n_chemotaxis = self.validator.check_int(
-            "n_chemotaxis", n_chemotaxis, (1, 5)
+            "n_chemotaxis", n_chemotaxis, [1, 5]
         )
         self.max_swim_steps = self.validator.check_int(
             "max_swim_steps", max_swim_steps, (2, 10)
@@ -126,7 +126,6 @@ class OriginalBCO(Optimizer):
             epoch: The current iteration
         """
         # Normalize fitness to [0, 1]
-        pop_elites = []
         _, best, worst = self.get_special_agents(
             self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
         )
@@ -199,85 +198,3 @@ class OriginalBCO(Optimizer):
                             self.g_best.solution - self.pop[idx].solution
                     )
         self.pop = self.update_target_for_population(self.pop)
-
-        ## Reproduction and elimination
-        for idx in range(0, self.pop_size):
-            # Sort bacteria by energy level
-            sorted_indices = np.argsort(self.energy)[::-1]  # Descending order
-
-            # Reproduction: top 50% reproduce
-            n_reproduce = self.pop_size // 2
-            reproduction_candidates = sorted_indices[:n_reproduce]
-
-            # Elimination: bottom 25% eliminated
-            n_eliminate = self.pop_size // 4
-            elimination_candidates = sorted_indices[-n_eliminate:]
-
-            # Replace eliminated bacteria with offspring of good bacteria
-            for i in range(min(n_eliminate, n_reproduce)):
-                parent_idx = reproduction_candidates[i % n_reproduce]
-                child_idx = elimination_candidates[i]
-
-                # Create offspring with small mutation
-                mutation = np.random.normal(0, 0.1, self.dim)
-                self.positions[child_idx] = self.positions[parent_idx] + mutation
-
-                # Boundary handling
-                self.positions[child_idx] = np.clip(
-                    self.positions[child_idx], self.bounds[0], self.bounds[1]
-                )
-
-            def migration(self):
-                """Perform migration for some bacteria"""
-                # Calculate migration condition based on diversity and stagnation
-                position_variance = np.var(self.positions, axis=0)
-                diversity = np.mean(position_variance)
-
-                # Migrate if diversity is too low or randomly
-                if diversity < 0.01 or np.random.random() < self.migration_prob:
-                    n_migrate = max(1, self.pop_size // 10)  # Migrate 10% of population
-                    migrate_indices = np.random.choice(
-                        self.pop_size, n_migrate, replace=False
-                    )
-
-                    for idx in migrate_indices:
-                        # Random migration
-                        self.positions[idx] = np.random.uniform(
-                            self.bounds[0], self.bounds[1], self.dim
-                        )
-
-            # Probabilistic migration to the i-th position
-            pos_new = self.pop[idx].solution.copy()
-            for j in range(self.problem.n_dims):
-                if self.generator.random() < self.mr[idx]:  # Should we immigrate?
-                    # Pick a position from which to emigrate (roulette wheel selection)
-                    random_number = self.generator.random() * np.sum(self.mu)
-                    select = self.mu[0]
-                    select_index = 0
-                    while (random_number > select) and (
-                            select_index < self.pop_size - 1
-                    ):
-                        select_index += 1
-                        select += self.mu[select_index]
-                    # this is the migration step
-                    pos_new[j] = self.pop[select_index].solution[j]
-            noise = self.generator.uniform(self.problem.lb, self.problem.ub)
-            condition = self.generator.random(self.problem.n_dims) < self.p_m
-            pos_new = np.where(condition, noise, pos_new)
-            pos_new = self.correct_solution(pos_new)
-            agent_new = self.generate_empty_agent(pos_new)
-            pop.append(agent_new)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent_new.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent_new, minmax=self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop, self.problem.minmax
-            )
-        # replace the solutions with their new migrated and mutated versions then Merge Populations
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_elites, self.pop_size, self.problem.minmax
-        )

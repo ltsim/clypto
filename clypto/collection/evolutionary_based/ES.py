@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.dynamic import AgentDynamic as AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -45,11 +45,11 @@ class OriginalES(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            lamda: float = 0.75,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        lamda: float = 0.75,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -68,11 +68,11 @@ class OriginalES(Optimizer):
     def initialize_variables(self):
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance)
-        return Agent(solution=solution, strategy=strategy)
+        return AgentStatic(solution=solution, strategy=strategy)
 
     def evolve(self, epoch):
         """
@@ -140,11 +140,11 @@ class LevyES(OriginalES):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            lamda: float = 0.75,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        lamda: float = 0.75,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -239,7 +239,7 @@ class CMA_ES(Optimizer):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -252,13 +252,13 @@ class CMA_ES(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         step = self.generator.multivariate_normal(
             np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
         )
-        return Agent(solution=solution, step=step)
+        return AgentStatic(solution=solution, step=step)
 
     def before_main_loop(self):
         self.mu = int(np.round(self.pop_size / 2))
@@ -267,22 +267,22 @@ class CMA_ES(Optimizer):
         self.pc = np.zeros(self.problem.n_dims)
         self.w = np.log(self.pop_size + 0.5) - np.log(np.arange(1, self.pop_size + 1))
         self.w = self.w / np.sum(self.w)
-        self.mu_eff = 1.0 / np.sum(self.w ** 2)  # Number of effective solutions
+        self.mu_eff = 1.0 / np.sum(self.w**2)  # Number of effective solutions
         # Step Size Control Parameters (c_sigma and d_sigma);
         sigma0 = 0.1 * (self.problem.ub - self.problem.lb)
         self.cs = (self.mu_eff + 2) / (self.problem.n_dims + self.mu_eff + 5)
         self.ds = (
-                1
-                + self.cs
-                + 2
-                * np.max(np.sqrt((self.mu_eff - 1.0) / (self.problem.n_dims + 1)) - 1, 0)
+            1
+            + self.cs
+            + 2
+            * np.max(np.sqrt((self.mu_eff - 1.0) / (self.problem.n_dims + 1)) - 1, 0)
         )
         self.ENN = np.sqrt(self.problem.n_dims) * (
-                1 - 1.0 / (4 * self.problem.n_dims) + 1.0 / (21 * self.problem.n_dims ** 2)
+            1 - 1.0 / (4 * self.problem.n_dims) + 1.0 / (21 * self.problem.n_dims**2)
         )
         ## Covariance Update Parameters
         self.cc = (4 + self.mu_eff / self.problem.n_dims) / (
-                4 + self.problem.n_dims + 2 * self.mu_eff / self.problem.n_dims
+            4 + self.problem.n_dims + 2 * self.mu_eff / self.problem.n_dims
         )
         self.c1 = 2.0 / ((self.problem.n_dims + 1.3) ** 2 + self.mu_eff)
         alpha_mu = 2
@@ -332,14 +332,14 @@ class CMA_ES(Optimizer):
             self.cs * (2 - self.cs) * self.mu_eff
         ) * t11
         self.sigma = (
-                self.sigma
-                * np.exp(self.cs / self.ds * (np.linalg.norm(self.ps) / self.ENN - 1))
-                ** 0.3
+            self.sigma
+            * np.exp(self.cs / self.ds * (np.linalg.norm(self.ps) / self.ENN - 1))
+            ** 0.3
         )
         # Update Covariance Matrix
         if (
-                np.linalg.norm(self.ps) / np.sqrt(1 - (1 - self.cs) ** (2 * epoch))
-                < self.hth
+            np.linalg.norm(self.ps) / np.sqrt(1 - (1 - self.cs) ** (2 * epoch))
+            < self.hth
         ):
             hs = 1
         else:
@@ -349,9 +349,9 @@ class CMA_ES(Optimizer):
             self.cc * (2 - self.cc) * self.mu_eff
         ) * self.x_step
         self.C = (
-                (1 - self.c1 - self.cmu) * self.C
-                + self.c1 * (np.outer(self.pc, self.pc))
-                + delta * self.C
+            (1 - self.c1 - self.cmu) * self.C
+            + self.c1 * (np.outer(self.pc, self.pc))
+            + delta * self.C
         )
         for idx in range(0, self.mu):
             self.C = self.C + self.cmu * self.w[idx] * np.outer(
@@ -398,7 +398,7 @@ class Simple_CMA_ES(Optimizer):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:

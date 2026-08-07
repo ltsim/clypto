@@ -3,28 +3,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-import dataclasses
 
 import numpy as np
-import numpy.typing as npt
-from clypto.agents.virtual import Agent
-from clypto.optimizer.classic import Optimizer
 from scipy.stats import cauchy
 
-
-class AgentDE(Agent):
-    def __iter__(
-            self,
-            crossover: npt.NDArray[np.number],
-            mutation: npt.NDArray[np.number],
-            pop_size: int,
-            *args,
-            **kwargs
-    ):
-        super().__init__(*args, **kwargs)
-        self.crossover = crossover
-        self.mutation = mutation
-        self.pop_size = pop_size
+from clypto.agents.dynamic import AgentDynamic as AgentStatic
+from clypto.optimizer.classic import Optimizer
 
 
 class OriginalDE(Optimizer):
@@ -71,13 +55,13 @@ class OriginalDE(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            wf: float = 0.1,
-            cr: float = 0.9,
-            strategy: int = 0,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        wf: float = 0.1,
+        cr: float = 0.9,
+        strategy: int = 0,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -116,7 +100,7 @@ class OriginalDE(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx}), 3, replace=False
                 )
                 pos_new = self.pop[idx_list[0]].solution + self.wf * (
-                        self.pop[idx_list[1]].solution - self.pop[idx_list[2]].solution
+                    self.pop[idx_list[1]].solution - self.pop[idx_list[2]].solution
                 )
                 pos_new = self.mutation__(self.pop[idx].solution, pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -132,7 +116,7 @@ class OriginalDE(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
                 )
                 pos_new = self.g_best.solution + self.wf * (
-                        self.pop[idx_list[0]].solution - self.pop[idx_list[1]].solution
+                    self.pop[idx_list[0]].solution - self.pop[idx_list[1]].solution
                 )
                 pos_new = self.mutation__(self.pop[idx].solution, pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -148,11 +132,11 @@ class OriginalDE(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx}), 4, replace=False
                 )
                 pos_new = (
-                        self.g_best.solution
-                        + self.wf
-                        * (self.pop[idx_list[0]].solution - self.pop[idx_list[1]].solution)
-                        + self.wf
-                        * (self.pop[idx_list[2]].solution - self.pop[idx_list[3]].solution)
+                    self.g_best.solution
+                    + self.wf
+                    * (self.pop[idx_list[0]].solution - self.pop[idx_list[1]].solution)
+                    + self.wf
+                    * (self.pop[idx_list[2]].solution - self.pop[idx_list[3]].solution)
                 )
                 pos_new = self.mutation__(self.pop[idx].solution, pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -168,11 +152,11 @@ class OriginalDE(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx}), 5, replace=False
                 )
                 pos_new = (
-                        self.pop[idx_list[0]].solution
-                        + self.wf
-                        * (self.pop[idx_list[1]].solution - self.pop[idx_list[2]].solution)
-                        + self.wf
-                        * (self.pop[idx_list[3]].solution - self.pop[idx_list[4]].solution)
+                    self.pop[idx_list[0]].solution
+                    + self.wf
+                    * (self.pop[idx_list[1]].solution - self.pop[idx_list[2]].solution)
+                    + self.wf
+                    * (self.pop[idx_list[3]].solution - self.pop[idx_list[4]].solution)
                 )
                 pos_new = self.mutation__(self.pop[idx].solution, pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -188,10 +172,10 @@ class OriginalDE(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
                 )
                 pos_new = (
-                        self.pop[idx].solution
-                        + self.wf * (self.g_best.solution - self.pop[idx].solution)
-                        + self.wf
-                        * (self.pop[idx_list[0]].solution - self.pop[idx_list[1]].solution)
+                    self.pop[idx].solution
+                    + self.wf * (self.g_best.solution - self.pop[idx].solution)
+                    + self.wf
+                    * (self.pop[idx_list[0]].solution - self.pop[idx_list[1]].solution)
                 )
                 pos_new = self.mutation__(self.pop[idx].solution, pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -207,11 +191,11 @@ class OriginalDE(Optimizer):
                     list(set(range(0, self.pop_size)) - {idx}), 3, replace=False
                 )
                 pos_new = (
-                        self.pop[idx].solution
-                        + self.wf
-                        * (self.pop[idx_list[0]].solution - self.pop[idx].solution)
-                        + self.wf
-                        * (self.pop[idx_list[1]].solution - self.pop[idx_list[2]].solution)
+                    self.pop[idx].solution
+                    + self.wf
+                    * (self.pop[idx_list[0]].solution - self.pop[idx].solution)
+                    + self.wf
+                    * (self.pop[idx_list[1]].solution - self.pop[idx_list[2]].solution)
                 )
                 pos_new = self.mutation__(self.pop[idx].solution, pos_new)
                 agent = self.generate_empty_agent(pos_new)
@@ -267,14 +251,14 @@ class JADE(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            miu_f: float = 0.5,
-            miu_cr: float = 0.5,
-            pt: float = 0.1,
-            ap: float = 0.1,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        miu_f: float = 0.5,
+        miu_cr: float = 0.5,
+        pt: float = 0.1,
+        ap: float = 0.1,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -305,7 +289,7 @@ class JADE(Optimizer):
     ### Survivor Selection
     def lehmer_mean(self, list_objects):
         temp = np.sum(list_objects)
-        return 0 if temp == 0 else np.sum(list_objects ** 2) / temp
+        return 0 if temp == 0 else np.sum(list_objects**2) / temp
 
     def evolve(self, epoch):
         """
@@ -343,9 +327,9 @@ class JADE(Optimizer):
             x_r1 = self.pop[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
             x_new = (
-                    self.pop[idx].solution
-                    + f * (x_best.solution - self.pop[idx].solution)
-                    + f * (x_r1 - x_r2)
+                self.pop[idx].solution
+                + f * (x_best.solution - self.pop[idx].solution)
+                + f * (x_r1 - x_r2)
             )
             pos_new = np.where(
                 self.generator.random(self.problem.n_dims) < cr,
@@ -362,7 +346,7 @@ class JADE(Optimizer):
         pop = self.update_target_for_population(pop)
         for idx in range(0, self.pop_size):
             if self.compare_target(
-                    pop[idx].target, self.pop[idx].target, self.problem.minmax
+                pop[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.dyn_pop_archive.append(self.pop[idx].copy())
                 list_cr.append(temp_cr[idx])
@@ -390,8 +374,8 @@ class JADE(Optimizer):
             self.dyn_miu_f = (1 - self.ap) * self.dyn_miu_f + self.ap * 0.5
         else:
             self.dyn_miu_f = (
-                                     1 - self.ap
-                             ) * self.dyn_miu_f + self.ap * self.lehmer_mean(np.array(list_f))
+                1 - self.ap
+            ) * self.dyn_miu_f + self.ap * self.lehmer_mean(np.array(list_f))
 
 
 class SADE(Optimizer):
@@ -427,7 +411,7 @@ class SADE(Optimizer):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -475,7 +459,7 @@ class SADE(Optimizer):
             )
             if self.generator.random() < self.p1:
                 x_new = self.pop[id1].solution + f * (
-                        self.pop[id2].solution - self.pop[id3].solution
+                    self.pop[id2].solution - self.pop[id3].solution
                 )
                 pos_new = np.where(
                     self.generator.random(self.problem.n_dims) < cr,
@@ -488,9 +472,9 @@ class SADE(Optimizer):
                 list_probability.append(True)
             else:
                 x_new = (
-                        self.pop[idx].solution
-                        + f * (self.g_best.solution - self.pop[idx].solution)
-                        + f * (self.pop[id1].solution - self.pop[id2].solution)
+                    self.pop[idx].solution
+                    + f * (self.g_best.solution - self.pop[idx].solution)
+                    + f * (self.pop[id1].solution - self.pop[id2].solution)
                 )
                 pos_new = np.where(
                     self.generator.random(self.problem.n_dims) < cr,
@@ -509,7 +493,7 @@ class SADE(Optimizer):
         for idx in range(0, self.pop_size):
             if list_probability[idx]:
                 if self.compare_target(
-                        pop[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop[idx].target, self.pop[idx].target, self.problem.minmax
                 ):
                     self.ns1 += 1
                     self.pop[idx] = pop[idx].copy()
@@ -517,7 +501,7 @@ class SADE(Optimizer):
                     self.nf1 += 1
             else:
                 if self.compare_target(
-                        pop[idx].target, self.pop[idx].target, self.problem.minmax
+                    pop[idx].target, self.pop[idx].target, self.problem.minmax
                 ):
                     self.ns2 += 1
                     self.dyn_list_cr.append(list_cr[idx])
@@ -530,9 +514,9 @@ class SADE(Optimizer):
             self.dyn_list_cr = list()
         if epoch / self.loop_probability == 0:
             self.p1 = (
-                    self.ns1
-                    * (self.ns2 + self.nf2)
-                    / (self.ns2 * (self.ns1 + self.nf1) + self.ns1 * (self.ns2 + self.nf2))
+                self.ns1
+                * (self.ns2 + self.nf2)
+                / (self.ns2 * (self.ns1 + self.nf1) + self.ns1 * (self.ns2 + self.nf2))
             )
             self.ns1 = self.ns2 = self.nf1 = self.nf2 = 0
 
@@ -572,11 +556,11 @@ class SAP_DE(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 1000,
-            pop_size: int = 100,
-            branch: str = "ABS",
-            **kwargs: object
+        self,
+        epoch: int = 1000,
+        pop_size: int = 100,
+        branch: str = "ABS",
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -602,7 +586,7 @@ class SAP_DE(Optimizer):
         else:  # elif self.branch == "REL":
             pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
 
-        return AgentDE(
+        return AgentStatic(
             solution=solution,
             crossover=crossover_rate,
             mutation=mutation_rate,
@@ -635,13 +619,13 @@ class SAP_DE(Optimizer):
             ## Crossover
             if self.generator.uniform(0, 1) < self.pop[idx].crossover or idx == j:
                 pos_new = self.pop[idxs[0]].solution + self.F * (
-                        self.pop[idxs[1]].solution - self.pop[idxs[2]].solution
+                    self.pop[idxs[1]].solution - self.pop[idxs[2]].solution
                 )
                 cr_new = self.pop[idxs[0]].crossover + self.F * (
-                        self.pop[idxs[1]].crossover - self.pop[idxs[2]].crossover
+                    self.pop[idxs[1]].crossover - self.pop[idxs[2]].crossover
                 )
                 mr_new = self.pop[idxs[0]].mutation + self.F * (
-                        self.pop[idxs[1]].mutation - self.pop[idxs[2]].mutation
+                    self.pop[idxs[1]].mutation - self.pop[idxs[2]].mutation
                 )
                 if self.branch == "ABS":
                     ps_new = self.pop[idxs[0]].pop_size + int(
@@ -650,7 +634,7 @@ class SAP_DE(Optimizer):
                     )
                 else:  # elif self.branch == "REL":
                     ps_new = self.pop[idxs[0]].pop_size + self.F * (
-                            self.pop[idxs[1]].pop_size - self.pop[idxs[2]].pop_size
+                        self.pop[idxs[1]].pop_size - self.pop[idxs[2]].pop_size
                     )
                 pos_new = self.correct_solution(pos_new)
                 cr_new = self.edit_to_range__(cr_new, 0, 1, self.generator.random)

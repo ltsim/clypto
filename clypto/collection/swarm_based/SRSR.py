@@ -6,17 +6,8 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.dynamic import AgentDynamic
 from clypto.optimizer.classic import Optimizer
-
-
-class AgentSRSR(Agent):
-    def __init__(self, mu, sigma, solution_new, target_move, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.mu = mu
-        self.sigma = sigma
-        self.solution_new = solution_new
-        self.target_move = target_move
 
 
 class OriginalSRSR(Optimizer):
@@ -52,7 +43,7 @@ class OriginalSRSR(Optimizer):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -65,7 +56,7 @@ class OriginalSRSR(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
@@ -74,7 +65,7 @@ class OriginalSRSR(Optimizer):
         x_new = solution.copy()
         target_move = 0
 
-        return Agent(
+        return AgentDynamic(
             solution=solution,
             mu=mu,
             sigma=sigma,
@@ -82,7 +73,7 @@ class OriginalSRSR(Optimizer):
             target_move=target_move,
         )
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.target_new = agent.target.copy()
@@ -98,7 +89,7 @@ class OriginalSRSR(Optimizer):
         #       Control Parameters C1, C2 And C3 Are Automatically Tuned While C4 Should Be Set By User
         # ==============================================================================================
         self.mu_factor = (
-                2 / 3
+            2 / 3
         )  # [0.1-0.9] Controls Dominance Of Master Robot, Preferably 2/3
         self.sigma_temp = np.zeros(self.pop_size)  # Initializing Temporary Stacks
         self.SIF = 2
@@ -128,8 +119,8 @@ class OriginalSRSR(Optimizer):
             agent = self.pop[idx].copy()
             # ---------- CALCULATING MU AND SIGMA FOR SLAVE ROBOTS ---------
             self.pop[idx].mu = (
-                    self.mu_factor * self.pop[0].solution
-                    + (1 - self.mu_factor) * self.pop[idx].solution
+                self.mu_factor * self.pop[0].solution
+                + (1 - self.mu_factor) * self.pop[idx].solution
             )
             if epoch == 0:
                 self.SIF = 6
@@ -137,8 +128,8 @@ class OriginalSRSR(Optimizer):
             self.pop[idx].sigma = self.sigma_temp[idx] * np.abs(
                 self.pop[0].solution - self.pop[idx].solution
             ) + self.generator.uniform() ** 2 * (
-                                          (self.pop[0].solution - self.pop[idx].solution) < 0.05
-                                  )
+                (self.pop[0].solution - self.pop[idx].solution) < 0.05
+            )
             # ----- Generating New Positions Using New Obtained Mu And Sigma Values --------------
             pos_new = self.generator.normal(
                 self.pop[idx].mu, self.pop[idx].sigma, self.problem.n_dims
@@ -153,14 +144,14 @@ class OriginalSRSR(Optimizer):
         for idx in range(0, self.pop_size):
             # --------- Calculate Degree Of Cost Movement Of Robots During Movement --------------
             self.pop[idx].target_move = (
-                    self.pop[idx].target.fitness - self.pop[idx].target_new.fitness
+                self.pop[idx].target.fitness - self.pop[idx].target_new.fitness
             )
             self.pop[idx].solution_new = pop_new[idx].solution.copy()
             self.pop[idx].target_new = pop_new[idx].target.copy()
             # ---------- Progress Assessment: Replacing More Quality Solutions With Previous Ones ------
             # Replace Solution If It Reached To A More Quality Position
             if self.compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx].solution = pop_new[idx].solution.copy()
                 self.pop[idx].target = pop_new[idx].target.copy()
@@ -186,10 +177,10 @@ class OriginalSRSR(Optimizer):
             gb[gb >= 0] = 1
             gb[gb < 0] = -1
             pos_new = (
-                    self.pop[idx].solution * self.generator.uniform()
-                    + gb * (self.pop[0].solution - self.pop[idx].solution)
-                    + self.movement_factor
-                    * self.generator.uniform(self.problem.lb, self.problem.ub)
+                self.pop[idx].solution * self.generator.uniform()
+                + gb * (self.pop[0].solution - self.pop[idx].solution)
+                + self.movement_factor
+                * self.generator.uniform(self.problem.lb, self.problem.ub)
             )
             pos_new = self.correct_solution(pos_new)
             agent.solution = pos_new
@@ -201,14 +192,14 @@ class OriginalSRSR(Optimizer):
         for idx in range(0, self.pop_size):
             # --------- Calculate Degree Of Cost Movement Of Robots During Movement --------------
             self.pop[idx].target_move = (
-                    self.pop[idx].target.fitness - self.pop[idx].target_new.fitness
+                self.pop[idx].target.fitness - self.pop[idx].target_new.fitness
             )
             self.pop[idx].solution_new = pop_new[idx].solution.copy()
             self.pop[idx].target_new = pop_new[idx].target.copy()
             # ---------- Progress Assessment: Replacing More Quality Solutions With Previous Ones ------
             # Replace Solution If It Reached To A More Quality Position
             if self.compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
             ):
                 self.pop[idx].solution = pop_new[idx].solution.copy()
                 self.pop[idx].target = pop_new[idx].target.copy()
@@ -238,11 +229,11 @@ class OriginalSRSR(Optimizer):
 
             # ------- Applying Nth-root And Nth-exponent Operators To Create Position Of New Worker Robots -------
             worker_robot1 = (
-                                    master_robot["int"]
-                                    + np.power(
-                                master_robot["frac"], 1 / (1 + self.generator.integers(1, 4))
-                            )
-                            ) * master_robot["sign"]
+                master_robot["int"]
+                + np.power(
+                    master_robot["frac"], 1 / (1 + self.generator.integers(1, 4))
+                )
+            ) * master_robot["sign"]
             id_changed1 = np.argwhere(
                 np.round(self.generator.uniform(self.problem.lb, self.problem.ub))
             )
@@ -251,9 +242,9 @@ class OriginalSRSR(Optimizer):
             worker_robot1[id_changed1] = master_robot["original"][id_changed1]
 
             worker_robot2 = (
-                                    master_robot["int"]
-                                    + np.power(master_robot["frac"], (1 + self.generator.integers(1, 4)))
-                            ) * master_robot["sign"]
+                master_robot["int"]
+                + np.power(master_robot["frac"], (1 + self.generator.integers(1, 4)))
+            ) * master_robot["sign"]
             id_changed2 = np.argwhere(
                 np.round(self.generator.uniform(self.problem.lb, self.problem.ub))
             )
@@ -263,19 +254,19 @@ class OriginalSRSR(Optimizer):
 
             # -------- Applying A Combined Ga-like Operator To Create Position Of New Worker Robot -------------
             random_per_mutation = self.generator.permutation(self.problem.n_dims)
-            sec1 = random_per_mutation[0: int(self.problem.n_dims / 2)]
-            sec2 = random_per_mutation[int(self.problem.n_dims / 2):]
+            sec1 = random_per_mutation[0 : int(self.problem.n_dims / 2)]
+            sec2 = random_per_mutation[int(self.problem.n_dims / 2) :]
             worker_robot3 = np.zeros((self.problem.n_dims, 1))
             worker_robot3[sec1] = (
-                                          master_robot["int"][sec1]
-                                          + np.power(
-                                      master_robot["frac"][sec1], 1 / (1 + self.generator.integers(1, 4))
-                                  )
-                                  ) * master_robot["sign"][sec1]
+                master_robot["int"][sec1]
+                + np.power(
+                    master_robot["frac"][sec1], 1 / (1 + self.generator.integers(1, 4))
+                )
+            ) * master_robot["sign"][sec1]
             worker_robot3[sec2] = (
-                                          master_robot["int"][sec2]
-                                          + master_robot["frac"][sec2] ** (1 + self.generator.integers(1, 4))
-                                  ) * master_robot["sign"][sec2]
+                master_robot["int"][sec2]
+                + master_robot["frac"][sec2] ** (1 + self.generator.integers(1, 4))
+            ) * master_robot["sign"][sec2]
             id_changed3 = np.argwhere(
                 np.round(self.generator.uniform(self.problem.lb, self.problem.ub))
             )
@@ -319,7 +310,7 @@ class OriginalSRSR(Optimizer):
 
             for idx in range(0, 5):
                 if self.compare_target(
-                        pop_workers[idx].target, self.pop[1].target, self.problem.minmax
+                    pop_workers[idx].target, self.pop[1].target, self.problem.minmax
                 ):
                     self.pop[-(idx + 1)].solution = pop_workers[idx].solution.copy()
                     self.pop[-(idx + 1)].target = pop_workers[idx].target.copy()

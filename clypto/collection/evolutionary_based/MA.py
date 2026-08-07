@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.dynamic import AgentDynamic as AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -51,15 +51,15 @@ class OriginalMA(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            pc: float = 0.85,
-            pm: float = 0.15,
-            p_local: float = 0.5,
-            max_local_gens: int = 10,
-            bits_per_param: int = 4,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        pc: float = 0.85,
+        pm: float = 0.15,
+        p_local: float = 0.5,
+        max_local_gens: int = 10,
+        bits_per_param: int = 4,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -99,7 +99,7 @@ class OriginalMA(Optimizer):
     def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = "".join(
@@ -108,7 +108,7 @@ class OriginalMA(Optimizer):
                 for _ in range(0, self.bits_total)
             ]
         )
-        return Agent(solution=solution, bitstring=bitstring)
+        return AgentStatic(solution=solution, bitstring=bitstring)
 
     def decode__(self, bitstring: str = None) -> np.ndarray:
         """
@@ -123,11 +123,11 @@ class OriginalMA(Optimizer):
         vector = np.ones(self.problem.n_dims)
         for idx in range(0, self.problem.n_dims):
             param = bitstring[
-                idx * self.bits_per_param: (idx + 1) * self.bits_per_param
+                idx * self.bits_per_param : (idx + 1) * self.bits_per_param
             ]  # Select 16 bit every time
             vector[idx] = self.problem.lb[idx] + (
-                    (self.problem.ub[idx] - self.problem.lb[idx])
-                    / ((2.0 ** self.bits_per_param) - 1)
+                (self.problem.ub[idx] - self.problem.lb[idx])
+                / ((2.0**self.bits_per_param) - 1)
             ) * int(param, 2)
         return vector
 
@@ -198,9 +198,10 @@ class OriginalMA(Optimizer):
             children.append(self.pop[idx_offspring].copy())
         pop = []
         for idx in range(0, self.pop_size):
-            ancient = children[idx + 1] if idx % 2 == 0 else children[idx - 1]
             if idx == self.pop_size - 1:
                 ancient = children[0]
+            else:
+                ancient = children[idx + 1] if idx % 2 == 0 else children[idx - 1]
             bitstring_new = self.crossover__(children[idx].bitstring, ancient.bitstring)
             bitstring_new = self.point_mutation__(bitstring_new)
             pos_new = self.decode__(bitstring_new)

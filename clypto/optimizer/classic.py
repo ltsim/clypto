@@ -10,15 +10,16 @@ import time
 import typing
 
 import numpy as np
+import numpy.random as npr
 import numpy.typing as npt
-
-from clypto.agents import Agent
+from clypto.agents.base import BaseAgent
+from clypto.agents.static import AgentStatic
+from clypto.hints.array import NDArrayType
 from clypto.optimizer.base import BaseOptimizer
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
-from clypto.types.array import NDArrayType
 
 
 class Optimizer(BaseOptimizer):
@@ -44,25 +45,24 @@ class Optimizer(BaseOptimizer):
     def __init__(self, **kwargs):
         self.__history_g_best = collections.deque()
 
-        self.__validator = Validator()
         self.__nfe_counter: int = 1
         self.__name: str = kwargs.get("name", self.__class__.__name__)
         self.__params_name_ordered = None
-        self.__generator = None
+        self.__generator: typing.Optional[npr.Generator] = None
         self.__termination: typing.Optional[Termination] = None
 
         self.mode: typing.Optional[typing.Literal["swarm", "process", "thread"]] = None
         self.epoch: typing.Optional[int] = None
         self.pop_size: typing.Optional[int] = None
         self.n_workers: typing.Optional[int] = None
-        self.pop: typing.Optional[list[Agent]] = None
-        self.g_best: typing.Optional[Agent] = Agent()
-        self.g_worst: typing.Optional[Agent] = None
+        self.pop: typing.Optional[list[AgentStatic]] = None
+        self.g_best: typing.Optional[AgentStatic] = AgentStatic()
+        self.g_worst: typing.Optional[AgentStatic] = None
         self.problem: typing.Optional[Problem] = None
         self.sort_flag: bool = False
         self.parameters: dict = {}
         self.is_parallelizable: bool = True
-        self.rng = None
+        self.rng: typing.Optional[random.Random] = None
 
     @property
     def termination(self):
@@ -78,7 +78,7 @@ class Optimizer(BaseOptimizer):
 
     @property
     def validator(self) -> Validator:
-        return self.__validator
+        return Validator()
 
     @property
     def nf_counter(self):
@@ -257,7 +257,7 @@ class Optimizer(BaseOptimizer):
         ) = None,
         seed: int | None = None,
         debug: bool = False,
-    ) -> Agent:
+    ) -> BaseAgent:
         self.check_problem(problem, seed)
         self.check_termination("start", termination, None)
         self.initialize_variables()
@@ -303,7 +303,7 @@ class Optimizer(BaseOptimizer):
 
     def track_optimize_step(
         self,
-        pop: list[Agent] | None = None,
+        pop: list[AgentStatic] | None = None,
         epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
@@ -316,7 +316,7 @@ class Optimizer(BaseOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
-        return Agent(solution=solution)
+        return AgentStatic(solution=solution)
 
     def generate_agent(self, solution: typing.Optional[NDArrayType] = None):
         agent = self.generate_empty_agent(solution)
@@ -324,7 +324,9 @@ class Optimizer(BaseOptimizer):
 
         return agent
 
-    def generate_population(self, pop_size: typing.Optional[int] = None) -> list[Agent]:
+    def generate_population(
+        self, pop_size: typing.Optional[int] = None
+    ) -> list[BaseAgent]:
         if pop_size is None:
             pop_size = self.pop_size
 
@@ -338,7 +340,7 @@ class Optimizer(BaseOptimizer):
 
         return self.problem.correct_solution(solution)
 
-    def update_target_for_population(self, pop: list[Agent]) -> list[Agent]:
+    def update_target_for_population(self, pop: list[BaseAgent]) -> list[BaseAgent]:
         pos_list = [agent.solution for agent in pop]
 
         if self.mode == "swarm":
@@ -378,11 +380,13 @@ class Optimizer(BaseOptimizer):
             return False if fitness_x < fitness_y else True
 
     @staticmethod
-    def duplicate_pop(pop: list[Agent]) -> list[Agent]:
+    def duplicate_pop(pop: list[BaseAgent]) -> list[BaseAgent]:
         return [agent.copy() for agent in pop]
 
     @staticmethod
-    def get_sorted_population(pop: list[Agent], minmax: str = "min") -> list[Agent]:
+    def get_sorted_population(
+        pop: list[BaseAgent], minmax: str = "min"
+    ) -> list[BaseAgent]:
         """
         Get sorted population based on type (minmax) of problem
 
@@ -405,7 +409,32 @@ class Optimizer(BaseOptimizer):
         return pop_new
 
     @staticmethod
-    def get_best_agent(pop: list[Agent], minmax: str = "min") -> Agent:
+    def get_sorted_indices_population(
+        pop: list[BaseAgent], minmax: str = "min"
+    ) -> tuple[list[BaseAgent], list[int]]:
+        """
+        Get sorted indices population based on type (minmax) of problem
+
+        Args:
+            pop: The population
+            minmax: The type of the problem
+
+        Returns:
+            Sorted population (1st agent is the best, last agent is the worst
+        """
+
+        list_fits = [agent.target.fitness for agent in pop]
+        indices = np.argsort(list_fits).tolist()
+
+        if minmax == "max":
+            indices = indices[::-1]
+
+        pop_new = [pop[idx] for idx in indices]
+
+        return pop_new, indices
+
+    @staticmethod
+    def get_best_agent(pop: list[BaseAgent], minmax: str = "min") -> BaseAgent:
         """
         Args:
             pop: The population of agents
@@ -418,7 +447,7 @@ class Optimizer(BaseOptimizer):
         return pop[0].copy()
 
     @staticmethod
-    def get_index_best(pop: list[Agent], minmax: str = "min") -> int:
+    def get_index_best(pop: list[BaseAgent], minmax: str = "min") -> int:
         fit_list = np.array([agent.target.fitness for agent in pop])
         if minmax == "min":
             return np.argmin(fit_list)
@@ -426,7 +455,7 @@ class Optimizer(BaseOptimizer):
             return np.argmax(fit_list)
 
     @staticmethod
-    def get_worst_agent(pop: list[Agent], minmax: str = "min") -> Agent:
+    def get_worst_agent(pop: list[BaseAgent], minmax: str = "min") -> BaseAgent:
         """
         Args:
             pop: The population of agents
@@ -440,8 +469,11 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_agents(
-        pop: list[Agent] = None, n_best: int = 3, n_worst: int = 3, minmax: str = "min"
-    ) -> tuple[list[Agent], list[Agent] | None, list[Agent] | None]:
+        pop: list[BaseAgent] = None,
+        n_best: int = 3,
+        n_worst: int = 3,
+        minmax: str = "min",
+    ) -> tuple[list[BaseAgent], list[BaseAgent] | None, list[BaseAgent] | None]:
         """
         Get special agents include sorted population, n1 best agents, n2 worst agents
 
@@ -473,7 +505,7 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_fitness(
-        pop: list[Agent] = None, minmax: str = "min"
+        pop: list[BaseAgent] = None, minmax: str = "min"
     ) -> tuple[float | np.ndarray, float, float]:
         """
         Get special target include the total fitness, the best fitness, and the worst fitness
@@ -491,8 +523,11 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_better_agent(
-        agent_x: Agent, agent_y: Agent, minmax: str = "min", reverse: bool = False
-    ) -> Agent:
+        agent_x: BaseAgent,
+        agent_y: BaseAgent,
+        minmax: str = "min",
+        reverse: bool = False,
+    ) -> BaseAgent:
         """
         Args:
             agent_x: First agent
@@ -524,10 +559,10 @@ class Optimizer(BaseOptimizer):
     ### Survivor Selection
     @staticmethod
     def greedy_selection_population(
-        pop_old: list[Agent] | None = None,
-        pop_new: list[Agent] | None = None,
+        pop_old: list[BaseAgent] | None = None,
+        pop_new: list[BaseAgent] | None = None,
         minmax: str = "min",
-    ) -> list[Agent]:
+    ) -> list[BaseAgent]:
         """
         Args:
             pop_old: The current population
@@ -564,8 +599,10 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_sorted_and_trimmed_population(
-        pop: list[Agent] | None = None, pop_size: int | None = None, minmax: str = "min"
-    ) -> list[Agent]:
+        pop: list[BaseAgent] | None = None,
+        pop_size: int | None = None,
+        minmax: str = "min",
+    ) -> list[BaseAgent]:
         """
         Args:
             pop: The population
@@ -580,8 +617,8 @@ class Optimizer(BaseOptimizer):
         return pop[:pop_size]
 
     def update_global_best_agent(
-        self, pop: list[Agent], save: bool = False
-    ) -> tuple[list[Agent], Agent]:
+        self, pop: list[BaseAgent], save: bool = False
+    ) -> tuple[list[BaseAgent], BaseAgent]:
         """
         Update global best and current best solutions in history object.
         Also update global worst and current worst solutions in history object.
@@ -647,7 +684,10 @@ class Optimizer(BaseOptimizer):
         if 0 < k_way < 1:
             k_way = int(k_way * len(pop))
 
-        list_id = self.__generator.choice(range(len(pop)), k_way, replace=False)
+        k_way_count: int = int(k_way)
+        list_id = self.__generator.choice(
+            range(len(pop)), k_way_count, replace=False
+        )
         list_parents = [[idx, pop[idx].target.fitness] for idx in list_id]
 
         if self.problem.minmax == "min":
@@ -716,7 +756,7 @@ class Optimizer(BaseOptimizer):
         return step[0] if size == 1 else step
 
     def generate_opposition_solution(
-        self, agent: Agent | None = None, g_best: Agent | None = None
+        self, agent: AgentStatic | None = None, g_best: AgentStatic | None = None
     ) -> np.ndarray:
         """
         Args:
@@ -736,7 +776,7 @@ class Optimizer(BaseOptimizer):
         return self.correct_solution(pos_new)
 
     def generate_group_population(
-        self, pop: list[Agent], n_groups: int, m_agents: int
+        self, pop: list[AgentStatic], n_groups: int, m_agents: int
     ) -> list:
         """
         Generate a list of group population from pop

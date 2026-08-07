@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.static import AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -43,7 +43,7 @@ class OriginalFOA(Optimizer):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -65,11 +65,11 @@ class OriginalFOA(Optimizer):
             + [np.linalg.norm([position[-1], position[0]])]
         )
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         solution = self.norm_consecutive_adjacent__(solution)
-        return Agent(solution=solution)
+        return AgentStatic(solution=solution)
 
     def evolve(self, epoch):
         """
@@ -81,8 +81,8 @@ class OriginalFOA(Optimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             pos_new = self.pop[
-                          idx
-                      ].solution + self.generator.random() * self.generator.normal(
+                idx
+            ].solution + self.generator.random() * self.generator.normal(
                 self.problem.lb, self.problem.ub
             )
             pos_new = self.norm_consecutive_adjacent__(pos_new)
@@ -131,7 +131,7 @@ class DevFOA(OriginalFOA):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -154,7 +154,7 @@ class DevFOA(OriginalFOA):
                 self.problem.lb, self.problem.ub
             )
             pos_new = (
-                    c * self.generator.random() * self.norm_consecutive_adjacent__(pos_new)
+                c * self.generator.random() * self.norm_consecutive_adjacent__(pos_new)
             )
             pos_new = self.correct_solution(pos_new)
             agent = self.generate_empty_agent(pos_new)
@@ -204,7 +204,7 @@ class WhaleFOA(OriginalFOA):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -241,7 +241,7 @@ class WhaleFOA(OriginalFOA):
             else:
                 D1 = np.abs(self.g_best.solution - self.pop[idx].solution)
                 pos_new = (
-                        D1 * np.exp(b * l) * np.cos(2 * np.pi * l) + self.g_best.solution
+                    D1 * np.exp(b * l) * np.cos(2 * np.pi * l) + self.g_best.solution
                 )
             smell = self.norm_consecutive_adjacent__(pos_new)
             pos_new = self.correct_solution(smell)

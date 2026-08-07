@@ -6,8 +6,7 @@
 import dataclasses
 
 import numpy as np
-
-from clypto.agents import Agent
+from clypto.agents import AgentStatic
 
 
 @dataclasses.dataclass
@@ -34,19 +33,21 @@ class TrackHistory:
     """
 
     epoch: int = 0
-    global_best: list[Agent] = dataclasses.field(default_factory=list)
-    current_best: list[Agent] = dataclasses.field(default_factory=list)
-    epoch_time: list[Agent] = dataclasses.field(default_factory=list)
-    global_best_fit: list[Agent] = dataclasses.field(default_factory=list)
-    current_best_fit: list[Agent] = dataclasses.field(default_factory=list)
-    population: list[Agent] = dataclasses.field(default_factory=list)
-    diversity: list[Agent] = dataclasses.field(default_factory=list)
-    exploitation: list[Agent] = dataclasses.field(default_factory=list)
-    exploration: list[Agent] = dataclasses.field(default_factory=list)
-    global_worst: list[Agent] = dataclasses.field(default_factory=list)
-    current_worst: list[Agent] = dataclasses.field(default_factory=list)
+    global_best: list[AgentStatic] = dataclasses.field(default_factory=list)
+    current_best: list[AgentStatic] = dataclasses.field(default_factory=list)
+    epoch_time: list[AgentStatic] = dataclasses.field(default_factory=list)
+    global_best_fit: list[AgentStatic] = dataclasses.field(default_factory=list)
+    current_best_fit: list[AgentStatic] = dataclasses.field(default_factory=list)
+    population: list[AgentStatic] = dataclasses.field(default_factory=list)
+    diversity: list[AgentStatic] = dataclasses.field(default_factory=list)
+    exploitation: list[AgentStatic] = dataclasses.field(default_factory=list)
+    exploration: list[AgentStatic] = dataclasses.field(default_factory=list)
+    global_worst: list[AgentStatic] = dataclasses.field(default_factory=list)
+    current_worst: list[AgentStatic] = dataclasses.field(default_factory=list)
 
-    def store_initial_best_worst(self, best_agent: Agent, worst_agent: Agent) -> None:
+    def store_initial_best_worst(
+        self, best_agent: AgentStatic, worst_agent: AgentStatic
+    ) -> None:
         self.global_best = [best_agent.copy()]
         self.current_best = [best_agent.copy()]
         self.global_worst = [worst_agent.copy()]

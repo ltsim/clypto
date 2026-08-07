@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.dynamic import AgentDynamic as AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -43,7 +43,7 @@ class OriginalTWO(Optimizer):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -66,7 +66,7 @@ class OriginalTWO(Optimizer):
             self.pop = self.generate_population(self.pop_size)
         self.pop = self.update_weight__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         """
         Generate new agent with solution
 
@@ -75,7 +75,7 @@ class OriginalTWO(Optimizer):
         """
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        return Agent(solution=solution, weight=0.0)
+        return AgentStatic(solution=solution, weight=0.0)
 
     def update_weight__(self, teams):
         list_fits = np.array([agent.target.fitness for agent in teams])
@@ -107,13 +107,13 @@ class OriginalTWO(Optimizer):
                     resultant_force = force - self.pop[idx].weight * self.muy_k
                     g = self.pop[jdx].solution - self.pop[idx].solution
                     acceleration = (
-                            resultant_force * g / (self.pop[idx].weight * self.muy_k)
+                        resultant_force * g / (self.pop[idx].weight * self.muy_k)
                     )
                     delta_x = 0.5 * acceleration + np.power(
                         self.alpha, epoch
                     ) * self.beta * (
-                                      self.problem.ub - self.problem.lb
-                              ) * self.generator.normal(
+                        self.problem.ub - self.problem.lb
+                    ) * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
                     pos_new += delta_x
@@ -122,18 +122,18 @@ class OriginalTWO(Optimizer):
             pos_new = pop_new[idx].solution.copy().astype(float)
             for jdx in range(self.problem.n_dims):
                 if (
-                        pos_new[jdx] < self.problem.lb[jdx]
-                        or pos_new[jdx] > self.problem.ub[jdx]
+                    pos_new[jdx] < self.problem.lb[jdx]
+                    or pos_new[jdx] > self.problem.ub[jdx]
                 ):
                     if self.generator.random() <= 0.5:
                         pos_new[jdx] = self.g_best.solution[
-                                           jdx
-                                       ] + self.generator.standard_normal() / epoch * (
-                                               self.g_best.solution[jdx] - pos_new[jdx]
-                                       )
+                            jdx
+                        ] + self.generator.standard_normal() / epoch * (
+                            self.g_best.solution[jdx] - pos_new[jdx]
+                        )
                         if (
-                                pos_new[jdx] < self.problem.lb[jdx]
-                                or pos_new[jdx] > self.problem.ub[jdx]
+                            pos_new[jdx] < self.problem.lb[jdx]
+                            or pos_new[jdx] > self.problem.ub[jdx]
                         ):
                             pos_new[jdx] = self.pop[idx].solution[jdx]
                     else:
@@ -181,7 +181,7 @@ class OppoTWO(OriginalTWO):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -193,10 +193,11 @@ class OppoTWO(OriginalTWO):
     def initialization(self):
         if self.pop is None:
             self.pop = self.generate_population(self.pop_size)
+        half_size = -(-self.pop_size // 2)  # ceil division, safe for odd pop_size
         list_idx = self.generator.choice(
-            range(0, self.pop_size), int(self.pop_size / 2), replace=False
+            range(0, self.pop_size), half_size, replace=False
         )
-        pop_temp = [self.pop[list_idx[idx]] for idx in range(0, int(self.pop_size / 2))]
+        pop_temp = [self.pop[list_idx[idx]] for idx in range(0, half_size)]
         pop_oppo = []
         for idx in range(len(pop_temp)):
             pos_opposite = self.problem.ub + self.problem.lb - pop_temp[idx].solution
@@ -206,7 +207,7 @@ class OppoTWO(OriginalTWO):
             if self.mode not in self.AVAILABLE_MODES:
                 pop_oppo[-1].target = self.get_target(pos_opposite)
         pop_oppo = self.update_target_for_population(pop_oppo)
-        self.pop = pop_temp + pop_oppo
+        self.pop = (pop_temp + pop_oppo)[: self.pop_size]
         self.pop = self.update_weight__(self.pop)
 
     def evolve(self, epoch):
@@ -229,13 +230,13 @@ class OppoTWO(OriginalTWO):
                     resultant_force = force - self.pop[idx].weight * self.muy_k
                     g = self.pop[jdx].solution - self.pop[idx].solution
                     acceleration = (
-                            resultant_force * g / (self.pop[idx].weight * self.muy_k)
+                        resultant_force * g / (self.pop[idx].weight * self.muy_k)
                     )
                     delta_x = 1 / 2 * acceleration + np.power(
                         self.alpha, epoch
                     ) * self.beta * (
-                                      self.problem.ub - self.problem.lb
-                              ) * self.generator.normal(
+                        self.problem.ub - self.problem.lb
+                    ) * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
                     pos_new += delta_x
@@ -309,7 +310,7 @@ class LevyTWO(OriginalTWO):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -337,13 +338,13 @@ class LevyTWO(OriginalTWO):
                     resultant_force = force - self.pop[idx].weight * self.muy_k
                     g = self.pop[kdx].solution - self.pop[idx].solution
                     acceleration = (
-                            resultant_force * g / (self.pop[idx].weight * self.muy_k)
+                        resultant_force * g / (self.pop[idx].weight * self.muy_k)
                     )
                     delta_x = 1 / 2 * acceleration + np.power(
                         self.alpha, epoch
                     ) * self.beta * (
-                                      self.problem.ub - self.problem.lb
-                              ) * self.generator.normal(
+                        self.problem.ub - self.problem.lb
+                    ) * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
                     pos_new += delta_x
@@ -352,18 +353,18 @@ class LevyTWO(OriginalTWO):
             pos_new = self.pop[idx].solution.copy().astype(float)
             for jdx in range(self.problem.n_dims):
                 if (
-                        pos_new[jdx] < self.problem.lb[jdx]
-                        or pos_new[jdx] > self.problem.ub[jdx]
+                    pos_new[jdx] < self.problem.lb[jdx]
+                    or pos_new[jdx] > self.problem.ub[jdx]
                 ):
                     if self.generator.random() <= 0.5:
                         pos_new[jdx] = self.g_best.solution[
-                                           jdx
-                                       ] + self.generator.standard_normal() / epoch * (
-                                               self.g_best.solution[jdx] - pos_new[jdx]
-                                       )
+                            jdx
+                        ] + self.generator.standard_normal() / epoch * (
+                            self.g_best.solution[jdx] - pos_new[jdx]
+                        )
                         if (
-                                pos_new[jdx] < self.problem.lb[jdx]
-                                or pos_new[jdx] > self.problem.ub[jdx]
+                            pos_new[jdx] < self.problem.lb[jdx]
+                            or pos_new[jdx] > self.problem.ub[jdx]
                         ):
                             pos_new[jdx] = self.pop[idx].solution[jdx]
                     else:
@@ -393,7 +394,7 @@ class LevyTWO(OriginalTWO):
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                        agent.target, pop_new[idx].target, self.problem.minmax
+                    agent.target, pop_new[idx].target, self.problem.minmax
                 ):
                     pop_new[idx] = agent
         self.pop = self.update_weight__(pop_new)
@@ -432,7 +433,7 @@ class EnhancedTWO(OppoTWO, LevyTWO):
     """
 
     def __init__(
-            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+        self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
         """
         Args:
@@ -476,13 +477,13 @@ class EnhancedTWO(OppoTWO, LevyTWO):
                     resultant_force = force - self.pop[idx].weight * self.muy_k
                     g = self.pop[kdx].solution - self.pop[idx].solution
                     acceleration = (
-                            resultant_force * g / (self.pop[idx].weight * self.muy_k)
+                        resultant_force * g / (self.pop[idx].weight * self.muy_k)
                     )
                     delta_x = 1 / 2 * acceleration + np.power(
                         self.alpha, epoch
                     ) * self.beta * (
-                                      self.problem.ub - self.problem.lb
-                              ) * self.generator.normal(
+                        self.problem.ub - self.problem.lb
+                    ) * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
                     pos_new += delta_x
@@ -491,18 +492,18 @@ class EnhancedTWO(OppoTWO, LevyTWO):
             pos_new = self.pop[idx].solution.copy().astype(float)
             for jdx in range(self.problem.n_dims):
                 if (
-                        pos_new[jdx] < self.problem.lb[jdx]
-                        or pos_new[jdx] > self.problem.ub[jdx]
+                    pos_new[jdx] < self.problem.lb[jdx]
+                    or pos_new[jdx] > self.problem.ub[jdx]
                 ):
                     if self.generator.random() <= 0.5:
                         pos_new[jdx] = self.g_best.solution[
-                                           jdx
-                                       ] + self.generator.standard_normal() / epoch * (
-                                               self.g_best.solution[jdx] - pos_new[jdx]
-                                       )
+                            jdx
+                        ] + self.generator.standard_normal() / epoch * (
+                            self.g_best.solution[jdx] - pos_new[jdx]
+                        )
                         if (
-                                pos_new[jdx] < self.problem.lb[jdx]
-                                or pos_new[jdx] > self.problem.ub[jdx]
+                            pos_new[jdx] < self.problem.lb[jdx]
+                            or pos_new[jdx] > self.problem.ub[jdx]
                         ):
                             pos_new[jdx] = self.pop[idx].solution[jdx]
                     else:
@@ -527,7 +528,7 @@ class EnhancedTWO(OppoTWO, LevyTWO):
             pos_new = self.correct_solution(C_op)
             agent = self.generate_agent(pos_new)
             if self.compare_target(
-                    agent.target, pop_new[idx].target, self.problem.minmax
+                agent.target, pop_new[idx].target, self.problem.minmax
             ):
                 pop_new[idx] = agent
             else:
@@ -538,7 +539,7 @@ class EnhancedTWO(OppoTWO, LevyTWO):
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                        agent.target, pop_new[idx].target, self.problem.minmax
+                    agent.target, pop_new[idx].target, self.problem.minmax
                 ):
                     pop_new[idx] = agent
         self.pop = self.update_weight__(pop_new)

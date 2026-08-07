@@ -1,3 +1,4 @@
-from clypto.agents.virtual import Agent
+from clypto.agents.dynamic import AgentDynamic
+from clypto.agents.static import AgentStatic
 
-__all__ = ["Agent"]
+__all__ = ["AgentStatic", "AgentDynamic"]

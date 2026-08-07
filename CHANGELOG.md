@@ -6,6 +6,35 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Cython-optimize the `Agent`/`Target` classes
+
+The library already Cython-compiled every `.py` file as-is (`setup.py`), but no file used any real Cython typing, so the hottest attribute chain in the whole library — `agent.solution` / `agent.target.fitness`, read every generation by every one of the ~150 optimizers — still paid for plain dict-based Python attribute lookup on every access.
+
++ Converted `BaseAgent`, `AgentStatic`, `AgentDynamic` (`clypto/agents/`) and `Target` (`clypto/utils/target.py`) to Cython "pure Python mode" typed classes (`@cython.cclass` + `cython.declare(...)`), giving `solution`/`target` direct C-struct field access instead of dict lookups, and `Target.fitness` a C `double` field instead of a property over a name-mangled private attribute.
++ Moved `BaseAgent`/`AgentStatic`/`AgentDynamic` into one new module, `clypto/agents/_core.py`: Cython requires `cdef class` inheritance to resolve within the same compiled module (cross-module `cdef class` inheritance isn't supported when each `.py` file compiles as an independent extension), so `clypto/agents/base.py`, `static.py`, and `dynamic.py` were reduced to thin re-export shims — every existing import path elsewhere in the codebase (`from clypto.agents.static import AgentStatic`, `from clypto.agents.dynamic import AgentDynamic`, etc.) still works unchanged.
++ `AgentDynamic` keeps its arbitrary-kwargs dynamic-attribute behavior (used by 22 algorithm files, e.g. DE, SRSR, TWO) via a real `__dict__` field declared alongside the typed `solution`/`target` fields.
++ Added `AgentDynamic` to `clypto/agents/__init__.py`'s exports — it was previously reachable only via its submodule path even though it's used across the codebase, while only `AgentStatic` was exported at the package level.
++ `setup.py`: added `Cython>=3.0.0` to `install_requires` (previously a build-time-only dependency), because the newly-typed files do `import cython` unconditionally, and that import only works when `Cython` is actually installed.
+
+### Fix bugs found by actually compiling and running the full test suite
+
+Nobody had built this project with Cython and run its tests before this pass (no `Cython`/`scipy`/`pytest` were even installed). Doing so surfaced a mix of Cython-compilation-specific issues and long-latent algorithmic bugs, most only reachable once the test suite could actually run to completion instead of crashing early:
+
++ Fix bug memory corruption from `wraparound: False` in `setup.py`'s Cython compiler directives: the codebase uses negative list indexing (`pop[-1]`) extensively on plain Python lists across 55+ files, and disabling wraparound corrupts memory on those accesses once compiled. Set to `True`.
++ Fix bug `Validator.check_bool` list-vs-tuple argument type mismatch in `CSO.py` (Cython enforces concrete `list`/`tuple` type annotations strictly at compiled call boundaries).
++ Fix bug `roulette_wheel_selection__` list-vs-`ndarray` argument type mismatch in `SBO.py`; broadened its annotation to accept both.
++ Fix bug `k_way` float/int coercion in `get_index_kway_tournament_selection` (`clypto/optimizer/classic.py`): the `k_way: float` parameter annotation typed the local variable as a C `double` for the whole function scope, so it kept boxing back to a Python `float` at the `numpy.random.Generator.choice()` call regardless of reassignment; numpy 2.5's stricter typing then rejected it. Fixed by boxing the truncated value into a separate `int`-typed variable. Affected `BaseGA`, `MultiGA`, `SingleGA`, `OriginalMA`.
++ Fix bug exclusive-vs-inclusive bound mismatch for `n_chemotaxis` validation in `BCO.py` (tuple bound is exclusive; the default value sat exactly on the excluded boundary).
++ Fix bug odd-`pop_size` population-halving `IndexError` in `BFO.py` and `TWO.py`'s `OppoTWO` (splitting a population in half via integer division silently dropped one member whenever `pop_size` was odd).
++ Fix bug `idx`/`jdx` variable mixup causing out-of-bounds bound-array indexing in `DOA.py`.
++ Fix bug `self.nfe_counter` typo (the real attribute is `self.nf_counter`) in `MSO.py`.
++ Fix bug `local_leaders` built from the wrong return shape (a full sorted population instead of a single best agent) across 4 call sites in `SMO.py`; replaced with the existing `Optimizer.get_best_agent()` helper.
++ Fix bug off-by-one `IndexError`s from eagerly-evaluated ternary indexing in `MA.py`'s offspring pairing, and from population-size mismatches after crossover in `GA.py`'s survivor selection.
++ Removed an unfinished/vestigial "reproduction and elimination" block from `BCO.py`'s `evolve()`: it referenced five instance attributes (`self.positions`, `self.bounds`, `self.dim`, `self.mr`, `self.mu`) and a hyperparameter (`self.p_m`) that were never defined anywhere in the class, plus a nested `migration()` function that was never called. The chemotaxis and interactive-exchange phases before it were already complete and correct.
++ Fix bug infinite loop in `GA.py`'s roulette-wheel parent selection (`selection_process__` / `selection_process_00__`): the `while id_c2 == id_c1: retry` pattern could loop forever once floating-point underflow drove every non-dominant candidate's selection probability to exactly `0.0`, making a second distinct draw impossible rather than just unlikely. Replaced with a bounded uniform fallback among the remaining indices. Affected any GA variant defaulting to `selection="roulette"` (`MultiGA`, `SingleGA`, `EliteMultiGA`, `EliteSingleGA`).
+
+Full `pytest tests/` against the compiled package: 270/270 passing.
+
 ---
 
 # Version 3.0.4.1

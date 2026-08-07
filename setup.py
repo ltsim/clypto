@@ -26,7 +26,10 @@ def get_ext_modules():
             "language_level": "3",
             "always_allow_keywords": True,
             "boundscheck": False,
-            "wraparound": False,
+            # wraparound must stay True: the codebase uses negative list indexing
+            # (e.g. `pop[-1]`) extensively on plain Python lists, and disabling
+            # wraparound corrupts memory on those accesses once compiled.
+            "wraparound": True,
             "nonecheck": False,
             "initializedcheck": False,
             "cdivision": True,
@@ -55,15 +58,33 @@ setup(
         "Change Log": "https://github.com/ltsim/clypto/blob/master/CHANGELOG.md",
     },
     keywords=[
-        "optimization", "metaheuristics", "MHA", "mathematical optimization",
-        "nature-inspired algorithms", "evolutionary computation", "soft computing",
-        "population-based algorithms", "Stochastic optimization", "Global optimization",
-        "Convergence analysis", "Search space exploration", "Local search",
-        "Computational intelligence", "Black-box optimization", "Robust optimization",
-        "Hybrid algorithms", "Benchmark functions", "Metaheuristic design",
-        "Performance analysis", "Exploration versus exploitation", "Self-adaptation",
-        "Constrained optimization", "Intelligent optimization", "Adaptive search",
-        "Simulations", "Algorithm selection",
+        "optimization",
+        "metaheuristics",
+        "MHA",
+        "mathematical optimization",
+        "nature-inspired algorithms",
+        "evolutionary computation",
+        "soft computing",
+        "population-based algorithms",
+        "Stochastic optimization",
+        "Global optimization",
+        "Convergence analysis",
+        "Search space exploration",
+        "Local search",
+        "Computational intelligence",
+        "Black-box optimization",
+        "Robust optimization",
+        "Hybrid algorithms",
+        "Benchmark functions",
+        "Metaheuristic design",
+        "Performance analysis",
+        "Exploration versus exploitation",
+        "Self-adaptation",
+        "Constrained optimization",
+        "Intelligent optimization",
+        "Adaptive search",
+        "Simulations",
+        "Algorithm selection",
     ],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
@@ -99,6 +120,7 @@ setup(
     install_requires=[
         "numpy>=2.0.2",
         "scipy>=1.15.3",
+        "Cython>=3.0.0",
     ],
     extras_require={
         "dev": [
@@ -109,7 +131,7 @@ setup(
             "flake8>=7.0",
             "pandas-stubs>=2.2.3",
             "scipy-stubs>=1.15.0",
-            "black>=26.5.1"
+            "black>=26.5.1",
         ],
     },
 )

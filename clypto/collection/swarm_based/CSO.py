@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.dynamic import AgentDynamic as AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -55,19 +55,19 @@ class OriginalCSO(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            mixture_ratio: float = 0.15,
-            smp: int = 5,
-            spc: bool = False,
-            cdc: float = 0.8,
-            srd: float = 0.15,
-            c1: float = 0.4,
-            w_min: float = 0.5,
-            w_max: float = 0.9,
-            selected_strategy: int = 1,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        mixture_ratio: float = 0.15,
+        smp: int = 5,
+        spc: bool = False,
+        cdc: float = 0.8,
+        srd: float = 0.15,
+        c1: float = 0.4,
+        w_min: float = 0.5,
+        w_max: float = 0.9,
+        selected_strategy: int = 1,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -90,7 +90,7 @@ class OriginalCSO(Optimizer):
             "mixture_ratio", mixture_ratio, (0, 1.0)
         )
         self.smp = self.validator.check_int("smp", smp, [2, 10000])
-        self.spc = self.validator.check_bool("spc", spc, [True, False])
+        self.spc = self.validator.check_bool("spc", spc, (True, False))
         self.cdc = self.validator.check_float("cdc", cdc, (0, 1.0))
         self.srd = self.validator.check_float("srd", srd, (0, 1.0))
         self.c1 = self.validator.check_float("c1", c1, (0, 3.0))
@@ -116,7 +116,7 @@ class OriginalCSO(Optimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         """
         + x: current position of cat
         + v: vector v of cat (same amount of dimension as x)
@@ -126,7 +126,7 @@ class OriginalCSO(Optimizer):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         flag = True if self.generator.uniform() < self.mixture_ratio else False
-        return Agent(solution=solution, velocity=velocity, flag=flag)
+        return AgentStatic(solution=solution, velocity=velocity, flag=flag)
 
     def seeking_mode__(self, cat):
         candidate_cats = []
@@ -186,11 +186,11 @@ class OriginalCSO(Optimizer):
             # tracing mode
             if self.pop[idx].flag:
                 pos_new = (
-                        self.pop[idx].solution
-                        + w * self.pop[idx].velocity
-                        + self.generator.uniform()
-                        * self.c1
-                        * (self.g_best.solution - self.pop[idx].solution)
+                    self.pop[idx].solution
+                    + w * self.pop[idx].velocity
+                    + self.generator.uniform()
+                    * self.c1
+                    * (self.g_best.solution - self.pop[idx].solution)
                 )
                 pos_new = self.correct_solution(pos_new)
             else:

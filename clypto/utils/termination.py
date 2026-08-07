@@ -64,7 +64,7 @@ class Termination:
         self.max_early_stop = max_early_stop
         self.epsilon = 1e-10
         self.__set_keyword_arguments(kwargs)
-        self.validator = Validator(log_to="console", log_file=None)
+        self.validator = Validator()
         self.name, self.message, self.log_to, self.log_file = (
             "Termination",
             "",

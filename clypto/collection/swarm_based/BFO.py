@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.agents.virtual import Agent
+from clypto.agents.dynamic import AgentDynamic as AgentStatic
 from clypto.optimizer.classic import Optimizer
 
 
@@ -58,18 +58,18 @@ class OriginalBFO(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            Ci: float = 0.01,
-            Ped: float = 0.25,
-            Nc: int = 5,
-            Ns: int = 4,
-            d_attract: float = 0.1,
-            w_attract: float = 0.2,
-            h_repels: float = 0.1,
-            w_repels: float = 10,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        Ci: float = 0.01,
+        Ped: float = 0.25,
+        Nc: int = 5,
+        Ns: int = 4,
+        d_attract: float = 0.1,
+        w_attract: float = 0.2,
+        h_repels: float = 0.1,
+        w_repels: float = 10,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -115,13 +115,13 @@ class OriginalBFO(Optimizer):
         self.is_parallelizable = False
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         cost = 0.0
         interaction = 0.0
         nutrients = 0.0
-        return Agent(
+        return AgentStatic(
             solution=solution, cost=cost, interaction=interaction, nutrients=nutrients
         )
 
@@ -174,7 +174,7 @@ class OriginalBFO(Optimizer):
                     pos_new = self.correct_solution(pos_new)
                     agent = self.generate_agent(pos_new)
                     if self.compare_target(
-                            agent.target, self.pop[idx].target, self.problem.minmax
+                        agent.target, self.pop[idx].target, self.problem.minmax
                     ):
                         self.pop[idx] = agent
                         break
@@ -182,8 +182,8 @@ class OriginalBFO(Optimizer):
                 self.pop[idx].nutrients = sum_nutrients
             cells = sorted(self.pop, key=lambda cell: cell.nutrients)
             self.pop = (
-                    cells[0: self.half_pop_size].copy()
-                    + cells[0: self.half_pop_size].copy()
+                cells[0 : self.half_pop_size].copy()
+                + cells[0 : self.pop_size - self.half_pop_size].copy()
             )
             for idc in range(self.pop_size):
                 if self.generator.random() < self.p_eliminate:
@@ -230,16 +230,16 @@ class ABFO(Optimizer):
     """
 
     def __init__(
-            self,
-            epoch: int = 10000,
-            pop_size: int = 100,
-            C_s: float = 0.1,
-            C_e: float = 0.001,
-            Ped: float = 0.01,
-            Ns: int = 4,
-            N_adapt: int = 2,
-            N_split: int = 40,
-            **kwargs: object
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        C_s: float = 0.1,
+        C_e: float = 0.001,
+        Ped: float = 0.01,
+        Ns: int = 4,
+        N_adapt: int = 2,
+        N_split: int = 40,
+        **kwargs: object
     ) -> None:
         """
         Args:
@@ -271,16 +271,16 @@ class ABFO(Optimizer):
         self.C_s = self.C_s * (self.problem.ub - self.problem.lb)
         self.C_e = self.C_e * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         nutrients = 0  # total nutrient gained by the bacterium in its whole searching process.(int number)
         local_solution = solution.copy()
-        return Agent(
+        return AgentStatic(
             solution=solution, nutrients=nutrients, local_solution=local_solution
         )
 
-    def generate_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_agent(self, solution: np.ndarray = None) -> AgentStatic:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
@@ -289,7 +289,7 @@ class ABFO(Optimizer):
     def update_step_size__(self, pop=None, idx=None):
         total_fitness = np.sum([agent.target.fitness for agent in pop])
         step_size = (
-                self.C_s - (self.C_s - self.C_e) * pop[idx].target.fitness / total_fitness
+            self.C_s - (self.C_s - self.C_e) * pop[idx].target.fitness / total_fitness
         )
         step_size = (
             step_size / self.pop[idx].nutrients
@@ -309,7 +309,7 @@ class ABFO(Optimizer):
             step_size = self.update_step_size__(self.pop, idx)
             for m in range(0, self.swim_length):  # Ns
                 delta_i = (self.g_best.solution - self.pop[idx].solution) + (
-                        self.pop[idx].local_solution - self.pop[idx].solution
+                    self.pop[idx].local_solution - self.pop[idx].solution
                 )
                 delta = np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
                 unit_vector = (
@@ -321,13 +321,13 @@ class ABFO(Optimizer):
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
                 if self.compare_target(
-                        agent.target, self.pop[idx].target, self.problem.minmax
+                    agent.target, self.pop[idx].target, self.problem.minmax
                 ):
                     agent.nutrients += 1
                     self.pop[idx] = agent
                     # Update personal best
                     if self.compare_target(
-                            agent.target, self.pop[idx].local_target, self.problem.minmax
+                        agent.target, self.pop[idx].local_target, self.problem.minmax
                     ):
                         self.pop[idx].update(
                             local_solution=pos_new.copy(),
@@ -336,12 +336,12 @@ class ABFO(Optimizer):
                 else:
                     self.pop[idx].nutrients -= 1
             if self.pop[idx].nutrients > max(
-                    self.N_split,
-                    self.N_split + (len(self.pop) - self.pop_size) / self.N_adapt,
+                self.N_split,
+                self.N_split + (len(self.pop) - self.pop_size) / self.N_adapt,
             ):
                 tt = self.generator.normal(0, 1, self.problem.n_dims)
                 pos_new = tt * self.pop[idx].solution + (1 - tt) * (
-                        self.g_best.solution - self.pop[idx].solution
+                    self.g_best.solution - self.pop[idx].solution
                 )
                 pos_new = self.correct_solution(pos_new)
                 agent = self.generate_agent(pos_new)
@@ -351,8 +351,8 @@ class ABFO(Optimizer):
                 self.N_adapt + (len(self.pop) - self.pop_size) / self.N_adapt,
             )
             if (
-                    self.pop[idx].nutrients < nut_min
-                    or self.generator.random() < self.p_eliminate
+                self.pop[idx].nutrients < nut_min
+                or self.generator.random() < self.p_eliminate
             ):
                 self.pop[idx] = self.generate_agent()
         ## Make sure the population does not have duplicates.

@@ -3,12 +3,11 @@ import typing
 
 import numpy as np
 import numpy.typing as npt
-
-from clypto.agents import Agent
+from clypto.agents import AgentStatic
+from clypto.hints.array import NDArrayType
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
-from clypto.types.array import NDArrayType
 
 
 class BaseOptimizer(abc.ABC):
@@ -57,9 +56,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def before_initialization(
         self,
-        starting_solutions: (
-            typing.Sequence[float] | NDArrayType | None
-        ) = None,
+        starting_solutions: typing.Sequence[float] | NDArrayType | None = None,
     ) -> None:
         """
         Hook executed immediately before population initialization.
@@ -137,7 +134,12 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def check_termination(self, mode="start", termination: typing.Optional[Termination] = None, epoch: typing.Optional[int] = None):
+    def check_termination(
+        self,
+        mode="start",
+        termination: typing.Optional[Termination] = None,
+        epoch: typing.Optional[int] = None,
+    ):
         """
         Configure and evaluate termination conditions.
 
@@ -164,7 +166,7 @@ class BaseOptimizer(abc.ABC):
         ) = None,
         seed: typing.Optional[int] = None,
         debug: bool = False,
-    ) -> "Agent":
+    ) -> "AgentStatic":
         """
         Run the full optimization process end to end.
 
@@ -198,7 +200,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def track_optimize_step(
         self,
-        pop: typing.Optional[list["Agent"]] = None,
+        pop: typing.Optional[list["AgentStatic"]] = None,
         epoch: typing.Optional[int] = None,
         runtime: typing.Optional[float] = None,
     ) -> None:
@@ -227,7 +229,9 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_empty_agent(self, solution: typing.Optional[NDArrayType] = None) -> "Agent":
+    def generate_empty_agent(
+        self, solution: typing.Optional[NDArrayType] = None
+    ) -> "AgentStatic":
         """
         Create a new agent skeleton without evaluating its target.
 
@@ -245,7 +249,9 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_agent(self, solution: typing.Optional[NDArrayType] = None) -> "Agent":
+    def generate_agent(
+        self, solution: typing.Optional[NDArrayType] = None
+    ) -> "AgentStatic":
         """
         Create a fully evaluated agent.
 
@@ -263,7 +269,9 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def generate_population(self, pop_size: typing.Optional[int] = None) -> list["Agent"]:
+    def generate_population(
+        self, pop_size: typing.Optional[int] = None
+    ) -> list["AgentStatic"]:
         """
         Generate a population of fully evaluated agents.
 
@@ -317,7 +325,9 @@ class BaseOptimizer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def update_target_for_population(self, pop: list["Agent"]) -> list["Agent"]:
+    def update_target_for_population(
+        self, pop: list["AgentStatic"]
+    ) -> list["AgentStatic"]:
         """
         Re-evaluate the objective value for every agent in a population.
 
