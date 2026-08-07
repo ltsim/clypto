@@ -90,7 +90,7 @@ class OriginalCSO(Optimizer):
             "mixture_ratio", mixture_ratio, (0, 1.0)
         )
         self.smp = self.validator.check_int("smp", smp, [2, 10000])
-        self.spc = self.validator.check_bool("spc", spc, [True, False])
+        self.spc = self.validator.check_bool("spc", spc, (True, False))
         self.cdc = self.validator.check_float("cdc", cdc, (0, 1.0))
         self.srd = self.validator.check_float("srd", srd, (0, 1.0))
         self.c1 = self.validator.check_float("c1", c1, (0, 3.0))
