@@ -576,7 +576,7 @@ class SAP_DE(Optimizer):
         self.fixed_pop_size = self.pop_size
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None):
+    def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         crossover_rate = self.generator.uniform(0, 1)

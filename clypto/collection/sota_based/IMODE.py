@@ -131,9 +131,9 @@ class OriginalIMODE(Optimizer):
 
         # Generate unique random indices and Ensure indices are different
         r1, r2, r3 = (
-            np.zeros(self.pop_size, dtype=int),
-            np.zeros(self.pop_size, dtype=int),
-            np.zeros(self.pop_size, dtype=int),
+            np.zeros(self.pop_size, dtype=np.intp),
+            np.zeros(self.pop_size, dtype=np.intp),
+            np.zeros(self.pop_size, dtype=np.intp),
         )
         for idx in range(0, self.pop_size):
             x1, x3 = self.generator.choice(
