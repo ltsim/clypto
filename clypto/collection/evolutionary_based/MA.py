@@ -99,7 +99,7 @@ class OriginalMA(Optimizer):
     def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = "".join(
@@ -110,7 +110,7 @@ class OriginalMA(Optimizer):
         )
         return AgentStatic(solution=solution, bitstring=bitstring)
 
-    def decode__(self, bitstring: str = None) -> np.ndarray:
+    def decode__(self, bitstring: str | None = None) -> np.ndarray:
         """
         Decode the random bitstring into real number
 

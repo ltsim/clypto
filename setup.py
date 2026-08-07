@@ -129,6 +129,7 @@ setup(
             "mypy>=1.9.0",
             "twine>=5.0",
             "flake8>=7.0",
+            "ruff>=0.16.0",
             "pandas-stubs>=2.2.3",
             "scipy-stubs>=1.15.0",
             "black>=26.5.1",

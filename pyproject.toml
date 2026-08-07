@@ -1,3 +1,23 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel", "Cython>=3.0.0", "numpy>=2.0.2"]
 build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 180
+target-version = "py310"
+exclude = ["build", "*.c", "*.so"]
+
+[tool.ruff.lint]
+# Mirrors the existing .flake8 selection (pycodestyle, pyflakes, mccabe,
+# flake8-comprehensions/bugbear) rather than ruff's much larger default
+# preview ruleset, which flags mostly cosmetic/naming issues across this
+# algorithm-heavy codebase that aren't worth the churn right now.
+select = ["E", "F", "W", "B", "C4", "C90"]
+ignore = ["E203", "E266"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 18
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ["build/", "^.*\\.c$"]

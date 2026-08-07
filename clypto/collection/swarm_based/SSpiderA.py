@@ -76,7 +76,7 @@ class OriginalSSpiderA(Optimizer):
         self.set_parameters(["epoch", "pop_size", "r_a", "p_c", "p_m"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         """
         Overriding method in Optimizer class
             + x: The position of s on the web.
@@ -100,7 +100,7 @@ class OriginalSSpiderA(Optimizer):
             mask=mask,
         )
 
-    def generate_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         """
         Generate new agent with full information
 

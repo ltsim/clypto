@@ -174,7 +174,9 @@ class OriginalSBO(DevSBO):
         """
         super().__init__(epoch, pop_size, alpha, p_m, psw, **kwargs)
 
-    def roulette_wheel_selection__(self, fitness_list: list | np.ndarray = None) -> int:
+    def roulette_wheel_selection__(
+        self, fitness_list: list | np.ndarray | None = None
+    ) -> int:
         """
         Roulette Wheel Selection in the original version, this version can't handle the negative fitness values
 

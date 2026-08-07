@@ -55,9 +55,9 @@ class Optimizer(BaseOptimizer):
         self.epoch: typing.Optional[int] = None
         self.pop_size: typing.Optional[int] = None
         self.n_workers: typing.Optional[int] = None
-        self.pop: typing.Optional[list[AgentStatic]] = None
-        self.g_best: typing.Optional[AgentStatic] = AgentStatic()
-        self.g_worst: typing.Optional[AgentStatic] = None
+        self.pop: typing.Optional[list[BaseAgent]] = None
+        self.g_best: typing.Optional[BaseAgent] = AgentStatic()
+        self.g_worst: typing.Optional[BaseAgent] = None
         self.problem: typing.Optional[Problem] = None
         self.sort_flag: bool = False
         self.parameters: dict = {}
@@ -143,9 +143,7 @@ class Optimizer(BaseOptimizer):
 
     def before_initialization(
         self,
-        starting_solutions: (
-            typing.Sequence[float] | npt.NDArray[np.float64] | None
-        ) = None,
+        starting_solutions: (typing.Sequence[float] | NDArrayType | None) = None,
     ) -> None:
         """
         Args:
@@ -303,7 +301,7 @@ class Optimizer(BaseOptimizer):
 
     def track_optimize_step(
         self,
-        pop: list[AgentStatic] | None = None,
+        pop: list[BaseAgent] | None = None,
         epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
@@ -450,9 +448,9 @@ class Optimizer(BaseOptimizer):
     def get_index_best(pop: list[BaseAgent], minmax: str = "min") -> int:
         fit_list = np.array([agent.target.fitness for agent in pop])
         if minmax == "min":
-            return np.argmin(fit_list)
+            return int(np.argmin(fit_list))
         else:
-            return np.argmax(fit_list)
+            return int(np.argmax(fit_list))
 
     @staticmethod
     def get_worst_agent(pop: list[BaseAgent], minmax: str = "min") -> BaseAgent:
@@ -469,7 +467,7 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_agents(
-        pop: list[BaseAgent] = None,
+        pop: list[BaseAgent] | None = None,
         n_best: int = 3,
         n_worst: int = 3,
         minmax: str = "min",
@@ -505,7 +503,7 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_fitness(
-        pop: list[BaseAgent] = None, minmax: str = "min"
+        pop: list[BaseAgent] | None = None, minmax: str = "min"
     ) -> tuple[float | np.ndarray, float, float]:
         """
         Get special target include the total fitness, the best fitness, and the worst fitness
@@ -637,7 +635,7 @@ class Optimizer(BaseOptimizer):
         return sorted_pop, c_best
 
     ## Selection techniques
-    def get_index_roulette_wheel_selection(self, list_fitness: np.array):
+    def get_index_roulette_wheel_selection(self, list_fitness: np.ndarray):
         """
         This method can handle min/max problem, and negative or positive fitness value.
 
@@ -656,7 +654,7 @@ class Optimizer(BaseOptimizer):
         if np.any(list_fitness < 0):
             list_fitness = list_fitness - np.min(list_fitness)
 
-        final_fitness = list_fitness
+        final_fitness: np.ndarray = list_fitness
         if self.problem.minmax == "min":
             final_fitness = np.max(list_fitness) - list_fitness
 
@@ -666,7 +664,7 @@ class Optimizer(BaseOptimizer):
 
     def get_index_kway_tournament_selection(
         self,
-        pop: list = None,
+        pop: list | None = None,
         k_way: float = 0.2,
         output: int = 2,
         reverse: bool = False,
@@ -756,7 +754,7 @@ class Optimizer(BaseOptimizer):
         return step[0] if size == 1 else step
 
     def generate_opposition_solution(
-        self, agent: AgentStatic | None = None, g_best: AgentStatic | None = None
+        self, agent: BaseAgent | None = None, g_best: BaseAgent | None = None
     ) -> np.ndarray:
         """
         Args:
@@ -776,7 +774,7 @@ class Optimizer(BaseOptimizer):
         return self.correct_solution(pos_new)
 
     def generate_group_population(
-        self, pop: list[AgentStatic], n_groups: int, m_agents: int
+        self, pop: list[BaseAgent], n_groups: int, m_agents: int
     ) -> list:
         """
         Generate a list of group population from pop

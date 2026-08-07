@@ -65,7 +65,7 @@ class OriginalFOA(Optimizer):
             + [np.linalg.norm([position[-1], position[0]])]
         )
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         solution = self.norm_consecutive_adjacent__(solution)
