@@ -183,7 +183,7 @@ class OriginalBFO(Optimizer):
             cells = sorted(self.pop, key=lambda cell: cell.nutrients)
             self.pop = (
                 cells[0 : self.half_pop_size].copy()
-                + cells[0 : self.half_pop_size].copy()
+                + cells[0 : self.pop_size - self.half_pop_size].copy()
             )
             for idc in range(self.pop_size):
                 if self.generator.random() < self.p_eliminate:
