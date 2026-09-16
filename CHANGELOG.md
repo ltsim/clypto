@@ -6,6 +6,15 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Packaging & build system
+
++ **One toolchain:** `uv` is now the single build/test workflow (`uv lock`, `uv sync --extra dev`, `uv run pytest tests/`). The Makefile was reduced to the `clean*` and `uv-lock`/`uv-sync`/`uv-test` targets; the pip-side `compile`/`install`/`all`/`dist` targets and the `python setup.py build_ext --inplace` flow they drove were removed.
++ **Precompiled wheels per system:** the release workflow (`publish.yml`) now builds wheel matrices for Linux, macOS (x86_64 + arm64), and Windows against CPython 3.10–3.14 via `cibuildwheel`, plus an sdist for user-side source builds; every wheel is import-tested in a clean environment before upload.
++ **setup.py slimming:** cythonize compiler-directives trimmed to the four non-default flags (`language_level`, `always_allow_keywords`, `boundscheck`, `cdivision`); all metadata lives in `pyproject.toml`'s `[project]` table and `setup.py` only executes `cythonize()`.
++ **Dependencies trimmed:** `Cython` removed from runtime dependencies (wheels ship compiled `.so`, and PEP 517 build isolation provides it whenever the sdist is compiled); `pip`, `setuptools`, and `build` dropped from the `dev` extras; each is only needed by obsolete pip-based make targets.
++ **Linters consolidated:** deleted `.flake8` — `[tool.ruff]` (same rule selection) is now the single lint config, and `flake8`/`black`/`twine` were removed from the dev extras.
++ **Test matrix:** `test.yml` runs pytest through `uv` on the compiled package across Python 3.10–3.14 × 3 OS, and adds a `wheel-smoke` job that installs a freshly built wheel into a clean venv and solves a real optimization problem end-to-end.
+
 ### Cython-optimize the `Agent`/`Target` classes
 
 The library already Cython-compiled every `.py` file as-is (`setup.py`), but no file used any real Cython typing, so the hottest attribute chain in the whole library — `agent.solution` / `agent.target.fitness`, read every generation by every one of the ~150 optimizers — still paid for plain dict-based Python attribute lookup on every access.
@@ -14,7 +23,7 @@ The library already Cython-compiled every `.py` file as-is (`setup.py`), but no 
 + Moved `BaseAgent`/`AgentStatic`/`AgentDynamic` into one new module, `clypto/agents/_core.py`: Cython requires `cdef class` inheritance to resolve within the same compiled module (cross-module `cdef class` inheritance isn't supported when each `.py` file compiles as an independent extension), so `clypto/agents/base.py`, `static.py`, and `dynamic.py` were reduced to thin re-export shims — every existing import path elsewhere in the codebase (`from clypto.agents.static import AgentStatic`, `from clypto.agents.dynamic import AgentDynamic`, etc.) still works unchanged.
 + `AgentDynamic` keeps its arbitrary-kwargs dynamic-attribute behavior (used by 22 algorithm files, e.g. DE, SRSR, TWO) via a real `__dict__` field declared alongside the typed `solution`/`target` fields.
 + Added `AgentDynamic` to `clypto/agents/__init__.py`'s exports — it was previously reachable only via its submodule path even though it's used across the codebase, while only `AgentStatic` was exported at the package level.
-+ `setup.py`: added `Cython>=3.0.0` to `install_requires` (previously a build-time-only dependency), because the newly-typed files do `import cython` unconditionally, and that import only works when `Cython` is actually installed.
++ `setup.py`: the newly-typed files do `import cython` unconditionally, so `Cython` must be present at build time — it comes from `[build-system].requires` via PEP 517 isolation (and `uv sync`), not from the runtime dependencies, since installed wheels ship compiled `.so` files that no longer need it.
 
 ### Fix bugs found by actually compiling and running the full test suite
 
