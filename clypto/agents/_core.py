@@ -195,10 +195,15 @@ class AgentDynamic(BaseAgent):
         self.target = target
         self.__kwargs = kwargs
 
-        self.__dict__.update(kwargs)
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     def __getattr__(self, name: str) -> typing.Any:
-        return self.__dict__.get(name, None)
+        # cdef classes forbid `self.__dict__` access; cdef-class attribute lookup
+        # already consults the instance dict before __getattr__ fires, so any
+        # name reaching here is missing and maps to None (same contract as
+        # AgentStatic.__getattr__ above).
+        return None
 
     def copy(self) -> "BaseAgent":
         agent = AgentDynamic(self.solution, self.target.copy(), **self.__kwargs)

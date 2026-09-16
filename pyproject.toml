@@ -85,6 +85,17 @@ dev = [
     "pandas-stubs>=2.2.3",
     "scipy-stubs>=1.15.0",
     "black>=26.5.1",
+    # Needed for the direct `python setup.py build_ext --inplace` in-place
+    # compile workflow (make compile); uv-managed venvs are not seeded with
+    # setuptools, and pip only provides it inside isolated build envs.
+    "setuptools>=68.0",
+    # Frontend for `python -m build` (make dist) -- the same sdist+wheel
+    # pipeline the publish.yml release workflow uses.
+    "build>=1.2",
+    # uv-managed venvs are unseeded and `uv sync` prunes undeclared packages,
+    # so pip must be a declared dev dependency for the pip-based make targets
+    # (install, compile, dist) to work with PYTHON=.venv/bin/python.
+    "pip>=24",
 ]
 
 [project.urls]

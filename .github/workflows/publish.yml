@@ -38,7 +38,7 @@ jobs:
 
     environment:
       name: pypi
-      url: https://pypi.org/p/mealpy-legacy-collection
+      url: https://pypi.org/p/clypto
 
     steps:
       - name: Retrieve release distributions

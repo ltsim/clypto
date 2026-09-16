@@ -1,4 +1,9 @@
-.PHONY: clean clean-build clean-cython clean-pyc install compile all uv-sync uv-lock uv-test
+.PHONY: clean clean-build clean-cython clean-pyc install compile all dist uv-sync uv-lock uv-test
+
+# Interpreter for the pip-based targets (compile/install/all). Override on
+# hosts without a bare `python` on PATH, e.g.:
+#   make compile PYTHON=.venv/bin/python
+PYTHON ?= python
 
 clean: clean-build clean-cython clean-pyc
 
@@ -24,12 +29,17 @@ clean-pyc:
 	rm -rf .mypy_cache/
 
 compile:
-	python setup.py build_ext --inplace
+	$(PYTHON) setup.py build_ext --inplace
 
 install:
-	python -m pip install -e .
+	$(PYTHON) -m pip install -e .
 
 all: clean compile install
+
+# Generate release distributions (sdist + wheel) into dist/ -- the same
+# `python -m build` pipeline the publish.yml release workflow uses.
+dist:
+	$(PYTHON) -m build
 
 # uv-based workflow (reads pyproject.toml's [project] table, resolves/pins
 # exact versions into uv.lock). Builds the Cython extension via setup.py's
