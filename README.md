@@ -8,8 +8,8 @@
 ![GitHub Release Date](https://img.shields.io/github/release-date/ltsim/clypto.svg?style=flat-square)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/clypto?style=flat-square)
 
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/mealpy-legacy-collection/publish.yml?style=flat-square&logo=pypi&label=Publish)
-![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/mealpy-legacy-collection/test.yml?style=flat-square&logo=pytest&label=Testing)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/clypto/publish.yml?style=flat-square&logo=pypi&label=Publish)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/clypto/test.yml?style=flat-square&logo=pytest&label=Testing)
 
 Is a high-performance, heavily compiled fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core and fully optimized via Cython.
 
@@ -81,22 +81,50 @@ The sole purpose of this repository is to preserve a clean, decoupled collection
 
 ## Installation
 
-* Install the stable (latest) version from [PyPI release](https://pypi.python.org/pypi/clypto):
+### Precompiled wheels (no compiler needed)
+
+Wheels are precompiled per platform and Python version — Linux, macOS (Intel + Apple Silicon), and Windows, for CPython 3.10–3.14 — so a plain `pip install` is all you need:
+
 ```bash
 $ pip install clypto --upgrade
 ```
 
-* Install the pre-release version directly from the source code:
+### Compiling from source
+
+Building from source compiles the entire package to native code with Cython, so a C compiler is required. The build dependencies (`Cython`, `numpy`, `setuptools`) are fetched automatically by the PEP 517 build isolation.
+
+* Install directly from the repository:
+
 ```bash
 $ git clone https://github.com/ltsim/clypto.git
 $ cd clypto
 $ python -m pip install .
 ```
 
-* In case, you want to install the development version from Github:
+* Editable development install with [uv](https://docs.astral.sh/uv/) — compiles the extensions in place and links them into the project:
+
 ```bash
-$ pip install git+https://github.com/ltsim/clypto.git 
+$ git clone https://github.com/ltsim/clypto.git
+$ cd clypto
+$ uv sync --extra dev          # or: make uv-sync
 ```
+
+* Install the latest development version straight from GitHub:
+
+```bash
+$ pip install git+https://github.com/ltsim/clypto.git
+```
+
+The [Makefile](Makefile) wraps the uv workflow (`uv-lock`, `uv-sync`, `uv-test`) and offers `make clean` to wipe build, Cython, and bytecode artifacts.
+
+### Running the tests
+
+```bash
+$ uv sync --extra dev
+$ uv run pytest tests/          # or: make uv-test
+```
+
+> **Note:** a fresh clone ships only its `.py` sources. Compile first (`uv sync --extra dev` or `pip install .`), otherwise clypto runs as un-compiled Python and its compiled-by-design performance is lost.
 
 ## Optimizer Classification Table
 

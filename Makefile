@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-cython clean-pyc install compile all uv-sync uv-lock uv-test
+.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync uv-test
 
 clean: clean-build clean-cython clean-pyc
 
@@ -23,17 +23,6 @@ clean-pyc:
 	rm -rf .pytest_cache/
 	rm -rf .mypy_cache/
 
-compile:
-	python setup.py build_ext --inplace
-
-install:
-	python -m pip install -e .
-
-all: clean compile install
-
-# uv-based workflow (reads pyproject.toml's [project] table, resolves/pins
-# exact versions into uv.lock). Builds the Cython extension via setup.py's
-# ext_modules as part of the editable install, same as `make compile`.
 uv-lock:
 	uv lock
 

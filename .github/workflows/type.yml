@@ -30,4 +30,4 @@ jobs:
           pip install ".[dev]"
 
       - name: Run mypy
-        run: mypy --config-file pyproject.toml
+        run: mypy clypto/ --config-file pyproject.toml
