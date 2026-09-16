@@ -90,13 +90,13 @@ class OriginalBSA(Optimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         local_position = solution.copy()
         return AgentStatic(solution=solution, local_solution=local_position)
 
-    def generate_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()

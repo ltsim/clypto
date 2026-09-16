@@ -69,7 +69,7 @@ class OriginalHGS(Optimizer):
         self.set_parameters(["epoch", "pop_size", "PUP", "LH"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         hunger = 1.0

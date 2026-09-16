@@ -48,17 +48,25 @@ class Optimizer(BaseOptimizer):
         self.__nfe_counter: int = 1
         self.__name: str = kwargs.get("name", self.__class__.__name__)
         self.__params_name_ordered = None
-        self.__generator: typing.Optional[npr.Generator] = None
+        # __generator/problem/pop/g_best/g_worst/epoch/pop_size are None only in this
+        # brief window before solve() -> check_problem()/initialization()/
+        # after_initialization() run; every algorithm's evolve() (and everything else
+        # that reads these) only ever executes after that point, so they're declared
+        # as their steady-state (non-Optional) type here rather than as Optional,
+        # which would otherwise force a None-check at every one of their ~150 call
+        # sites across the algorithm collection for an invariant that always holds
+        # by the time those call sites run.
+        self.__generator: npr.Generator = None  # type: ignore[assignment]
         self.__termination: typing.Optional[Termination] = None
 
         self.mode: typing.Optional[typing.Literal["swarm", "process", "thread"]] = None
-        self.epoch: typing.Optional[int] = None
-        self.pop_size: typing.Optional[int] = None
+        self.epoch: int = None  # type: ignore[assignment]
+        self.pop_size: int = None  # type: ignore[assignment]
         self.n_workers: typing.Optional[int] = None
-        self.pop: typing.Optional[list[AgentStatic]] = None
-        self.g_best: typing.Optional[AgentStatic] = AgentStatic()
-        self.g_worst: typing.Optional[AgentStatic] = None
-        self.problem: typing.Optional[Problem] = None
+        self.pop: list[BaseAgent] = None  # type: ignore[assignment]
+        self.g_best: BaseAgent = AgentStatic()
+        self.g_worst: BaseAgent = None  # type: ignore[assignment]
+        self.problem: Problem = None  # type: ignore[assignment]
         self.sort_flag: bool = False
         self.parameters: dict = {}
         self.is_parallelizable: bool = True
@@ -143,9 +151,7 @@ class Optimizer(BaseOptimizer):
 
     def before_initialization(
         self,
-        starting_solutions: (
-            typing.Sequence[float] | npt.NDArray[np.float64] | None
-        ) = None,
+        starting_solutions: (typing.Sequence[float] | NDArrayType | None) = None,
     ) -> None:
         """
         Args:
@@ -209,7 +215,9 @@ class Optimizer(BaseOptimizer):
         self.__generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
 
-        self.pop, self.g_best, self.g_worst = None, None, None
+        # Reset for this solve() call; initialization()/after_initialization() (called
+        # immediately after, still within solve(), before any evolve()) set these back.
+        self.pop, self.g_best, self.g_worst = None, None, None  # type: ignore[assignment]
 
     def check_termination(self, mode="start", termination=None, epoch=None):
         if mode == "start":
@@ -303,7 +311,7 @@ class Optimizer(BaseOptimizer):
 
     def track_optimize_step(
         self,
-        pop: list[AgentStatic] | None = None,
+        pop: list[BaseAgent] | None = None,
         epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
@@ -450,9 +458,9 @@ class Optimizer(BaseOptimizer):
     def get_index_best(pop: list[BaseAgent], minmax: str = "min") -> int:
         fit_list = np.array([agent.target.fitness for agent in pop])
         if minmax == "min":
-            return np.argmin(fit_list)
+            return int(np.argmin(fit_list))
         else:
-            return np.argmax(fit_list)
+            return int(np.argmax(fit_list))
 
     @staticmethod
     def get_worst_agent(pop: list[BaseAgent], minmax: str = "min") -> BaseAgent:
@@ -469,7 +477,7 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_agents(
-        pop: list[BaseAgent] = None,
+        pop: list[BaseAgent],
         n_best: int = 3,
         n_worst: int = 3,
         minmax: str = "min",
@@ -505,7 +513,7 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_fitness(
-        pop: list[BaseAgent] = None, minmax: str = "min"
+        pop: list[BaseAgent], minmax: str = "min"
     ) -> tuple[float | np.ndarray, float, float]:
         """
         Get special target include the total fitness, the best fitness, and the worst fitness
@@ -637,7 +645,7 @@ class Optimizer(BaseOptimizer):
         return sorted_pop, c_best
 
     ## Selection techniques
-    def get_index_roulette_wheel_selection(self, list_fitness: np.array):
+    def get_index_roulette_wheel_selection(self, list_fitness: np.ndarray):
         """
         This method can handle min/max problem, and negative or positive fitness value.
 
@@ -656,7 +664,7 @@ class Optimizer(BaseOptimizer):
         if np.any(list_fitness < 0):
             list_fitness = list_fitness - np.min(list_fitness)
 
-        final_fitness = list_fitness
+        final_fitness: np.ndarray = list_fitness
         if self.problem.minmax == "min":
             final_fitness = np.max(list_fitness) - list_fitness
 
@@ -666,7 +674,7 @@ class Optimizer(BaseOptimizer):
 
     def get_index_kway_tournament_selection(
         self,
-        pop: list = None,
+        pop: list | None = None,
         k_way: float = 0.2,
         output: int = 2,
         reverse: bool = False,
@@ -756,7 +764,7 @@ class Optimizer(BaseOptimizer):
         return step[0] if size == 1 else step
 
     def generate_opposition_solution(
-        self, agent: AgentStatic | None = None, g_best: AgentStatic | None = None
+        self, agent: BaseAgent | None = None, g_best: BaseAgent | None = None
     ) -> np.ndarray:
         """
         Args:
@@ -776,7 +784,7 @@ class Optimizer(BaseOptimizer):
         return self.correct_solution(pos_new)
 
     def generate_group_population(
-        self, pop: list[AgentStatic], n_groups: int, m_agents: int
+        self, pop: list[BaseAgent], n_groups: int, m_agents: int
     ) -> list:
         """
         Generate a list of group population from pop

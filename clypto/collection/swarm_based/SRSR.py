@@ -56,7 +56,7 @@ class OriginalSRSR(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray = None):
+    def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
@@ -73,7 +73,7 @@ class OriginalSRSR(Optimizer):
             target_move=target_move,
         )
 
-    def generate_agent(self, solution: np.ndarray = None):
+    def generate_agent(self, solution: np.ndarray | None = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.target_new = agent.target.copy()

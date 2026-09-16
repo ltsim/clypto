@@ -68,7 +68,7 @@ class DevBRO(Optimizer):
         self.problem.lb_updated = self.problem.lb.copy()
         self.problem.ub_updated = self.problem.ub.copy()
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         damage = 0

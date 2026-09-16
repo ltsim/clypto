@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-cython clean-pyc install compile all
+.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync uv-test
 
 clean: clean-build clean-cython clean-pyc
 
@@ -23,10 +23,11 @@ clean-pyc:
 	rm -rf .pytest_cache/
 	rm -rf .mypy_cache/
 
-compile:
-	python setup.py build_ext --inplace
+uv-lock:
+	uv lock
 
-install:
-	python -m pip install -e .
+uv-sync:
+	uv sync --extra dev
 
-all: clean compile install
+uv-test:
+	uv run pytest tests/

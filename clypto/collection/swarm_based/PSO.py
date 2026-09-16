@@ -74,7 +74,7 @@ class OriginalPSO(Optimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.v_min = -self.v_max
 
-    def generate_empty_agent(self, solution: np.ndarray = None):
+    def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.v_min, self.v_max)
@@ -83,7 +83,7 @@ class OriginalPSO(Optimizer):
             solution=solution, velocity=velocity, local_solution=local_pos
         )
 
-    def generate_agent(self, solution: np.ndarray = None):
+    def generate_agent(self, solution: np.ndarray | None = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
@@ -197,7 +197,7 @@ class AIW_PSO(Optimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.v_min = -self.v_max
 
-    def generate_empty_agent(self, solution: np.ndarray = None):
+    def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.v_min, self.v_max)
@@ -206,7 +206,7 @@ class AIW_PSO(Optimizer):
             solution=solution, velocity=velocity, local_solution=local_pos
         )
 
-    def generate_agent(self, solution: np.ndarray = None):
+    def generate_agent(self, solution: np.ndarray | None = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
@@ -328,7 +328,7 @@ class LDW_PSO(Optimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.v_min = -self.v_max
 
-    def generate_empty_agent(self, solution: np.ndarray = None):
+    def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.v_min, self.v_max)
@@ -337,7 +337,7 @@ class LDW_PSO(Optimizer):
             solution=solution, velocity=velocity, local_solution=local_pos
         )
 
-    def generate_agent(self, solution: np.ndarray = None):
+    def generate_agent(self, solution: np.ndarray | None = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
@@ -433,7 +433,7 @@ class P_PSO(Optimizer):
         self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
         self.dyn_delta_list = self.generator.uniform(0, 2 * np.pi, self.pop_size)
 
-    def generate_empty_agent(self, solution: np.ndarray = None):
+    def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(-self.v_max, self.v_max)
@@ -442,7 +442,7 @@ class P_PSO(Optimizer):
             solution=solution, velocity=velocity, local_solution=local_pos
         )
 
-    def generate_agent(self, solution: np.ndarray = None):
+    def generate_agent(self, solution: np.ndarray | None = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()
@@ -802,7 +802,7 @@ class CL_PSO(Optimizer):
         self.v_min = -self.v_max
         self.flags = np.zeros(self.pop_size)
 
-    def generate_empty_agent(self, solution: np.ndarray = None):
+    def generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(-self.v_max, self.v_max)
@@ -811,7 +811,7 @@ class CL_PSO(Optimizer):
             solution=solution, velocity=velocity, local_solution=local_pos
         )
 
-    def generate_agent(self, solution: np.ndarray = None):
+    def generate_agent(self, solution: np.ndarray | None = None):
         agent = self.generate_empty_agent(solution)
         agent.target = self.get_target(agent.solution)
         agent.local_target = agent.target.copy()

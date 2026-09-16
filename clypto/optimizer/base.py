@@ -3,7 +3,7 @@ import typing
 
 import numpy as np
 import numpy.typing as npt
-from clypto.agents import AgentStatic
+from clypto.agents.base import BaseAgent
 from clypto.hints.array import NDArrayType
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
@@ -166,7 +166,7 @@ class BaseOptimizer(abc.ABC):
         ) = None,
         seed: typing.Optional[int] = None,
         debug: bool = False,
-    ) -> "AgentStatic":
+    ) -> "BaseAgent":
         """
         Run the full optimization process end to end.
 
@@ -200,7 +200,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def track_optimize_step(
         self,
-        pop: typing.Optional[list["AgentStatic"]] = None,
+        pop: typing.Optional[list["BaseAgent"]] = None,
         epoch: typing.Optional[int] = None,
         runtime: typing.Optional[float] = None,
     ) -> None:
@@ -231,7 +231,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def generate_empty_agent(
         self, solution: typing.Optional[NDArrayType] = None
-    ) -> "AgentStatic":
+    ) -> "BaseAgent":
         """
         Create a new agent skeleton without evaluating its target.
 
@@ -251,7 +251,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def generate_agent(
         self, solution: typing.Optional[NDArrayType] = None
-    ) -> "AgentStatic":
+    ) -> "BaseAgent":
         """
         Create a fully evaluated agent.
 
@@ -271,7 +271,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def generate_population(
         self, pop_size: typing.Optional[int] = None
-    ) -> list["AgentStatic"]:
+    ) -> list["BaseAgent"]:
         """
         Generate a population of fully evaluated agents.
 
@@ -326,8 +326,8 @@ class BaseOptimizer(abc.ABC):
 
     @abc.abstractmethod
     def update_target_for_population(
-        self, pop: list["AgentStatic"]
-    ) -> list["AgentStatic"]:
+        self, pop: list["BaseAgent"]
+    ) -> list["BaseAgent"]:
         """
         Re-evaluate the objective value for every agent in a population.
 

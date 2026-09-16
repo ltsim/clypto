@@ -57,7 +57,7 @@ class OriginalSSDO(Optimizer):
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)

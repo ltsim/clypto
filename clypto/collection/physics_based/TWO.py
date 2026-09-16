@@ -66,7 +66,7 @@ class OriginalTWO(Optimizer):
             self.pop = self.generate_population(self.pop_size)
         self.pop = self.update_weight__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         """
         Generate new agent with solution
 

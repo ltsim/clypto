@@ -289,7 +289,7 @@ class QleSCA(DevSCA):
         self.sort_flag = False
         self.is_parallelizable = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         q_table = QTable(n_states=9, n_actions=9, generator=self.generator)

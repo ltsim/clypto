@@ -11,7 +11,7 @@ class BaseVar(abc.ABC):
             self, n_vars: int, bounds: tuple[typing.Any, typing.Any], name="variable"
     ):
         if type(n_vars) is int and n_vars > 0:
-            self.__n_vars = n_vars
+            self.__n_vars: int = n_vars
         else:
             raise ValueError(f"Invalid n_vars. It should be integer and > 0.")
 
@@ -20,7 +20,6 @@ class BaseVar(abc.ABC):
 
         self.__name: str = name
         self.__seed: int | None = None
-        self.__n_vars: int = n_vars
 
         self.__lb, self.__ub = bounds
 

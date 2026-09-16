@@ -87,7 +87,7 @@ class OriginalArchOA(Optimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         den = self.generator.uniform(self.problem.lb, self.problem.ub)  # Density

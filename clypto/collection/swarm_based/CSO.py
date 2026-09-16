@@ -116,7 +116,7 @@ class OriginalCSO(Optimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         """
         + x: current position of cat
         + v: vector v of cat (same amount of dimension as x)

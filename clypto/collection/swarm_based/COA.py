@@ -78,7 +78,7 @@ class OriginalCOA(Optimizer):
         self.ps = 1.0 / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         age = 1

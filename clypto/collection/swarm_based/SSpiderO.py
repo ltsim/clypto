@@ -90,7 +90,7 @@ class OriginalSSpiderO(Optimizer):
         self.pop_females = [self.pop[idx] for idx in idx_females]
         self.pop = self.recalculate_weights__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weight = 0.0
