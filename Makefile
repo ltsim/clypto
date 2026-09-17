@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync uv-test
+.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync uv-test docs-serve docs-build
 
 clean: clean-build clean-cython clean-pyc
 
@@ -31,3 +31,11 @@ uv-sync:
 
 uv-test:
 	uv run pytest tests/
+
+docs-serve:
+	uv sync --extra docs --no-install-project
+	uv run --no-sync mkdocs serve
+
+docs-build:
+	uv sync --extra docs --no-install-project
+	uv run --no-sync mkdocs build --strict

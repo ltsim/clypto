@@ -82,6 +82,10 @@ dev = [
     "pandas-stubs>=2.2.3",
     "scipy-stubs>=1.15.0",
 ]
+docs = [
+    "mkdocs-material>=9.5",
+    "mkdocs-gen-files>=0.5",
+]
 
 [project.urls]
 Homepage = "https://github.com/ltsim/clypto"
