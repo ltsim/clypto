@@ -82,6 +82,7 @@ nav:
       - Installation: installation.md
       - Quickstart: quickstart.md
       - Tutorial: tutorial.md
+      - Optimizer API Tutorial: optimizer-api.md
       - Migration: migration.md
   - Algorithm Categories:
       - Overview: categories/index.md

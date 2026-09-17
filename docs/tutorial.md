@@ -113,7 +113,9 @@ clypto ships two ways to write an optimizer. The **decorator API** is the
 recommended route for new algorithms: it is compact, validates its own
 hyper-parameters, and can compile itself with Cython. The **classic API** is
 kept unchanged for the built-in catalog and for existing MEALPY-style code.
-The full conversion recipe lives in the [migration guide](migration.md).
+For a hands-on walkthrough see the
+[decorator optimizer API tutorial](optimizer-api.md); the full conversion recipe
+lives in the [migration guide](migration.md).
 
 ### The decorator API (`@cy.optimizer`)
 
