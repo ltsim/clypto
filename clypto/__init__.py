@@ -159,6 +159,7 @@ from clypto.collection.swarm_based import (
 from clypto.collection.system_based import AEO, GCO
 from clypto.collection.system_based import WCA
 from clypto.optimizer.classic import Optimizer
+from clypto.precompile import precompile
 from clypto.utils import Problem
 from clypto.utils.problem import Problem
 from clypto.utils.space import (
@@ -265,7 +266,7 @@ def get_optimizer_by_name(name: str, verbose=False):
 
 
 __all__ = [
-    "Problem", "Optimizer",
+    "Problem", "Optimizer", "precompile",
     "IntegerVar",
     "FloatVar",
     "StringVar",

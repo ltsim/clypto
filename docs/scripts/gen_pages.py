@@ -37,6 +37,7 @@ CATEGORY_ORDER = list(CATEGORY_LABELS)
 CORE_MODULES = [
     "clypto/optimizer/base.py",
     "clypto/optimizer/classic.py",
+    "clypto/precompile/__init__.py",
     "clypto/utils/problem.py",
     "clypto/utils/termination.py",
     "clypto/utils/validator.py",
@@ -253,7 +254,7 @@ def _generate_api() -> None:
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"))
         module_doc = _first_paragraph(_clean_doc(ast.get_docstring(tree)))
-        title = relative.removesuffix(".py")
+        title = relative.removesuffix(".py").removesuffix("/__init__")
         sections += [f"## {title}", ""]
         if module_doc:
             sections += [module_doc, ""]

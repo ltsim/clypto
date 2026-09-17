@@ -28,8 +28,8 @@ taxonomic processing and intensive benchmarks in the `cmenpy` ecosystem.
 
     ---
 
-    Problems, decision variables, termination, seeding and custom optimizers
-    are covered in the [Tutorial](tutorial.md).
+    Problems, decision variables, termination, seeding, and compiling custom
+    optimizers are covered in the [Tutorial](tutorial.md).
 
 - :material-shape: **Browse the catalog**
 
