@@ -90,42 +90,7 @@ def precompile(cls: type) -> type:
         The Cython-compiled class (or ``cls`` itself when re-entered during
         compilation).
     """
-    global _PRECOMPILING
-
-    if _PRECOMPILING:
-        return cls
-
     if not (inspect.isclass(cls) and issubclass(cls, LegacyOptimizer)):
         raise TypeError("precompile() only supports LegacyOptimizer subclasses.")
 
-    version = _runtime.cython_version()
-
-    caller_globals = sys._getframe(1).f_globals
-    names = sorted(
-        name
-        for name in caller_globals
-        if name.isidentifier() and not (name.startswith("__") and name.endswith("__"))
-    )
-
-    try:
-        source = textwrap.dedent(inspect.getsource(cls))
-    except (OSError, TypeError) as exc:
-        raise RuntimeError(
-            "precompile() needs access to the class source; it is unavailable "
-            "in a REPL, notebook, or dynamically created class."
-        ) from exc
-
-    module_name = _builder.build_module_name(
-        cls.__name__, _runtime.source_digest(source, version)
-    )
-
-    _PRECOMPILING = True
-
-    try:
-        compiled_cls = _builder.compile_class(cls, source, module_name, names)
-    finally:
-        _PRECOMPILING = False
-
-    compiled_cls.__clypto_precompiled__ = True  # type: ignore[attr-defined]
-
-    return compiled_cls
+    return compile_decorated(cls)

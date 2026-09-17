@@ -22,6 +22,7 @@ _METRIC_NAMES = (
     "nfe",
     "epoch_pop_size",
 )
+_COMPRESSORS = [BloscCodec(cname="zstd", clevel=3)]
 
 
 class Tracker:
@@ -59,7 +60,6 @@ class Tracker:
         self._optimizer = None
         self._recording = False
         self._capture_population = False
-        self._capture_metrics = False
         self._n_dims = 0
         self._n_objs: typing.Optional[int] = None
         self._minmax = "min"
@@ -93,7 +93,6 @@ class Tracker:
         problem,
         seed: typing.Optional[int] = None,
         capture_population: bool = False,
-        capture_metrics: bool = True,
         history_path: typing.Optional[str] = None,
     ) -> None:
         """Open the store and prepare the arrays for a new run."""
@@ -103,7 +102,6 @@ class Tracker:
         self._group = zarr.open_group(store=self._store, mode="w")
 
         self._capture_population = bool(capture_population)
-        self._capture_metrics = bool(capture_metrics)
         self._n_dims = int(problem.n_dims)
         self._n_objs = None
         self._minmax = problem.minmax
@@ -157,25 +155,24 @@ class Tracker:
             if self._n_objs > 1:
                 self._group["objectives"][idx, :n_agents] = self._objectives(pop)
 
-        if self._capture_metrics:
-            fits = self._fitnesses(pop)
-            if self._minmax == "min":
-                c_best, c_worst = float(np.min(fits)), float(np.max(fits))
-            else:
-                c_best, c_worst = float(np.max(fits)), float(np.min(fits))
-            positions = self._solutions(pop)
-            diversity = float(np.mean(np.abs(np.median(positions, axis=0) - positions)))
+        fits = self._fitnesses(pop)
+        if self._minmax == "min":
+            c_best, c_worst = float(np.min(fits)), float(np.max(fits))
+        else:
+            c_best, c_worst = float(np.max(fits)), float(np.min(fits))
+        positions = self._solutions(pop)
+        diversity = float(np.mean(np.abs(np.median(positions, axis=0) - positions)))
 
-            metrics = self._metrics
-            metrics["global_best_fit"].append(float(global_best_fit))
-            metrics["current_best_fit"].append(c_best)
-            metrics["current_worst_fit"].append(c_worst)
-            metrics["mean_fit"].append(float(np.mean(fits)))
-            metrics["std_fit"].append(float(np.std(fits)))
-            metrics["diversity"].append(diversity)
-            metrics["epoch_time"].append(float(runtime))
-            metrics["nfe"].append(int(nfe))
-            metrics["epoch_pop_size"].append(int(n_agents))
+        metrics = self._metrics
+        metrics["global_best_fit"].append(float(global_best_fit))
+        metrics["current_best_fit"].append(c_best)
+        metrics["current_worst_fit"].append(c_worst)
+        metrics["mean_fit"].append(float(np.mean(fits)))
+        metrics["std_fit"].append(float(np.std(fits)))
+        metrics["diversity"].append(diversity)
+        metrics["epoch_time"].append(float(runtime))
+        metrics["nfe"].append(int(nfe))
+        metrics["epoch_pop_size"].append(int(n_agents))
 
         self._n_recorded += 1
 
@@ -191,25 +188,24 @@ class Tracker:
                 arr = self._group[name]
                 arr.resize((n_epochs,) + arr.shape[1:])
 
-        if self._capture_metrics:
-            diversity = np.asarray(self._metrics["diversity"], dtype=np.float64)
-            if diversity.size and np.max(diversity) > 0:
-                exploration = 100.0 * diversity / np.max(diversity)
-            else:
-                exploration = np.zeros_like(diversity)
-            self._metrics["exploration"] = exploration.tolist()
-            self._metrics["exploitation"] = (100.0 - exploration).tolist()
+        diversity = np.asarray(self._metrics["diversity"], dtype=np.float64)
+        if diversity.size and np.max(diversity) > 0:
+            exploration = 100.0 * diversity / np.max(diversity)
+        else:
+            exploration = np.zeros_like(diversity)
+        self._metrics["exploration"] = exploration.tolist()
+        self._metrics["exploitation"] = (100.0 - exploration).tolist()
 
-            metrics_group = self._group.create_group("metrics")
-            for name in _METRIC_NAMES:
-                arr = metrics_group.create_array(
-                    name,
-                    shape=(n_epochs,),
-                    chunks=(max(n_epochs, 1),),
-                    dtype="float64",
-                    fill_value=np.nan,
-                )
-                arr[:] = np.asarray(self._metrics[name], dtype=np.float64)
+        metrics_group = self._group.create_group("metrics")
+        for name in _METRIC_NAMES:
+            arr = metrics_group.create_array(
+                name,
+                shape=(n_epochs,),
+                chunks=(max(n_epochs, 1),),
+                dtype="float64",
+                fill_value=np.nan,
+            )
+            arr[:] = np.asarray(self._metrics[name], dtype=np.float64)
 
         self._group.attrs["n_epochs"] = int(n_epochs)
         if self._n_objs is not None:
@@ -246,9 +242,6 @@ class Tracker:
             dtype=np.float64,
         )
 
-    def _compressors(self):
-        return [BloscCodec(cname="zstd", clevel=3)]
-
     def _create_population_arrays(self) -> None:
         self._group.create_array(
             "solution",
@@ -256,7 +249,7 @@ class Tracker:
             chunks=(1, self._max_pop, self._n_dims),
             dtype="float64",
             fill_value=np.nan,
-            compressors=self._compressors(),
+            compressors=_COMPRESSORS,
         )
         self._group.create_array(
             "fitness",
@@ -264,7 +257,7 @@ class Tracker:
             chunks=(1, self._max_pop),
             dtype="float64",
             fill_value=np.nan,
-            compressors=self._compressors(),
+            compressors=_COMPRESSORS,
         )
 
     def _create_objectives_array(self) -> None:
@@ -274,7 +267,7 @@ class Tracker:
             chunks=(1, self._max_pop, int(self._n_objs)),
             dtype="float64",
             fill_value=np.nan,
-            compressors=self._compressors(),
+            compressors=_COMPRESSORS,
         )
 
     def _grow_epoch(self, idx: int) -> None:

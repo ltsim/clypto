@@ -14,6 +14,7 @@ import re
 import typing
 
 __all__ = [
+    "Declaration",
     "parse_declaration_params",
     "decorate_with_base",
     "collect_declarations",
@@ -44,6 +45,30 @@ def parse_declaration_params(params: typing.Any) -> tuple[typing.Any, typing.Any
         bound = None
 
     return dtype, bound, default
+
+
+class Declaration:
+    """Base for the ``Attribute``/``Argument`` bracket declarations.
+
+    Concrete subclasses exist only so ``isinstance`` can tell an agent
+    attribute from an optimizer argument; the storage and ``[...]`` parsing
+    are identical.
+    """
+
+    __slots__ = ("type", "bound", "default")
+
+    def __init__(
+        self,
+        dtype: typing.Any = None,
+        bound: typing.Any = None,
+        default: typing.Any = None,
+    ) -> None:
+        self.type = dtype
+        self.bound = bound
+        self.default = default
+
+    def __class_getitem__(cls, params: typing.Any) -> "Declaration":
+        return cls(*parse_declaration_params(params))
 
 
 def decorate_with_base(cls: typing.Any, base: typing.Any) -> typing.Any:

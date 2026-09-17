@@ -305,7 +305,6 @@ class LegacyOptimizer(BaseOptimizer):
                 problem=self.problem,
                 seed=seed,
                 capture_population=track_population,
-                capture_metrics=True,
                 history_path=history_path,
             )
 

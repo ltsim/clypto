@@ -3,14 +3,12 @@
 # --------------------------------------------------%
 """The ``Attribute`` declaration used by ``@cy.agent`` classes."""
 
-import typing
-
-from clypto.precompile.decoration import parse_declaration_params
+from clypto.precompile.decoration import Declaration
 
 __all__ = ["Attribute"]
 
 
-class Attribute:
+class Attribute(Declaration):
     """Declare a per-agent attribute on a class decorated with ``@cy.agent``.
 
     Example::
@@ -30,12 +28,4 @@ class Attribute:
         default: Value used when an agent is generated without an explicit one.
     """
 
-    __slots__ = ("type", "bound", "default")
-
-    def __init__(self, dtype: typing.Any = None, bound: typing.Any = None, default: typing.Any = None) -> None:
-        self.type = dtype
-        self.bound = bound
-        self.default = default
-
-    def __class_getitem__(cls, params: typing.Any) -> "Attribute":
-        return cls(*parse_declaration_params(params))
+    __slots__ = ()

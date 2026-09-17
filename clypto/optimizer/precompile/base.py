@@ -20,18 +20,12 @@ from clypto.utils.validator import Validator
 __all__ = ["DecoratedOptimizer"]
 
 
-class _Bounds:
+class _Bounds(typing.NamedTuple):
     """A tiny ``lb``/``ub``/``ndim`` view of the bound problem."""
 
-    __slots__ = ("lb", "ub", "ndim")
-
-    def __init__(self, lb: NDArrayType, ub: NDArrayType, ndim: int) -> None:
-        self.lb = lb
-        self.ub = ub
-        self.ndim = ndim
-
-    def __repr__(self) -> str:
-        return f"Bounds(ndim={self.ndim})"
+    lb: NDArrayType
+    ub: NDArrayType
+    ndim: int
 
 
 def _coerce_argument(name: str, declaration: Argument, value: typing.Any) -> typing.Any:

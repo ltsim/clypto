@@ -45,14 +45,6 @@ class Population:
         for _ in range(int(n_pop)):
             self.append(optimizer.generate_agent())
 
-    @property
-    def ndim(self) -> int:
-        return self._ndim
-
-    @property
-    def minmax(self) -> str:
-        return self._minmax
-
     def __len__(self) -> int:
         return len(self._agents)
 
@@ -73,9 +65,7 @@ class Population:
     def solutions(self, values: typing.Any) -> None:
         # Assigning the matrix routes every row through the agent's solution
         # setter, so each agent is re-evaluated and its fitness refreshed.
-        values = np.asarray(values, dtype=float)
-        if values.ndim == 1:
-            values = values.reshape(1, -1)
+        values = np.atleast_2d(np.asarray(values, dtype=float))
         if values.shape[0] != len(self._agents):
             raise ValueError(
                 f"Expected {len(self._agents)} solutions, got {values.shape[0]}."
