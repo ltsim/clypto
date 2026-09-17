@@ -26,6 +26,12 @@ jobs:
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_WINDOWS: "AMD64"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
+          # numpy >= 2.4 dropped manylinux2014 (glibc 2.17) wheels and now
+          # ships manylinux_2_28 only. On the default manylinux2014 image pip
+          # falls back to compiling numpy from source, which fails against the
+          # image's GCC 10.2 ("NumPy requires GCC >= 10.3"). Build on
+          # manylinux_2_28 so the prebuilt numpy/scipy wheels are used instead.
+          CIBW_MANYLINUX_X86_64_IMAGE: "manylinux_2_28"
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
