@@ -124,13 +124,17 @@ def class_source_with_base(
     import textwrap
 
     source = textwrap.dedent(inspect.getsource(cls))
-    pattern = re.compile(rf"^class\s+{re.escape(cls.__name__)}\s*:", re.M)
+    pattern = re.compile(rf"^class\s+{re.escape(cls.__name__)}\s*(\([^)]*\))?\s*:", re.M)
 
     count = 0
 
     def replace(match: re.Match) -> str:
         nonlocal count
         count += 1
+        # A class that already names bases (e.g. explicit inheritance) keeps its
+        # header; the base is only injected when the source does not name one.
+        if match.group(1) is not None:
+            return match.group(0)
         return f"class {cls.__name__}({base_name}):"
 
     source = pattern.sub(replace, source, count=1)

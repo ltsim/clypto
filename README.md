@@ -177,7 +177,7 @@ class MyClassicOptimizer:
 ```
 
 The classic base class was renamed `Optimizer` → `LegacyOptimizer`; `cy.Optimizer`
-is kept as an alias. See the [migration guide](https://ltsim.github.io/clypto/migration/).
+is kept as an alias. See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
 
 Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or
 `precompile=True` to `@cy.legacy`, and install the `compile` extra:

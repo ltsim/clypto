@@ -25,8 +25,7 @@ class Search:
     def evolve(self, epoch):
         pass
 
-    def generate_agent(self, solution=None):
-        agent = super().generate_agent(solution)
+    def generate(self, agent, solution):
         agent.v = 1
         return agent
 

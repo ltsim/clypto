@@ -28,14 +28,21 @@ taxonomic processing and intensive benchmarks in the `cmenpy` ecosystem.
 
     ---
 
-    Problems, decision variables, termination, seeding, and compiling custom
-    optimizers are covered in the [Tutorial](tutorial.md).
+    Problems, decision variables, termination, and seeding are covered in the
+    [Tutorial](tutorial.md).
+
+- :material-pencil: **Write your own optimizer**
+
+    ---
+
+    Implement a custom metaheuristic from scratch with the
+    [Custom optimizers](custom-optimizers/index.md) series.
 
 - :material-shape: **Browse the catalog**
 
     ---
 
-    Explore all **244 optimizers across 157 modules**, grouped by
+    Explore all **244 optimizers across 147 modules**, grouped by
     [taxonomy category](categories/index.md).
 
 - :material-alert-circle: **Check before you benchmark**

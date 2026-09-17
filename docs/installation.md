@@ -1,6 +1,6 @@
 # Installation
 
-clypto supports CPython 3.10–3.14 and depends only on `numpy` and `scipy` at
+clypto supports CPython 3.11–3.14 and depends on `numpy`, `scipy`, and `zarr` at
 runtime.
 
 ## Precompiled wheels (no compiler needed)

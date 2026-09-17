@@ -129,6 +129,11 @@ class RandomSearch:
 `epoch` and `pop_size` are provided by the base class, so only algorithm-specific
 hyper-parameters need an `Argument`.
 
+> For type-checked code, inherit the base explicitly instead of relying on the
+> decorator: `class RandomSearch(cy.DecoratedOptimizer)`. mypy cannot see the
+> base that `@cy.optimizer` injects, so only the explicit form types
+> `self.population`, `self.generate_agent`, `self.bounds` and `self.rng`.
+
 ### `initialize` replaces the constructor
 
 There is no `__init__` in the decorator API — set up state in `initialize`,
@@ -153,7 +158,7 @@ inside the problem bounds.
 ### Agent attributes
 
 If the algorithm needs per-agent state, declare an agent and pass it to the
-optimizer. Use `generate_agent` to seed attributes:
+optimizer. Use `generate` to seed attributes:
 
 ```python
 @cy.agent
@@ -163,8 +168,7 @@ class Particle:
 
 @cy.optimizer(agent=Particle)
 class MyPSO:
-    def generate_agent(self, solution=None):
-        agent = super().generate_agent(solution)
+    def generate(self, agent, solution):
         agent.velocity = self.rng.normal(0, 1, self.bounds.ndim)
         return agent
 
@@ -197,12 +201,3 @@ class MyClassic:
 Install the `compile` extra (`pip install "clypto[compile]"`). Without Cython or
 a compiler, plain (uncompiled) classes still run; the compile flags fail loudly
 instead of silently skipping the build.
-
-## 5. Checklist
-
-- [ ] Replace `Optimizer` with `LegacyOptimizer`, or drop the base and add `@cy.legacy`.
-- [ ] Replace `@cy.precompile` with `@cy.legacy(precompile=True)` (or the decorator API's `compile=True`).
-- [ ] For new algorithms, prefer `@cy.optimizer` + `cy.Argument`; remember there is no `__init__`.
-- [ ] Use `self.population`, `self.rng`, `self.bounds`, and `agent.fitness` instead of `self.pop`, `self.generator`, and `agent.target.fitness`.
-- [ ] Never assign `agent.fitness`; assign `agent.solution` and it is recomputed.
-- [ ] Run the tests with `uv sync --extra dev --extra compile && uv run pytest tests/`.

@@ -158,8 +158,8 @@ from clypto.collection.swarm_based import (
 )
 from clypto.collection.system_based import AEO, GCO
 from clypto.collection.system_based import WCA
-from clypto.agents.precompile import Attribute, agent
-from clypto.optimizer.precompile import Argument, legacy, optimizer
+from clypto.agents.precompile import Attribute, RuntimeAgent, agent
+from clypto.optimizer.precompile import Argument, DecoratedOptimizer, legacy, optimizer
 from clypto.optimizer.legacy import LegacyOptimizer
 from clypto.utils import Problem
 from clypto.utils.population import Population
@@ -274,6 +274,7 @@ def get_optimizer_by_name(name: str, verbose=False):
 __all__ = [
     "Problem", "Optimizer", "LegacyOptimizer",
     "agent", "optimizer", "legacy", "Attribute", "Argument", "Population",
+    "DecoratedOptimizer", "RuntimeAgent",
     "IntegerVar",
     "FloatVar",
     "StringVar",

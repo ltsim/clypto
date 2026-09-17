@@ -51,8 +51,7 @@ class TaggedSearch:
     def evolve(self, epoch):
         pass
 
-    def generate_agent(self, solution=None):
-        agent = super().generate_agent(solution)
+    def generate(self, agent, solution):
         agent.tag = 99
         return agent
 
@@ -160,7 +159,7 @@ def test_initialize_override_is_used(problem):
     assert g_best.fitness == pytest.approx(0.0)
 
 
-def test_generate_agent_override(problem):
+def test_generate_override(problem):
     optimizer = TaggedSearch(epoch=3, pop_size=8)
     g_best = optimizer.solve(problem, seed=1)
 

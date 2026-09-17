@@ -45,15 +45,28 @@ class FastAgent:
 class FastSearch:
     alpha: cy.Argument[float, (0.0, 1.0), 0.5]
 
+    def generate(self, agent, solution):
+        agent.v = 0.25
+        return agent
+
     def evolve(self, epoch):
         for idx in range(len(self.population)):
             self.population[idx].solution = self.population[idx].solution * (1 - self.alpha)
-            self.population[idx].v = self.alpha
 
 
 @cy.optimizer(compile=True)
 class DirectImportSearch:
     rank: Argument[int, (0, 10), 1]
+
+    def evolve(self, epoch):
+        pass
+
+
+@cy.optimizer(compile=True)
+class ExplicitBaseSearch(cy.DecoratedOptimizer):
+    """An explicitly-inheriting class must compile without base injection."""
+
+    rank: cy.Argument[int, (0, 10), 1]
 
     def evolve(self, epoch):
         pass
@@ -68,7 +81,9 @@ def problem():
     )
 
 
-@pytest.mark.parametrize("cls", [LegacyRS, FastAgent, FastSearch, DirectImportSearch])
+@pytest.mark.parametrize(
+    "cls", [LegacyRS, FastAgent, FastSearch, DirectImportSearch, ExplicitBaseSearch]
+)
 def test_classes_are_compiled(cls):
     assert cls.__clypto_precompiled__ is True
     assert cls.__module__.startswith("_clypto_")
@@ -102,4 +117,12 @@ def test_compiled_optimizer_decorator_solves(problem):
 
     assert g_best.solution.shape == (N_DIMS,)
     assert np.isfinite(g_best.fitness)
-    assert all(agent.v == pytest.approx(0.5) for agent in optimizer.population)
+    assert all(agent.v == pytest.approx(0.25) for agent in optimizer.population)
+
+
+def test_compiled_explicit_base_solves(problem):
+    optimizer = ExplicitBaseSearch(epoch=5, pop_size=6)
+    g_best = optimizer.solve(problem, seed=1)
+
+    assert g_best.solution.shape == (N_DIMS,)
+    assert np.isfinite(g_best.fitness)

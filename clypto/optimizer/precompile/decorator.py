@@ -6,7 +6,8 @@
 * ``@cy.optimizer(agent=MyAgent)`` — a new-style optimizer. Its hyper-parameters
   are declared as :class:`Argument` attributes and it implements ``initialize``
   and ``evolve``. The base class supplies ``solve``, ``self.population``,
-  ``self.rng``, ``self.bounds`` and ``generate_agent``.
+  ``self.rng``, ``self.bounds`` and ``generate_agent``, plus the overridable
+  ``generate(agent, solution)`` hook for seeding custom agent state.
 * ``@cy.legacy(precompile=False)`` — the classic MEALPY-style API (``self.pop``,
   ``self.validator``, ``generate_empty_agent``, ...) without having to name the
   base class; ``precompile=True`` Cython-compiles it.

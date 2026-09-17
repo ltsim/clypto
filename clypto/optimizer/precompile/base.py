@@ -65,6 +65,15 @@ class DecoratedOptimizer:
     epoch = Argument[int, [1, 1000000], 100]  # type: ignore[type-arg, valid-type]
     pop_size = Argument[int, [5, 10000], 30]  # type: ignore[type-arg, valid-type]
 
+    # Declared (not assigned) so typed ``initialize``/``evolve`` bodies see the
+    # concrete types; all are set by ``_bind_problem``/``solve`` before they run.
+    problem: Problem
+    rng: np.random.Generator
+    population: Population
+    g_best: RuntimeAgent
+    bounds: _Bounds
+    termination: typing.Optional[Termination]
+
     def __init__(self, **kwargs: typing.Any) -> None:
         spec = getattr(type(self), "__clypto_arguments__", None)
         if spec is None:
@@ -82,12 +91,6 @@ class DecoratedOptimizer:
             raise TypeError(f"Unexpected optimizer argument(s): {sorted(kwargs)}.")
 
         self._nfe = 0
-        self.problem: typing.Optional[Problem] = None
-        self.rng: typing.Optional[np.random.Generator] = None
-        self.population: typing.Optional[Population] = None
-        self.g_best: typing.Optional[RuntimeAgent] = None
-        self.bounds: typing.Optional[_Bounds] = None
-        self.termination: typing.Optional[Termination] = None
 
     # -- lifecycle ---------------------------------------------------------
     def initialize(self) -> None:
@@ -139,14 +142,25 @@ class DecoratedOptimizer:
         self._nfe += 1
         return self.problem.get_target(solution)
 
+    def generate(self, agent: RuntimeAgent, solution: NDArrayType) -> RuntimeAgent:
+        """Seed extra state on a freshly created agent before it is evaluated.
+
+        Override this to initialise algorithm-specific attributes (velocity,
+        memory, a tag, ...). The agent already carries the declared ``@cy.agent``
+        defaults and is not yet evaluated; return the agent to keep, which the
+        base then evaluates by assigning its solution.
+        """
+        return agent
+
     def generate_agent(self, solution: typing.Optional[NDArrayType] = None) -> RuntimeAgent:
-        """Create a fully evaluated agent; override to seed custom attributes."""
+        """Create a fully evaluated agent through the ``generate`` hook."""
         assert self.problem is not None
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
         agent = self.agent_class()
         object.__setattr__(agent, "_evaluator", self.evaluate_agent)
+        agent = self.generate(agent, solution)
         agent.solution = solution
         return agent
 
