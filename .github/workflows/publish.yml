@@ -23,6 +23,8 @@ jobs:
           # Precompiled wheel per CPython version; Cython+numpy come from
           # [build-system].requires, so no CIBW_BEFORE_BUILD needed.
           CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS_WINDOWS: "AMD64"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
           CIBW_TEST_REQUIRES: "pytest"
           # Run the smoke suite in each clean test env against the built wheel.
