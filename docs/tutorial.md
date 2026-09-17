@@ -141,6 +141,28 @@ The execution lifecycle is: `check_problem` → `initialize_variables` →
 `before_initialization` → `initialization` → `after_initialization` →
 `before_main_loop` → `evolve(epoch)` (repeated) → `track_optimize_process`.
 
+### Compiling a custom optimizer
+
+Decorate a custom optimizer with `cy.precompile` to compile its methods to a
+native extension at import time (via `pyximport`):
+
+```python
+import clypto as cy
+
+
+@cy.precompile
+class RandomSearch(cy.Optimizer):
+    ...
+```
+
+The decorator returns the compiled class and caches the build by source hash, so
+unchanged code is not rebuilt. It needs the `compile` extra
+(`pip install "clypto[compile]"`) and fails loudly without it: `ImportError`
+when Cython is missing, `RuntimeError` when the source is unavailable
+(REPL/notebook) or compilation fails. The class stays a regular Python class —
+`Optimizer` is not a `cdef class` — so add `cython.declare` typing inside
+`evolve` to get the most out of the compiled build.
+
 ## Stopping criteria
 
 By default an optimizer stops after `epoch` generations. You can also pass a

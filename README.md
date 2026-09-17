@@ -126,6 +126,45 @@ $ uv run pytest tests/          # or: make uv-test
 
 > **Note:** a fresh clone ships only its `.py` sources. Compile first (`uv sync --extra dev` or `pip install .`), otherwise clypto runs as un-compiled Python and its compiled-by-design performance is lost.
 
+## Custom optimizers with just-in-time compilation
+
+Write your own optimizer and let clypto compile it to a native extension on
+import with `@cy.precompile` (backed by `pyximport`):
+
+```python
+import numpy as np
+import clypto as cy
+
+
+@cy.precompile
+class MyOptimizer(cy.Optimizer):
+    def __init__(self, epoch=100, pop_size=30, **kwargs):
+        super().__init__(**kwargs)
+        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
+        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
+        self.set_parameters(["epoch", "pop_size"])
+        self.sort_flag = True
+
+    def evolve(self, epoch):
+        for idx in range(self.pop_size):
+            pos_new = self.correct_solution(self.problem.generate_solution(encoded=True))
+            agent = self.generate_empty_agent(pos_new)
+            agent.target = self.get_target(pos_new)
+            self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+```
+
+Install the `compile` extra first — it pulls in the Cython and `setuptools`
+that the JIT build needs:
+
+```bash
+$ pip install "clypto[compile]"
+```
+
+The decorator returns the compiled class and caches it by source hash, so
+unchanged code is not rebuilt. It fails loudly rather than running uncompiled:
+`ImportError` if Cython is missing, `RuntimeError` if the source cannot be read
+(REPL/notebook) or compilation fails.
+
 ## Optimizer Classification Table
 
 * Meta-heuristic Categories: ([Based on this article](https://doi.org/10.1016/j.procs.2020.09.075))

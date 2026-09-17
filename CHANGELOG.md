@@ -6,6 +6,23 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Just-in-time compilation for user optimizers
+
++ Added `clypto.precompile`, a decorator that Cython-compiles a user-defined `Optimizer` subclass at import time through `pyximport`:
+
+  ```python
+  import clypto as cy
+
+  @cy.precompile
+  class MyOptimizer(cy.Optimizer):
+      ...
+  ```
+
++ The decorator reads the class source, writes a content-hashed `.pyx` into a cache directory (`CLYPTO_PRECOMPILE_DIR`, default `<tmp>/clypto-precompiled`), builds it with the package's compiler directives (`language_level=3`, `boundscheck=False`, `cdivision=True`), and returns the compiled class. Unchanged source reuses the cached extension, and the generated module copies the defining module's globals so the class compiles with its own imports and helpers in scope.
++ Cython and `setuptools` (needed by `pyximport` on Python 3.12+) are pulled in through a new optional `compile` extra: `pip install "clypto[compile]"`. Both remain optional at runtime.
++ Fails loudly instead of silently running uncompiled: `ImportError` when Cython is unavailable, `RuntimeError` when the source cannot be read (REPL/notebook) or compilation fails.
++ User classes stay regular Python classes (a `cdef class` cannot subclass `Optimizer`), so typing locals with `cython.declare` is what unlocks the larger speedups.
+
 ### Packaging & build system
 
 + **One toolchain:** `uv` is now the single build/test workflow (`uv lock`, `uv sync --extra dev`, `uv run pytest tests/`). The Makefile was reduced to the `clean*` and `uv-lock`/`uv-sync`/`uv-test` targets; the pip-side `compile`/`install`/`all`/`dist` targets and the `python setup.py build_ext --inplace` flow they drove were removed.

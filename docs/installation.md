@@ -54,6 +54,21 @@ uv sync --extra dev
 uv run pytest tests/          # or: make uv-test
 ```
 
+## Just-in-time compilation (`compile` extra)
+
+`clypto.precompile` compiles user-defined `Optimizer` subclasses on import via
+`pyximport`, which needs Cython and `setuptools`. Install the `compile` extra:
+
+```bash
+pip install "clypto[compile]"
+```
+
+With uv, add it alongside the dev extra:
+
+```bash
+uv sync --extra dev --extra compile
+```
+
 ## Building these docs
 
 The documentation is built with MkDocs + Material. The docs toolchain does not
