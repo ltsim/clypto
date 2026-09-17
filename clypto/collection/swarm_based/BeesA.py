@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class CleverBookBeesA(Optimizer):
+class CleverBookBeesA(LegacyOptimizer):
     """
     The original version of: Bees Algorithm (CB-BeesA)
 
@@ -124,7 +124,7 @@ class CleverBookBeesA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -150,7 +150,7 @@ class CleverBookBeesA(Optimizer):
             )
 
 
-class OriginalBeesA(Optimizer):
+class OriginalBeesA(LegacyOptimizer):
     """
     The original version of: Bees Algorithm (BeesA)
 
@@ -268,7 +268,7 @@ class OriginalBeesA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -317,7 +317,7 @@ class OriginalBeesA(Optimizer):
         self.dyn_radius = self.dance_reduction * self.dance_radius
 
 
-class ProbBeesA(Optimizer):
+class ProbBeesA(LegacyOptimizer):
     """
     The original version of: Probabilistic Bees Algorithm (P-BeesA)
 
@@ -400,7 +400,7 @@ class ProbBeesA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

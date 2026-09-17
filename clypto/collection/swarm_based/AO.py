@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalAO(Optimizer):
+class OriginalAO(LegacyOptimizer):
     """
     The original version of: Aquila Optimization (AO)
 
@@ -55,7 +55,7 @@ class OriginalAO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -127,7 +127,7 @@ class OriginalAO(Optimizer):
             )
 
 
-class AAO(Optimizer):
+class AAO(LegacyOptimizer):
     """
     The original version of: Adaptive Aquila Optimizer (AAO)
 
@@ -183,7 +183,7 @@ class AAO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

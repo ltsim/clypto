@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalBWO(Optimizer):
+class OriginalBWO(LegacyOptimizer):
     """
     The original version of: Black Widow Optimization (BWO)
 
@@ -107,7 +107,7 @@ class OriginalBWO(Optimizer):
 
     def evolve(self, epoch: int) -> None:
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

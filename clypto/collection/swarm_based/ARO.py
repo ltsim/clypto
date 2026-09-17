@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalARO(Optimizer):
+class OriginalARO(LegacyOptimizer):
     """
     The original version of: Artificial Rabbits Optimization (ARO)
 
@@ -56,7 +56,7 @@ class OriginalARO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -112,7 +112,7 @@ class OriginalARO(Optimizer):
             )
 
 
-class LARO(Optimizer):
+class LARO(LegacyOptimizer):
     """
     The improved version of:  Lévy flight, and the selective opposition version of the artificial rabbit algorithm (LARO)
 
@@ -158,7 +158,7 @@ class LARO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -236,7 +236,7 @@ class LARO(Optimizer):
                         self.pop[idx].update(solution=pos_new, target=target)
 
 
-class IARO(Optimizer):
+class IARO(LegacyOptimizer):
     """
     The improved version of: Improved Artificial Rabbits Optimization (IARO)
 
@@ -283,7 +283,7 @@ class IARO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

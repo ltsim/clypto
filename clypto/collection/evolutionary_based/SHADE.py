@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 from scipy.stats import cauchy
 
 
-class OriginalSHADE(Optimizer):
+class OriginalSHADE(LegacyOptimizer):
     """
     The original version of: Success-History Adaptation Differential Evolution (OriginalSHADE)
 
@@ -84,7 +84,7 @@ class OriginalSHADE(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -184,7 +184,7 @@ class OriginalSHADE(Optimizer):
                 self.k_counter = 0
 
 
-class L_SHADE(Optimizer):
+class L_SHADE(LegacyOptimizer):
     """
     The original version of: Linear Population Size Reduction Success-History Adaptation Differential Evolution (LSHADE)
 
@@ -260,7 +260,7 @@ class L_SHADE(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

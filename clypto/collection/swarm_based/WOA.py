@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalWOA(Optimizer):
+class OriginalWOA(LegacyOptimizer):
     """
     The original version of: Whale Optimization Algorithm (WOA)
 
@@ -57,7 +57,7 @@ class OriginalWOA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -105,7 +105,7 @@ class OriginalWOA(Optimizer):
             self.pop = self.update_target_for_population(pop_new)
 
 
-class DevWOA(Optimizer):
+class DevWOA(LegacyOptimizer):
     """
     The developed version of: Whale Optimization Algorithm (WOA)
 
@@ -153,7 +153,7 @@ class DevWOA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -205,7 +205,7 @@ class DevWOA(Optimizer):
             )
 
 
-class HI_WOA(Optimizer):
+class HI_WOA(LegacyOptimizer):
     """
     The original version of: Hybrid Improved Whale Optimization Algorithm (HI-WOA)
 
@@ -269,7 +269,7 @@ class HI_WOA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -109,59 +109,154 @@ model.get_attributes()    # the full internal state
 
 ## Writing your own optimizer
 
-Subclass `Optimizer` and implement `evolve`. The base class already provides
-population creation, evaluation, best/worst tracking, and `solve`:
+clypto ships two ways to write an optimizer. The **decorator API** is the
+recommended route for new algorithms: it is compact, validates its own
+hyper-parameters, and can compile itself with Cython. The **classic API** is
+kept unchanged for the built-in catalog and for existing MEALPY-style code.
+The full conversion recipe lives in the [migration guide](migration.md).
+
+### The decorator API (`@cy.optimizer`)
+
+Decorate a plain class with `@cy.optimizer`, declare hyper-parameters with
+`cy.Argument`, and implement `initialize` (optional) and `evolve`:
 
 ```python
-from clypto.optimizer import Optimizer
+import numpy as np
+import clypto as cy
 
 
-class RandomSearch(Optimizer):
+@cy.optimizer
+class RandomSearch:
+    # name: cy.Argument(type, bound, default)
+    alpha: cy.Argument(float, (0.0, 1.0), 0.5)
+
+    def evolve(self, epoch):
+        for idx in range(len(self.population)):
+            candidate = self.generate_agent()
+            if candidate.fitness < self.population[idx].fitness:
+                self.population[idx].solution = candidate.solution
+
+
+problem = cy.Problem(
+    obj_func=lambda x: np.sum(x ** 2),
+    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
+    minmax="min",
+)
+
+optimizer = RandomSearch(epoch=200, pop_size=50)
+g_best = optimizer.solve(problem, seed=7)
+```
+
+`epoch` and `pop_size` are built in; every other declared `Argument` becomes a
+validated constructor parameter with its default. Bounds follow the validator
+convention (`tuple` exclusive, `list` inclusive), and unknown or out-of-range
+arguments raise immediately.
+
+Inside the optimizer the base class exposes:
+
+| Attribute | Meaning |
+| --- | --- |
+| `self.population` | The `Population` container (see below) |
+| `self.rng` | A seeded `numpy.random.Generator` (`seed=` from `solve`) |
+| `self.problem` | The bound `Problem` |
+| `self.bounds` | `lb`/`ub`/`ndim` view of the search space |
+| `self.g_best` | Best agent after `solve` returns |
+
+The `Population` gives you the whole solution matrix, the fitness vector, and
+the best/worst agents:
+
+```python
+self.population.solutions = self.rng.uniform(
+    self.bounds.lb, self.bounds.ub, (len(self.population), self.bounds.ndim)
+)                                    # assigning re-evaluates every agent
+pbest, pworst = self.population.best, self.population.worst
+self.population.remove(pworst.id)
+self.population.append(self.population.generate())
+```
+
+Agents expose `solution`, `fitness`, `target` and `id`. `fitness` is
+**read-only** and always derived from the objective: assigning `solution`
+recomputes it automatically, so it can never go stale. In-place maths works too,
+because `population[n].solution /= 2` routes through the same setter.
+
+### Custom agent attributes (`@cy.agent`)
+
+By default solutions carry no extra state. If an algorithm needs per-agent
+attributes (velocity, memory, tags, ...), declare an agent class:
+
+```python
+@cy.agent
+class MyAgent:
+    v: cy.Attribute(float, (0.0, 1.0), 0.5)
+
+
+@cy.optimizer(agent=MyAgent)
+class MyOptimizer:
+    def evolve(self, epoch):
+        for agent in self.population:
+            agent.solution = agent.solution * (1 - agent.v)
+
+
+optimizer = MyOptimizer(epoch=100, pop_size=40)
+```
+
+`cy.Attribute` mirrors `cy.Argument` for agents. To seed attributes from a
+distribution, override `generate_agent`:
+
+```python
+def generate_agent(self, solution=None):
+    agent = super().generate_agent(solution)
+    agent.v = self.rng.uniform(0, 1)
+    return agent
+```
+
+### The classic API (`@cy.legacy`)
+
+Existing MEALPY-style optimizers keep working unchanged. Decorate the class
+instead of naming the base; `super().__init__(**kwargs)`, `self.validator`,
+`self.pop`, and the whole classic feature set are still available:
+
+```python
+import clypto as cy
+
+
+@cy.legacy
+class RandomSearch:
     def __init__(self, epoch=100, pop_size=30, **kwargs):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
-        self.is_parallelizable = False
 
     def evolve(self, epoch):
         for idx in range(self.pop_size):
-            pos_new = self.correct_solution(
-                self.problem.generate_solution(encoded=True)
-            )
+            pos_new = self.correct_solution(self.problem.generate_solution(encoded=True))
             agent = self.generate_empty_agent(pos_new)
             agent.target = self.get_target(pos_new)
-            self.pop[idx] = self.get_better_agent(
-                self.pop[idx], agent, self.problem.minmax
-            )
+            self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
 ```
 
-The execution lifecycle is: `check_problem` → `initialize_variables` →
-`before_initialization` → `initialization` → `after_initialization` →
-`before_main_loop` → `evolve(epoch)` (repeated) → `track_optimize_process`.
+`@cy.legacy` injects `LegacyOptimizer` as a base (no inheritance needed) and
+also accepts a `precompile` flag.
 
 ### Compiling a custom optimizer
 
-Decorate a custom optimizer with `cy.precompile` to compile its methods to a
-native extension at import time (via `pyximport`):
+Both decorators can compile the class to a native extension at import time (via
+`pyximport`): pass `compile=True` to `@cy.optimizer` / `@cy.agent`, or
+`precompile=True` to `@cy.legacy`:
 
 ```python
-import clypto as cy
-
-
-@cy.precompile
-class RandomSearch(cy.Optimizer):
+@cy.optimizer(agent=MyAgent, compile=True)
+class MyOptimizer:
     ...
 ```
 
-The decorator returns the compiled class and caches the build by source hash, so
-unchanged code is not rebuilt. It needs the `compile` extra
-(`pip install "clypto[compile]"`) and fails loudly without it: `ImportError`
-when Cython is missing, `RuntimeError` when the source is unavailable
-(REPL/notebook) or compilation fails. The class stays a regular Python class —
-`Optimizer` is not a `cdef class` — so add `cython.declare` typing inside
-`evolve` to get the most out of the compiled build.
+Compilation is opt-in and needs the `compile` extra
+(`pip install "clypto[compile]"`) plus a C compiler. It fails loudly rather than
+running uncompiled: `ImportError` when Cython is missing, `RuntimeError` when the
+source is unavailable (REPL/notebook) or compilation fails. Builds are cached by
+source hash, so unchanged code is not rebuilt.
 
 ## Stopping criteria
 

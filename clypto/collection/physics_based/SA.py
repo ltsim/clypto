@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalSA(Optimizer):
+class OriginalSA(LegacyOptimizer):
     """
     The original version of: Simulated Annealing (SA)
 
@@ -73,7 +73,7 @@ class OriginalSA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -102,7 +102,7 @@ class OriginalSA(Optimizer):
         self.pop = [self.g_best.copy(), self.agent_current.copy()]
 
 
-class GaussianSA(Optimizer):
+class GaussianSA(LegacyOptimizer):
     """
     The developed version of: Gaussian Simulated Annealing (GaussianSA)
 
@@ -169,7 +169,7 @@ class GaussianSA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -197,7 +197,7 @@ class GaussianSA(Optimizer):
         self.pop = [self.g_best.copy(), self.agent_current.copy()]
 
 
-class SwarmSA(Optimizer):
+class SwarmSA(LegacyOptimizer):
     """
     The swarm version of: Simulated Annealing (SwarmSA)
 
@@ -325,7 +325,7 @@ class SwarmSA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 
 import clypto as cy
+from clypto.precompile import precompile
 
 pytest.importorskip("Cython")
 
@@ -15,8 +16,8 @@ def objective(solution):
     return np.sum(solution**2)
 
 
-@cy.precompile
-class RandomSearch(cy.Optimizer):
+@precompile
+class RandomSearch(cy.LegacyOptimizer):
     def __init__(self, epoch=50, pop_size=25, **kwargs):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
@@ -48,7 +49,7 @@ def problem():
 
 def test_precompile_returns_compiled_class():
     assert RandomSearch.__clypto_precompiled__ is True
-    assert issubclass(RandomSearch, cy.Optimizer)
+    assert issubclass(RandomSearch, cy.LegacyOptimizer)
 
 
 def test_precompile_actually_compiled():
@@ -66,13 +67,13 @@ def test_precompile_rejects_non_optimizer():
         pass
 
     with pytest.raises(TypeError):
-        cy.precompile(NotAnOptimizer)
+        precompile(NotAnOptimizer)
 
 
 def test_precompile_raises_without_cython(monkeypatch):
     runtime = sys.modules["clypto.precompile._runtime"]
 
-    class TempOptimizer(cy.Optimizer):
+    class TempOptimizer(cy.LegacyOptimizer):
         def evolve(self, epoch):
             pass
 
@@ -82,7 +83,7 @@ def test_precompile_raises_without_cython(monkeypatch):
     monkeypatch.setattr(runtime, "cython_version", no_cython)
 
     with pytest.raises(ImportError):
-        cy.precompile(TempOptimizer)
+        precompile(TempOptimizer)
 
 
 def test_precompiled_optimizer_solves(problem):

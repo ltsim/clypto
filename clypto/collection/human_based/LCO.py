@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalLCO(Optimizer):
+class OriginalLCO(LegacyOptimizer):
     """
     The original version of: Life Choice-based Optimization (LCO)
 
@@ -66,7 +66,7 @@ class OriginalLCO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -165,7 +165,7 @@ class DevLCO(OriginalLCO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -219,7 +219,7 @@ class DevLCO(OriginalLCO):
             )
 
 
-class ImprovedLCO(Optimizer):
+class ImprovedLCO(LegacyOptimizer):
     """
     The improved version: Life Choice-based Optimization (ILCO)
 
@@ -265,7 +265,7 @@ class ImprovedLCO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

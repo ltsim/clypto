@@ -22,7 +22,7 @@ from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
 
 
-class Optimizer(BaseOptimizer):
+class LegacyOptimizer(BaseOptimizer):
     """
     The base class of all classic algorithms. All methods in this class will be inherited
 
@@ -492,7 +492,7 @@ class Optimizer(BaseOptimizer):
         Returns:
             The best agent
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
         return pop[0].copy()
 
     @staticmethod
@@ -513,7 +513,7 @@ class Optimizer(BaseOptimizer):
         Returns:
             The worst agent
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
         return pop[-1].copy()
 
     @staticmethod
@@ -535,7 +535,7 @@ class Optimizer(BaseOptimizer):
         Returns:
             The sorted_population, n1 best agents and n2 worst agents
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
 
         if n_best is None:
             if n_worst is None:
@@ -567,7 +567,7 @@ class Optimizer(BaseOptimizer):
             The total fitness, the best fitness, and the worst fitness
         """
         total_fitness = np.sum([agent.target.fitness for agent in pop])
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
         return total_fitness, pop[0].target.fitness, pop[-1].target.fitness
 
     @staticmethod
@@ -661,7 +661,7 @@ class Optimizer(BaseOptimizer):
         Returns:
             The sorted and trimmed population with pop_size size
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
 
         return pop[:pop_size]
 

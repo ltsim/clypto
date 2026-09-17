@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalAGTO(Optimizer):
+class OriginalAGTO(LegacyOptimizer):
     """
     The original version of: Artificial Gorilla Troops Optimization (AGTO)
 
@@ -72,7 +72,7 @@ class OriginalAGTO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -151,7 +151,7 @@ class OriginalAGTO(Optimizer):
             )
 
 
-class MGTO(Optimizer):
+class MGTO(LegacyOptimizer):
     """
     The original version of: Modified Gorilla Troops Optimization (mGTO)
 
@@ -212,7 +212,7 @@ class MGTO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -1,3 +1,5 @@
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
-__all__ = ["Optimizer"]
+Optimizer = LegacyOptimizer
+
+__all__ = ["LegacyOptimizer", "Optimizer"]

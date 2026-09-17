@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class DevGSKA(Optimizer):
+class DevGSKA(LegacyOptimizer):
     """
     The developed version: Gaining Sharing Knowledge-based Algorithm (GSKA)
 
@@ -69,7 +69,7 @@ class DevGSKA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -153,7 +153,7 @@ class DevGSKA(Optimizer):
             )
 
 
-class OriginalGSKA(Optimizer):
+class OriginalGSKA(LegacyOptimizer):
     """
     The original version of: Gaining Sharing Knowledge-based Algorithm (GSKA)
 
@@ -223,7 +223,7 @@ class OriginalGSKA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

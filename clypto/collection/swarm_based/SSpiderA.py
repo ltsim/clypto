@@ -8,10 +8,10 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalSSpiderA(Optimizer):
+class OriginalSSpiderA(LegacyOptimizer):
     """
     The developed version of: Social Spider Algorithm (OriginalSSpiderA)
 
@@ -78,7 +78,7 @@ class OriginalSSpiderA(Optimizer):
 
     def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
         """
-        Overriding method in Optimizer class
+        Overriding method in LegacyOptimizer class
             + x: The position of s on the web.
             + train: The fitness of the current position of s
             + target_vibration: The target vibration of s in the previous iteration.
@@ -116,7 +116,7 @@ class OriginalSSpiderA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

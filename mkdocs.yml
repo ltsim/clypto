@@ -82,6 +82,7 @@ nav:
       - Installation: installation.md
       - Quickstart: quickstart.md
       - Tutorial: tutorial.md
+      - Migration: migration.md
   - Algorithm Categories:
       - Overview: categories/index.md
       - Evolutionary-based: categories/evolutionary_based.md

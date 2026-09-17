@@ -6,10 +6,10 @@
 import numpy as np
 
 from clypto.agents.dynamic import AgentDynamic
-from clypto.optimizer import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalPSO(Optimizer):
+class OriginalPSO(LegacyOptimizer):
     """
     The original version of: Particle Swarm Optimization (PSO)
 
@@ -98,7 +98,7 @@ class OriginalPSO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -131,7 +131,7 @@ class OriginalPSO(Optimizer):
                 )
 
 
-class AIW_PSO(Optimizer):
+class AIW_PSO(LegacyOptimizer):
     """
     The original version of: Adaptive Inertia Weight Particle Swarm Optimization (AIW-PSO)
 
@@ -221,7 +221,7 @@ class AIW_PSO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -259,7 +259,7 @@ class AIW_PSO(Optimizer):
                 )
 
 
-class LDW_PSO(Optimizer):
+class LDW_PSO(LegacyOptimizer):
     """
     The original version of: Linearly Decreasing inertia Weight Particle Swarm Optimization (LDW-PSO)
 
@@ -352,7 +352,7 @@ class LDW_PSO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -385,7 +385,7 @@ class LDW_PSO(Optimizer):
                 )
 
 
-class P_PSO(Optimizer):
+class P_PSO(LegacyOptimizer):
     """
     The original version of: Phasor Particle Swarm Optimization (P-PSO)
 
@@ -450,7 +450,7 @@ class P_PSO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -534,7 +534,7 @@ class HPSO_TVAC(P_PSO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -666,7 +666,7 @@ class C_PSO(P_PSO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -730,7 +730,7 @@ class C_PSO(P_PSO):
         )
 
 
-class CL_PSO(Optimizer):
+class CL_PSO(LegacyOptimizer):
     """
     The original version of: Comprehensive Learning Particle Swarm Optimization (CL-PSO)
 
@@ -819,7 +819,7 @@ class CL_PSO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

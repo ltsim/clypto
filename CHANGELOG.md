@@ -6,22 +6,29 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
-### Just-in-time compilation for user optimizers
+### Decorator-based optimizer API
 
-+ Added `clypto.precompile`, a decorator that Cython-compiles a user-defined `Optimizer` subclass at import time through `pyximport`:
++ **Classic base renamed:** `clypto.optimizer.Optimizer` is now `LegacyOptimizer`; `Optimizer` remains as a backward-compatible alias (`cy.Optimizer is cy.LegacyOptimizer`). All 147 catalog modules were migrated to inherit `LegacyOptimizer` without touching any algorithm body. `get_all_optimizers()` and the discovery helpers are unchanged.
++ **`@cy.optimizer`:** write a new algorithm as a plain class. Hyper-parameters are declared with `cy.Argument(type, bound, default)` instead of constructor/validator boilerplate; the class implements `initialize` (optional) and `evolve`, and the injected base supplies `solve`, `self.population`, `self.rng` (a seeded `numpy.random.Generator`), `self.problem`, `self.bounds` and `self.g_best`.
 
   ```python
-  import clypto as cy
+  @cy.optimizer
+  class MyOptimizer:
+      alpha: cy.Argument(float, (0.0, 1.0), 0.5)
 
-  @cy.precompile
-  class MyOptimizer(cy.Optimizer):
-      ...
+      def evolve(self, epoch):
+          for idx in range(len(self.population)):
+              candidate = self.generate_agent()
+              if candidate.fitness < self.population[idx].fitness:
+                  self.population[idx].solution = candidate.solution
   ```
 
-+ The decorator reads the class source, writes a content-hashed `.pyx` into a cache directory (`CLYPTO_PRECOMPILE_DIR`, default `<tmp>/clypto-precompiled`), builds it with the package's compiler directives (`language_level=3`, `boundscheck=False`, `cdivision=True`), and returns the compiled class. Unchanged source reuses the cached extension, and the generated module copies the defining module's globals so the class compiles with its own imports and helpers in scope.
-+ Cython and `setuptools` (needed by `pyximport` on Python 3.12+) are pulled in through a new optional `compile` extra: `pip install "clypto[compile]"`. Both remain optional at runtime.
-+ Fails loudly instead of silently running uncompiled: `ImportError` when Cython is unavailable, `RuntimeError` when the source cannot be read (REPL/notebook) or compilation fails.
-+ User classes stay regular Python classes (a `cdef class` cannot subclass `Optimizer`), so typing locals with `cython.declare` is what unlocks the larger speedups.
++ **`cy.Population`:** a new container backing `self.population`. It exposes the `(n_pop, ndim)` `solutions` matrix (assignment re-evaluates every agent), the read-only `fitness` vector, `best`/`worst`, and `append`/`remove`/`generate`, plus iteration and indexing. Agents expose `solution`, `fitness`, `target` and `id`; `fitness` is read-only and recomputed whenever `solution` is assigned (including in-place `population[n].solution /= 2`).
++ **`@cy.agent` + `cy.Attribute`:** declare per-agent attributes for algorithms that need extra per-solution state, and pass the class with `@cy.optimizer(agent=MyAgent)`. `generate_agent` can be overridden to seed attribute values from the RNG.
++ **`@cy.legacy(precompile=False)`:** the classic MEALPY-style API without naming a base class. The decorator injects `LegacyOptimizer`, so `super().__init__(**kwargs)`, `self.validator`, `self.pop` and `generate_empty_agent` keep working. It replaces `@cy.precompile`.
++ **Compilation is opt-in:** pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or `precompile=True` to `@cy.legacy`. Classes are compiled to a native extension at import time through the existing `pyximport` builder (content-hashed `.pyx` in `CLYPTO_PRECOMPILE_DIR`, default `<tmp>/clypto-precompiled`). The public `cy.precompile` decorator was removed; the builder internals remain. Cython and `setuptools` come from the optional `compile` extra (`pip install "clypto[compile]"`) and stay optional at runtime. It fails loudly instead of silently running uncompiled: `ImportError` when Cython is unavailable, `RuntimeError` when the source cannot be read (REPL/notebook) or compilation fails.
++ **Cython-safe declarations:** compiled classes materialize `cy.Argument`/`cy.Attribute` annotations as ordinary class assignments, because Cython drops class-body annotations in `.pyx` classes.
++ **Docs & tests:** new tutorial sections, a dedicated [migration guide](https://ltsim.github.io/clypto/migration/), and unit tests for the population, agent decorator, optimizer decorator, legacy decorator, and the compiled decorator path.
 
 ### Packaging & build system
 

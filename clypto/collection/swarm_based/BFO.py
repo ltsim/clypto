@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.classic import LegacyOptimizer
 
 
-class OriginalBFO(Optimizer):
+class OriginalBFO(LegacyOptimizer):
     """
     The original version of: Bacterial Foraging Optimization (BFO)
 
@@ -156,7 +156,7 @@ class OriginalBFO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -190,7 +190,7 @@ class OriginalBFO(Optimizer):
                     self.pop[idc] = self.generate_agent()
 
 
-class ABFO(Optimizer):
+class ABFO(LegacyOptimizer):
     """
     The original version of: Adaptive Bacterial Foraging Optimization (ABFO)
 
@@ -300,7 +300,7 @@ class ABFO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
