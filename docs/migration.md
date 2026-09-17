@@ -78,7 +78,7 @@ legacy `self.pop` list. The mapping is mechanical:
 | Classic API | Decorator API |
 | --- | --- |
 | `class X(Optimizer)` | `@cy.optimizer` on a plain class |
-| `__init__` + `self.validator.check_int/...` | `name: cy.Argument(type, bound, default)` |
+| `__init__` + `self.validator.check_int/...` | `name: cy.Argument[type, bound, default]` |
 | `self.set_parameters([...])` | automatic (`optimizer.parameters`) |
 | `self.pop` (list) | `self.population` (`Population`) |
 | `self.generator` (NumPy) / `self.rng` (random) | `self.rng` (`numpy.random.Generator`) |
@@ -158,7 +158,7 @@ optimizer. Use `generate_agent` to seed attributes:
 ```python
 @cy.agent
 class Particle:
-    velocity: cy.Attribute(float, default=0.0)
+    velocity: cy.Attribute[float, ..., 0.0]
 
 
 @cy.optimizer(agent=Particle)
@@ -181,7 +181,7 @@ Compilation is opt-in per class:
 ```python
 @cy.agent(compile=True)
 class Particle:
-    velocity: cy.Attribute(float, default=0.0)
+    velocity: cy.Attribute[float, ..., 0.0]
 
 
 @cy.optimizer(agent=Particle, compile=True)

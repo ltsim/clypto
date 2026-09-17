@@ -15,7 +15,7 @@ def objective(solution):
 
 @cy.optimizer
 class RandomSearch:
-    alpha: cy.Argument(float, (0.0, 1.0), 0.5)
+    alpha: cy.Argument[float, (0.0, 1.0), 0.5]
 
     def evolve(self, epoch):
         for idx in range(len(self.population)):
@@ -43,7 +43,7 @@ class CenteredSearch:
 
 @cy.agent
 class TaggedAgent:
-    tag: cy.Attribute(int, (0, 100), 0)
+    tag: cy.Attribute[int, (0, 100), 0]
 
 
 @cy.optimizer(agent=TaggedAgent)
@@ -59,7 +59,7 @@ class TaggedSearch:
 
 @cy.optimizer
 class ArraySearch:
-    weights: cy.Argument(np.ndarray, default=None)
+    weights: cy.Argument[np.ndarray]
 
     def evolve(self, epoch):
         pass
@@ -67,7 +67,15 @@ class ArraySearch:
 
 @cy.optimizer
 class FunctionArraySearch:
-    weights: cy.Argument(np.array, default=None)
+    weights: cy.Argument[np.array]
+
+    def evolve(self, epoch):
+        pass
+
+
+@cy.optimizer
+class DefaultedSearch:
+    rate: cy.Argument[float, ..., 0.25]
 
     def evolve(self, epoch):
         pass
@@ -176,6 +184,11 @@ def test_array_argument_accepts_numpy_types():
 
     with pytest.raises(TypeError):
         ArraySearch(weights=[0.1, 0.2])
+
+
+def test_ellipsis_skips_bound_and_keeps_default():
+    assert DefaultedSearch().rate == 0.25
+    assert DefaultedSearch(rate=0.5).rate == 0.5
 
 
 def test_public_decorator_api_is_exported():

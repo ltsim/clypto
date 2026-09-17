@@ -29,13 +29,17 @@ problem = cy.Problem(
 ## 2. A first optimizer
 
 Decorate a plain class with `@cy.optimizer` and implement `evolve`. Hyper-parameters
-are declared as class annotations with `cy.Argument(type, bound, default)`; the
+are declared as class annotations with `cy.Argument[type, bound, default]`; the
 base class supplies `epoch` and `pop_size`, the population, the RNG, and `solve`.
+
+The bracket syntax accepts `[type]`, `[type, bound]` and
+`[type, bound, default]`. Use `...` to skip the bound while keeping a default,
+e.g. `cy.Attribute[float, ..., 0.0]`.
 
 ```python
 @cy.optimizer
 class RandomSearch:
-    scale: cy.Argument(float, (0.0, 1.0), 0.5)
+    scale: cy.Argument[float, (0.0, 1.0), 0.5]
 
     def evolve(self, epoch):
         for idx in range(len(self.population)):
@@ -130,12 +134,12 @@ an agent with `cy.Attribute` and pass it to the optimizer:
 ```python
 @cy.agent
 class Particle:
-    velocity: cy.Attribute(float, default=0.0)
+    velocity: cy.Attribute[float, ..., 0.0]
 
 
 @cy.optimizer(agent=Particle)
 class MyPSO:
-    inertia: cy.Argument(float, (0.0, 1.5), 0.7)
+    inertia: cy.Argument[float, (0.0, 1.5), 0.7]
 
     def generate_agent(self, solution=None):
         agent = super().generate_agent(solution)
@@ -188,7 +192,7 @@ pip install "clypto[compile]"
 ```python
 @cy.agent(compile=True)
 class Particle:
-    velocity: cy.Attribute(float, default=0.0)
+    velocity: cy.Attribute[float, ..., 0.0]
 
 
 @cy.optimizer(agent=Particle, compile=True)

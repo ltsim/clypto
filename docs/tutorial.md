@@ -129,8 +129,8 @@ import clypto as cy
 
 @cy.optimizer
 class RandomSearch:
-    # name: cy.Argument(type, bound, default)
-    alpha: cy.Argument(float, (0.0, 1.0), 0.5)
+    # name: cy.Argument[type, bound, default]
+    alpha: cy.Argument[float, (0.0, 1.0), 0.5]
 
     def evolve(self, epoch):
         for idx in range(len(self.population)):
@@ -189,7 +189,7 @@ attributes (velocity, memory, tags, ...), declare an agent class:
 ```python
 @cy.agent
 class MyAgent:
-    v: cy.Attribute(float, (0.0, 1.0), 0.5)
+    v: cy.Attribute[float, (0.0, 1.0), 0.5]
 
 
 @cy.optimizer(agent=MyAgent)

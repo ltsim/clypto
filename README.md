@@ -139,7 +139,7 @@ import clypto as cy
 
 @cy.optimizer
 class MyOptimizer:
-    alpha: cy.Argument(float, (0.0, 1.0), 0.5)
+    alpha: cy.Argument[float, (0.0, 1.0), 0.5]
 
     def evolve(self, epoch):
         for idx in range(len(self.population)):

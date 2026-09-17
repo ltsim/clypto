@@ -1,0 +1,187 @@
+#!/usr/bin/env python
+# Created for clypto's decorator-based optimizer API.
+# --------------------------------------------------%
+"""The base class injected by ``@cy.optimizer``."""
+
+import time
+import typing
+
+import numpy as np
+from clypto.agents.template.runtime import RuntimeAgent
+from clypto.hints.array import NDArrayType
+from clypto.optimizer.template.declaration import Argument
+from clypto.precompile.decoration import collect_declarations
+from clypto.utils.population import Population
+from clypto.utils.problem import Problem
+from clypto.utils.target import Target
+from clypto.utils.termination import Termination
+from clypto.utils.validator import Validator
+
+__all__ = ["DecoratedOptimizer"]
+
+
+class _Bounds:
+    """A tiny ``lb``/``ub``/``ndim`` view of the bound problem."""
+
+    __slots__ = ("lb", "ub", "ndim")
+
+    def __init__(self, lb: NDArrayType, ub: NDArrayType, ndim: int) -> None:
+        self.lb = lb
+        self.ub = ub
+        self.ndim = ndim
+
+    def __repr__(self) -> str:
+        return f"Bounds(ndim={self.ndim})"
+
+
+def _coerce_argument(name: str, declaration: Argument, value: typing.Any) -> typing.Any:
+    dtype = declaration.type
+
+    if value is None or dtype is None:
+        return value
+
+    bound = declaration.bound
+
+    if dtype in (int, np.integer):
+        return Validator.check_int(name, value, bound)
+    if dtype in (float, np.floating):
+        return Validator.check_float(name, value, bound)
+    if dtype is str:
+        return Validator.check_str(name, value, bound)
+    if dtype is bool:
+        return Validator.check_bool(name, value, bound)
+
+    expected = np.ndarray if dtype in (np.ndarray, np.array) else dtype
+    if isinstance(value, expected):
+        return value
+    raise TypeError(f"'{name}' should be an instance of {getattr(expected, '__name__', expected)}.")
+
+
+class DecoratedOptimizer:
+    """Base class injected by ``@cy.optimizer``.
+
+    Subclasses implement ``initialize`` (optional) and ``evolve``. All other
+    lifecycle methods — problem binding, population creation, the epoch loop,
+    termination and returning the best agent — live here.
+    """
+
+    agent_class: typing.Any = RuntimeAgent
+    # ``Argument[...]`` is a runtime declaration, not a type annotation; mypy
+    # would otherwise parse the subscript as a (non-generic) type application.
+    epoch = Argument[int, [1, 1000000], 100]  # type: ignore[type-arg, valid-type]
+    pop_size = Argument[int, [5, 10000], 30]  # type: ignore[type-arg, valid-type]
+
+    def __init__(self, **kwargs: typing.Any) -> None:
+        spec = getattr(type(self), "__clypto_arguments__", None)
+        if spec is None:
+            spec = collect_declarations(type(self), (Argument,))
+            type(self).__clypto_arguments__ = spec  # type: ignore[attr-defined]
+
+        self.parameters: dict[str, typing.Any] = {}
+
+        for name, declaration in spec.items():
+            value = _coerce_argument(name, declaration, kwargs.pop(name, declaration.default))
+            setattr(self, name, value)
+            self.parameters[name] = value
+
+        if kwargs:
+            raise TypeError(f"Unexpected optimizer argument(s): {sorted(kwargs)}.")
+
+        self._nfe = 0
+        self.problem: typing.Optional[Problem] = None
+        self.rng: typing.Optional[np.random.Generator] = None
+        self.population: typing.Optional[Population] = None
+        self.g_best: typing.Optional[RuntimeAgent] = None
+        self.bounds: typing.Optional[_Bounds] = None
+        self.termination: typing.Optional[Termination] = None
+
+    # -- lifecycle ---------------------------------------------------------
+    def initialize(self) -> None:
+        """Hook the algorithm may override to set up ``self.population``.
+
+        The population is already generated (randomly, within bounds) before
+        this runs, so a default implementation is not required.
+        """
+        ...
+
+    def evolve(self, epoch: int) -> None:
+        raise NotImplementedError(f"{type(self).__name__} must implement evolve().")
+
+    def solve(
+        self,
+        problem: dict | Problem,
+        termination: typing.Optional[Termination | dict] = None,
+        seed: typing.Optional[int] = None,
+    ) -> RuntimeAgent:
+        """Run the optimizer and return the best agent found."""
+        self._bind_problem(problem, seed)
+        assert self.problem is not None and self.bounds is not None
+
+        self._nfe = 0
+        pop_size = typing.cast(int, self.pop_size)
+        epochs = typing.cast(int, self.epoch)
+        self.rng = np.random.default_rng(seed)
+        self.termination = self._build_termination(termination)
+        self.population = Population(pop_size, self.bounds.ndim, self, self.problem.minmax)
+
+        self.initialize()
+        self.g_best = self.population.best
+
+        for epoch in range(1, epochs + 1):
+            self.evolve(epoch)
+            self.g_best = self.population.best
+
+            if self.termination is not None and self.termination.should_terminate(
+                epoch, self._nfe, time.perf_counter(), 0
+            ):
+                break
+
+        return self.g_best
+
+    # -- helpers -----------------------------------------------------------
+    def evaluate_agent(self, solution: NDArrayType) -> Target:
+        """Evaluate one solution, counting a function evaluation."""
+        assert self.problem is not None
+        self._nfe += 1
+        return self.problem.get_target(solution)
+
+    def generate_agent(self, solution: typing.Optional[NDArrayType] = None) -> RuntimeAgent:
+        """Create a fully evaluated agent; override to seed custom attributes."""
+        assert self.problem is not None
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+
+        agent = self.agent_class()
+        object.__setattr__(agent, "_evaluator", self.evaluate_agent)
+        agent.solution = solution
+        return agent
+
+    def _bind_problem(self, problem: dict | Problem, seed: typing.Optional[int]) -> None:
+        if isinstance(problem, Problem):
+            problem.seed = seed
+            self.problem = problem
+        elif isinstance(problem, dict):
+            self.problem = Problem(**{**problem, "seed": seed})
+        else:
+            raise ValueError("problem needs to be a dict or an instance of Problem class.")
+
+        self.bounds = _Bounds(
+            np.asarray(self.problem.lb, dtype=float),
+            np.asarray(self.problem.ub, dtype=float),
+            self.problem.n_dims,
+        )
+
+    def _build_termination(
+        self, termination: typing.Optional[Termination | dict]
+    ) -> typing.Optional[Termination]:
+        if termination is None:
+            return None
+        if isinstance(termination, Termination):
+            term = termination
+        elif isinstance(termination, dict):
+            term = Termination(**termination)
+        else:
+            raise ValueError("Termination needs to be a dict or an instance of Termination class.")
+
+        term.set_start_values(0, self._nfe, time.perf_counter(), 0)
+        return term

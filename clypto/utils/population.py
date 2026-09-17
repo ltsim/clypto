@@ -13,7 +13,7 @@ the best/worst agents, and structural operations (``append``/``remove``/
 import typing
 
 import numpy as np
-from clypto.agents.api import RuntimeAgent
+from clypto.agents.template.runtime import RuntimeAgent
 from clypto.hints.array import NDArrayType
 
 __all__ = ["Population"]

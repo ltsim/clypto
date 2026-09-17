@@ -10,9 +10,15 @@ from clypto.utils.target import Target
 
 @cy.agent
 class CustomAgent:
-    v: cy.Attribute(int, (1, 100), 5)
-    ratio: cy.Attribute(float, (0.0, 1.0), 0.25)
-    enabled: cy.Attribute(bool, [True, False], True)
+    v: cy.Attribute[int, (1, 100), 5]
+    ratio: cy.Attribute[float, (0.0, 1.0), 0.25]
+    enabled: cy.Attribute[bool, [True, False], True]
+
+
+@cy.agent
+class MinimalAgent:
+    v: cy.Attribute[float, ..., 0.0]
+    flag: cy.Attribute[bool]
 
 
 def evaluate(solution):
@@ -77,8 +83,31 @@ def test_copy_preserves_solution_target_and_attributes():
     assert clone.fitness == pytest.approx(agent.fitness)
 
 
+def test_declaration_subscript_variants():
+    assert (cy.Attribute[int].type, cy.Attribute[int].bound, cy.Attribute[int].default) == (int, None, None)
+    assert (cy.Attribute[int, (1, 5)].bound, cy.Attribute[int, (1, 5)].default) == ((1, 5), None)
+
+    explicit = cy.Attribute[int, (1, 5), 9]
+    assert (explicit.type, explicit.bound, explicit.default) == (int, (1, 5), 9)
+
+    skipped = cy.Attribute[float, ..., 0.25]
+    assert (skipped.type, skipped.bound, skipped.default) == (float, None, 0.25)
+
+
+def test_more_than_three_declaration_parameters_raise():
+    with pytest.raises(TypeError):
+        cy.Attribute[int, 1, 2, 3]
+
+
+def test_ellipsis_and_single_parameter_defaults():
+    agent = MinimalAgent()
+
+    assert agent.v == 0.0
+    assert agent.flag is None
+
+
 def test_decorated_agent_is_a_runtime_agent():
-    from clypto.agents.api import RuntimeAgent
+    from clypto.agents.template.runtime import RuntimeAgent
 
     assert issubclass(CustomAgent, RuntimeAgent)
     assert isinstance(CustomAgent(), RuntimeAgent)

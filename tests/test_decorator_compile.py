@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 import clypto as cy
+from clypto import Argument
 
 pytest.importorskip("Cython")
 
@@ -37,17 +38,25 @@ class LegacyRS:
 
 @cy.agent(compile=True)
 class FastAgent:
-    v: cy.Attribute(float, (0.0, 1.0), 0.5)
+    v: cy.Attribute[float, (0.0, 1.0), 0.5]
 
 
 @cy.optimizer(agent=FastAgent, compile=True)
 class FastSearch:
-    alpha: cy.Argument(float, (0.0, 1.0), 0.5)
+    alpha: cy.Argument[float, (0.0, 1.0), 0.5]
 
     def evolve(self, epoch):
         for idx in range(len(self.population)):
             self.population[idx].solution = self.population[idx].solution * (1 - self.alpha)
             self.population[idx].v = self.alpha
+
+
+@cy.optimizer(compile=True)
+class DirectImportSearch:
+    rank: Argument[int, (0, 10), 1]
+
+    def evolve(self, epoch):
+        pass
 
 
 @pytest.fixture(scope="module")
@@ -59,7 +68,7 @@ def problem():
     )
 
 
-@pytest.mark.parametrize("cls", [LegacyRS, FastAgent, FastSearch])
+@pytest.mark.parametrize("cls", [LegacyRS, FastAgent, FastSearch, DirectImportSearch])
 def test_classes_are_compiled(cls):
     assert cls.__clypto_precompiled__ is True
     assert cls.__module__.startswith("_clypto_")
@@ -78,6 +87,13 @@ def test_compiled_legacy_decorator_solves(problem):
 
     assert g_best.solution.shape == (N_DIMS,)
     assert np.isfinite(g_best.target.fitness)
+
+
+def test_compiled_directly_imported_declaration():
+    optimizer = DirectImportSearch()
+
+    assert optimizer.parameters["rank"] == 1
+    assert type(DirectImportSearch.evolve).__name__ == "cython_function_or_method"
 
 
 def test_compiled_optimizer_decorator_solves(problem):

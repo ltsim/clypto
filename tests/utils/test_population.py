@@ -15,7 +15,7 @@ def objective(solution):
 
 @cy.agent
 class CountingAgent:
-    v: cy.Attribute(int, (1, 100), 5)
+    v: cy.Attribute[int, (1, 100), 5]
 
 
 @cy.optimizer(agent=CountingAgent)

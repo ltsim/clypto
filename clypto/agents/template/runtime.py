@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Created for clypto's decorator-based optimizer API.
 # --------------------------------------------------%
-"""Agent declarations and the :func:`agent` decorator.
+"""The runtime agent used by the decorator API.
 
 The decorator API gives every solution a *runtime agent*: an object whose
 ``solution`` is a plain NumPy vector and whose ``fitness`` is always derived
@@ -15,31 +15,7 @@ import numpy as np
 from clypto.hints.array import NDArrayType
 from clypto.utils.target import Target
 
-__all__ = ["Attribute", "RuntimeAgent", "agent"]
-
-
-class Attribute:
-    """Declare a per-agent attribute on a class decorated with ``@cy.agent``.
-
-    Example::
-
-        @cy.agent
-        class MyAgent:
-            v: cy.Attribute(int, (1, 100), 5)
-
-    Args:
-        dtype: The attribute type (e.g. ``int``, ``float``, ``bool``).
-        bound: Optional validation range, following the validator convention
-            (a ``tuple`` bound is exclusive, a ``list`` bound inclusive).
-        default: Value used when an agent is generated without an explicit one.
-    """
-
-    __slots__ = ("type", "bound", "default")
-
-    def __init__(self, dtype: typing.Any = None, bound: typing.Any = None, default: typing.Any = None) -> None:
-        self.type = dtype
-        self.bound = bound
-        self.default = default
+__all__ = ["RuntimeAgent"]
 
 
 class RuntimeAgent:
@@ -111,52 +87,3 @@ class RuntimeAgent:
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}(fitness={self.fitness}, solution={self._solution})"
-
-
-def _declare_attributes(cls: typing.Any) -> dict:
-    """Collect ``Attribute`` declarations from the class and its bases."""
-    declarations: dict[str, Attribute] = {}
-
-    for base in reversed(cls.__mro__):
-        for name, declaration in (getattr(base, "__annotations__", {}) or {}).items():
-            if isinstance(declaration, Attribute):
-                declarations[name] = declaration
-        for name, value in vars(base).items():
-            if isinstance(value, Attribute):
-                declarations[name] = value
-
-    return declarations
-
-
-def agent(cls: typing.Optional[typing.Any] = None, *, compile: bool = False):
-    """Turn a plain class into an agent usable by ``@cy.optimizer``.
-
-    The class may declare per-agent attributes with :class:`Attribute`; the
-    decorated class gains ``solution``/``fitness``/``target`` from
-    :class:`RuntimeAgent`. When ``compile`` is ``True`` the class is also
-    Cython-compiled through the same JIT builder used by the legacy API.
-    """
-
-    def decorate(user_cls):
-        from clypto.optimizer.api import _decorate_with_base, _maybe_compile
-
-        decorated = _decorate_with_base(user_cls, RuntimeAgent)
-        declarations = _declare_attributes(decorated)
-        setattr(decorated, "_attributes", declarations)
-
-        for name, declaration in declarations.items():
-            # The compiled source materializes declarations as assignments, so
-            # the class dict may still hold the Attribute placeholder itself.
-            current = decorated.__dict__.get(name)
-            if current is None or isinstance(current, Attribute):
-                setattr(decorated, name, declaration.default)
-
-        return _maybe_compile(
-            decorated,
-            compile,
-            source_cls=user_cls,
-            base_name="RuntimeAgent",
-            import_line="from clypto.agents.api import RuntimeAgent",
-        )
-
-    return decorate(cls) if cls is not None else decorate

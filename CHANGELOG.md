@@ -9,12 +9,12 @@
 ### Decorator-based optimizer API
 
 + **Classic base renamed:** `clypto.optimizer.Optimizer` is now `LegacyOptimizer`; `Optimizer` remains as a backward-compatible alias (`cy.Optimizer is cy.LegacyOptimizer`). All 147 catalog modules were migrated to inherit `LegacyOptimizer` without touching any algorithm body. `get_all_optimizers()` and the discovery helpers are unchanged.
-+ **`@cy.optimizer`:** write a new algorithm as a plain class. Hyper-parameters are declared with `cy.Argument(type, bound, default)` instead of constructor/validator boilerplate; the class implements `initialize` (optional) and `evolve`, and the injected base supplies `solve`, `self.population`, `self.rng` (a seeded `numpy.random.Generator`), `self.problem`, `self.bounds` and `self.g_best`.
++ **`@cy.optimizer`:** write a new algorithm as a plain class. Hyper-parameters are declared with `cy.Argument[type, bound, default]` instead of constructor/validator boilerplate; the class implements `initialize` (optional) and `evolve`, and the injected base supplies `solve`, `self.population`, `self.rng` (a seeded `numpy.random.Generator`), `self.problem`, `self.bounds` and `self.g_best`.
 
   ```python
   @cy.optimizer
   class MyOptimizer:
-      alpha: cy.Argument(float, (0.0, 1.0), 0.5)
+      alpha: cy.Argument[float, (0.0, 1.0), 0.5]
 
       def evolve(self, epoch):
           for idx in range(len(self.population)):
@@ -28,6 +28,7 @@
 + **`@cy.legacy(precompile=False)`:** the classic MEALPY-style API without naming a base class. The decorator injects `LegacyOptimizer`, so `super().__init__(**kwargs)`, `self.validator`, `self.pop` and `generate_empty_agent` keep working. It replaces `@cy.precompile`.
 + **Compilation is opt-in:** pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or `precompile=True` to `@cy.legacy`. Classes are compiled to a native extension at import time through the existing `pyximport` builder (content-hashed `.pyx` in `CLYPTO_PRECOMPILE_DIR`, default `<tmp>/clypto-precompiled`). The public `cy.precompile` decorator was removed; the builder internals remain. Cython and `setuptools` come from the optional `compile` extra (`pip install "clypto[compile]"`) and stay optional at runtime. It fails loudly instead of silently running uncompiled: `ImportError` when Cython is unavailable, `RuntimeError` when the source cannot be read (REPL/notebook) or compilation fails.
 + **Cython-safe declarations:** compiled classes materialize `cy.Argument`/`cy.Attribute` annotations as ordinary class assignments, because Cython drops class-body annotations in `.pyx` classes.
++ **Typing-standard declarations & `template` modules:** declarations use Python's subscript syntax — `cy.Argument[int, (1, 100), 5]`, `cy.Attribute[float, ..., 0.0]` — and accept `[type]`, `[type, bound]` and `[type, bound, default]`, where `...` skips the bound. The decorator implementation moved out of the removed `api.py` modules into `clypto.agents.template` and `clypto.optimizer.template` (split into `declaration`, `runtime`/`base`, and `decorator` submodules), with the shared class-building and JIT helpers in `clypto.precompile.decoration`. `@cy.agent`, `@cy.optimizer` and `@cy.legacy` are now fully typed with overloads, so type checkers preserve the decorated class type instead of falling back to `Any`.
 + **Docs & tests:** new tutorial sections, a dedicated [migration guide](https://ltsim.github.io/clypto/migration/), and unit tests for the population, agent decorator, optimizer decorator, legacy decorator, and the compiled decorator path.
 
 ### Packaging & build system
