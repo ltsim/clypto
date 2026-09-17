@@ -166,6 +166,10 @@ class BaseOptimizer(abc.ABC):
         ) = None,
         seed: typing.Optional[int] = None,
         debug: bool = False,
+        track_population: bool = False,
+        history_path: typing.Optional[str] = None,
+        before_iteration: typing.Optional[typing.Callable] = None,
+        after_iteration: typing.Optional[typing.Callable] = None,
     ) -> "BaseAgent":
         """
         Run the full optimization process end to end.
@@ -186,9 +190,17 @@ class BaseOptimizer(abc.ABC):
                 Use with care — it can bias the search.
             seed: Integer seed for the random number generator. Must be set
                 **explicitly** to an int for reproducible results.
-            debug: If ``True``, the optimizer records detailed
-                history of each epoch (best fitness, diversity metrics,
-                runtime, etc.) for later inspection.
+            debug: If ``True``, record per-epoch metrics (best/worst/mean
+                fitness, diversity, exploration/exploitation, runtime, nfe)
+                into ``self.tracker``.
+            track_population: If ``True``, additionally stream a full
+                population snapshot per epoch into the tracker's Zarr store.
+            history_path: Optional directory to persist the tracker's Zarr
+                store on disk. When omitted, tracking stays in memory.
+            before_iteration: Optional callback invoked as
+                ``before_iteration(population)`` immediately before each epoch.
+            after_iteration: Optional callback invoked as
+                ``after_iteration(population)`` immediately after each epoch.
 
         Returns:
             The best agent found during the run. The solution and its
@@ -207,8 +219,10 @@ class BaseOptimizer(abc.ABC):
         """
         Record per-epoch history and optionally print training details.
 
-        Called once at the end of each evolutionary epoch when
-        ``track_optimize=True`` was passed to ``solve``.
+        Called once at the end of each evolutionary epoch whenever tracking is
+        active (``debug``, ``track_population``, or ``history_path`` was passed
+        to ``solve``). The default implementation delegates to
+        ``self.tracker.record(...)``.
 
         Args:
             pop: The current population at the end of the epoch.
@@ -222,9 +236,9 @@ class BaseOptimizer(abc.ABC):
         """
         Finalize history tracking after the optimization process finishes.
 
-        Aggregates per-epoch records into the final history structure
-        (e.g., convergence curves, runtime totals, list of best agents
-        per epoch) for analysis or plotting.
+        Aggregates per-epoch records into the final history structure (e.g.,
+        convergence curves, runtime totals, list of best agents per epoch).
+        The default implementation delegates to ``self.tracker.finalize()``.
         """
         ...
 

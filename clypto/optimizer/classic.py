@@ -3,7 +3,6 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-import collections
 import math
 import random
 import time
@@ -16,6 +15,7 @@ from clypto.agents.base import BaseAgent
 from clypto.agents.static import AgentStatic
 from clypto.hints.array import NDArrayType
 from clypto.optimizer.base import BaseOptimizer
+from clypto.utils.history import Tracker
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
@@ -43,7 +43,9 @@ class Optimizer(BaseOptimizer):
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
-        self.__history_g_best = collections.deque()
+        self.tracker = Tracker()
+        self.__last_gbest_fit: typing.Optional[float] = None
+        self.__repeated_times: int = 0
 
         self.__nfe_counter: int = 1
         self.__name: str = kwargs.get("name", self.__class__.__name__)
@@ -218,6 +220,22 @@ class Optimizer(BaseOptimizer):
         # Reset for this solve() call; initialization()/after_initialization() (called
         # immediately after, still within solve(), before any evolve()) set these back.
         self.pop, self.g_best, self.g_worst = None, None, None  # type: ignore[assignment]
+        self.__last_gbest_fit, self.__repeated_times = None, 0
+
+    def __update_repeated_times(self) -> None:
+        if self.__termination is None:
+            return
+        fit = float(self.g_best.target.fitness)
+
+        if (
+            self.__last_gbest_fit is not None
+            and abs(fit - self.__last_gbest_fit) <= self.__termination.epsilon
+        ):
+            self.__repeated_times += 1
+        else:
+            self.__repeated_times = 0
+
+        self.__last_gbest_fit = fit
 
     def check_termination(self, mode="start", termination=None, epoch=None):
         if mode == "start":
@@ -227,11 +245,7 @@ class Optimizer(BaseOptimizer):
                 if isinstance(termination, Termination):
                     self.__termination = termination
                 elif type(termination) == dict:
-                    self.__termination = Termination(
-                        log_to=self.problem.log_to,
-                        log_file=self.problem.log_file,
-                        **termination,
-                    )
+                    self.__termination = Termination(**termination)
                 else:
                     raise ValueError(
                         "Termination needs to be a dict or an instance of Termination class."
@@ -247,11 +261,11 @@ class Optimizer(BaseOptimizer):
             finished = False
 
             if self.__termination is not None:
-                es = self.__history.get_global_repeated_times(
-                    self.__termination.epsilon
-                )
                 finished = self.__termination.should_terminate(
-                    epoch, self.__nfe_counter, time.perf_counter(), es
+                    epoch,
+                    self.__nfe_counter,
+                    time.perf_counter(),
+                    self.__repeated_times,
                 )
 
             return finished
@@ -265,6 +279,10 @@ class Optimizer(BaseOptimizer):
         ) = None,
         seed: int | None = None,
         debug: bool = False,
+        track_population: bool = False,
+        history_path: str | None = None,
+        before_iteration: typing.Optional[typing.Callable] = None,
+        after_iteration: typing.Optional[typing.Callable] = None,
     ) -> BaseAgent:
         self.check_problem(problem, seed)
         self.check_termination("start", termination, None)
@@ -276,9 +294,29 @@ class Optimizer(BaseOptimizer):
 
         self.before_main_loop()
 
+        tracking = debug or track_population or history_path is not None
+        if tracking:
+            if before_iteration is not None:
+                self.tracker.before = before_iteration
+            if after_iteration is not None:
+                self.tracker.after = after_iteration
+            self.tracker.start(
+                optimizer=self,
+                problem=self.problem,
+                seed=seed,
+                capture_population=track_population,
+                capture_metrics=True,
+                history_path=history_path,
+            )
+
         loop = range(1, self.epoch + 1)
 
         for epoch in loop:
+            if tracking:
+                self.tracker.epoch = epoch
+                if self.tracker.before is not None:
+                    self.tracker.before(self.pop)
+
             time_epoch = time.perf_counter()
 
             ## Evolve method will be called in child class
@@ -291,17 +329,20 @@ class Optimizer(BaseOptimizer):
             if self.sort_flag:
                 self.pop = pop_temp
 
-            self.__history_g_best.append(self.g_best.copy())
+            self.__update_repeated_times()
+
+            if tracking and self.tracker.after is not None:
+                self.tracker.after(self.pop)
 
             time_epoch = time.perf_counter() - time_epoch
 
-            if debug:
+            if tracking:
                 self.track_optimize_step(self.pop, epoch, time_epoch)
 
             if self.check_termination("end", None, epoch):
                 break
 
-        if debug:
+        if tracking:
             self.track_optimize_process()
 
         if self.g_best is None:
@@ -315,10 +356,10 @@ class Optimizer(BaseOptimizer):
         epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
-        pass
+        self.tracker.record(epoch, pop, runtime, self.nf_counter, self.g_best.target.fitness)
 
     def track_optimize_process(self) -> None:
-        pass
+        self.tracker.finalize()
 
     def generate_empty_agent(self, solution: typing.Optional[NDArrayType] = None):
         if solution is None:

@@ -15,6 +15,14 @@
 + **Linters consolidated:** deleted `.flake8` — `[tool.ruff]` (same rule selection) is now the single lint config, and `flake8`/`black`/`twine` were removed from the dev extras.
 + **Test matrix:** `test.yml` runs pytest through `uv` on the compiled package across Python 3.10–3.14 × 3 OS, and adds a `wheel-smoke` job that installs a freshly built wheel into a clean venv and solves a real optimization problem end-to-end.
 
+### Zarr-backed history tracking
+
++ **`Tracker`:** replaced the unused `TrackHistory` dataclass with `clypto.utils.history.Tracker`, a Zarr-backed recorder. `solve(debug=True)` records per-epoch metrics (global/current best and worst fitness, mean/std, diversity, exploration/exploitation, runtime, nfe, population size); `track_population=True` additionally streams full `(epoch, pop_size, n_dims)` solution snapshots plus fitness and objectives. Data lives in an in-memory Zarr store by default, or on disk via `history_path="run.zarr"`. Variable population sizes are supported (NaN-padded to the observed maximum).
++ **Per-iteration hooks:** `optimizer.tracker.before` / `.after` (or the `on_before` / `on_after` decorators, or `solve(before_iteration=..., after_iteration=...)`) run `hook(population)` around each epoch while tracking is enabled.
++ **Fixed `Termination`:** the per-epoch early-stopping check no longer reads an uninitialized `__history` buffer, and the dict form no longer reads nonexistent `Problem.log_to` / `log_file` attributes.
++ **Dependency:** added `zarr>=3`. This raises `requires-python` to `>=3.11` (test matrix now 3.11–3.14), because no non-yanked zarr v3 release supports Python 3.10.
++ **Removed:** the dead `Problem.save_population` flag.
+
 ### Cython-optimize the `Agent`/`Target` classes
 
 The library already Cython-compiled every `.py` file as-is (`setup.py`), but no file used any real Cython typing, so the hottest attribute chain in the whole library — `agent.solution` / `agent.target.fitness`, read every generation by every one of the ~150 optimizers — still paid for plain dict-based Python attribute lookup on every access.

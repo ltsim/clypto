@@ -58,7 +58,6 @@ class Problem:
         self.__minmax = minmax
         self.__seed = None
         self.__obj_weights = None
-        self.__save_population = None
 
         self.set_bounds(bounds)
 
@@ -92,10 +91,6 @@ class Problem:
 
         for idx in range(len(self.__bounds)):
             self.__bounds[idx].seed = seed
-
-    @property
-    def save_population(self):
-        return self.__save_population
 
     @property
     def n_objs(self):

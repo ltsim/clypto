@@ -12,7 +12,7 @@ authors = [
     { name = "Thieu", email = "nguyenthieu2102@gmail.com" },
     { name = "LTSIM", email = "tsim@cucei.udg.mx" },
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 keywords = [
     "optimization",
     "metaheuristics",
@@ -50,7 +50,6 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -71,6 +70,7 @@ classifiers = [
 dependencies = [
     "numpy>=2.0.2",
     "scipy>=1.15.3",
+    "zarr>=3",
 ]
 
 [project.optional-dependencies]
