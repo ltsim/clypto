@@ -5,8 +5,8 @@
 
 import typing
 
-from clypto.agents.template.runtime import RuntimeAgent
-from clypto.agents.template.declaration import Attribute
+from clypto.agents.precompile.runtime import RuntimeAgent
+from clypto.agents.precompile.declaration import Attribute
 from clypto.precompile.decoration import (
     collect_declarations,
     decorate_with_base,
@@ -52,7 +52,7 @@ def agent(cls=None, *, compile=False):
             compile,
             source_cls=user_cls,
             base_name="RuntimeAgent",
-            import_line="from clypto.agents.template.runtime import RuntimeAgent",
+            import_line="from clypto.agents.precompile.runtime import RuntimeAgent",
             declaration_types=(Attribute,),
         )
 

@@ -107,7 +107,7 @@ def test_ellipsis_and_single_parameter_defaults():
 
 
 def test_decorated_agent_is_a_runtime_agent():
-    from clypto.agents.template.runtime import RuntimeAgent
+    from clypto.agents.precompile.runtime import RuntimeAgent
 
     assert issubclass(CustomAgent, RuntimeAgent)
     assert isinstance(CustomAgent(), RuntimeAgent)

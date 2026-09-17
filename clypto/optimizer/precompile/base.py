@@ -7,9 +7,9 @@ import time
 import typing
 
 import numpy as np
-from clypto.agents.template.runtime import RuntimeAgent
+from clypto.agents.precompile.runtime import RuntimeAgent
 from clypto.hints.array import NDArrayType
-from clypto.optimizer.template.declaration import Argument
+from clypto.optimizer.precompile.declaration import Argument
 from clypto.precompile.decoration import collect_declarations
 from clypto.utils.population import Population
 from clypto.utils.problem import Problem
