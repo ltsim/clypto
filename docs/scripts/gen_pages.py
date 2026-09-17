@@ -36,7 +36,7 @@ CATEGORY_ORDER = list(CATEGORY_LABELS)
 
 CORE_MODULES = [
     "clypto/optimizer/base.py",
-    "clypto/optimizer/classic.py",
+    "clypto/optimizer/legacy.py",
     "clypto/optimizer/precompile/declaration.py",
     "clypto/optimizer/precompile/base.py",
     "clypto/optimizer/precompile/decorator.py",

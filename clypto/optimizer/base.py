@@ -3,7 +3,7 @@ import typing
 
 import numpy as np
 import numpy.typing as npt
-from clypto.agents.base import BaseAgent
+from clypto.agents.legacy import LegacyAgent
 from clypto.hints.array import NDArrayType
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
@@ -170,7 +170,7 @@ class BaseOptimizer(abc.ABC):
         history_path: typing.Optional[str] = None,
         before_iteration: typing.Optional[typing.Callable] = None,
         after_iteration: typing.Optional[typing.Callable] = None,
-    ) -> "BaseAgent":
+    ) -> "LegacyAgent":
         """
         Run the full optimization process end to end.
 
@@ -212,7 +212,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def track_optimize_step(
         self,
-        pop: typing.Optional[list["BaseAgent"]] = None,
+        pop: typing.Optional[list["LegacyAgent"]] = None,
         epoch: typing.Optional[int] = None,
         runtime: typing.Optional[float] = None,
     ) -> None:
@@ -245,7 +245,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def generate_empty_agent(
         self, solution: typing.Optional[NDArrayType] = None
-    ) -> "BaseAgent":
+    ) -> "LegacyAgent":
         """
         Create a new agent skeleton without evaluating its target.
 
@@ -265,7 +265,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def generate_agent(
         self, solution: typing.Optional[NDArrayType] = None
-    ) -> "BaseAgent":
+    ) -> "LegacyAgent":
         """
         Create a fully evaluated agent.
 
@@ -285,7 +285,7 @@ class BaseOptimizer(abc.ABC):
     @abc.abstractmethod
     def generate_population(
         self, pop_size: typing.Optional[int] = None
-    ) -> list["BaseAgent"]:
+    ) -> list["LegacyAgent"]:
         """
         Generate a population of fully evaluated agents.
 
@@ -340,8 +340,8 @@ class BaseOptimizer(abc.ABC):
 
     @abc.abstractmethod
     def update_target_for_population(
-        self, pop: list["BaseAgent"]
-    ) -> list["BaseAgent"]:
+        self, pop: list["LegacyAgent"]
+    ) -> list["LegacyAgent"]:
         """
         Re-evaluate the objective value for every agent in a population.
 

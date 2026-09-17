@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 from scipy.stats import qmc
 
 

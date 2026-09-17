@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
 class OriginalSFO(LegacyOptimizer):

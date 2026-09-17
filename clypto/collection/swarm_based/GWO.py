@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 from clypto.utils.chaotic import ChaoticMap as CM
 from clypto.utils.fuzzy import FuzzySystem as FS
 

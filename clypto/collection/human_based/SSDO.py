@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
 class OriginalSSDO(LegacyOptimizer):

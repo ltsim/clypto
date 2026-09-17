@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
 class OriginalTDO(LegacyOptimizer):

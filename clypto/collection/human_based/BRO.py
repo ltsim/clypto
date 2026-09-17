@@ -8,7 +8,7 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
 class DevBRO(LegacyOptimizer):

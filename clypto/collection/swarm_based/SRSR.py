@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.agents.dynamic import AgentDynamic
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
 class OriginalSRSR(LegacyOptimizer):

@@ -1,4 +1,4 @@
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 Optimizer = LegacyOptimizer
 

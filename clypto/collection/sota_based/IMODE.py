@@ -7,7 +7,7 @@
 from typing import Tuple, List
 
 import numpy as np
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
 class OriginalIMODE(LegacyOptimizer):

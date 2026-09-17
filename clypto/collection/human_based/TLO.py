@@ -7,7 +7,7 @@
 from functools import reduce
 
 import numpy as np
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
 class DevTLO(LegacyOptimizer):

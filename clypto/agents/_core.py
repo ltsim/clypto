@@ -13,20 +13,20 @@ from clypto.utils.target import Target
 
 
 @cython.cclass
-class BaseAgent:
-    def copy(self) -> "BaseAgent":
+class LegacyAgent:
+    def copy(self) -> "LegacyAgent":
         raise NotImplementedError
 
-    def update_agent(self, solution: NDArrayType, target: Target) -> "BaseAgent":
+    def update_agent(self, solution: NDArrayType, target: Target) -> "LegacyAgent":
         raise NotImplementedError
 
-    def update(self, *args: typing.Any, **kwargs: typing.Any) -> "BaseAgent":
+    def update(self, *args: typing.Any, **kwargs: typing.Any) -> "LegacyAgent":
         raise NotImplementedError
 
-    def sync_if_duplicate(self, other: "BaseAgent") -> bool:
+    def sync_if_duplicate(self, other: "LegacyAgent") -> bool:
         raise NotImplementedError
 
-    def _compare_fitness(self, other: "BaseAgent", minmax: SenseType = "min") -> int:
+    def _compare_fitness(self, other: "LegacyAgent", minmax: SenseType = "min") -> int:
         """
         Compare fitness between self and other.
 
@@ -38,8 +38,8 @@ class BaseAgent:
         raise NotImplementedError
 
     def get_better_solution(
-        self, other: "BaseAgent", minmax: SenseType = "min"
-    ) -> "BaseAgent":
+        self, other: "LegacyAgent", minmax: SenseType = "min"
+    ) -> "LegacyAgent":
         """
         Return better solution
 
@@ -49,7 +49,7 @@ class BaseAgent:
         """
         return self if self._compare_fitness(other, minmax) <= 0 else other
 
-    def is_better_than(self, other: "BaseAgent", minmax: SenseType = "min") -> bool:
+    def is_better_than(self, other: "LegacyAgent", minmax: SenseType = "min") -> bool:
         """
         Compare the current agent with other agent. Return True if current agent is better and False otherwise
 
@@ -77,7 +77,7 @@ class BaseAgent:
 
 
 @cython.cclass
-class AgentStatic(BaseAgent):
+class AgentStatic(LegacyAgent):
     solution: object = cython.declare(object, visibility="public")
     target: object = cython.declare(object, visibility="public")
 
@@ -180,7 +180,7 @@ class AgentStatic(BaseAgent):
 
 
 @cython.cclass
-class AgentDynamic(BaseAgent):
+class AgentDynamic(LegacyAgent):
     solution: object = cython.declare(object, visibility="public")
     target: object = cython.declare(object, visibility="public")
     __dict__: dict
@@ -205,7 +205,7 @@ class AgentDynamic(BaseAgent):
         # AgentStatic.__getattr__ above).
         return None
 
-    def copy(self) -> "BaseAgent":
+    def copy(self) -> "LegacyAgent":
         agent = AgentDynamic(self.solution, self.target.copy(), **self.__kwargs)
 
         for attr, value in vars(self).items():
@@ -222,7 +222,7 @@ class AgentDynamic(BaseAgent):
         for attr, value in kwargs.items():
             setattr(self, attr, value)
 
-    def sync_if_duplicate(self, other: "BaseAgent") -> bool:
+    def sync_if_duplicate(self, other: "LegacyAgent") -> bool:
         """
         Check if two agents are equal (using __eq__), and if so, synchronize the target from the other agent.
 
@@ -236,7 +236,7 @@ class AgentDynamic(BaseAgent):
 
         return is_eq
 
-    def _compare_fitness(self, other: "BaseAgent", minmax: SenseType = "min") -> int:
+    def _compare_fitness(self, other: "LegacyAgent", minmax: SenseType = "min") -> int:
         """
         Compare fitness between self and other.
 
@@ -253,8 +253,8 @@ class AgentDynamic(BaseAgent):
             return -1 if self.target.fitness > other.target.fitness else 1
 
     def get_better_solution(
-        self, other: "BaseAgent", minmax: SenseType = "min"
-    ) -> "BaseAgent":
+        self, other: "LegacyAgent", minmax: SenseType = "min"
+    ) -> "LegacyAgent":
         """
         Return better solution
 
@@ -264,7 +264,7 @@ class AgentDynamic(BaseAgent):
         """
         return self if self._compare_fitness(other, minmax) <= 0 else other
 
-    def is_better_than(self, other: "BaseAgent", minmax: SenseType = "min") -> bool:
+    def is_better_than(self, other: "LegacyAgent", minmax: SenseType = "min") -> bool:
         """
         Compare the current agent with other agent. Return True if current agent is better and False otherwise
 

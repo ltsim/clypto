@@ -160,7 +160,7 @@ from clypto.collection.system_based import AEO, GCO
 from clypto.collection.system_based import WCA
 from clypto.agents.precompile import Attribute, agent
 from clypto.optimizer.precompile import Argument, legacy, optimizer
-from clypto.optimizer.classic import LegacyOptimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 from clypto.utils import Problem
 from clypto.utils.population import Population
 from clypto.utils.problem import Problem
