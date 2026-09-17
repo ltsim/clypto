@@ -91,3 +91,15 @@ def test_precompiled_optimizer_solves(problem):
     assert g_best.solution.shape == (N_DIMS,)
     assert np.all(np.isfinite(g_best.solution))
     assert np.isfinite(g_best.target.fitness)
+
+
+def test_precompiled_optimizer_tracking(problem):
+    model = RandomSearch(epoch=10, pop_size=15)
+    model.solve(problem, seed=1, debug=True, track_population=True)
+
+    tracker = model.tracker
+    assert tracker.group.attrs["n_epochs"] == 10
+    assert tracker["global_best_fit"].shape == (10,)
+    assert tracker["solution"].shape == (10, 15, N_DIMS)
+    assert np.isfinite(tracker["solution"]).all()
+
