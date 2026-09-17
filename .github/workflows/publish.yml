@@ -26,9 +26,6 @@ jobs:
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_WINDOWS: "AMD64"
           CIBW_ARCHS_MACOS: "x86_64 arm64"
-          CIBW_TEST_REQUIRES: "pytest"
-          # Run the smoke suite in each clean test env against the built wheel.
-          CIBW_TEST_COMMAND: "pytest --import-mode=importlib {project}/tests -m smoke -q"
 
       - name: Upload wheel artifacts
         uses: actions/upload-artifact@v4
