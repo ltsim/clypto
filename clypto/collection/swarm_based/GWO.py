@@ -6,12 +6,12 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 from clypto.utils.chaotic import ChaoticMap as CM
 from clypto.utils.fuzzy import FuzzySystem as FS
 
 
-class OriginalGWO(Optimizer):
+class OriginalGWO(LegacyOptimizer):
     """
     The original version of: Grey Wolf Optimizer (GWO)
 
@@ -59,7 +59,7 @@ class OriginalGWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -102,7 +102,7 @@ class OriginalGWO(Optimizer):
             )
 
 
-class RW_GWO(Optimizer):
+class RW_GWO(LegacyOptimizer):
     """
     The original version of: Random Walk Grey Wolf Optimizer (RW-GWO)
 
@@ -146,7 +146,7 @@ class RW_GWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -263,7 +263,7 @@ class GWO_WOA(OriginalGWO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -428,7 +428,7 @@ class IGWO(OriginalGWO):
             )
 
 
-class ChaoticGWO(Optimizer):
+class ChaoticGWO(LegacyOptimizer):
     """
     The original version of: Chaotic-based Grey Wolf Optimizer (Chaotic-GWO or C-GWO)
 
@@ -513,7 +513,7 @@ class ChaoticGWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -563,7 +563,7 @@ class ChaoticGWO(Optimizer):
             )
 
 
-class FuzzyGWO(Optimizer):
+class FuzzyGWO(LegacyOptimizer):
     """
     The original version of: Fuzzy Hierarchical Operator - Grey Wolf Optimizer (FHO-GWO or FuzzyGWO or F-GWO)
 
@@ -623,7 +623,7 @@ class FuzzyGWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -672,7 +672,7 @@ class FuzzyGWO(Optimizer):
             )
 
 
-class IncrementalGWO(Optimizer):
+class IncrementalGWO(LegacyOptimizer):
     """
     The original version of: Incremental model-based Grey Wolf Optimizer (IncrementalGWO)
 
@@ -731,7 +731,7 @@ class IncrementalGWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -771,7 +771,7 @@ class IncrementalGWO(Optimizer):
             )
 
 
-class ExGWO(Optimizer):
+class ExGWO(LegacyOptimizer):
     """
     The original version of: Expanded Grey Wolf Optimizer (Ex-GWO)
 
@@ -822,7 +822,7 @@ class ExGWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -873,7 +873,7 @@ class ExGWO(Optimizer):
             )
 
 
-class DS_GWO(Optimizer):
+class DS_GWO(LegacyOptimizer):
     """
     The original version of: Diversity enhanced Strategy based Grey Wolf Optimizer (DS-GWO)
 
@@ -999,7 +999,7 @@ class DS_GWO(Optimizer):
         self.beta = self.delta_candidates[beta_idx].copy()
 
 
-class IOBL_GWO(Optimizer):
+class IOBL_GWO(LegacyOptimizer):
     """
     The original version of: Improved Opposite-based Learning Grey Wolf Optimizer (IOBL-GWO)
 
@@ -1052,7 +1052,7 @@ class IOBL_GWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -1141,7 +1141,7 @@ class IOBL_GWO(Optimizer):
                 self.pop[idx] = obl_pop[idx]
 
 
-class OGWO(Optimizer):
+class OGWO(LegacyOptimizer):
     """
     The original version of: Opposition-based learning Grey Wolf Optimizer (OGWO)
 
@@ -1218,7 +1218,7 @@ class OGWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -1275,7 +1275,7 @@ class OGWO(Optimizer):
             )
 
 
-class ER_GWO(Optimizer):
+class ER_GWO(LegacyOptimizer):
     """
     The original version of: Efficient and Robust Grey Wolf Optimizer (ER-GWO)
 
@@ -1342,7 +1342,7 @@ class ER_GWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -1394,7 +1394,7 @@ class ER_GWO(Optimizer):
             )
 
 
-class CG_GWO(Optimizer):
+class CG_GWO(LegacyOptimizer):
     """
     The original version of: Cauchy‑Gaussian mutation and improved search strategy GWO (CG‑GWO)
 
@@ -1469,7 +1469,7 @@ class CG_GWO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

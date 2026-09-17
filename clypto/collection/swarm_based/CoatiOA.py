@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalCoatiOA(Optimizer):
+class OriginalCoatiOA(LegacyOptimizer):
     """
     The original version of: Coati Optimization Algorithm (CoatiOA)
 
@@ -62,7 +62,7 @@ class OriginalCoatiOA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

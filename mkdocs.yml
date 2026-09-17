@@ -68,6 +68,7 @@ markdown_extensions:
 
 exclude_docs: |
   scripts/
+  custom-optimizers/_snippets/
 
 validation:
   nav:
@@ -82,6 +83,14 @@ nav:
       - Installation: installation.md
       - Quickstart: quickstart.md
       - Tutorial: tutorial.md
+  - Custom Optimizers:
+      - Overview: custom-optimizers/index.md
+      - Your first optimizer: custom-optimizers/01-first-optimizer.md
+      - Hyper-parameters: custom-optimizers/02-parameters.md
+      - The population: custom-optimizers/03-population.md
+      - Custom agent state: custom-optimizers/04-agent-state.md
+      - Classic API and compilation: custom-optimizers/05-legacy-and-compilation.md
+      - Migration: custom-optimizers/migration.md
   - Algorithm Categories:
       - Overview: categories/index.md
       - Evolutionary-based: categories/evolutionary_based.md

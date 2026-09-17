@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.dynamic import AgentDynamic
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalSRSR(Optimizer):
+class OriginalSRSR(LegacyOptimizer):
     """
     The original version of: Swarm Robotics Search And Rescue (SRSR)
 
@@ -97,7 +97,7 @@ class OriginalSRSR(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

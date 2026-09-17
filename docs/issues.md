@@ -172,20 +172,16 @@ These affect every optimizer rather than a single taxonomy group.
 
 ### Open issues
 
-- **`Termination` is broken.** Passing any `termination` object or dict to
-  `solve()` throws at runtime:
-    - the dict branch reads `problem.log_to` / `problem.log_file`, which
-      `Problem` does not define; and
-    - the per-epoch check calls `self.__history.get_global_repeated_times(...)`
-      but `__history` is never initialized.
-  Use the default epoch-based stopping until this is fixed.
-  ([`classic.py`](https://github.com/ltsim/clypto/blob/master/clypto/optimizer/classic.py))
-- **`debug=True` records nothing.** `track_optimize_step` and
-  `track_optimize_process` are stubbed out in this stripped build, so no
-  per-epoch history is produced. Use `model.g_best` / `model.g_worst` instead.
+No known issues.
 
 ### Fixed in 2026
 
 - **Memory corruption from `wraparound: False`.** The codebase uses negative
   list indexing (`pop[-1]`) across 55+ files; disabling wraparound corrupted
   memory once compiled. Set back to `True`.
+- **`Termination` and `debug=True` tracking.** The per-epoch early-stopping
+  check no longer reads an uninitialized `__history` buffer, the dict form no
+  longer reads nonexistent `Problem.log_to` / `log_file` attributes, and
+  `debug=True` now records per-epoch metrics (and, with
+  `track_population=True`, full population snapshots) into the Zarr-backed
+  `model.tracker`.

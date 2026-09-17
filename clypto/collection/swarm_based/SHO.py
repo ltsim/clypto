@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalSHO(Optimizer):
+class OriginalSHO(LegacyOptimizer):
     """
     The original version of: Spotted Hyena Optimizer (SHO)
 
@@ -72,7 +72,7 @@ class OriginalSHO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalTSO(Optimizer):
+class OriginalTSO(LegacyOptimizer):
     """
     The original version of: Tuna Swarm Optimization (TSO)
 
@@ -100,7 +100,7 @@ class OriginalTSO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

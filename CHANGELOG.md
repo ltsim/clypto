@@ -6,6 +6,31 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Decorator-based optimizer API
+
++ **Classic base renamed:** `clypto.optimizer.Optimizer` is now `LegacyOptimizer`; `Optimizer` remains as a backward-compatible alias (`cy.Optimizer is cy.LegacyOptimizer`). All 147 catalog modules were migrated to inherit `LegacyOptimizer` without touching any algorithm body. `get_all_optimizers()` and the discovery helpers are unchanged.
++ **`@cy.optimizer`:** write a new algorithm as a plain class. Hyper-parameters are declared with `cy.Argument[type, bound, default]` instead of constructor/validator boilerplate; the class implements `initialize` (optional) and `evolve`, and the injected base supplies `solve`, `self.population`, `self.rng` (a seeded `numpy.random.Generator`), `self.problem`, `self.bounds` and `self.g_best`.
+
+  ```python
+  @cy.optimizer
+  class MyOptimizer:
+      alpha: cy.Argument[float, (0.0, 1.0), 0.5]
+
+      def evolve(self, epoch):
+          for idx in range(len(self.population)):
+              candidate = self.generate_agent()
+              if candidate.fitness < self.population[idx].fitness:
+                  self.population[idx].solution = candidate.solution
+  ```
+
++ **`cy.Population`:** a new container backing `self.population`. It exposes the `(n_pop, ndim)` `solutions` matrix (assignment re-evaluates every agent), the read-only `fitness` vector, `best`/`worst`, and `append`/`remove`/`generate`, plus iteration and indexing. Agents expose `solution`, `fitness`, `target` and `id`; `fitness` is read-only and recomputed whenever `solution` is assigned (including in-place `population[n].solution /= 2`).
++ **`@cy.agent` + `cy.Attribute`:** declare per-agent attributes for algorithms that need extra per-solution state, and pass the class with `@cy.optimizer(agent=MyAgent)`. The `generate(agent, solution)` hook can be overridden to seed attribute values from the RNG before each agent is evaluated.
++ **`@cy.legacy(precompile=False)`:** the classic MEALPY-style API without naming a base class. The decorator injects `LegacyOptimizer`, so `super().__init__(**kwargs)`, `self.validator`, `self.pop` and `generate_empty_agent` keep working. It replaces `@cy.precompile`.
++ **Compilation is opt-in:** pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or `precompile=True` to `@cy.legacy`. Classes are compiled to a native extension at import time through the existing `pyximport` builder (content-hashed `.pyx` in `CLYPTO_PRECOMPILE_DIR`, default `<tmp>/clypto-precompiled`). The public `cy.precompile` decorator was removed; the builder internals remain. Cython and `setuptools` come from the optional `compile` extra (`pip install "clypto[compile]"`) and stay optional at runtime. It fails loudly instead of silently running uncompiled: `ImportError` when Cython is unavailable, `RuntimeError` when the source cannot be read (REPL/notebook) or compilation fails.
++ **Cython-safe declarations:** compiled classes materialize `cy.Argument`/`cy.Attribute` annotations as ordinary class assignments, because Cython drops class-body annotations in `.pyx` classes.
++ **Typing-standard declarations & `precompile` modules:** declarations use Python's subscript syntax — `cy.Argument[int, (1, 100), 5]`, `cy.Attribute[float, ..., 0.0]` — and accept `[type]`, `[type, bound]` and `[type, bound, default]`, where `...` skips the bound. The decorator implementation moved out of the removed `api.py` modules into `clypto.agents.precompile` and `clypto.optimizer.precompile` (split into `declaration`, `runtime`/`base`, and `decorator` submodules), with the shared class-building and JIT helpers in `clypto.precompile.decoration`. `@cy.agent`, `@cy.optimizer` and `@cy.legacy` are now fully typed with overloads, so type checkers preserve the decorated class type instead of falling back to `Any`.
++ **Docs & tests:** new tutorial sections, a dedicated [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/), and unit tests for the population, agent decorator, optimizer decorator, legacy decorator, and the compiled decorator path.
+
 ### Packaging & build system
 
 + **One toolchain:** `uv` is now the single build/test workflow (`uv lock`, `uv sync --extra dev`, `uv run pytest tests/`). The Makefile was reduced to the `clean*` and `uv-lock`/`uv-sync`/`uv-test` targets; the pip-side `compile`/`install`/`all`/`dist` targets and the `python setup.py build_ext --inplace` flow they drove were removed.
@@ -15,12 +40,20 @@
 + **Linters consolidated:** deleted `.flake8` — `[tool.ruff]` (same rule selection) is now the single lint config, and `flake8`/`black`/`twine` were removed from the dev extras.
 + **Test matrix:** `test.yml` runs pytest through `uv` on the compiled package across Python 3.10–3.14 × 3 OS, and adds a `wheel-smoke` job that installs a freshly built wheel into a clean venv and solves a real optimization problem end-to-end.
 
+### Zarr-backed history tracking
+
++ **`Tracker`:** replaced the unused `TrackHistory` dataclass with `clypto.utils.history.Tracker`, a Zarr-backed recorder. `solve(debug=True)` records per-epoch metrics (global/current best and worst fitness, mean/std, diversity, exploration/exploitation, runtime, nfe, population size); `track_population=True` additionally streams full `(epoch, pop_size, n_dims)` solution snapshots plus fitness and objectives. Data lives in an in-memory Zarr store by default, or on disk via `history_path="run.zarr"`. Variable population sizes are supported (NaN-padded to the observed maximum).
++ **Per-iteration hooks:** `optimizer.tracker.before` / `.after` (or the `on_before` / `on_after` decorators, or `solve(before_iteration=..., after_iteration=...)`) run `hook(population)` around each epoch while tracking is enabled.
++ **Fixed `Termination`:** the per-epoch early-stopping check no longer reads an uninitialized `__history` buffer, and the dict form no longer reads nonexistent `Problem.log_to` / `log_file` attributes.
++ **Dependency:** added `zarr>=3`. This raises `requires-python` to `>=3.11` (test matrix now 3.11–3.14), because no non-yanked zarr v3 release supports Python 3.10.
++ **Removed:** the dead `Problem.save_population` flag.
+
 ### Cython-optimize the `Agent`/`Target` classes
 
 The library already Cython-compiled every `.py` file as-is (`setup.py`), but no file used any real Cython typing, so the hottest attribute chain in the whole library — `agent.solution` / `agent.target.fitness`, read every generation by every one of the ~150 optimizers — still paid for plain dict-based Python attribute lookup on every access.
 
-+ Converted `BaseAgent`, `AgentStatic`, `AgentDynamic` (`clypto/agents/`) and `Target` (`clypto/utils/target.py`) to Cython "pure Python mode" typed classes (`@cython.cclass` + `cython.declare(...)`), giving `solution`/`target` direct C-struct field access instead of dict lookups, and `Target.fitness` a C `double` field instead of a property over a name-mangled private attribute.
-+ Moved `BaseAgent`/`AgentStatic`/`AgentDynamic` into one new module, `clypto/agents/_core.py`: Cython requires `cdef class` inheritance to resolve within the same compiled module (cross-module `cdef class` inheritance isn't supported when each `.py` file compiles as an independent extension), so `clypto/agents/base.py`, `static.py`, and `dynamic.py` were reduced to thin re-export shims — every existing import path elsewhere in the codebase (`from clypto.agents.static import AgentStatic`, `from clypto.agents.dynamic import AgentDynamic`, etc.) still works unchanged.
++ Converted `LegacyAgent`, `AgentStatic`, `AgentDynamic` (`clypto/agents/`) and `Target` (`clypto/utils/target.py`) to Cython "pure Python mode" typed classes (`@cython.cclass` + `cython.declare(...)`), giving `solution`/`target` direct C-struct field access instead of dict lookups, and `Target.fitness` a C `double` field instead of a property over a name-mangled private attribute.
++ Moved `LegacyAgent`/`AgentStatic`/`AgentDynamic` into one new module, `clypto/agents/_core.py`: Cython requires `cdef class` inheritance to resolve within the same compiled module (cross-module `cdef class` inheritance isn't supported when each `.py` file compiles as an independent extension), so `clypto/agents/legacy.py`, `static.py`, and `dynamic.py` were reduced to thin re-export shims — every existing import path elsewhere in the codebase (`from clypto.agents.static import AgentStatic`, `from clypto.agents.dynamic import AgentDynamic`, etc.) still works unchanged.
 + `AgentDynamic` keeps its arbitrary-kwargs dynamic-attribute behavior (used by 22 algorithm files, e.g. DE, SRSR, TWO) via a real `__dict__` field declared alongside the typed `solution`/`target` fields.
 + Added `AgentDynamic` to `clypto/agents/__init__.py`'s exports — it was previously reachable only via its submodule path even though it's used across the codebase, while only `AgentStatic` was exported at the package level.
 + `setup.py`: the newly-typed files do `import cython` unconditionally, so `Cython` must be present at build time — it comes from `[build-system].requires` via PEP 517 isolation (and `uv sync`), not from the runtime dependencies, since installed wheels ship compiled `.so` files that no longer need it.
@@ -32,7 +65,7 @@ Nobody had built this project with Cython and run its tests before this pass (no
 + Fix bug memory corruption from `wraparound: False` in `setup.py`'s Cython compiler directives: the codebase uses negative list indexing (`pop[-1]`) extensively on plain Python lists across 55+ files, and disabling wraparound corrupts memory on those accesses once compiled. Set to `True`.
 + Fix bug `Validator.check_bool` list-vs-tuple argument type mismatch in `CSO.py` (Cython enforces concrete `list`/`tuple` type annotations strictly at compiled call boundaries).
 + Fix bug `roulette_wheel_selection__` list-vs-`ndarray` argument type mismatch in `SBO.py`; broadened its annotation to accept both.
-+ Fix bug `k_way` float/int coercion in `get_index_kway_tournament_selection` (`clypto/optimizer/classic.py`): the `k_way: float` parameter annotation typed the local variable as a C `double` for the whole function scope, so it kept boxing back to a Python `float` at the `numpy.random.Generator.choice()` call regardless of reassignment; numpy 2.5's stricter typing then rejected it. Fixed by boxing the truncated value into a separate `int`-typed variable. Affected `BaseGA`, `MultiGA`, `SingleGA`, `OriginalMA`.
++ Fix bug `k_way` float/int coercion in `get_index_kway_tournament_selection` (`clypto/optimizer/legacy.py`): the `k_way: float` parameter annotation typed the local variable as a C `double` for the whole function scope, so it kept boxing back to a Python `float` at the `numpy.random.Generator.choice()` call regardless of reassignment; numpy 2.5's stricter typing then rejected it. Fixed by boxing the truncated value into a separate `int`-typed variable. Affected `BaseGA`, `MultiGA`, `SingleGA`, `OriginalMA`.
 + Fix bug exclusive-vs-inclusive bound mismatch for `n_chemotaxis` validation in `BCO.py` (tuple bound is exclusive; the default value sat exactly on the excluded boundary).
 + Fix bug odd-`pop_size` population-halving `IndexError` in `BFO.py` and `TWO.py`'s `OppoTWO` (splitting a population in half via integer division silently dropped one member whenever `pop_size` was odd).
 + Fix bug `idx`/`jdx` variable mixup causing out-of-bounds bound-array indexing in `DOA.py`.

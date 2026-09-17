@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalAEO(Optimizer):
+class OriginalAEO(LegacyOptimizer):
     """
     The original version of: Artificial Ecosystem-based Optimization (AEO)
 
@@ -58,7 +58,7 @@ class OriginalAEO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -181,7 +181,7 @@ class ImprovedAEO(OriginalAEO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -271,7 +271,7 @@ class ImprovedAEO(OriginalAEO):
             )
 
 
-class EnhancedAEO(Optimizer):
+class EnhancedAEO(LegacyOptimizer):
     """
     The original version of: Enhanced Artificial Ecosystem-Based Optimization (EAEO)
 
@@ -319,7 +319,7 @@ class EnhancedAEO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -429,7 +429,7 @@ class EnhancedAEO(Optimizer):
             )
 
 
-class ModifiedAEO(Optimizer):
+class ModifiedAEO(LegacyOptimizer):
     """
     The original version of: Modified Artificial Ecosystem-Based Optimization (MAEO)
 
@@ -478,7 +478,7 @@ class ModifiedAEO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -571,7 +571,7 @@ class ModifiedAEO(Optimizer):
             )
 
 
-class AugmentedAEO(Optimizer):
+class AugmentedAEO(LegacyOptimizer):
     """
     The original version of: Augmented Artificial Ecosystem Optimization (AAEO)
 
@@ -620,7 +620,7 @@ class AugmentedAEO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

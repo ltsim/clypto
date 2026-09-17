@@ -1,6 +1,6 @@
 # Installation
 
-clypto supports CPython 3.10–3.14 and depends only on `numpy` and `scipy` at
+clypto supports CPython 3.11–3.14 and depends on `numpy`, `scipy`, and `zarr` at
 runtime.
 
 ## Precompiled wheels (no compiler needed)
@@ -52,6 +52,22 @@ Cython, and bytecode artifacts.
 ```bash
 uv sync --extra dev
 uv run pytest tests/          # or: make uv-test
+```
+
+## Just-in-time compilation (`compile` extra)
+
+The `@cy.optimizer`, `@cy.agent` and `@cy.legacy` decorators can compile a
+user-defined class on import via `pyximport`, which needs Cython and
+`setuptools`. Install the `compile` extra:
+
+```bash
+pip install "clypto[compile]"
+```
+
+With uv, add it alongside the dev extra:
+
+```bash
+uv sync --extra dev --extra compile
 ```
 
 ## Building these docs

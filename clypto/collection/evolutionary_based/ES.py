@@ -7,10 +7,10 @@
 import numpy as np
 
 from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalES(Optimizer):
+class OriginalES(LegacyOptimizer):
     """
     The original version of: Evolution Strategies (ES)
 
@@ -76,7 +76,7 @@ class OriginalES(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -156,7 +156,7 @@ class LevyES(OriginalES):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -207,7 +207,7 @@ class LevyES(OriginalES):
         )
 
 
-class CMA_ES(Optimizer):
+class CMA_ES(LegacyOptimizer):
     """
     The original version of: Covariance Matrix Adaptation Evolution Strategy (CMA-ES)
 
@@ -305,7 +305,7 @@ class CMA_ES(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -365,7 +365,7 @@ class CMA_ES(Optimizer):
             self.C = V * E / V
 
 
-class Simple_CMA_ES(Optimizer):
+class Simple_CMA_ES(LegacyOptimizer):
     """
     The simple version of: Covariance Matrix Adaptation Evolution Strategy (Simple-CMA-ES)
 
@@ -416,7 +416,7 @@ class Simple_CMA_ES(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
