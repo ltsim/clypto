@@ -3,6 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
+"""Private compiled engine used by the built-in algorithm collection.
+
+The public classic base injected by ``@cy.legacy`` lives in
+``clypto/optimizer/legacy.py`` and is deliberately independent of this module.
+"""
 import math
 import random
 import time
@@ -11,9 +16,10 @@ import typing
 import numpy as np
 import numpy.random as npr
 import numpy.typing as npt
-from clypto.agents.legacy import LegacyAgent
-from clypto.hints.array import NDArrayType
-from clypto.optimizer.base import BaseOptimizer
+from cython.parallel cimport parallel, prange
+
+from clypto.agents._core cimport _LegacyAgent
+from clypto.utils._nogil cimport _NogilEvaluator
 from clypto.utils.history import Tracker
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
@@ -21,77 +27,45 @@ from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
 
 
-class LegacyOptimizer(BaseOptimizer):
-    """
-    The base class of all classic algorithms. All methods in this class will be inherited
-
-    Notes
-    ~~~~~
-    + The function solve() is the most important method, trained the model
-    + The general format of:
-        + population = [agent_1, agent_2, ..., agent_N]
-        + agent = [solution, target]
-        + target = [fitness value, objective_list]
-        + objective_list = [obj_1, obj_2, ..., obj_M]
-    """
-
-    EPSILON: typing.Final[float] = 10e-10
-    AVAILABLE_MODES: typing.Final[
-        tuple[typing.Literal["swarm", "process", "thread"]]
-    ] = ("swarm",)
-    SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
-
+cdef class _LegacyOptimizer:
     def __init__(self, **kwargs):
         self.tracker = Tracker()
-        self.__last_gbest_fit: typing.Optional[float] = None
-        self.__repeated_times: int = 0
+        self.validator = Validator()
+        self.EPSILON = 10e-10
+        self.AVAILABLE_MODES = ("swarm", "parallel", "thread", "process")
+        self.SUPPORTED_ARRAYS = list, tuple, np.ndarray
+        self._last_gbest_fit = None
+        self._repeated_times = 0
+        self._nfe_counter = 1
+        self._name = kwargs.get("name", self.__class__.__name__)
+        self._params_name_ordered = None
+        self.generator = None
+        self._termination = None
+        self.mode = kwargs.get("mode", None)
+        self.epoch = 0
+        self.pop_size = 0
+        self.n_workers = None
+        self.pop = None
+        self.g_best = _LegacyAgent()
+        self.g_worst = None
+        self.problem = None
+        self.sort_flag = False
+        self.parameters = {}
+        self.is_parallelizable = True
+        self.rng = None
 
-        self.__nfe_counter: int = 1
-        self.__name: str = kwargs.get("name", self.__class__.__name__)
-        self.__params_name_ordered = None
-        # __generator/problem/pop/g_best/g_worst/epoch/pop_size are None only in this
-        # brief window before solve() -> check_problem()/initialization()/
-        # after_initialization() run; every algorithm's evolve() (and everything else
-        # that reads these) only ever executes after that point, so they're declared
-        # as their steady-state (non-Optional) type here rather than as Optional,
-        # which would otherwise force a None-check at every one of their ~150 call
-        # sites across the algorithm collection for an invariant that always holds
-        # by the time those call sites run.
-        self.__generator: npr.Generator = None  # type: ignore[assignment]
-        self.__termination: typing.Optional[Termination] = None
-
-        self.mode: typing.Optional[typing.Literal["swarm", "process", "thread"]] = None
-        self.epoch: int = None  # type: ignore[assignment]
-        self.pop_size: int = None  # type: ignore[assignment]
-        self.n_workers: typing.Optional[int] = None
-        self.pop: list[LegacyAgent] = None  # type: ignore[assignment]
-        self.g_best: LegacyAgent = LegacyAgent()
-        self.g_worst: LegacyAgent = None  # type: ignore[assignment]
-        self.problem: Problem = None  # type: ignore[assignment]
-        self.sort_flag: bool = False
-        self.parameters: dict = {}
-        self.is_parallelizable: bool = True
-        self.rng: typing.Optional[random.Random] = None
 
     @property
     def termination(self):
-        return self.__termination
-
-    @property
-    def generator(self):
-        return self.__generator
+        return self._termination
 
     @property
     def name(self):
-        return self.__name
-
-    @property
-    def validator(self) -> Validator:
-        return Validator()
+        return self._name
 
     @property
     def nf_counter(self):
-        return self.__nfe_counter
+        return self._nfe_counter
 
     def set_parameters(
         self, parameters: typing.Union[typing.List, typing.Tuple, typing.Dict]
@@ -106,11 +80,11 @@ class LegacyOptimizer(BaseOptimizer):
             parameters: The parameters
         """
         if type(parameters) in (list, tuple):
-            self.__params_name_ordered = tuple(parameters)
+            self._params_name_ordered = tuple(parameters)
             self.parameters = {}
 
             for name in parameters:
-                self.parameters[name] = self.__dict__[name]
+                self.parameters[name] = getattr(self, name)
 
         elif type(parameters) is dict:
             valid_para_names = set(self.parameters.keys())
@@ -136,7 +110,13 @@ class LegacyOptimizer(BaseOptimizer):
         """
         Get all attributes in optimizer.
         """
-        return self.__dict__
+        data = {}
+        for key in (
+            "epoch", "pop_size", "pop", "problem", "g_best", "g_worst",
+            "mode", "sort_flag", "is_parallelizable", "parameters",
+        ):
+            data[key] = getattr(self, key, None)
+        return data
 
     def get_name(self) -> str:
         """
@@ -213,58 +193,58 @@ class LegacyOptimizer(BaseOptimizer):
                 "problem needs to be a dict or an instance of Problem class."
             )
 
-        self.__generator = np.random.default_rng(seed)
+        self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for random module
 
         # Reset for this solve() call; initialization()/after_initialization() (called
         # immediately after, still within solve(), before any evolve()) set these back.
         self.pop, self.g_best, self.g_worst = None, None, None  # type: ignore[assignment]
-        self.__last_gbest_fit, self.__repeated_times = None, 0
+        self._last_gbest_fit, self._repeated_times = None, 0
 
     def __update_repeated_times(self) -> None:
-        if self.__termination is None:
+        if self._termination is None:
             return
         fit = float(self.g_best.target.fitness)
 
         if (
-            self.__last_gbest_fit is not None
-            and abs(fit - self.__last_gbest_fit) <= self.__termination.epsilon
+            self._last_gbest_fit is not None
+            and abs(fit - self._last_gbest_fit) <= self._termination.epsilon
         ):
-            self.__repeated_times += 1
+            self._repeated_times += 1
         else:
-            self.__repeated_times = 0
+            self._repeated_times = 0
 
-        self.__last_gbest_fit = fit
+        self._last_gbest_fit = fit
 
     def check_termination(self, mode="start", termination=None, epoch=None):
         if mode == "start":
-            self.__termination = termination
+            self._termination = termination
 
             if termination is not None:
                 if isinstance(termination, Termination):
-                    self.__termination = termination
+                    self._termination = termination
                 elif type(termination) == dict:
-                    self.__termination = Termination(**termination)
+                    self._termination = Termination(**termination)
                 else:
                     raise ValueError(
                         "Termination needs to be a dict or an instance of Termination class."
                     )
 
-                self.__nfe_counter = 0
-                self.__termination.set_start_values(
-                    0, self.__nfe_counter, time.perf_counter(), 0
+                self._nfe_counter = 0
+                self._termination.set_start_values(
+                    0, self._nfe_counter, time.perf_counter(), 0
                 )
 
             return None
         else:
             finished = False
 
-            if self.__termination is not None:
-                finished = self.__termination.should_terminate(
+            if self._termination is not None:
+                finished = self._termination.should_terminate(
                     epoch,
-                    self.__nfe_counter,
+                    self._nfe_counter,
                     time.perf_counter(),
-                    self.__repeated_times,
+                    self._repeated_times,
                 )
 
             return finished
@@ -282,7 +262,7 @@ class LegacyOptimizer(BaseOptimizer):
         history_path: str | None = None,
         before_iteration: typing.Optional[typing.Callable] = None,
         after_iteration: typing.Optional[typing.Callable] = None,
-    ) -> LegacyAgent:
+    ) -> _LegacyAgent:
         self.check_problem(problem, seed)
         self.check_termination("start", termination, None)
         self.initialize_variables()
@@ -350,7 +330,7 @@ class LegacyOptimizer(BaseOptimizer):
 
     def track_optimize_step(
         self,
-        pop: list[LegacyAgent] | None = None,
+        pop: list[_LegacyAgent] | None = None,
         epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
@@ -363,7 +343,7 @@ class LegacyOptimizer(BaseOptimizer):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
-        return LegacyAgent(solution=solution)
+        return _LegacyAgent(solution=solution)
 
     def generate_agent(self, solution: typing.Optional[NDArrayType] = None):
         agent = self.generate_empty_agent(solution)
@@ -373,7 +353,7 @@ class LegacyOptimizer(BaseOptimizer):
 
     def generate_population(
         self, pop_size: typing.Optional[int] = None
-    ) -> list[LegacyAgent]:
+    ) -> list[_LegacyAgent]:
         if pop_size is None:
             pop_size = self.pop_size
 
@@ -387,38 +367,64 @@ class LegacyOptimizer(BaseOptimizer):
 
         return self.problem.correct_solution(solution)
 
-    def update_target_for_population(self, pop: list[LegacyAgent]) -> list[LegacyAgent]:
-        pos_list = [agent.solution for agent in pop]
+    def update_target_for_population(self, pop):
+        cdef object pos_list = [agent.solution for agent in pop]
+        cdef Py_ssize_t n = len(pop)
+        cdef Py_ssize_t idx
 
         if self.mode == "swarm":
-            for idx, pos in enumerate(pos_list):
-                pop[idx].target = self.get_target(pos, counted=False)
-        elif self.mode in ("thread", "process"):
-            raise ValueError(
-                "The parallel agent update mode was removed because it was inefficient."
-            )
+            for idx in range(n):
+                pop[idx].target = self.get_target(pos_list[idx], counted=False)
+        elif self.mode in ("parallel", "thread", "process"):
+            self._evaluate_parallel(pop, pos_list, n)
         else:
             return pop
 
-        self.__nfe_counter += len(pop)
+        self._nfe_counter += n
 
         return pop
 
+    def _evaluate_parallel(self, pop, pos_list, Py_ssize_t n):
+        """Re-evaluate ``pop`` in place, using a nogil batch evaluator when present.
+
+        Without a ``Problem.evaluator`` (the default) this falls back to the
+        sequential Python evaluation, preserving the classic results.
+        """
+        cdef _NogilEvaluator evaluator
+        cdef double[:, ::1] X
+        cdef double[:, ::1] F
+        cdef Py_ssize_t i
+        cdef Py_ssize_t n_dims
+
+        if self.problem.evaluator is not None and self.problem.n_objs == 1:
+            evaluator = <_NogilEvaluator>self.problem.evaluator
+            X = np.ascontiguousarray(pos_list, dtype=np.float64)
+            F = np.empty((n, 1), dtype=np.float64)
+            n_dims = X.shape[1]
+            with nogil, parallel():
+                for i in prange(n, schedule="static"):
+                    evaluator.row(&X[i, 0], n_dims, &F[i, 0])
+            for i in range(n):
+                pop[i].target = Target(
+                    objectives=float(F[i, 0]), weights=self.problem.obj_weights
+                )
+        else:
+            for i in range(n):
+                pop[i].target = self.get_target(pos_list[i], counted=False)
+
     def get_target(self, solution: NDArrayType, counted: bool = True) -> Target:
         if counted:
-            self.__nfe_counter += 1
+            self._nfe_counter += 1
 
         return self.problem.get_target(solution)
 
-    @staticmethod
-    def compare_target(target_x: Target, target_y: Target, minmax: str = "min") -> bool:
+    def compare_target(self, target_x: Target, target_y: Target, minmax: str = "min") -> bool:
         if minmax == "min":
             return True if target_x.fitness < target_y.fitness else False
         else:
             return False if target_x.fitness < target_y.fitness else True
 
-    @staticmethod
-    def compare_fitness(
+    def compare_fitness(self, 
         fitness_x: float | int, fitness_y: float | int, minmax: str = "min"
     ) -> bool:
         if minmax == "min":
@@ -426,14 +432,12 @@ class LegacyOptimizer(BaseOptimizer):
         else:
             return False if fitness_x < fitness_y else True
 
-    @staticmethod
-    def duplicate_pop(pop: list[LegacyAgent]) -> list[LegacyAgent]:
+    def duplicate_pop(self, pop: list[_LegacyAgent]) -> list[_LegacyAgent]:
         return [agent.copy() for agent in pop]
 
-    @staticmethod
-    def get_sorted_population(
-        pop: list[LegacyAgent], minmax: str = "min"
-    ) -> list[LegacyAgent]:
+    def get_sorted_population(self, 
+        pop: list[_LegacyAgent], minmax: str = "min"
+    ) -> list[_LegacyAgent]:
         """
         Get sorted population based on type (minmax) of problem
 
@@ -455,10 +459,9 @@ class LegacyOptimizer(BaseOptimizer):
 
         return pop_new
 
-    @staticmethod
-    def get_sorted_indices_population(
-        pop: list[LegacyAgent], minmax: str = "min"
-    ) -> tuple[list[LegacyAgent], list[int]]:
+    def get_sorted_indices_population(self, 
+        pop: list[_LegacyAgent], minmax: str = "min"
+    ) -> tuple[list[_LegacyAgent], list[int]]:
         """
         Get sorted indices population based on type (minmax) of problem
 
@@ -480,8 +483,7 @@ class LegacyOptimizer(BaseOptimizer):
 
         return pop_new, indices
 
-    @staticmethod
-    def get_best_agent(pop: list[LegacyAgent], minmax: str = "min") -> LegacyAgent:
+    def get_best_agent(self, pop: list[_LegacyAgent], minmax: str = "min") -> _LegacyAgent:
         """
         Args:
             pop: The population of agents
@@ -490,19 +492,17 @@ class LegacyOptimizer(BaseOptimizer):
         Returns:
             The best agent
         """
-        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
+        pop = self.get_sorted_population(pop, minmax)
         return pop[0].copy()
 
-    @staticmethod
-    def get_index_best(pop: list[LegacyAgent], minmax: str = "min") -> int:
+    def get_index_best(self, pop: list[_LegacyAgent], minmax: str = "min") -> int:
         fit_list = np.array([agent.target.fitness for agent in pop])
         if minmax == "min":
             return int(np.argmin(fit_list))
         else:
             return int(np.argmax(fit_list))
 
-    @staticmethod
-    def get_worst_agent(pop: list[LegacyAgent], minmax: str = "min") -> LegacyAgent:
+    def get_worst_agent(self, pop: list[_LegacyAgent], minmax: str = "min") -> _LegacyAgent:
         """
         Args:
             pop: The population of agents
@@ -511,16 +511,15 @@ class LegacyOptimizer(BaseOptimizer):
         Returns:
             The worst agent
         """
-        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
+        pop = self.get_sorted_population(pop, minmax)
         return pop[-1].copy()
 
-    @staticmethod
-    def get_special_agents(
-        pop: list[LegacyAgent],
+    def get_special_agents(self, 
+        pop: list[_LegacyAgent],
         n_best: int = 3,
         n_worst: int = 3,
         minmax: str = "min",
-    ) -> tuple[list[LegacyAgent], list[LegacyAgent] | None, list[LegacyAgent] | None]:
+    ) -> tuple[list[_LegacyAgent], list[_LegacyAgent] | None, list[_LegacyAgent] | None]:
         """
         Get special agents include sorted population, n1 best agents, n2 worst agents
 
@@ -533,7 +532,7 @@ class LegacyOptimizer(BaseOptimizer):
         Returns:
             The sorted_population, n1 best agents and n2 worst agents
         """
-        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
+        pop = self.get_sorted_population(pop, minmax)
 
         if n_best is None:
             if n_worst is None:
@@ -550,9 +549,8 @@ class LegacyOptimizer(BaseOptimizer):
                     [agent.copy() for agent in pop[::-1][:n_worst]],
                 )
 
-    @staticmethod
-    def get_special_fitness(
-        pop: list[LegacyAgent], minmax: str = "min"
+    def get_special_fitness(self, 
+        pop: list[_LegacyAgent], minmax: str = "min"
     ) -> tuple[float | np.ndarray, float, float]:
         """
         Get special target include the total fitness, the best fitness, and the worst fitness
@@ -565,16 +563,15 @@ class LegacyOptimizer(BaseOptimizer):
             The total fitness, the best fitness, and the worst fitness
         """
         total_fitness = np.sum([agent.target.fitness for agent in pop])
-        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
+        pop = self.get_sorted_population(pop, minmax)
         return total_fitness, pop[0].target.fitness, pop[-1].target.fitness
 
-    @staticmethod
-    def get_better_agent(
-        agent_x: LegacyAgent,
-        agent_y: LegacyAgent,
+    def get_better_agent(self, 
+        agent_x: _LegacyAgent,
+        agent_y: _LegacyAgent,
         minmax: str = "min",
         reverse: bool = False,
-    ) -> LegacyAgent:
+    ) -> _LegacyAgent:
         """
         Args:
             agent_x: First agent
@@ -604,12 +601,11 @@ class LegacyOptimizer(BaseOptimizer):
             )
 
     ### Survivor Selection
-    @staticmethod
-    def greedy_selection_population(
-        pop_old: list[LegacyAgent] | None = None,
-        pop_new: list[LegacyAgent] | None = None,
+    def greedy_selection_population(self, 
+        pop_old: list[_LegacyAgent] | None = None,
+        pop_new: list[_LegacyAgent] | None = None,
         minmax: str = "min",
-    ) -> list[LegacyAgent]:
+    ) -> list[_LegacyAgent]:
         """
         Args:
             pop_old: The current population
@@ -644,12 +640,11 @@ class LegacyOptimizer(BaseOptimizer):
                 for idx in range(len_old)
             ]
 
-    @staticmethod
-    def get_sorted_and_trimmed_population(
-        pop: list[LegacyAgent] | None = None,
+    def get_sorted_and_trimmed_population(self, 
+        pop: list[_LegacyAgent] | None = None,
         pop_size: int | None = None,
         minmax: str = "min",
-    ) -> list[LegacyAgent]:
+    ) -> list[_LegacyAgent]:
         """
         Args:
             pop: The population
@@ -659,13 +654,13 @@ class LegacyOptimizer(BaseOptimizer):
         Returns:
             The sorted and trimmed population with pop_size size
         """
-        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
+        pop = self.get_sorted_population(pop, minmax)
 
         return pop[:pop_size]
 
     def update_global_best_agent(
-        self, pop: list[LegacyAgent], save: bool = False
-    ) -> tuple[list[LegacyAgent], LegacyAgent]:
+        self, pop: list[_LegacyAgent], save: bool = False
+    ) -> tuple[list[_LegacyAgent], _LegacyAgent]:
         """
         Update global best and current best solutions in history object.
         Also update global worst and current worst solutions in history object.
@@ -698,7 +693,7 @@ class LegacyOptimizer(BaseOptimizer):
             list_fitness = np.array(list_fitness).ravel()
 
         if np.ptp(list_fitness) == 0:
-            return int(self.__generator.integers(0, len(list_fitness)))
+            return int(self.generator.integers(0, len(list_fitness)))
 
         if np.any(list_fitness < 0):
             list_fitness = list_fitness - np.min(list_fitness)
@@ -709,7 +704,7 @@ class LegacyOptimizer(BaseOptimizer):
 
         prob = final_fitness / np.sum(final_fitness)
 
-        return int(self.__generator.choice(range(0, len(list_fitness)), p=prob))
+        return int(self.generator.choice(range(0, len(list_fitness)), p=prob))
 
     def get_index_kway_tournament_selection(
         self,
@@ -732,7 +727,7 @@ class LegacyOptimizer(BaseOptimizer):
             k_way = int(k_way * len(pop))
 
         k_way_count: int = int(k_way)
-        list_id = self.__generator.choice(
+        list_id = self.generator.choice(
             range(len(pop)), k_way_count, replace=False
         )
         list_parents = [[idx, pop[idx].target.fitness] for idx in list_id]
@@ -789,21 +784,21 @@ class LegacyOptimizer(BaseOptimizer):
         sigma_v = 1
         size = 1 if size is None else size
 
-        u = self.__generator.normal(0, sigma_u, size)
-        v = self.__generator.normal(0, sigma_v, size)
+        u = self.generator.normal(0, sigma_u, size)
+        v = self.generator.normal(0, sigma_v, size)
         s = u / np.power(np.abs(v) + self.EPSILON, 1 / beta)
 
         if case == 0:
-            step = multiplier * s * self.__generator.uniform()
+            step = multiplier * s * self.generator.uniform()
         elif case == 1:
-            step = multiplier * s * self.__generator.normal(0, 1)
+            step = multiplier * s * self.generator.normal(0, 1)
         else:
             step = multiplier * s
 
         return step[0] if size == 1 else step
 
     def generate_opposition_solution(
-        self, agent: LegacyAgent | None = None, g_best: LegacyAgent | None = None
+        self, agent: _LegacyAgent | None = None, g_best: _LegacyAgent | None = None
     ) -> np.ndarray:
         """
         Args:
@@ -817,13 +812,13 @@ class LegacyOptimizer(BaseOptimizer):
             self.problem.lb
             + self.problem.ub
             - g_best.solution
-            + self.__generator.uniform() * (g_best.solution - agent.solution)
+            + self.generator.uniform() * (g_best.solution - agent.solution)
         )
 
         return self.correct_solution(pos_new)
 
     def generate_group_population(
-        self, pop: list[LegacyAgent], n_groups: int, m_agents: int
+        self, pop: list[_LegacyAgent], n_groups: int, m_agents: int
     ) -> list:
         """
         Generate a list of group population from pop
@@ -854,7 +849,7 @@ class LegacyOptimizer(BaseOptimizer):
         Returns:
             list: position of 1st and 2nd child
         """
-        r = self.__generator.uniform()  # w1 = w2 when r =0.5
+        r = self.generator.uniform()  # w1 = w2 when r =0.5
         w1 = np.multiply(r, dad_pos) + np.multiply((1 - r), mom_pos)
         w2 = np.multiply(r, mom_pos) + np.multiply((1 - r), dad_pos)
 
@@ -879,7 +874,7 @@ class LegacyOptimizer(BaseOptimizer):
         for idx in range(0, pop_len):
             agent = pop_s1[idx].copy()
             pos_new = pop_s1[idx].solution * (
-                1 + self.__generator.normal(0, 1, self.problem.n_dims)
+                1 + self.generator.normal(0, 1, self.problem.n_dims)
             )
             agent.solution = self.correct_solution(pos_new)
             pop_new.append(agent)
@@ -896,9 +891,9 @@ class LegacyOptimizer(BaseOptimizer):
 
         for idx in range(0, pop_len):
             agent = pop_s2[idx].copy()
-            pos_new = (g_best.solution - pos_s1_mean) - self.__generator.random() * (
+            pos_new = (g_best.solution - pos_s1_mean) - self.generator.random() * (
                 self.problem.lb
-                + self.__generator.random() * (self.problem.ub - self.problem.lb)
+                + self.generator.random() * (self.problem.ub - self.problem.lb)
             )
             agent.solution = self.correct_solution(pos_new)
             pop_new.append(agent)

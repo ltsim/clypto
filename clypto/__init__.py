@@ -161,6 +161,7 @@ from clypto.collection.system_based import WCA
 from clypto.agents.precompile import Attribute, RuntimeAgent, agent
 from clypto.optimizer.precompile import Argument, DecoratedOptimizer, legacy, optimizer
 from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy import _LegacyOptimizer
 from clypto.utils import Problem
 from clypto.utils.population import Population
 from clypto.utils.problem import Problem
@@ -203,7 +204,7 @@ def get_all_optimizers(verbose=False):
             for cls_name, cls_obj in inspect.getmembers(obj):
                 if (
                         inspect.isclass(cls_obj)
-                        and issubclass(cls_obj, Optimizer)
+                        and issubclass(cls_obj, _LegacyOptimizer)
                         and cls_obj is not Optimizer
                 ):
                     cls[cls_name] = cls_obj
@@ -256,7 +257,7 @@ def get_optimizer_by_name(name: str, verbose=False):
         ):
             flag = True
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, Optimizer):
+                if inspect.isclass(cls_obj) and issubclass(cls_obj, _LegacyOptimizer):
                     cls[cls_name] = cls_obj
     if verbose:
         if not flag:

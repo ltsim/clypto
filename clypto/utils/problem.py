@@ -40,7 +40,7 @@ class Problem:
         TransferBinaryVar,
         TransferBoolVar,
     )
-    SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, NDArrayType
+    SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(
         self,
@@ -50,6 +50,7 @@ class Problem:
     ) -> None:
         self.__obj_func = kwargs.get("obj_func", lambda _: 0)
         self.__name = kwargs.get("name", "Problem")
+        self.__evaluator = kwargs.get("evaluator", None)
         self.__bounds = None
         self.__n_objs = None
         self.__lb = None
@@ -91,6 +92,19 @@ class Problem:
 
         for idx in range(len(self.__bounds)):
             self.__bounds[idx].seed = seed
+
+    @property
+    def evaluator(self):
+        """Optional nogil batch evaluator used by the parallel update mode."""
+        return self.__evaluator
+
+    @property
+    def obj_weights(self):
+        """The objective weights (materialized by the first ``n_objs`` access)."""
+        if self.__n_objs is None:
+            _ = self.n_objs
+
+        return self.__obj_weights
 
     @property
     def n_objs(self):

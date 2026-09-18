@@ -1,4 +1,3 @@
-from clypto.agents.dynamic import AgentDynamic
-from clypto.agents.static import AgentStatic
+from clypto.agents.legacy import LegacyAgent
 
-__all__ = ["AgentStatic", "AgentDynamic"]
+__all__ = ["LegacyAgent"]
