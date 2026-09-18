@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync uv-test docs-serve docs-build
+.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync build-ext test uv-test docs-serve docs-build
 
 clean: clean-build clean-cython clean-pyc
 
@@ -29,8 +29,16 @@ uv-lock:
 uv-sync:
 	uv sync --extra dev
 
-uv-test:
-	uv run pytest tests/
+# The collection is native .pyx; build the extensions in place before running
+# anything that imports clypto from the source tree.
+build-ext:
+	uv run --no-sync python setup.py build_ext --inplace
+
+test: build-ext
+	uv run --no-sync pytest tests/
+
+uv-test: build-ext
+	uv run --no-sync pytest tests/
 
 docs-serve:
 	uv sync --extra docs --no-install-project

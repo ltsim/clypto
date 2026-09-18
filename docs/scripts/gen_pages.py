@@ -19,6 +19,35 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 COLLECTION_ROOT = REPO_ROOT / "clypto" / "collection"
 REPO_URL = "https://github.com/ltsim/clypto/blob/master"
 
+
+def _pythonize_pyx(text: str) -> str:
+    """Rewrite native Cython constructs into plain Python for ``ast`` parsing.
+
+    The collection is native ``.pyx`` (``cdef class`` / ``cimport`` / ``cpdef``),
+    which the stdlib ``ast`` cannot read. Docstrings and ``__init__`` signatures
+    are unaffected, so the rest of this script still works on the parsed tree.
+    """
+    out: list[str] = []
+    for line in text.splitlines():
+        if re.match(r"^\s*(from\s+\S+\s+cimport\s+.+|cimport\s+.+)$", line):
+            out.append("pass")
+        elif re.match(r"^\s*cdef class ", line):
+            out.append(re.sub(r"^(\s*)cdef class ", r"\1class ", line))
+        elif re.match(r"^\s*cdef\s+", line):
+            out.append(re.sub(r"^(\s*)cdef\s+.*$", r"\1pass", line))
+        elif re.match(r"^\s*cpdef\s+", line):
+            out.append(re.sub(r"^(\s*)cpdef\s+(?:\w+\s+)?(\w+\s*\()", r"\1def \2", line))
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
+def _parse(path: Path):
+    text = path.read_text(encoding="utf-8")
+    if path.suffix == ".pyx":
+        text = _pythonize_pyx(text)
+    return ast.parse(text)
+
 CATEGORY_LABELS = {
     "bio_based": "Bio-based",
     "evolutionary_based": "Evolutionary-based",
@@ -37,6 +66,7 @@ CATEGORY_ORDER = list(CATEGORY_LABELS)
 CORE_MODULES = [
     "clypto/optimizer/base.py",
     "clypto/optimizer/legacy.py",
+    "clypto/optimizer/_legacy.pyx",
     "clypto/optimizer/precompile/declaration.py",
     "clypto/optimizer/precompile/base.py",
     "clypto/optimizer/precompile/decorator.py",
@@ -61,7 +91,7 @@ CORE_MODULES = [
     "clypto/utils/space/categorical.py",
     "clypto/utils/space/sequence.py",
     "clypto/utils/space/permutation.py",
-    "clypto/agents/_core.py",
+    "clypto/agents/_core.pyx",
     "clypto/hints/array.py",
     "clypto/hints/primitives.py",
     "clypto/hints/sense.py",
@@ -177,7 +207,7 @@ def _source_link(path: Path) -> str:
 
 
 def _collect_classes(path: Path) -> list[dict]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+    tree = _parse(path)
     classes: list[dict] = []
     for node in tree.body:
         if not isinstance(node, ast.ClassDef):
@@ -197,7 +227,7 @@ def _collect_classes(path: Path) -> list[dict]:
 def _generate_category(category: str) -> tuple[int, int]:
     label = CATEGORY_LABELS[category]
     directory = COLLECTION_ROOT / category
-    modules = sorted(p for p in directory.glob("*.py") if p.name != "__init__.py")
+    modules = sorted(p for p in directory.glob("*.pyx") if p.name != "__init__.py")
 
     catalog: list[tuple[str, dict]] = []
     for module in modules:
@@ -215,7 +245,7 @@ def _generate_category(category: str) -> tuple[int, int]:
         "| --- | --- | --- | --- |",
     ]
     for module_name, cls in catalog:
-        link = _source_link(COLLECTION_ROOT / category / f"{module_name}.py")
+        link = _source_link(COLLECTION_ROOT / category / f"{module_name}.pyx")
         summary = cls["summary"].replace("|", "\\|") or "-"
         lines.append(f"| [{module_name}]({link}) | `{cls['name']}` | {summary} | [source]({link}) |")
 
@@ -259,9 +289,9 @@ def _generate_api() -> None:
         path = REPO_ROOT / relative
         if not path.exists():
             continue
-        tree = ast.parse(path.read_text(encoding="utf-8"))
+        tree = _parse(path)
         module_doc = _first_paragraph(_clean_doc(ast.get_docstring(tree)))
-        title = relative.removesuffix(".py").removesuffix("/__init__")
+        title = relative.removesuffix(".pyx").removesuffix(".py").removesuffix("/__init__")
         sections += [f"## {title}", ""]
         if module_doc:
             sections += [module_doc, ""]

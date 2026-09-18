@@ -6,6 +6,14 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Cython-native collection (2026-09)
+
++ **Native `.pyx` collection:** all 147 catalog modules / 244 optimizer classes were converted from pure-Python `.py` to native Cython `.pyx` with `cdef class` optimizers and typed `cdef` agent classes.
++ **Dedicated agents, no dynamics:** `AgentStatic`/`AgentDynamic` were removed. Algorithms needing per-agent state declare their own private `cdef class` agent (e.g. `_HGSUnit`) with explicit fields, `copy()` and `update()`. Unknown attributes now raise instead of silently returning `None`.
++ **Private engine:** the compiled `clypto.optimizer._legacy._LegacyOptimizer` and `clypto.agents._core._LegacyAgent` back the collection and are not part of the public API. User algorithms use the `@cy.legacy` / `@cy.optimizer` decorators, which inject their own independent bases.
++ **`prange` parallel mode:** `mode="parallel"` (aliases `"thread"`/`"process"`) evaluates targets through `clypto.parallel`/`prange` using a compiled nogil evaluator (`Problem(evaluator=...)`); without one it falls back to the sequential path. The default `mode=None` behavior is bit-identical to the previous release.
++ **Build:** `python setup.py build_ext --inplace` (or `make build-ext`) is required before importing a source checkout; wheels and the editable install compile automatically.
+
 ### Decorator-based optimizer API
 
 + **Classic base renamed:** `clypto.optimizer.Optimizer` is now `LegacyOptimizer`; `Optimizer` remains as a backward-compatible alias (`cy.Optimizer is cy.LegacyOptimizer`). All 147 catalog modules were migrated to inherit `LegacyOptimizer` without touching any algorithm body. `get_all_optimizers()` and the discovery helpers are unchanged.

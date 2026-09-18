@@ -119,12 +119,15 @@ The [Makefile](Makefile) wraps the uv workflow (`uv-lock`, `uv-sync`, `uv-test`)
 
 ### Running the tests
 
+The algorithm collection is native Cython (`.pyx`), so build the extensions once before importing clypto from a fresh clone:
+
 ```bash
 $ uv sync --extra dev
-$ uv run pytest tests/          # or: make uv-test
+$ make build-ext            # python setup.py build_ext --inplace
+$ uv run --no-sync pytest tests/   # or: make uv-test
 ```
 
-> **Note:** a fresh clone ships only its `.py` sources. Compile first (`uv sync --extra dev` or `pip install .`), otherwise clypto runs as un-compiled Python and its compiled-by-design performance is lost.
+> **Note:** a fresh clone ships `.pyx`/`.pxd` sources, not compiled extensions. Build first (`make build-ext` or `pip install .`); without a build, `import clypto` fails because the compiled collection modules do not exist.
 
 ## Writing and compiling custom optimizers
 

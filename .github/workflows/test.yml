@@ -32,8 +32,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
+      - name: Build Cython extensions in place
+        run: uv run --no-sync python setup.py build_ext --inplace
+
       - name: Run pytest
-        run: uv run pytest tests/
+        run: uv run --no-sync pytest tests/
 
   wheel-smoke:
     name: smoke test installed wheel / 3.11
