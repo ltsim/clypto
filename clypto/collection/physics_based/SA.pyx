@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalSA(LegacyOptimizer):
+cdef class OriginalSA(_LegacyOptimizer):
     """
     The original version of: Simulated Annealing (SA)
 
@@ -59,7 +59,7 @@ class OriginalSA(LegacyOptimizer):
             temp_init (float): initial temperature, default=100
             step_size (float): the step size of random movement, default=0.1
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
         self.temp_init = self.validator.check_float("temp_init", temp_init, [1, 10000])
@@ -73,7 +73,7 @@ class OriginalSA(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -102,7 +102,7 @@ class OriginalSA(LegacyOptimizer):
         self.pop = [self.g_best.copy(), self.agent_current.copy()]
 
 
-class GaussianSA(LegacyOptimizer):
+cdef class GaussianSA(_LegacyOptimizer):
     """
     The developed version of: Gaussian Simulated Annealing (GaussianSA)
 
@@ -152,7 +152,7 @@ class GaussianSA(LegacyOptimizer):
             cooling_rate (float): cooling rate, default=0.99
             scale (float): the scale in gaussian random, default=0.1
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
         self.temp_init = self.validator.check_float("temp_init", temp_init, [1, 10000])
@@ -169,7 +169,7 @@ class GaussianSA(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -197,7 +197,7 @@ class GaussianSA(LegacyOptimizer):
         self.pop = [self.g_best.copy(), self.agent_current.copy()]
 
 
-class SwarmSA(LegacyOptimizer):
+cdef class SwarmSA(_LegacyOptimizer):
     """
     The swarm version of: Simulated Annealing (SwarmSA)
 
@@ -261,7 +261,7 @@ class SwarmSA(LegacyOptimizer):
             mutation_step_size (float): Mutation Step Size, default=0.1
             mutation_step_size_damp (float): Mutation Step Size Damp, default=0.99
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.max_sub_iter = self.validator.check_int(
@@ -325,7 +325,7 @@ class SwarmSA(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

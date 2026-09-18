@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalHC(LegacyOptimizer):
+cdef class OriginalHC(_LegacyOptimizer):
     """
     The original version of: Hill Climbing (HC)
 
@@ -59,7 +59,7 @@ class OriginalHC(LegacyOptimizer):
             pop_size (int): number of population size, default = 2
             neighbour_size (int): fixed parameter, sensitive exploitation parameter, Default: 50
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
         self.neighbour_size = self.validator.check_int(
@@ -70,7 +70,7 @@ class OriginalHC(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -90,7 +90,7 @@ class OriginalHC(LegacyOptimizer):
         self.pop = self.update_target_for_population(pop_neighbours)
 
 
-class SwarmHC(LegacyOptimizer):
+cdef class SwarmHC(_LegacyOptimizer):
     """
     The developed version: Swarm-based Hill Climbing (S-HC)
 
@@ -133,7 +133,7 @@ class SwarmHC(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             neighbour_size (int): fixed parameter, sensitive exploitation parameter, Default: 10
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.neighbour_size = self.validator.check_int(

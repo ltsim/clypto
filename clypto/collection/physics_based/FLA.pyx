@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalFLA(LegacyOptimizer):
+cdef class OriginalFLA(_LegacyOptimizer):
     """
     The original version of: Fick's Law Algorithm (FLA)
 
@@ -75,7 +75,7 @@ class OriginalFLA(LegacyOptimizer):
             C5 (float): factor C5, default=2.0
             DD (float): factor D in the paper, default=0.01
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
         self.C1 = self.validator.check_float("C1", C1, (-100.0, 100.0))
@@ -105,7 +105,7 @@ class OriginalFLA(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

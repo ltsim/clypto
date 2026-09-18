@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalRIME(LegacyOptimizer):
+cdef class OriginalRIME(_LegacyOptimizer):
     """
     The original version of: physical phenomenon of RIME-ice  (RIME)
 
@@ -55,7 +55,7 @@ class OriginalRIME(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             sr (float): Soft-rime parameters, default=5.0
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.sr = self.validator.check_float("sr", sr, (0.0, 100.0))
@@ -64,7 +64,7 @@ class OriginalRIME(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

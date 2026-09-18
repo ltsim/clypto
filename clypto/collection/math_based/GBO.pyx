@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalGBO(LegacyOptimizer):
+cdef class OriginalGBO(_LegacyOptimizer):
     """
     The original version of: Gradient-Based Optimizer (GBO)
 
@@ -60,7 +60,7 @@ class OriginalGBO(LegacyOptimizer):
             beta_min (float): Fixed parameter (no name in the paper), default = 0.2
             beta_max (float): Fixed parameter (no name in the paper), default = 1.2
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pr = self.validator.check_float("pr", pr, (0, 1.0))
@@ -71,7 +71,7 @@ class OriginalGBO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

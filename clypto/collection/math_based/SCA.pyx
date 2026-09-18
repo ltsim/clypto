@@ -5,12 +5,29 @@
 # --------------------------------------------------%
 
 import numpy as np
+from clypto.agents._core cimport _LegacyAgent
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
-from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.legacy import LegacyOptimizer
+
+# --- dedicated agents (private to this module) ---
+
+cdef class _QleSCAAgent(_LegacyAgent):
+    cdef public object q_table
+    def __init__(self, solution=None, target=None, q_table=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.q_table = q_table
+    cpdef object copy(self):
+        return _QleSCAAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.q_table,
+        )
+    def update(self, **kwargs):
+        if "q_table" in kwargs:
+            self.q_table = kwargs.pop("q_table")
+        _LegacyAgent.update(self, **kwargs)
 
 
-class DevSCA(LegacyOptimizer):
+cdef class DevSCA(_LegacyOptimizer):
     """
     The developed version: Sine Cosine Algorithm (SCA)
 
@@ -46,7 +63,7 @@ class DevSCA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
@@ -54,7 +71,7 @@ class DevSCA(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -93,7 +110,7 @@ class DevSCA(LegacyOptimizer):
             )
 
 
-class OriginalSCA(DevSCA):
+cdef class OriginalSCA(DevSCA):
     """
     The original version of: Sine Cosine Algorithm (SCA)
 
@@ -146,7 +163,7 @@ class OriginalSCA(DevSCA):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -231,7 +248,7 @@ class QTable:
         )
 
 
-class QleSCA(DevSCA):
+cdef class QleSCA(DevSCA):
     """
     The original version of: QLE Sine Cosine Algorithm (QLE-SCA)
 
@@ -289,11 +306,11 @@ class QleSCA(DevSCA):
         self.sort_flag = False
         self.is_parallelizable = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
-        return AgentStatic(solution=solution, q_table=q_table)
+        return _QleSCAAgent(solution=solution, q_table=q_table)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
@@ -326,7 +343,7 @@ class QleSCA(DevSCA):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

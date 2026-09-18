@@ -5,12 +5,39 @@
 # --------------------------------------------------%
 
 import numpy as np
+from clypto.agents._core cimport _LegacyAgent
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
-from clypto.agents.dynamic import AgentDynamic as Agent
-from clypto.optimizer.legacy import LegacyOptimizer
+
+# --- dedicated agents (private to this module) ---
+
+cdef class _OriginalArchOAAgent(_LegacyAgent):
+    cdef public object den
+    cdef public object vol
+    cdef public object acc
+    def __init__(self, solution=None, target=None, den=None, vol=None, acc=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.den = den
+        self.vol = vol
+        self.acc = acc
+    cpdef object copy(self):
+        return _OriginalArchOAAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.den,
+            self.vol,
+            self.acc,
+        )
+    def update(self, **kwargs):
+        if "den" in kwargs:
+            self.den = kwargs.pop("den")
+        if "vol" in kwargs:
+            self.vol = kwargs.pop("vol")
+        if "acc" in kwargs:
+            self.acc = kwargs.pop("acc")
+        _LegacyAgent.update(self, **kwargs)
 
 
-class OriginalArchOA(LegacyOptimizer):
+cdef class OriginalArchOA(_LegacyOptimizer):
     """
     The original version of: Archimedes Optimization Algorithm (ArchOA)
 
@@ -73,7 +100,7 @@ class OriginalArchOA(LegacyOptimizer):
             acc_max (float): acceleration max, Default 0.9
             acc_min (float): acceleration min, Default 0.1
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.c1 = self.validator.check_float("c1", c1, [1, 3])
@@ -87,7 +114,7 @@ class OriginalArchOA(LegacyOptimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> Agent:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         den = self.generator.uniform(self.problem.lb, self.problem.ub)  # Density
@@ -97,11 +124,11 @@ class OriginalArchOA(LegacyOptimizer):
         ) * (
             self.problem.ub - self.problem.lb
         )  # Acceleration
-        return Agent(solution=solution, den=den, vol=vol, acc=acc)
+        return _OriginalArchOAAgent(solution=solution, den=den, vol=vol, acc=acc)
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

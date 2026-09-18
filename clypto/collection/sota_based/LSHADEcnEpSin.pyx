@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import cauchy, norm
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalLSHADEcnEpSin(LegacyOptimizer):
+cdef class OriginalLSHADEcnEpSin(_LegacyOptimizer):
     """
     The original version of: Ensemble sinusoidal differential covariance matrix adaptation with Euclidean neighborhood (LSHADEcnEpSin)
 
@@ -69,7 +69,7 @@ class OriginalLSHADEcnEpSin(LegacyOptimizer):
             pc (float): [0.1, 1.0], Probability for covariance matrix crossover, default = 0.4
             pop_size_min (int): [5, 1000], Minimum population size, default = 10
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.miu_f = self.validator.check_float("miu_f", miu_f, (0.1, 1.0))
@@ -291,7 +291,7 @@ class OriginalLSHADEcnEpSin(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 from scipy.stats import qmc
 
 
-class OriginalPSS(LegacyOptimizer):
+cdef class OriginalPSS(_LegacyOptimizer):
     """
     The original version of: Pareto-like Sequential Sampling (PSS)
 
@@ -60,7 +60,7 @@ class OriginalPSS(LegacyOptimizer):
             acceptance_rate (float): the probability of accepting a solution in the normal range, default = 0.9
             sampling_method (str): 'LHS': Latin-Hypercube or 'MC': 'MonteCarlo', default = "LHS"
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.acceptance_rate = self.validator.check_float(
@@ -101,7 +101,7 @@ class OriginalPSS(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

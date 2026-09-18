@@ -7,10 +7,10 @@
 from typing import Tuple, List
 
 import numpy as np
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalIMODE(LegacyOptimizer):
+cdef class OriginalIMODE(_LegacyOptimizer):
     """
     The original version of: Improved Multi-operator Differential Evolution Algorithm (IMODE)
 
@@ -59,7 +59,7 @@ class OriginalIMODE(LegacyOptimizer):
             memory_size (int): [2, 20], Memory size for F and CR, default = 5
             archive_size (int): [5, 100], Size of the solution archive for diversity, default = 20
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.memory_size = self.validator.check_int(
@@ -294,7 +294,7 @@ class OriginalIMODE(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

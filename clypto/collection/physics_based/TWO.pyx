@@ -5,12 +5,29 @@
 # --------------------------------------------------%
 
 import numpy as np
+from clypto.agents._core cimport _LegacyAgent
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
-from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.legacy import LegacyOptimizer
+
+# --- dedicated agents (private to this module) ---
+
+cdef class _OriginalTWOAgent(_LegacyAgent):
+    cdef public object weight
+    def __init__(self, solution=None, target=None, weight=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.weight = weight
+    cpdef object copy(self):
+        return _OriginalTWOAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.weight,
+        )
+    def update(self, **kwargs):
+        if "weight" in kwargs:
+            self.weight = kwargs.pop("weight")
+        _LegacyAgent.update(self, **kwargs)
 
 
-class OriginalTWO(LegacyOptimizer):
+cdef class OriginalTWO(_LegacyOptimizer):
     """
     The original version of: Tug of War Optimization (TWO)
 
@@ -50,7 +67,7 @@ class OriginalTWO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
@@ -66,7 +83,7 @@ class OriginalTWO(LegacyOptimizer):
             self.pop = self.generate_population(self.pop_size)
         self.pop = self.update_weight__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
         """
         Generate new agent with solution
 
@@ -75,7 +92,7 @@ class OriginalTWO(LegacyOptimizer):
         """
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        return AgentStatic(solution=solution, weight=0.0)
+        return _OriginalTWOAgent(solution=solution, weight=0.0)
 
     def update_weight__(self, teams):
         list_fits = np.array([agent.target.fitness for agent in teams])
@@ -90,7 +107,7 @@ class OriginalTWO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -156,7 +173,7 @@ class OriginalTWO(LegacyOptimizer):
         self.pop = self.update_weight__(self.pop)
 
 
-class OppoTWO(OriginalTWO):
+cdef class OppoTWO(OriginalTWO):
     """
     The opossition-based learning version: Tug of War Optimization (OTWO)
 
@@ -212,7 +229,7 @@ class OppoTWO(OriginalTWO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -285,7 +302,7 @@ class OppoTWO(OriginalTWO):
         self.pop = self.update_weight__(self.pop)
 
 
-class LevyTWO(OriginalTWO):
+cdef class LevyTWO(OriginalTWO):
     """
     The Levy-flight version of: Tug of War Optimization (LevyTWO)
 
@@ -321,7 +338,7 @@ class LevyTWO(OriginalTWO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -460,7 +477,7 @@ class EnhancedTWO(OppoTWO, LevyTWO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

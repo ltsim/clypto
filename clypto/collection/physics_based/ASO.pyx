@@ -5,12 +5,34 @@
 # --------------------------------------------------%
 
 import numpy as np
+from clypto.agents._core cimport _LegacyAgent
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
-from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.legacy import LegacyOptimizer
+
+# --- dedicated agents (private to this module) ---
+
+cdef class _OriginalASOAgent(_LegacyAgent):
+    cdef public object velocity
+    cdef public object mass
+    def __init__(self, solution=None, target=None, velocity=None, mass=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.velocity = velocity
+        self.mass = mass
+    cpdef object copy(self):
+        return _OriginalASOAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.velocity,
+            self.mass,
+        )
+    def update(self, **kwargs):
+        if "velocity" in kwargs:
+            self.velocity = kwargs.pop("velocity")
+        if "mass" in kwargs:
+            self.mass = kwargs.pop("mass")
+        _LegacyAgent.update(self, **kwargs)
 
 
-class OriginalASO(LegacyOptimizer):
+cdef class OriginalASO(_LegacyOptimizer):
     """
     The original version of: Atom Search Optimization (ASO)
 
@@ -62,7 +84,7 @@ class OriginalASO(LegacyOptimizer):
             alpha (int): [2, 20], Depth weight, default = 10
             beta (float): [0.1, 1.0], Multiplier weight, default = 0.2
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.alpha = self.validator.check_int("alpha", alpha, [1, 100])
@@ -70,12 +92,12 @@ class OriginalASO(LegacyOptimizer):
         self.set_parameters(["epoch", "pop_size", "alpha", "beta"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
         mass = 0.0
-        return AgentStatic(solution=solution, velocity=velocity, mass=mass)
+        return _OriginalASOAgent(solution=solution, velocity=velocity, mass=mass)
 
     def amend_solution(self, solution: np.ndarray) -> np.ndarray:
         condition = np.logical_and(
@@ -146,7 +168,7 @@ class OriginalASO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

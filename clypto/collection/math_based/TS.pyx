@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalTS(LegacyOptimizer):
+cdef class OriginalTS(_LegacyOptimizer):
     """
     The original version of: Tabu Search (TS)
 
@@ -65,7 +65,7 @@ class OriginalTS(LegacyOptimizer):
             neighbour_size (int): Size of the neighborhood for generating candidate solutions, Default: 10
             perturbation_scale (float): Scale of the perturbations for generating candidate solutions. default = 0.05
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
         self.tabu_size = self.validator.check_int("tabu_size", tabu_size, [2, 10000])
@@ -87,7 +87,7 @@ class OriginalTS(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class DevMVO(LegacyOptimizer):
+cdef class DevMVO(_LegacyOptimizer):
     """
     The developed version: Multi-Verse Optimizer (MVO)
 
@@ -56,7 +56,7 @@ class DevMVO(LegacyOptimizer):
             wep_min (float): Wormhole Existence Probability (min in Eq.(3.3) paper, default = 0.2
             wep_max (float: Wormhole Existence Probability (max in Eq.(3.3) paper, default = 1.0
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.wep_min = self.validator.check_float("wep_min", wep_min, (0, 0.5))
@@ -66,7 +66,7 @@ class DevMVO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -108,7 +108,7 @@ class DevMVO(LegacyOptimizer):
             )
 
 
-class OriginalMVO(DevMVO):
+cdef class OriginalMVO(DevMVO):
     """
     The original version of: Multi-Verse Optimizer (MVO)
 
@@ -189,7 +189,7 @@ class OriginalMVO(DevMVO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
