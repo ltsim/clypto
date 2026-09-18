@@ -1,3 +1,14 @@
+# Version 2026b
+
++ **Version bump:** released as `2026b0` (previous release `2026a0`).
++ **Decorator-based optimizer API:** write a custom optimizer as a plain class with `@cy.optimizer` / `@cy.agent` / `@cy.legacy`, declaring hyper-parameters via `cy.Argument[type, bound, default]` and per-agent state via `cy.Attribute[...]`; the classic `Optimizer` base was renamed to `LegacyOptimizer` (kept as a backward-compatible alias) and all 147 catalog modules migrated without algorithm-body changes.
++ **`cy.Population`:** new container backing `self.population` (`solutions` matrix, read-only `fitness`, `best`/`worst`, `append`/`remove`/`generate`).
++ **Opt-in Cython compilation:** `compile=True` / `precompile=True` compiles decorated classes into native extensions at import time, behind the optional `compile` extra
++ **Zarr-backed `Tracker`:** `solve(debug=True)` records per-epoch metrics with optional population snapshots and per-iteration `before`/`after` hooks; raises `requires-python` to `>=3.11`.
++ **Docs:** new custom-optimizer tutorials and a migration guide.
+
+---
+
 # Version 2026
 
 + **`Optimizer` & `History`:** Core classes completely overhauled to be clean, decoupled, and highly reusable by external frameworks.
