@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalSFO(Optimizer):
+class OriginalSFO(LegacyOptimizer):
     """
     The original version of: SailFish Optimizer (SFO)
 
@@ -83,7 +83,7 @@ class OriginalSFO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -176,7 +176,7 @@ class OriginalSFO(Optimizer):
         self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)
 
 
-class ImprovedSFO(Optimizer):
+class ImprovedSFO(LegacyOptimizer):
     """
     The original version: Improved Sailfish Optimizer (I-SFO)
 
@@ -233,7 +233,7 @@ class ImprovedSFO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

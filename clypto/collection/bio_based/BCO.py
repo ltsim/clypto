@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalBCO(Optimizer):
+class OriginalBCO(LegacyOptimizer):
     """
     The original version of: Bacterial Colony Optimization (BCO)
 
@@ -120,7 +120,7 @@ class OriginalBCO(Optimizer):
 
     def evolve(self, epoch: int) -> None:
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch: The current iteration

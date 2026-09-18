@@ -126,6 +126,72 @@ $ uv run pytest tests/          # or: make uv-test
 
 > **Note:** a fresh clone ships only its `.py` sources. Compile first (`uv sync --extra dev` or `pip install .`), otherwise clypto runs as un-compiled Python and its compiled-by-design performance is lost.
 
+## Writing and compiling custom optimizers
+
+New algorithms use the decorator API. Declare hyper-parameters with
+`cy.Argument`, implement `initialize`/`evolve`, and let the base class handle the
+population, evaluation and the `solve` loop:
+
+```python
+import numpy as np
+import clypto as cy
+
+
+@cy.optimizer
+class MyOptimizer:
+    alpha: cy.Argument[float, (0.0, 1.0), 0.5]
+
+    def evolve(self, epoch):
+        for idx in range(len(self.population)):
+            candidate = self.generate_agent()
+            if candidate.fitness < self.population[idx].fitness:
+                self.population[idx].solution = candidate.solution
+
+
+problem = cy.Problem(
+    obj_func=lambda x: np.sum(x ** 2),
+    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
+    minmax="min",
+)
+g_best = MyOptimizer(epoch=200, pop_size=50).solve(problem, seed=7)
+```
+
+Agents can carry their own state with `@cy.agent` + `cy.Attribute`, while
+classic MEALPY-style code keeps working untouched through `@cy.legacy`:
+
+```python
+import clypto as cy
+
+
+@cy.legacy
+class MyClassicOptimizer:
+    def __init__(self, epoch=100, pop_size=30, **kwargs):
+        super().__init__(**kwargs)          # LegacyOptimizer is injected
+        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
+        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
+        self.set_parameters(["epoch", "pop_size"])
+        self.sort_flag = True
+
+    def evolve(self, epoch):
+        ...
+```
+
+The classic base class was renamed `Optimizer` → `LegacyOptimizer`; `cy.Optimizer`
+is kept as an alias. See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
+
+Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or
+`precompile=True` to `@cy.legacy`, and install the `compile` extra:
+
+```bash
+$ pip install "clypto[compile]"
+```
+
+The decorators compile the class to a native extension on import (backed by
+`pyximport`) and cache the build by source hash, so unchanged code is not
+rebuilt. It fails loudly rather than running uncompiled: `ImportError` if Cython
+is missing, `RuntimeError` if the source cannot be read (REPL/notebook) or
+compilation fails.
+
 ## Optimizer Classification Table
 
 * Meta-heuristic Categories: ([Based on this article](https://doi.org/10.1016/j.procs.2020.09.075))

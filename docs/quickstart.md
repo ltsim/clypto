@@ -86,4 +86,6 @@ optimizers = cy.get_optimizer_by_name("PSO")  # every PSO variant
 ```
 
 Continue with the [Tutorial](tutorial.md) for decision variables, custom
-problems, termination criteria, and more.
+problems, termination criteria, and more, or with
+[Custom optimizers](custom-optimizers/index.md) to implement your own
+metaheuristic.

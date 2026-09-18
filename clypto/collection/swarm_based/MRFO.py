@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalMRFO(Optimizer):
+class OriginalMRFO(LegacyOptimizer):
     """
     The original version of: Manta Ray Foraging Optimization (MRFO)
 
@@ -68,7 +68,7 @@ class OriginalMRFO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -167,7 +167,7 @@ class OriginalMRFO(Optimizer):
             )
 
 
-class WMQIMRFO(Optimizer):
+class WMQIMRFO(LegacyOptimizer):
     """
     The original version of: Wavelet Mutation and Quadratic Interpolation MRFO (WMQIMRFO)
 
@@ -230,7 +230,7 @@ class WMQIMRFO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalFDO(Optimizer):
+class OriginalFDO(LegacyOptimizer):
     """
     The original version of: Fitness Dependent Optimizer (FDO)
 
@@ -123,7 +123,7 @@ class OriginalFDO(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

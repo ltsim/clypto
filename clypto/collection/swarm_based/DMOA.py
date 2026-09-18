@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalDMOA(Optimizer):
+class OriginalDMOA(LegacyOptimizer):
     """
     The original version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 
@@ -74,7 +74,7 @@ class OriginalDMOA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -147,7 +147,7 @@ class OriginalDMOA(Optimizer):
             self.pop[idx] = self.generate_agent(new_pos)
 
 
-class DevDMOA(Optimizer):
+class DevDMOA(LegacyOptimizer):
     """
     The developed version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 
@@ -193,7 +193,7 @@ class DevDMOA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

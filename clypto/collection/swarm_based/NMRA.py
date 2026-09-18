@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.classic import Optimizer
+from clypto.optimizer.legacy import LegacyOptimizer
 
 
-class OriginalNMRA(Optimizer):
+class OriginalNMRA(LegacyOptimizer):
     """
     The original version of: Naked Mole-Rat Algorithm (NMRA)
 
@@ -66,7 +66,7 @@ class OriginalNMRA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -102,7 +102,7 @@ class OriginalNMRA(Optimizer):
             )
 
 
-class ImprovedNMRA(Optimizer):
+class ImprovedNMRA(LegacyOptimizer):
     """
     The developed version of: Improved Naked Mole-Rat Algorithm (I-NMRA)
 
@@ -167,7 +167,7 @@ class ImprovedNMRA(Optimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from Optimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

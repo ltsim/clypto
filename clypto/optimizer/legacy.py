@@ -3,7 +3,6 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-import collections
 import math
 import random
 import time
@@ -12,17 +11,18 @@ import typing
 import numpy as np
 import numpy.random as npr
 import numpy.typing as npt
-from clypto.agents.base import BaseAgent
+from clypto.agents.legacy import LegacyAgent
 from clypto.agents.static import AgentStatic
 from clypto.hints.array import NDArrayType
 from clypto.optimizer.base import BaseOptimizer
+from clypto.utils.history import Tracker
 from clypto.utils.problem import Problem
 from clypto.utils.target import Target
 from clypto.utils.termination import Termination
 from clypto.utils.validator import Validator
 
 
-class Optimizer(BaseOptimizer):
+class LegacyOptimizer(BaseOptimizer):
     """
     The base class of all classic algorithms. All methods in this class will be inherited
 
@@ -43,7 +43,9 @@ class Optimizer(BaseOptimizer):
     SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
-        self.__history_g_best = collections.deque()
+        self.tracker = Tracker()
+        self.__last_gbest_fit: typing.Optional[float] = None
+        self.__repeated_times: int = 0
 
         self.__nfe_counter: int = 1
         self.__name: str = kwargs.get("name", self.__class__.__name__)
@@ -63,9 +65,9 @@ class Optimizer(BaseOptimizer):
         self.epoch: int = None  # type: ignore[assignment]
         self.pop_size: int = None  # type: ignore[assignment]
         self.n_workers: typing.Optional[int] = None
-        self.pop: list[BaseAgent] = None  # type: ignore[assignment]
-        self.g_best: BaseAgent = AgentStatic()
-        self.g_worst: BaseAgent = None  # type: ignore[assignment]
+        self.pop: list[LegacyAgent] = None  # type: ignore[assignment]
+        self.g_best: LegacyAgent = AgentStatic()
+        self.g_worst: LegacyAgent = None  # type: ignore[assignment]
         self.problem: Problem = None  # type: ignore[assignment]
         self.sort_flag: bool = False
         self.parameters: dict = {}
@@ -218,6 +220,22 @@ class Optimizer(BaseOptimizer):
         # Reset for this solve() call; initialization()/after_initialization() (called
         # immediately after, still within solve(), before any evolve()) set these back.
         self.pop, self.g_best, self.g_worst = None, None, None  # type: ignore[assignment]
+        self.__last_gbest_fit, self.__repeated_times = None, 0
+
+    def __update_repeated_times(self) -> None:
+        if self.__termination is None:
+            return
+        fit = float(self.g_best.target.fitness)
+
+        if (
+            self.__last_gbest_fit is not None
+            and abs(fit - self.__last_gbest_fit) <= self.__termination.epsilon
+        ):
+            self.__repeated_times += 1
+        else:
+            self.__repeated_times = 0
+
+        self.__last_gbest_fit = fit
 
     def check_termination(self, mode="start", termination=None, epoch=None):
         if mode == "start":
@@ -227,11 +245,7 @@ class Optimizer(BaseOptimizer):
                 if isinstance(termination, Termination):
                     self.__termination = termination
                 elif type(termination) == dict:
-                    self.__termination = Termination(
-                        log_to=self.problem.log_to,
-                        log_file=self.problem.log_file,
-                        **termination,
-                    )
+                    self.__termination = Termination(**termination)
                 else:
                     raise ValueError(
                         "Termination needs to be a dict or an instance of Termination class."
@@ -247,11 +261,11 @@ class Optimizer(BaseOptimizer):
             finished = False
 
             if self.__termination is not None:
-                es = self.__history.get_global_repeated_times(
-                    self.__termination.epsilon
-                )
                 finished = self.__termination.should_terminate(
-                    epoch, self.__nfe_counter, time.perf_counter(), es
+                    epoch,
+                    self.__nfe_counter,
+                    time.perf_counter(),
+                    self.__repeated_times,
                 )
 
             return finished
@@ -265,7 +279,11 @@ class Optimizer(BaseOptimizer):
         ) = None,
         seed: int | None = None,
         debug: bool = False,
-    ) -> BaseAgent:
+        track_population: bool = False,
+        history_path: str | None = None,
+        before_iteration: typing.Optional[typing.Callable] = None,
+        after_iteration: typing.Optional[typing.Callable] = None,
+    ) -> LegacyAgent:
         self.check_problem(problem, seed)
         self.check_termination("start", termination, None)
         self.initialize_variables()
@@ -276,9 +294,28 @@ class Optimizer(BaseOptimizer):
 
         self.before_main_loop()
 
+        tracking = debug or track_population or history_path is not None
+        if tracking:
+            if before_iteration is not None:
+                self.tracker.before = before_iteration
+            if after_iteration is not None:
+                self.tracker.after = after_iteration
+            self.tracker.start(
+                optimizer=self,
+                problem=self.problem,
+                seed=seed,
+                capture_population=track_population,
+                history_path=history_path,
+            )
+
         loop = range(1, self.epoch + 1)
 
         for epoch in loop:
+            if tracking:
+                self.tracker.epoch = epoch
+                if self.tracker.before is not None:
+                    self.tracker.before(self.pop)
+
             time_epoch = time.perf_counter()
 
             ## Evolve method will be called in child class
@@ -291,17 +328,20 @@ class Optimizer(BaseOptimizer):
             if self.sort_flag:
                 self.pop = pop_temp
 
-            self.__history_g_best.append(self.g_best.copy())
+            self.__update_repeated_times()
+
+            if tracking and self.tracker.after is not None:
+                self.tracker.after(self.pop)
 
             time_epoch = time.perf_counter() - time_epoch
 
-            if debug:
+            if tracking:
                 self.track_optimize_step(self.pop, epoch, time_epoch)
 
             if self.check_termination("end", None, epoch):
                 break
 
-        if debug:
+        if tracking:
             self.track_optimize_process()
 
         if self.g_best is None:
@@ -311,14 +351,14 @@ class Optimizer(BaseOptimizer):
 
     def track_optimize_step(
         self,
-        pop: list[BaseAgent] | None = None,
+        pop: list[LegacyAgent] | None = None,
         epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
-        pass
+        self.tracker.record(epoch, pop, runtime, self.nf_counter, self.g_best.target.fitness)
 
     def track_optimize_process(self) -> None:
-        pass
+        self.tracker.finalize()
 
     def generate_empty_agent(self, solution: typing.Optional[NDArrayType] = None):
         if solution is None:
@@ -334,7 +374,7 @@ class Optimizer(BaseOptimizer):
 
     def generate_population(
         self, pop_size: typing.Optional[int] = None
-    ) -> list[BaseAgent]:
+    ) -> list[LegacyAgent]:
         if pop_size is None:
             pop_size = self.pop_size
 
@@ -348,7 +388,7 @@ class Optimizer(BaseOptimizer):
 
         return self.problem.correct_solution(solution)
 
-    def update_target_for_population(self, pop: list[BaseAgent]) -> list[BaseAgent]:
+    def update_target_for_population(self, pop: list[LegacyAgent]) -> list[LegacyAgent]:
         pos_list = [agent.solution for agent in pop]
 
         if self.mode == "swarm":
@@ -388,13 +428,13 @@ class Optimizer(BaseOptimizer):
             return False if fitness_x < fitness_y else True
 
     @staticmethod
-    def duplicate_pop(pop: list[BaseAgent]) -> list[BaseAgent]:
+    def duplicate_pop(pop: list[LegacyAgent]) -> list[LegacyAgent]:
         return [agent.copy() for agent in pop]
 
     @staticmethod
     def get_sorted_population(
-        pop: list[BaseAgent], minmax: str = "min"
-    ) -> list[BaseAgent]:
+        pop: list[LegacyAgent], minmax: str = "min"
+    ) -> list[LegacyAgent]:
         """
         Get sorted population based on type (minmax) of problem
 
@@ -418,8 +458,8 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_sorted_indices_population(
-        pop: list[BaseAgent], minmax: str = "min"
-    ) -> tuple[list[BaseAgent], list[int]]:
+        pop: list[LegacyAgent], minmax: str = "min"
+    ) -> tuple[list[LegacyAgent], list[int]]:
         """
         Get sorted indices population based on type (minmax) of problem
 
@@ -442,7 +482,7 @@ class Optimizer(BaseOptimizer):
         return pop_new, indices
 
     @staticmethod
-    def get_best_agent(pop: list[BaseAgent], minmax: str = "min") -> BaseAgent:
+    def get_best_agent(pop: list[LegacyAgent], minmax: str = "min") -> LegacyAgent:
         """
         Args:
             pop: The population of agents
@@ -451,11 +491,11 @@ class Optimizer(BaseOptimizer):
         Returns:
             The best agent
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
         return pop[0].copy()
 
     @staticmethod
-    def get_index_best(pop: list[BaseAgent], minmax: str = "min") -> int:
+    def get_index_best(pop: list[LegacyAgent], minmax: str = "min") -> int:
         fit_list = np.array([agent.target.fitness for agent in pop])
         if minmax == "min":
             return int(np.argmin(fit_list))
@@ -463,7 +503,7 @@ class Optimizer(BaseOptimizer):
             return int(np.argmax(fit_list))
 
     @staticmethod
-    def get_worst_agent(pop: list[BaseAgent], minmax: str = "min") -> BaseAgent:
+    def get_worst_agent(pop: list[LegacyAgent], minmax: str = "min") -> LegacyAgent:
         """
         Args:
             pop: The population of agents
@@ -472,16 +512,16 @@ class Optimizer(BaseOptimizer):
         Returns:
             The worst agent
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
         return pop[-1].copy()
 
     @staticmethod
     def get_special_agents(
-        pop: list[BaseAgent],
+        pop: list[LegacyAgent],
         n_best: int = 3,
         n_worst: int = 3,
         minmax: str = "min",
-    ) -> tuple[list[BaseAgent], list[BaseAgent] | None, list[BaseAgent] | None]:
+    ) -> tuple[list[LegacyAgent], list[LegacyAgent] | None, list[LegacyAgent] | None]:
         """
         Get special agents include sorted population, n1 best agents, n2 worst agents
 
@@ -494,7 +534,7 @@ class Optimizer(BaseOptimizer):
         Returns:
             The sorted_population, n1 best agents and n2 worst agents
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
 
         if n_best is None:
             if n_worst is None:
@@ -513,7 +553,7 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_special_fitness(
-        pop: list[BaseAgent], minmax: str = "min"
+        pop: list[LegacyAgent], minmax: str = "min"
     ) -> tuple[float | np.ndarray, float, float]:
         """
         Get special target include the total fitness, the best fitness, and the worst fitness
@@ -526,16 +566,16 @@ class Optimizer(BaseOptimizer):
             The total fitness, the best fitness, and the worst fitness
         """
         total_fitness = np.sum([agent.target.fitness for agent in pop])
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
         return total_fitness, pop[0].target.fitness, pop[-1].target.fitness
 
     @staticmethod
     def get_better_agent(
-        agent_x: BaseAgent,
-        agent_y: BaseAgent,
+        agent_x: LegacyAgent,
+        agent_y: LegacyAgent,
         minmax: str = "min",
         reverse: bool = False,
-    ) -> BaseAgent:
+    ) -> LegacyAgent:
         """
         Args:
             agent_x: First agent
@@ -567,10 +607,10 @@ class Optimizer(BaseOptimizer):
     ### Survivor Selection
     @staticmethod
     def greedy_selection_population(
-        pop_old: list[BaseAgent] | None = None,
-        pop_new: list[BaseAgent] | None = None,
+        pop_old: list[LegacyAgent] | None = None,
+        pop_new: list[LegacyAgent] | None = None,
         minmax: str = "min",
-    ) -> list[BaseAgent]:
+    ) -> list[LegacyAgent]:
         """
         Args:
             pop_old: The current population
@@ -607,10 +647,10 @@ class Optimizer(BaseOptimizer):
 
     @staticmethod
     def get_sorted_and_trimmed_population(
-        pop: list[BaseAgent] | None = None,
+        pop: list[LegacyAgent] | None = None,
         pop_size: int | None = None,
         minmax: str = "min",
-    ) -> list[BaseAgent]:
+    ) -> list[LegacyAgent]:
         """
         Args:
             pop: The population
@@ -620,13 +660,13 @@ class Optimizer(BaseOptimizer):
         Returns:
             The sorted and trimmed population with pop_size size
         """
-        pop = Optimizer.get_sorted_population(pop, minmax)
+        pop = LegacyOptimizer.get_sorted_population(pop, minmax)
 
         return pop[:pop_size]
 
     def update_global_best_agent(
-        self, pop: list[BaseAgent], save: bool = False
-    ) -> tuple[list[BaseAgent], BaseAgent]:
+        self, pop: list[LegacyAgent], save: bool = False
+    ) -> tuple[list[LegacyAgent], LegacyAgent]:
         """
         Update global best and current best solutions in history object.
         Also update global worst and current worst solutions in history object.
@@ -764,7 +804,7 @@ class Optimizer(BaseOptimizer):
         return step[0] if size == 1 else step
 
     def generate_opposition_solution(
-        self, agent: BaseAgent | None = None, g_best: BaseAgent | None = None
+        self, agent: LegacyAgent | None = None, g_best: LegacyAgent | None = None
     ) -> np.ndarray:
         """
         Args:
@@ -784,7 +824,7 @@ class Optimizer(BaseOptimizer):
         return self.correct_solution(pos_new)
 
     def generate_group_population(
-        self, pop: list[BaseAgent], n_groups: int, m_agents: int
+        self, pop: list[LegacyAgent], n_groups: int, m_agents: int
     ) -> list:
         """
         Generate a list of group population from pop
