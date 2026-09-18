@@ -5,12 +5,44 @@
 # --------------------------------------------------%
 
 import numpy as np
+from clypto.agents._core cimport _LegacyAgent
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
-from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.legacy import LegacyOptimizer
+
+# --- dedicated agents (private to this module) ---
+
+cdef class _OriginalESAgent(_LegacyAgent):
+    cdef public object strategy
+    def __init__(self, solution=None, target=None, strategy=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.strategy = strategy
+    cpdef object copy(self):
+        return _OriginalESAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.strategy,
+        )
+    def update(self, **kwargs):
+        if "strategy" in kwargs:
+            self.strategy = kwargs.pop("strategy")
+        _LegacyAgent.update(self, **kwargs)
+
+cdef class _CMA_ESAgent(_LegacyAgent):
+    cdef public object step
+    def __init__(self, solution=None, target=None, step=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.step = step
+    cpdef object copy(self):
+        return _CMA_ESAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.step,
+        )
+    def update(self, **kwargs):
+        if "step" in kwargs:
+            self.step = kwargs.pop("step")
+        _LegacyAgent.update(self, **kwargs)
 
 
-class OriginalES(LegacyOptimizer):
+cdef class OriginalES(_LegacyOptimizer):
     """
     The original version of: Evolution Strategies (ES)
 
@@ -57,7 +89,7 @@ class OriginalES(LegacyOptimizer):
             pop_size (int): number of population size (miu in the paper), default = 100
             lamda (float): Percentage of child agents evolving in the next generation, default=0.75
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.lamda = self.validator.check_float("lamda", lamda, (0, 1.0))
@@ -68,15 +100,15 @@ class OriginalES(LegacyOptimizer):
     def initialize_variables(self):
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance)
-        return AgentStatic(solution=solution, strategy=strategy)
+        return _OriginalESAgent(solution=solution, strategy=strategy)
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -104,7 +136,7 @@ class OriginalES(LegacyOptimizer):
         )
 
 
-class LevyES(OriginalES):
+cdef class LevyES(OriginalES):
     """
     The developed Levy-flight version: Evolution Strategies (ES)
 
@@ -156,7 +188,7 @@ class LevyES(OriginalES):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -207,7 +239,7 @@ class LevyES(OriginalES):
         )
 
 
-class CMA_ES(LegacyOptimizer):
+cdef class CMA_ES(_LegacyOptimizer):
     """
     The original version of: Covariance Matrix Adaptation Evolution Strategy (CMA-ES)
 
@@ -246,19 +278,19 @@ class CMA_ES(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size (miu in the paper), default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         step = self.generator.multivariate_normal(
             np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
         )
-        return AgentStatic(solution=solution, step=step)
+        return _CMA_ESAgent(solution=solution, step=step)
 
     def before_main_loop(self):
         self.mu = int(np.round(self.pop_size / 2))
@@ -305,7 +337,7 @@ class CMA_ES(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -365,7 +397,7 @@ class CMA_ES(LegacyOptimizer):
             self.C = V * E / V
 
 
-class Simple_CMA_ES(LegacyOptimizer):
+cdef class Simple_CMA_ES(_LegacyOptimizer):
     """
     The simple version of: Covariance Matrix Adaptation Evolution Strategy (Simple-CMA-ES)
 
@@ -405,7 +437,7 @@ class Simple_CMA_ES(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size (miu in the paper), default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
@@ -416,7 +448,7 @@ class Simple_CMA_ES(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

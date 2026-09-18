@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalCRO(LegacyOptimizer):
+cdef class OriginalCRO(_LegacyOptimizer):
     """
     The original version of: Coral Reefs Optimization (CRO)
 
@@ -81,7 +81,7 @@ class OriginalCRO(LegacyOptimizer):
             gamma_max (float): factor for mutation process
             n_trials (int): number of attempts for a larva to set in the reef.
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int(
             "pop_size", pop_size, [5, 10000]
@@ -205,7 +205,7 @@ class OriginalCRO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -236,7 +236,7 @@ class OriginalCRO(LegacyOptimizer):
             self.G1 -= self.gama
 
 
-class OCRO(OriginalCRO):
+cdef class OCRO(OriginalCRO):
     """
     The original version of: Opposition-based Coral Reefs Optimization (OCRO)
 
@@ -365,7 +365,7 @@ class OCRO(OriginalCRO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

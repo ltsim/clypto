@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class BaseGA(LegacyOptimizer):
+class BaseGA(_LegacyOptimizer):
     """
     The original version of: Genetic Algorithm (GA)
 
@@ -83,7 +83,7 @@ class BaseGA(LegacyOptimizer):
             mutation_multipoints (bool): Optional, True or False, effect on mutation process, default = False
             mutation (str): Optional, can be ["flip", "swap"] for multipoints and can be ["flip", "swap", "scramble", "inversion"] for one-point, default="flip"
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pc = self.validator.check_float("pc", pc, (0, 1.0))
@@ -333,16 +333,14 @@ class BaseGA(LegacyOptimizer):
             id_child = self.get_index_kway_tournament_selection(
                 pop, k_way=0.1, output=1, reverse=True
             )[0]
-            pop_new.append(
-                self.get_better_agent(
-                    pop_child[idx], pop[id_child], self.problem.minmax
-                )
-            )
+            agent_x = pop_child[idx]
+            agent_y = pop[id_child]
+            pop_new.append(self.get_better_agent(agent_x, agent_y, self.problem.minmax))
         return pop_new
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -645,7 +643,7 @@ class EliteSingleGA(SingleGA):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -922,7 +920,7 @@ class EliteMultiGA(MultiGA):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -969,7 +967,7 @@ class EliteMultiGA(MultiGA):
             self.pop = self.update_target_for_population(pop_new)
 
 
-class OriginalGA(LegacyOptimizer):
+class OriginalGA(_LegacyOptimizer):
     """
     The fully tuned version of: Genetic Algorithm (GA)
 
@@ -1048,7 +1046,7 @@ class OriginalGA(LegacyOptimizer):
             k_way (float): Optional, set it when use "tournament" selection, default = 0.2
             mutation_multipoints (bool): Optional, True or False, effect on mutation process, default = False
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pc = self.validator.check_float("pc", pc, (0, 1.0))

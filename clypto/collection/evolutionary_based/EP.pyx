@@ -5,12 +5,34 @@
 # --------------------------------------------------%
 
 import numpy as np
+from clypto.agents._core cimport _LegacyAgent
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
-from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.legacy import LegacyOptimizer
+
+# --- dedicated agents (private to this module) ---
+
+cdef class _OriginalEPAgent(_LegacyAgent):
+    cdef public object strategy
+    cdef public object win
+    def __init__(self, solution=None, target=None, strategy=None, win=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.strategy = strategy
+        self.win = win
+    cpdef object copy(self):
+        return _OriginalEPAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.strategy,
+            self.win,
+        )
+    def update(self, **kwargs):
+        if "strategy" in kwargs:
+            self.strategy = kwargs.pop("strategy")
+        if "win" in kwargs:
+            self.win = kwargs.pop("win")
+        _LegacyAgent.update(self, **kwargs)
 
 
-class OriginalEP(LegacyOptimizer):
+cdef class OriginalEP(_LegacyOptimizer):
     """
     The original version of: Evolutionary Programming (EP)
 
@@ -59,7 +81,7 @@ class OriginalEP(LegacyOptimizer):
             pop_size (int): number of population size (miu in the paper), default = 100
             bout_size (float): percentage of child agents implement tournament selection
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.bout_size = self.validator.check_float("bout_size", bout_size, (0, 1.0))
@@ -70,16 +92,16 @@ class OriginalEP(LegacyOptimizer):
         self.n_bout_size = int(self.bout_size * self.pop_size)
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance, self.problem.n_dims)
         times_win = 0
-        return AgentStatic(solution=solution, strategy=strategy, win=times_win)
+        return _OriginalEPAgent(solution=solution, strategy=strategy, win=times_win)
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -118,7 +140,7 @@ class OriginalEP(LegacyOptimizer):
         self.pop = pop[: self.pop_size]
 
 
-class LevyEP(OriginalEP):
+cdef class LevyEP(OriginalEP):
     """
     The developed Levy-flight version: Evolutionary Programming (LevyEP)
 
@@ -166,7 +188,7 @@ class LevyEP(OriginalEP):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

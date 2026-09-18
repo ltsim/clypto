@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class DevHS(LegacyOptimizer):
+cdef class DevHS(_LegacyOptimizer):
     """
     The developed version: Harmony Search (HS)
 
@@ -59,7 +59,7 @@ class DevHS(LegacyOptimizer):
             c_r (float): Harmony Memory Consideration Rate, default = 0.15
             pa_r (float): Pitch Adjustment Rate, default=0.5
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.c_r = self.validator.check_float("c_r", c_r, (0, 1.0))
@@ -74,7 +74,7 @@ class DevHS(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -111,7 +111,7 @@ class DevHS(LegacyOptimizer):
         )
 
 
-class OriginalHS(DevHS):
+cdef class OriginalHS(DevHS):
     """
     The original version of: Harmony Search (HS)
 
@@ -166,7 +166,7 @@ class OriginalHS(DevHS):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

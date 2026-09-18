@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 from scipy.stats import cauchy
 
 
-class OriginalSHADE(LegacyOptimizer):
+cdef class OriginalSHADE(_LegacyOptimizer):
     """
     The original version of: Success-History Adaptation Differential Evolution (OriginalSHADE)
 
@@ -60,7 +60,7 @@ class OriginalSHADE(LegacyOptimizer):
             miu_f (float): initial weighting factor, default = 0.5
             miu_cr (float): initial cross-over probability, default = 0.5
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         # the initial f, location is changed then that f is good
@@ -84,7 +84,7 @@ class OriginalSHADE(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -184,7 +184,7 @@ class OriginalSHADE(LegacyOptimizer):
                 self.k_counter = 0
 
 
-class L_SHADE(LegacyOptimizer):
+cdef class L_SHADE(_LegacyOptimizer):
     """
     The original version of: Linear Population Size Reduction Success-History Adaptation Differential Evolution (LSHADE)
 
@@ -235,7 +235,7 @@ class L_SHADE(LegacyOptimizer):
             miu_f (float): initial weighting factor, default = 0.5
             miu_cr (float): initial cross-over probability, default = 0.5
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.miu_f = self.validator.check_float("miu_f", miu_f, (0, 1.0))
@@ -260,7 +260,7 @@ class L_SHADE(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -6,12 +6,39 @@
 
 import numpy as np
 from scipy.stats import cauchy
+from clypto.agents._core cimport _LegacyAgent
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
-from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.legacy import LegacyOptimizer
+
+# --- dedicated agents (private to this module) ---
+
+cdef class _SAP_DEAgent(_LegacyAgent):
+    cdef public object crossover
+    cdef public object mutation
+    cdef public object pop_size
+    def __init__(self, solution=None, target=None, crossover=None, mutation=None, pop_size=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.crossover = crossover
+        self.mutation = mutation
+        self.pop_size = pop_size
+    cpdef object copy(self):
+        return _SAP_DEAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.crossover,
+            self.mutation,
+            self.pop_size,
+        )
+    def update(self, **kwargs):
+        if "crossover" in kwargs:
+            self.crossover = kwargs.pop("crossover")
+        if "mutation" in kwargs:
+            self.mutation = kwargs.pop("mutation")
+        if "pop_size" in kwargs:
+            self.pop_size = kwargs.pop("pop_size")
+        _LegacyAgent.update(self, **kwargs)
 
 
-class OriginalDE(LegacyOptimizer):
+cdef class OriginalDE(_LegacyOptimizer):
     """
     The original version of: Differential Evolution (DE)
 
@@ -71,7 +98,7 @@ class OriginalDE(LegacyOptimizer):
             cr (float): crossover rate, default = 0.9
             strategy (int): Different variants of DE, default = 0
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.wf = self.validator.check_float("wf", wf, (-3.0, 3.0))
@@ -87,7 +114,7 @@ class OriginalDE(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -212,7 +239,7 @@ class OriginalDE(LegacyOptimizer):
             )
 
 
-class JADE(LegacyOptimizer):
+cdef class JADE(_LegacyOptimizer):
     """
     The original version of: Differential Evolution (JADE)
 
@@ -269,7 +296,7 @@ class JADE(LegacyOptimizer):
             pt (float): The percent of top best agents (p in the paper), default = 0.1
             ap (float): The Adaptation Parameter control value of f and cr (c in the paper), default=0.1
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.miu_f = self.validator.check_float("miu_f", miu_f, (0, 1.0))
@@ -293,7 +320,7 @@ class JADE(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -378,7 +405,7 @@ class JADE(LegacyOptimizer):
             ) * self.dyn_miu_f + self.ap * self.lehmer_mean(np.array(list_f))
 
 
-class SADE(LegacyOptimizer):
+cdef class SADE(_LegacyOptimizer):
     """
     The original version of: Self-Adaptive Differential Evolution (SADE)
 
@@ -418,7 +445,7 @@ class SADE(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
@@ -434,7 +461,7 @@ class SADE(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -521,7 +548,7 @@ class SADE(LegacyOptimizer):
             self.ns1 = self.ns2 = self.nf1 = self.nf2 = 0
 
 
-class SAP_DE(LegacyOptimizer):
+cdef class SAP_DE(_LegacyOptimizer):
     """
     The original version of: Differential Evolution with Self-Adaptive Populations (SAP_DE)
 
@@ -568,7 +595,7 @@ class SAP_DE(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             branch (str): gaussian (absolute) or uniform (relative) method
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.branch = self.validator.check_str("branch", branch, ["ABS", "REL"])
@@ -586,7 +613,7 @@ class SAP_DE(LegacyOptimizer):
         else:  # elif self.branch == "REL":
             pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
 
-        return AgentStatic(
+        return _SAP_DEAgent(
             solution=solution,
             crossover=crossover_rate,
             mutation=mutation_rate,
@@ -603,7 +630,7 @@ class SAP_DE(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

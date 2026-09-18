@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalFPA(LegacyOptimizer):
+cdef class OriginalFPA(_LegacyOptimizer):
     """
     The original version of: Flower Pollination Algorithm (FPA)
 
@@ -60,7 +60,7 @@ class OriginalFPA(LegacyOptimizer):
             p_s (float): switch probability, default = 0.8
             levy_multiplier (float): multiplier factor of Levy-flight trajectory, default = 0.2
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.p_s = self.validator.check_float("p_s", p_s, (0, 1.0))
@@ -79,7 +79,7 @@ class OriginalFPA(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

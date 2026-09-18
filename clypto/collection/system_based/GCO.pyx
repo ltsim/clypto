@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class DevGCO(LegacyOptimizer):
+cdef class DevGCO(_LegacyOptimizer):
     """
     The developed version: Germinal Center Optimization (GCO)
 
@@ -55,7 +55,7 @@ class DevGCO(LegacyOptimizer):
             cr (float): crossover rate, default = 0.7 (Same as DE algorithm)
             wf (float): weighting factor (f in the paper), default = 1.25 (Same as DE algorithm)
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.cr = self.validator.check_float("cr", cr, (0, 1.0))
@@ -71,7 +71,7 @@ class DevGCO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -117,7 +117,7 @@ class DevGCO(LegacyOptimizer):
             )
 
 
-class OriginalGCO(DevGCO):
+cdef class OriginalGCO(DevGCO):
     """
     The original version of: Germinal Center Optimization (GCO)
 
@@ -174,7 +174,7 @@ class OriginalGCO(DevGCO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

@@ -5,12 +5,29 @@
 # --------------------------------------------------%
 
 import numpy as np
+from clypto.agents._core cimport _LegacyAgent
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
-from clypto.agents.dynamic import AgentDynamic as AgentStatic
-from clypto.optimizer.legacy import LegacyOptimizer
+
+# --- dedicated agents (private to this module) ---
+
+cdef class _OriginalMAAgent(_LegacyAgent):
+    cdef public object bitstring
+    def __init__(self, solution=None, target=None, bitstring=None):
+        _LegacyAgent.__init__(self, solution, target)
+        self.bitstring = bitstring
+    cpdef object copy(self):
+        return _OriginalMAAgent(
+            self.solution, None if self.target is None else self.target.copy(),
+            self.bitstring,
+        )
+    def update(self, **kwargs):
+        if "bitstring" in kwargs:
+            self.bitstring = kwargs.pop("bitstring")
+        _LegacyAgent.update(self, **kwargs)
 
 
-class OriginalMA(LegacyOptimizer):
+cdef class OriginalMA(_LegacyOptimizer):
     """
     The original version of: Memetic Algorithm (MA)
 
@@ -71,7 +88,7 @@ class OriginalMA(LegacyOptimizer):
             max_local_gens (int): Number of local search agent will be created during local search mechanism, default=10
             bits_per_param (int): Number of bits to decode a real number to 0-1 bitstring, default=4
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pc = self.validator.check_float("pc", pc, (0, 1.0))
@@ -99,7 +116,7 @@ class OriginalMA(LegacyOptimizer):
     def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> AgentStatic:
+    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = "".join(
@@ -108,7 +125,7 @@ class OriginalMA(LegacyOptimizer):
                 for _ in range(0, self.bits_total)
             ]
         )
-        return AgentStatic(solution=solution, bitstring=bitstring)
+        return _OriginalMAAgent(solution=solution, bitstring=bitstring)
 
     def decode__(self, bitstring: str | None = None) -> np.ndarray:
         """
@@ -184,7 +201,7 @@ class OriginalMA(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

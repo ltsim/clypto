@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalAEO(LegacyOptimizer):
+cdef class OriginalAEO(_LegacyOptimizer):
     """
     The original version of: Artificial Ecosystem-based Optimization (AEO)
 
@@ -50,7 +50,7 @@ class OriginalAEO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
@@ -58,7 +58,7 @@ class OriginalAEO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -137,7 +137,7 @@ class OriginalAEO(LegacyOptimizer):
             )
 
 
-class ImprovedAEO(OriginalAEO):
+cdef class ImprovedAEO(OriginalAEO):
     """
     The original version of: Improved Artificial Ecosystem-based Optimization (ImprovedAEO)
 
@@ -181,7 +181,7 @@ class ImprovedAEO(OriginalAEO):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -271,7 +271,7 @@ class ImprovedAEO(OriginalAEO):
             )
 
 
-class EnhancedAEO(LegacyOptimizer):
+cdef class EnhancedAEO(_LegacyOptimizer):
     """
     The original version of: Enhanced Artificial Ecosystem-Based Optimization (EAEO)
 
@@ -311,7 +311,7 @@ class EnhancedAEO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
@@ -319,7 +319,7 @@ class EnhancedAEO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -429,7 +429,7 @@ class EnhancedAEO(LegacyOptimizer):
             )
 
 
-class ModifiedAEO(LegacyOptimizer):
+cdef class ModifiedAEO(_LegacyOptimizer):
     """
     The original version of: Modified Artificial Ecosystem-Based Optimization (MAEO)
 
@@ -470,7 +470,7 @@ class ModifiedAEO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
@@ -478,7 +478,7 @@ class ModifiedAEO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -571,7 +571,7 @@ class ModifiedAEO(LegacyOptimizer):
             )
 
 
-class AugmentedAEO(LegacyOptimizer):
+cdef class AugmentedAEO(_LegacyOptimizer):
     """
     The original version of: Augmented Artificial Ecosystem Optimization (AAEO)
 
@@ -612,7 +612,7 @@ class AugmentedAEO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.set_parameters(["epoch", "pop_size"])
@@ -620,7 +620,7 @@ class AugmentedAEO(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

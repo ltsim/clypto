@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer._legacy cimport _LegacyOptimizer
 
 
-class OriginalWCA(LegacyOptimizer):
+cdef class OriginalWCA(_LegacyOptimizer):
     """
     The original version of: Water Cycle Algorithm (WCA)
 
@@ -70,7 +70,7 @@ class OriginalWCA(LegacyOptimizer):
             wc (float): Weighting coefficient (C in the paper), default = 2.0
             dmax (float): Evaporation condition constant, default=1e-6
         """
-        super().__init__(**kwargs)
+        _LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.nsr = self.validator.check_int("nsr", nsr, [2, int(self.pop_size / 2)])
@@ -119,7 +119,7 @@ class OriginalWCA(LegacyOptimizer):
 
     def evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
