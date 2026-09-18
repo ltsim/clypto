@@ -1,0 +1,974 @@
+{
+"AAO": {
+"fitness": 1.5918645460983969e-10,
+"solution_sha1": "147fd08152f6fc6251da5ab980f1612d84f0c383"
+},
+"ABFO": {
+"fitness": 0.9687359701991578,
+"solution_sha1": "056cd92ed76d472d2a4eb2cd16801055c79bbdb4"
+},
+"AIW_PSO": {
+"fitness": 0.035371902714387005,
+"solution_sha1": "9c8b8997e49e3b6076277b7f873888c330f81e9d"
+},
+"AdaptiveBA": {
+"fitness": 0.20200038596393452,
+"solution_sha1": "44a2b7ee466a7361ec1402397e85576d855a4b85"
+},
+"AdaptiveEO": {
+"fitness": 2.2489300811920533e-15,
+"solution_sha1": "c4f21125564925fa2f57502288e6b3918866a1ae"
+},
+"AugmentedAEO": {
+"fitness": 1.3006000906292181e-09,
+"solution_sha1": "7e9091c96d530c4a26a2155444267c33c26c33f5"
+},
+"BaseGA": {
+"fitness": 0.004568191095687527,
+"solution_sha1": "e94f48e7dc692331563745c8fb52b3a37d59f01c"
+},
+"CG_GWO": {
+"fitness": 7.700903414368477e-14,
+"solution_sha1": "5f855268b1f325dd7e0d74b45796752bc9115708"
+},
+"CL_PSO": {
+"fitness": 0.029458845227983144,
+"solution_sha1": "7df18ac55aad8eee5f127e47b059af61fe2a167c"
+},
+"CMA_ES": {
+"fitness": 0.8617609706269848,
+"solution_sha1": "23577bc4c147a005e78bf251e1469f1b269b7612"
+},
+"C_PSO": {
+"fitness": 0.15349420020779753,
+"solution_sha1": "1a912954143f9df6f6eac75b7a940a22fd99c3ba"
+},
+"ChaoticGWO": {
+"fitness": 2.9570164454555603e-13,
+"solution_sha1": "d7b562da58570bf070b720ebb6231ea74960020b"
+},
+"CleverBookBeesA": {
+"fitness": 0.02873310864394581,
+"solution_sha1": "5c2e45de9046a4fb4de1b73a80ffd5dc7cfd4e5d"
+},
+"DS_GWO": {
+"fitness": 0.7544639018195367,
+"solution_sha1": "124e41cb23361d81c0a85a53ba77b52fb2b94f45"
+},
+"DevALO": {
+"fitness": 9.631969235272413e-07,
+"solution_sha1": "00fabe2a9a10d337ca556782aefccd75df179672"
+},
+"DevBA": {
+"fitness": 0.4055540940332109,
+"solution_sha1": "118c2e60aa18562d5377a1092cf5e53fdf04fcf4"
+},
+"DevBBO": {
+"fitness": 0.006750372958829699,
+"solution_sha1": "bf51df3415bb44ce15a1452feff94d8df39faeff"
+},
+"DevBRO": {
+"fitness": 4.620608676395372e-45,
+"solution_sha1": "65013be4b24bea46bb079fc51c533dc1dfceeea2"
+},
+"DevCHIO": {
+"fitness": 0.5384681573840567,
+"solution_sha1": "b974a86beac6fc7baec11adf57d95c9a508b2780"
+},
+"DevDMOA": {
+"fitness": 2.98714795345477e-12,
+"solution_sha1": "40d237a0b97ca957aa3470990c28d535e250b1d8"
+},
+"DevEFO": {
+"fitness": 0.0001623330640203328,
+"solution_sha1": "b85d30750a297ad7d7c11bcaeca78021219030b7"
+},
+"DevEPC": {
+"fitness": 1.7509159620106586e-05,
+"solution_sha1": "c681ffc51c0e5051ed143c7fdef4b1ecb2732c3a"
+},
+"DevFBIO": {
+"fitness": 3.4105094034273746e-49,
+"solution_sha1": "c02b7bd5d85c7f90f185731a60f7546fa35267c2"
+},
+"DevFOA": {
+"fitness": 0.0,
+"solution_sha1": "b80de5d138758541c5f05265ad144ab9fa86d1db"
+},
+"DevFOX": {
+"fitness": 3.808406279857332e-193,
+"solution_sha1": "a6e3bcae9d7171ec3d8101a8e3925f32df1da5fb"
+},
+"DevGCO": {
+"fitness": 0.018269248724326087,
+"solution_sha1": "a6295383df5837fe5eb8a66ec0c1242eb5078349"
+},
+"DevGSKA": {
+"fitness": 1.65476754405756e-05,
+"solution_sha1": "441cb7489af75ae5404efa9023f35367f6edb9a7"
+},
+"DevHS": {
+"fitness": 0.0005644934593466122,
+"solution_sha1": "e89967c1a70d1c7601aebeb2e0e27321114e3259"
+},
+"DevJA": {
+"fitness": 0.01989676671631651,
+"solution_sha1": "596501664cb940e197f03d59816dec31b6f8c485"
+},
+"DevLCO": {
+"fitness": 5.958847173246408e-51,
+"solution_sha1": "ab0d1404108eb861433879fe68198c9e06c72c50"
+},
+"DevMVO": {
+"fitness": 0.015524295062089305,
+"solution_sha1": "a2e9e3f2216749e5e5fb40ec87d31a466895cded"
+},
+"DevQSA": {
+"fitness": 1.8660423082897277e-11,
+"solution_sha1": "cf7799b1c7410d05cb24a0d5b589766f80d4fadc"
+},
+"DevSARO": {
+"fitness": 4.807121737497031e-08,
+"solution_sha1": "2a86bda0fadcd3aa9e2e0fcf456055736b574bad"
+},
+"DevSBO": {
+"fitness": 3.5452560127547716e-05,
+"solution_sha1": "ed5508a6b9cef825d96621a37b11a6bc99b2ca54"
+},
+"DevSCA": {
+"fitness": 1.236023748460035e-06,
+"solution_sha1": "192bc3354a9889ce9b6d96119e3658660f85d281"
+},
+"DevSMA": {
+"fitness": 0.0,
+"solution_sha1": "536e1062c757b2fd3a7ba6d8ed898f42423dfb42"
+},
+"DevSMO": {
+"fitness": 1.021062115844248e-05,
+"solution_sha1": "d0719fc99819edca2ab94eb318adc95ff26d9680"
+},
+"DevSOA": {
+"fitness": 1.1859023019702597e-20,
+"solution_sha1": "a99e0a2c4a435deb7eb2fd29572c0828a250ca22"
+},
+"DevSPBO": {
+"fitness": 3.1114763796101083e-06,
+"solution_sha1": "1fb0400f0be67920562c33c339b18ac16d4753d6"
+},
+"DevSSA": {
+"fitness": 1.8756593837757075e-20,
+"solution_sha1": "e7168496433c41d71324ab7341cb016c004931ad"
+},
+"DevTLO": {
+"fitness": 1.6953029955685802e-14,
+"solution_sha1": "bf734b6ff99f7ceff8f41cf409892001f25a26b4"
+},
+"DevTPO": {
+"fitness": 1.1792187244521208e-12,
+"solution_sha1": "fb42fcede8af976cca88cfe0374326ccf2326db4"
+},
+"DevVCS": {
+"fitness": 1.991188580730724e-05,
+"solution_sha1": "4ecde7ed7fc5b82b878b4e39ca32b73e30f69bef"
+},
+"DevWOA": {
+"fitness": 9.626296629856117e-14,
+"solution_sha1": "d2165acfa5dec69e2f6663c9479b6df244ce5cba"
+},
+"ER_GWO": {
+"fitness": 0.10678614461992748,
+"solution_sha1": "a9ffaf8a48abd4d7d3962e04a7e1bec70f650c86"
+},
+"EliteMultiGA": {
+"fitness": 0.0023713560985100827,
+"solution_sha1": "30efb09b63658f224b77cef4214235ed24d56917"
+},
+"EliteSingleGA": {
+"fitness": 0.001803435317410864,
+"solution_sha1": "91ee86d23ae65a6f7162ae3c8763c6737f805a70"
+},
+"EnhancedAEO": {
+"fitness": 5.056057972153687e-24,
+"solution_sha1": "ca918cdb7d704b0dc6ecfebc4c51ad3584114ea5"
+},
+"EnhancedTWO": {
+"fitness": 4.9156506312502925e-05,
+"solution_sha1": "248ea19dda5ad7d0e451c22032e0e3ed7742c42b"
+},
+"ExGWO": {
+"fitness": 3.0277216034278376e-05,
+"solution_sha1": "2352f0cf4c9b0d26ec8de06a12e00dcd7527fe69"
+},
+"FuzzyGWO": {
+"fitness": 6.0517455778310044e-12,
+"solution_sha1": "2cecdb2c34f075ae9561db5efc60adfc0bc2ba06"
+},
+"GWO_WOA": {
+"fitness": 6.030604360820921e-20,
+"solution_sha1": "8c9b64f92c86a0bc6181dc3eb8a1f524f162a44b"
+},
+"GaussianSA": {
+"fitness": 0.43730644596678,
+"solution_sha1": "7a662f85f7161532a7b3be687352b02df5692f9b"
+},
+"HI_WOA": {
+"fitness": 5.089013797136751e-09,
+"solution_sha1": "9f0cb5cba0dffee264d77092531281af0880ab6b"
+},
+"HPSO_TVAC": {
+"fitness": 5.724049926033855e-13,
+"solution_sha1": "2f9c67323df1a4b961798f87e0a05ea88d06cbc7"
+},
+"IARO": {
+"fitness": 2.875704592892339e-09,
+"solution_sha1": "3364d0beba0ce738187e6512c84424287a9eb210"
+},
+"IGWO": {
+"fitness": 1.1858868818441952e-10,
+"solution_sha1": "a86085e923f64e4a5a0c5ad4d332562f4533258c"
+},
+"IOBL_GWO": {
+"fitness": 3.0245177901282174e-44,
+"solution_sha1": "e39fb5655df7844728800d472ea3df3e55275a1f"
+},
+"ImprovedAEO": {
+"fitness": 1.1746329991696977e-26,
+"solution_sha1": "3dc3ccd0d5e0cdf66be9c876bd049b2e7a624548"
+},
+"ImprovedBSO": {
+"fitness": 0.006754614319640179,
+"solution_sha1": "a5c0d4d6d4e2d8875460d86a2738f87f6dce1464"
+},
+"ImprovedLCO": {
+"fitness": 2.0112926488119216e-50,
+"solution_sha1": "fb88ed40ce4c604c4b964e58b565e37b3ffe5097"
+},
+"ImprovedNMRA": {
+"fitness": 0.007793292025407029,
+"solution_sha1": "5905be5c388936f95bb68eb8b8de96f0af8f9223"
+},
+"ImprovedQSA": {
+"fitness": 1.1327329912185335e-26,
+"solution_sha1": "a864310e342b958774c6d90e682c84348e9e6060"
+},
+"ImprovedSFO": {
+"fitness": 2.4098887324126577e-09,
+"solution_sha1": "79783a4d26f23334cfe3c3126738da447720808a"
+},
+"ImprovedSLO": {
+"fitness": 7.88226597821842e-17,
+"solution_sha1": "e4d76a4a44b1630a41abd0d79368c8cbe65a405f"
+},
+"ImprovedTLO": {
+"fitness": 3.431504633188814e-23,
+"solution_sha1": "c6c8b23a301249654fc628d1c6cfb5f4e183b390"
+},
+"IncrementalGWO": {
+"fitness": 0.0006047059520717496,
+"solution_sha1": "966f33271a6ceffa238e327f9d4db260a7979f9f"
+},
+"JADE": {
+"fitness": 3.979149649461528e-06,
+"solution_sha1": "c2ecc9a66a2c97783935c634bd577fe71d7cdc47"
+},
+"LARO": {
+"fitness": 5.5760138595693296e-11,
+"solution_sha1": "8a0bf54b713eb6ecbfeb41eaaa70445804737305"
+},
+"LDW_PSO": {
+"fitness": 0.00014540624563445708,
+"solution_sha1": "c6e061eceb5c3e5fcdd2f7e7b3b518fff60b88c7"
+},
+"L_SHADE": {
+"fitness": 1.1134067833787406e-06,
+"solution_sha1": "c475e631a25efa6200a159c2bd0d6392baefe1aa"
+},
+"LevyEP": {
+"fitness": 0.01854777211793207,
+"solution_sha1": "b90b22a8170bf616febe55f66bffe6667e4ac2e1"
+},
+"LevyES": {
+"fitness": 0.012997832915330272,
+"solution_sha1": "a7dce0c1142ae26a3141b142c94bece31bb20d3c"
+},
+"LevyJA": {
+"fitness": 0.001996299606611823,
+"solution_sha1": "1aebf6ff8929ee15cec6227e4158db8241d2c648"
+},
+"LevyQSA": {
+"fitness": 1.1545423894009553e-11,
+"solution_sha1": "409ae19d6e3d7c7f6fe675e21c4ed93d24c2513e"
+},
+"LevyTWO": {
+"fitness": 0.02750770293062516,
+"solution_sha1": "494a9947444cdf6b4e836930d43c79870c8d0486"
+},
+"MGTO": {
+"fitness": 0.0,
+"solution_sha1": "57ce99cc6860741b1ed44c1f6b640aead02aa96b"
+},
+"Matlab101GTO": {
+"fitness": 7.775763211570476e-107,
+"solution_sha1": "88e42ed9ee1a782f1a0c565f2df94d278eb39bd9"
+},
+"Matlab102GTO": {
+"fitness": 7.078839368808138e-98,
+"solution_sha1": "498de26bc7c64b35a299c029e63ed29a9217d23d"
+},
+"ModifiedAEO": {
+"fitness": 4.387892975973945e-28,
+"solution_sha1": "59211f4768c9c627077c96acc01e9cb055fcc534"
+},
+"ModifiedEO": {
+"fitness": 5.206370493395162e-29,
+"solution_sha1": "c3d6ad2a66dc0ad020b3a2c849b375047381ab71"
+},
+"ModifiedSLO": {
+"fitness": 0.0,
+"solution_sha1": "1c41b4d830553a538e441f4691817dc6ec083796"
+},
+"MultiGA": {
+"fitness": 0.00854569561470611,
+"solution_sha1": "3a48640765d21adbe9e76298b4220f4f4926821b"
+},
+"OCRO": {
+"fitness": 1.0990875028068944e-05,
+"solution_sha1": "23e85951f4c681c35a45b7b99fa568ea651f98b7"
+},
+"OGWO": {
+"fitness": 7.591810358204155e-19,
+"solution_sha1": "72b519ed71b609faf05cb5b8d8d2e6b6dae71fc0"
+},
+"OppoQSA": {
+"fitness": 4.4855016469457845e-30,
+"solution_sha1": "f50f77ba403e3adcf8e0605a6ce8fc6e9524de9b"
+},
+"OppoTWO": {
+"fitness": 0.00016563096478547923,
+"solution_sha1": "ab66bd4830318f0db4e4457a22e95964613d68c2"
+},
+"OriginalABC": {
+"fitness": 2.1205380895560568e-07,
+"solution_sha1": "8ee66c449cf1434f96faf3d42ec8d58e65c87b9d"
+},
+"OriginalACOR": {
+"fitness": 7.051287523986349e-05,
+"solution_sha1": "c0705c1abb18eb1d7a0e5c5c2d4a240dde1d3229"
+},
+"OriginalAEO": {
+"fitness": 3.336496640846603e-32,
+"solution_sha1": "80ca728d04e4a2d5f3f31f37b04e596e00b0b63d"
+},
+"OriginalAFT": {
+"fitness": 0.008129142028094147,
+"solution_sha1": "777d17f4864f8d98d4dab3c9b34e87344352f810"
+},
+"OriginalAGTO": {
+"fitness": 3.318558208695008e-49,
+"solution_sha1": "9963be33c0cf9fa0fd04ccab663201bb0e688c0d"
+},
+"OriginalALO": {
+"fitness": 3.4073490043169563e-09,
+"solution_sha1": "959580f730bc650b600324ba5262daa300245da4"
+},
+"OriginalAO": {
+"fitness": 2.116604090886693e-11,
+"solution_sha1": "d7023c26c7fb9a8f528fd78c383a5d9129486c7e"
+},
+"OriginalAOA": {
+"fitness": 0.0,
+"solution_sha1": "2d9f1094f96cd4e73268fd67531e87d76347df8a"
+},
+"OriginalARO": {
+"fitness": 2.009019359396216e-11,
+"solution_sha1": "392c40eda07d39541fad24b8e6482bb60ebc0482"
+},
+"OriginalASO": {
+"fitness": 0.02940527207262189,
+"solution_sha1": "83da8936ca19b36813312aadae616c61669c50ec"
+},
+"OriginalAVOA": {
+"fitness": 1.5288838837650206e-28,
+"solution_sha1": "e66bfc114bfe7e2d2fe1e28c2c8f8926f48dbad5"
+},
+"OriginalArchOA": {
+"fitness": 1.4755187492860147e-06,
+"solution_sha1": "2c3aa28f6e0463ba682a867dad78bd741aca2537"
+},
+"OriginalBA": {
+"fitness": 0.21951193515942966,
+"solution_sha1": "a999b3ea4cdbb417323bd27c374eefb594655c3e"
+},
+"OriginalBBO": {
+"fitness": 0.022991574652971948,
+"solution_sha1": "070b70fa1748b25678611d1d0ff384c0e6c4b9d2"
+},
+"OriginalBBOA": {
+"fitness": 0.00013757605630210923,
+"solution_sha1": "befa3f16a9d019f0b522ff00c7d1076f18ea2a0c"
+},
+"OriginalBCO": {
+"fitness": 0.4588598382814351,
+"solution_sha1": "aa804d8f4359dee7440e5830162d7b8a8e0544d9"
+},
+"OriginalBES": {
+"fitness": 4.2822468427488237e-141,
+"solution_sha1": "0f5b49c9b07d26fe4941ba41dc4b2201bc8deced"
+},
+"OriginalBFO": {
+"fitness": 0.20493043865249838,
+"solution_sha1": "87fb0142b4d5ae12c7c4ee8d7aeda6801aeed278"
+},
+"OriginalBMO": {
+"fitness": 4.124050406398562e-33,
+"solution_sha1": "12df01ce92226a2a764ca39262bad7c3dcc4574c"
+},
+"OriginalBRO": {
+"fitness": 0.09220845381459601,
+"solution_sha1": "5e7e8d92c629aea900b1403e53e018f5658cf86f"
+},
+"OriginalBSA": {
+"fitness": 0.00012844569517890655,
+"solution_sha1": "bc7e9cafdea69ba0fc757dad038b1c804e7df869"
+},
+"OriginalBSO": {
+"fitness": 0.07849487086787107,
+"solution_sha1": "9cf706bcca68b81a6a174441ba370907c356607d"
+},
+"OriginalBWO": {
+"fitness": 1.0747695896447307e-06,
+"solution_sha1": "5a367b45a5ebea140ff0262ab454ce39ba8f9ca5"
+},
+"OriginalBeesA": {
+"fitness": 0.037964261723183734,
+"solution_sha1": "a344d13d13ebd09fce0a6835dc5ef4a895454845"
+},
+"OriginalCA": {
+"fitness": 0.22428079770222822,
+"solution_sha1": "d7707fc10cdc1ed5eb7e3d214eca92c7f3138a84"
+},
+"OriginalCDDO": {
+"fitness": 0.0018631979176862755,
+"solution_sha1": "49037a94ffd4bf247a336f55323705e1d072132b"
+},
+"OriginalCDO": {
+"fitness": 6.584475478807368e-22,
+"solution_sha1": "74d8f365c8c207d321adfce8f8d64e4698450110"
+},
+"OriginalCEM": {
+"fitness": 0.000876423663315447,
+"solution_sha1": "16e3637fb171ef80f01ebb17a7859a015d699a55"
+},
+"OriginalCGO": {
+"fitness": 5.0721423206699815e-39,
+"solution_sha1": "4caaf097395f6a567f6ddfa460f0fa3d6622f08b"
+},
+"OriginalCHIO": {
+"fitness": 0.15349420020779753,
+"solution_sha1": "1a912954143f9df6f6eac75b7a940a22fd99c3ba"
+},
+"OriginalCOA": {
+"fitness": 1.1622304244654246e-13,
+"solution_sha1": "18315e01ba69284c8df57d3460a29c85e4f17781"
+},
+"OriginalCRO": {
+"fitness": 0.03550949143454648,
+"solution_sha1": "a555e92e48ca03935dff9a1857ca316aabb2decd"
+},
+"OriginalCSA": {
+"fitness": 0.1549354821539139,
+"solution_sha1": "c5482899bf4950170d05d4d97d842e5edb23168d"
+},
+"OriginalCSO": {
+"fitness": 0.15922111544624112,
+"solution_sha1": "7e232fdbe475092e368b132a5ce76d9360eaa5eb"
+},
+"OriginalCircleSA": {
+"fitness": 0.0002890103574151925,
+"solution_sha1": "09e67297834521cbc696f8144c775acfb292fa64"
+},
+"OriginalCoatiOA": {
+"fitness": 2.696488609803618e-39,
+"solution_sha1": "1f31a44bd5f816b3da18e14f6e0e94875830c6b1"
+},
+"OriginalDE": {
+"fitness": 0.04883187805011593,
+"solution_sha1": "161670ae0b36d1cf28bd8c7257553632c79621fb"
+},
+"OriginalDMOA": {
+"fitness": 0.00025019801662861134,
+"solution_sha1": "0c98974e9772329bbc095cbe9338e7ca76e484f1"
+},
+"OriginalDO": {
+"fitness": 0.0003713678097916512,
+"solution_sha1": "5d8dc00222ffddd7d6f27241e844941fe802ddbc"
+},
+"OriginalDOA": {
+"fitness": 2.6128223226893097e-05,
+"solution_sha1": "2eb397ebb9cf54bbaa21f9761f6fb79257e80c30"
+},
+"OriginalEAO": {
+"fitness": 3.953409191515062e-62,
+"solution_sha1": "83b1300db5bd4de3b2374a666fecbfa8a8760ff4"
+},
+"OriginalEFO": {
+"fitness": 0.1621824608551567,
+"solution_sha1": "ee9392a37b3cab56295c9dff614f9d5e7b58f789"
+},
+"OriginalEHO": {
+"fitness": 0.0007267805217583053,
+"solution_sha1": "c665a2a24eb8369ff702b329442a41c529753fae"
+},
+"OriginalEO": {
+"fitness": 5.558635258078272e-15,
+"solution_sha1": "1e8d01f2983bda05a273ecefb86319356a51d4c0"
+},
+"OriginalEOA": {
+"fitness": 5.996740485037083e-05,
+"solution_sha1": "62c6279ed1e4ea013ce3de6a742d19e62c94570b"
+},
+"OriginalEP": {
+"fitness": 0.37108591481690556,
+"solution_sha1": "aa3fffedad2df11ce86c9d54e37d128aee0f9520"
+},
+"OriginalES": {
+"fitness": 0.36279954682571214,
+"solution_sha1": "840972f519fa9cbf8424cc921b23b63dd5e98bec"
+},
+"OriginalESO": {
+"fitness": 0.09027658929270277,
+"solution_sha1": "edef2af39403b6d396f7453ed23d9f832ffff1f8"
+},
+"OriginalESOA": {
+"fitness": 8.210610538647508e-57,
+"solution_sha1": "0317f26a1e0a3dd824680b488f7d689ea0012a44"
+},
+"OriginalEVO": {
+"fitness": 0.016690618270214994,
+"solution_sha1": "0a8881efcd6b862948a228ea5c17d2e1a278a542"
+},
+"OriginalFA": {
+"fitness": 0.0006425332550307973,
+"solution_sha1": "c0c573560ff816d37049baae97010986b6db55c1"
+},
+"OriginalFBIO": {
+"fitness": 2.448301712004992e-48,
+"solution_sha1": "b682bde2108335533a46e7a7d80bd371b9e18c2c"
+},
+"OriginalFDO": {
+"fitness": 0.008460072258403646,
+"solution_sha1": "542925ed9523d94a869b3a3e49acd1eda9488038"
+},
+"OriginalFFA": {
+"fitness": 0.04411282477011856,
+"solution_sha1": "652f688103b3d9c58456ae6ae9c203445d833c9f"
+},
+"OriginalFFO": {
+"fitness": 7.152649308114267e-15,
+"solution_sha1": "e296f8f60486e698463693cd35c900ded5eba9e2"
+},
+"OriginalFLA": {
+"fitness": 0.00029650408168962653,
+"solution_sha1": "f58d113ba12fdc3c9717df6c64c7666d26dc68d6"
+},
+"OriginalFOA": {
+"fitness": 0.06718129171787651,
+"solution_sha1": "b92ba74fb6f710bc46bbf9fa193d1cd75aa46644"
+},
+"OriginalFOX": {
+"fitness": 4.723484484872614e-199,
+"solution_sha1": "8c2f82877fcac2396605448e0dfb003429c483bc"
+},
+"OriginalFPA": {
+"fitness": 0.009449255952544373,
+"solution_sha1": "c6c68ac6043059123def1c6b78739d58a2c6a01b"
+},
+"OriginalGA": {
+"fitness": 0.7544639018195367,
+"solution_sha1": "124e41cb23361d81c0a85a53ba77b52fb2b94f45"
+},
+"OriginalGBO": {
+"fitness": 2.013528115640899e-12,
+"solution_sha1": "2002b9797ed1127ccd9e1cb9020febf62514dc11"
+},
+"OriginalGCO": {
+"fitness": 0.017573863545210195,
+"solution_sha1": "353588b0c172798822d1ad0023112959b941c718"
+},
+"OriginalGJO": {
+"fitness": 1.0517690304872395e-17,
+"solution_sha1": "f8a66fb818e9e8c2a7e55015262c7862dadb02dc"
+},
+"OriginalGOA": {
+"fitness": 6.469657434255015e-08,
+"solution_sha1": "0f782c175920df643714f6f63b2c572efb5889a4"
+},
+"OriginalGSKA": {
+"fitness": 1.6751894609969006e-05,
+"solution_sha1": "fa631cccbb67d64690dbbe80bb0cd1a496b57cca"
+},
+"OriginalGTO": {
+"fitness": 2.9179914582598462e-95,
+"solution_sha1": "ef739e3fcf87398445c40ad7bf8ecacfc9548a71"
+},
+"OriginalGWO": {
+"fitness": 2.957021038214693e-13,
+"solution_sha1": "97e88073bf1bbaa735af9a90700b9829b469eb52"
+},
+"OriginalHBA": {
+"fitness": 1.930230778917494e-24,
+"solution_sha1": "9f5b6ea77d79562c23db9478ebf49fe2605bbb07"
+},
+"OriginalHBO": {
+"fitness": 0.1400898955317322,
+"solution_sha1": "ea24ed6ead92dc06180c91b8a17464d7d84a597c"
+},
+"OriginalHC": {
+"fitness": 0.004195571550154072,
+"solution_sha1": "f492f8558fd40916475969e98d3204ce8e05bd96"
+},
+"OriginalHCO": {
+"fitness": 0.022629958523215185,
+"solution_sha1": "0a73bd2f21250df7a32107d6365ab8c082e0c532"
+},
+"OriginalHGS": {
+"fitness": 0.0,
+"solution_sha1": "b80de5d138758541c5f05265ad144ab9fa86d1db"
+},
+"OriginalHGSO": {
+"fitness": 0.01501309261298426,
+"solution_sha1": "aa28283c208effe02ba4d592ee4ff92af9940342"
+},
+"OriginalHHO": {
+"fitness": 8.240615099755463e-28,
+"solution_sha1": "b29cb0a069acfba67e573d6ec2ea6e2f89004a82"
+},
+"OriginalHS": {
+"fitness": 0.0068302960101287395,
+"solution_sha1": "781c91f93e065f4b56e9391dde8cb333a540ed8f"
+},
+"OriginalICA": {
+"fitness": 2.0652702507829175e-07,
+"solution_sha1": "59f8839592f3f1f548f7d1e2d7b3afe26000b39c"
+},
+"OriginalIMODE": {
+"fitness": 5.623595446138712e-07,
+"solution_sha1": "5bfd4579b7884a14f0fbaf6fea2365d9bf945841"
+},
+"OriginalINFO": {
+"fitness": 9.760428338119002e-10,
+"solution_sha1": "10024a1726fae2c22338ead37d7a36ffcb0355fd"
+},
+"OriginalIWO": {
+"fitness": 4.6970911076311365e-05,
+"solution_sha1": "c76466462ca557c2a5e78cea6d068cf771ad695d"
+},
+"OriginalJA": {
+"fitness": 0.5638001351359445,
+"solution_sha1": "e97034324a7b0447a602272b82cb06d2d55a97a1"
+},
+"OriginalLCO": {
+"fitness": 1.3777113607952858e-47,
+"solution_sha1": "079db1f782a560a264f54a64be2c9e173161392a"
+},
+"OriginalLSHADEcnEpSin": {
+"fitness": 4.482545205311598e-06,
+"solution_sha1": "1246f067f03cef373fcc860b23147bba15664371"
+},
+"OriginalMA": {
+"fitness": 0.30666666666666664,
+"solution_sha1": "f012af3a84f8fff4958bc9c77ca07ebfeb504b0f"
+},
+"OriginalMFO": {
+"fitness": 0.000921639052684326,
+"solution_sha1": "a8cb4cb1ef7cb53bd50f3f8613e96f0c5280a581"
+},
+"OriginalMGO": {
+"fitness": 3.4051343206071675e-16,
+"solution_sha1": "8d75416bbc18e452e1211a0acc5810b48226a62c"
+},
+"OriginalMPA": {
+"fitness": 4.403751643973368e-06,
+"solution_sha1": "7cabfbb89f173bee443efffe46594100b86d7682"
+},
+"OriginalMRFO": {
+"fitness": 1.4139122804455811e-53,
+"solution_sha1": "37d1c4907ccc320824d22f71eb69d23925aba783"
+},
+"OriginalMSA": {
+"fitness": 9.716199249793841e-05,
+"solution_sha1": "44535f44b6a3dc3f901abdbc4535f9b4deaa7488"
+},
+"OriginalMSO": {
+"fitness": 1.62891944824058e-05,
+"solution_sha1": "11052946c129483440bd31e64174975133d6c7d2"
+},
+"OriginalMShOA": {
+"fitness": 3.1552968635761324e-36,
+"solution_sha1": "8e6378f7c8f43efd09d05961f92eaa871e5684d5"
+},
+"OriginalMVO": {
+"fitness": 8.577937454409235e-06,
+"solution_sha1": "f213f0d85f541fa5f4d0c2444697bb75664098b2"
+},
+"OriginalNGO": {
+"fitness": 1.1300136707311714e-13,
+"solution_sha1": "d7aaa22d8103dede5c60bd7962b141ae3303edc4"
+},
+"OriginalNMRA": {
+"fitness": 6.059725257522093e-41,
+"solution_sha1": "4f4b3022927037030895b002b2f1b8334dc18446"
+},
+"OriginalNRO": {
+"fitness": 7.55857230343424e-11,
+"solution_sha1": "1a27131cb81ce23c0c110f0e140e50c8d079f766"
+},
+"OriginalOOA": {
+"fitness": 2.913065028646354e-20,
+"solution_sha1": "34c7a659bffe4c9b9bb80c093adc20018aff552a"
+},
+"OriginalPFA": {
+"fitness": 1.3907676318578595e-16,
+"solution_sha1": "e124b8f8994cce0990c94f44191cb9da462d7c1e"
+},
+"OriginalPOA": {
+"fitness": 6.826382910116862e-13,
+"solution_sha1": "6f8a10ea0f65bb701b0dc87246a82387f93f3ce6"
+},
+"OriginalPSO": {
+"fitness": 2.879779296237975e-08,
+"solution_sha1": "fc0a3234cf326cc3f005509b01bb9f727f95d3ae"
+},
+"OriginalPSS": {
+"fitness": 2.3832063685550003e-06,
+"solution_sha1": "90171c024e1f5035f570ade6094a3404ed1ce22a"
+},
+"OriginalQSA": {
+"fitness": 5.355397975015967e-07,
+"solution_sha1": "7173370097c2d4872ef207d018136b1ab265e116"
+},
+"OriginalRIME": {
+"fitness": 1.3435850757728134e-05,
+"solution_sha1": "a9ba5951561699ec98854baa53eb8e38f91f411f"
+},
+"OriginalRUN": {
+"fitness": 1.943216432605695e-27,
+"solution_sha1": "e2733d0a990ffd0784854e058aadc47427163921"
+},
+"OriginalSA": {
+"fitness": 0.43730644596678,
+"solution_sha1": "7a662f85f7161532a7b3be687352b02df5692f9b"
+},
+"OriginalSARO": {
+"fitness": 1.192198869317593e-07,
+"solution_sha1": "92b7a9ef333dad1ddaedaaf335f1e1cf3b97b9d2"
+},
+"OriginalSBO": {
+"fitness": 0.2319638442036557,
+"solution_sha1": "ed655ff1ac23dccd3eb150d5832696909d51b616"
+},
+"OriginalSCA": {
+"fitness": 4.9927071511373895e-06,
+"solution_sha1": "b8d8394255e95896a4d185c3f8f97b6389339db0"
+},
+"OriginalSCSO": {
+"fitness": 3.266207542285065e-17,
+"solution_sha1": "9945f4976e1e53601ac915d5067562107c2fa17b"
+},
+"OriginalSFO": {
+"fitness": 5.649020562750775e-09,
+"solution_sha1": "ace81d733b0afca6a43e30f5f845ec02fe116d8c"
+},
+"OriginalSFOA": {
+"fitness": 1.625e-320,
+"solution_sha1": "c58cf2a1478cc1d4384c31c51d3dd4d263cd5757"
+},
+"OriginalSHADE": {
+"fitness": 9.836879325441253e-07,
+"solution_sha1": "fd8f72dab9a0f01cb77e66b123f978416f7e0bcd"
+},
+"OriginalSHIO": {
+"fitness": 1.4401488454631552e-16,
+"solution_sha1": "3da93774e8e063c603edc56f0c1f0ced1e7fb287"
+},
+"OriginalSHO": {
+"fitness": 0.5901137871494508,
+"solution_sha1": "b2f5ea2beb1acc3bafc5b8dfecd72eb1a3ae8b86"
+},
+"OriginalSLO": {
+"fitness": 1.913739326929088e-07,
+"solution_sha1": "e99a41f11b7e13dfa8b57c473262ef11bdf2b488"
+},
+"OriginalSMA": {
+"fitness": 0.0,
+"solution_sha1": "63199a80e429035fdce0b373f93abf1759b20bcc"
+},
+"OriginalSOA": {
+"fitness": 1.8772997575963446,
+"solution_sha1": "6b6308b921ce36dd3785b5fcba4645838652a276"
+},
+"OriginalSOO": {
+"fitness": 5.242058724611355e-80,
+"solution_sha1": "7c2a8a97dc449abc35aaa0a6e83d33f879ef68b8"
+},
+"OriginalSOS": {
+"fitness": 1.2361161400180252e-25,
+"solution_sha1": "efb0dfb2fd68e6b575a92140acc581e60532ce02"
+},
+"OriginalSPBO": {
+"fitness": 0.002567169637804699,
+"solution_sha1": "93f2a3cf5cbf60b3716cb1cfcf21bea1225959f3"
+},
+"OriginalSRSR": {
+"fitness": 0.0,
+"solution_sha1": "536e1062c757b2fd3a7ba6d8ed898f42423dfb42"
+},
+"OriginalSSA": {
+"fitness": 4.190705112575381e-09,
+"solution_sha1": "bf79235d982a0e7feb9df7e604033f636e96e6e8"
+},
+"OriginalSSDO": {
+"fitness": 4.2816659090005165e-11,
+"solution_sha1": "a12c45102e047a1d6abd747b1ef1527ae5c47067"
+},
+"OriginalSSO": {
+"fitness": 8.270199236897736e-09,
+"solution_sha1": "4102d0736ac588fe3e549b5e984a023d0d0f4674"
+},
+"OriginalSSpiderA": {
+"fitness": 1.2681206486904858e-07,
+"solution_sha1": "de1878bb936c1d5c6e5623d257b75f2c330037d5"
+},
+"OriginalSSpiderO": {
+"fitness": 0.004001374614174469,
+"solution_sha1": "f66cb73d8bbad47bc933b6456a75626bc3646c04"
+},
+"OriginalSTO": {
+"fitness": 1.980019161176695e-40,
+"solution_sha1": "4c4bdba50e3f4390139b7b3a576634a160fe29dc"
+},
+"OriginalSeaHO": {
+"fitness": 1.3376403931107106e-28,
+"solution_sha1": "94a4dc94de258260dba8e12e996bcbccd230f5bb"
+},
+"OriginalServalOA": {
+"fitness": 9.510809599982888e-18,
+"solution_sha1": "414e1ad137769f6496fcb5a44cf03ed8d2b7f8db"
+},
+"OriginalSquirrelSA": {
+"fitness": 0.0001662219449832108,
+"solution_sha1": "380bc560a4c85329172ad9a2f2951308bdc7a827"
+},
+"OriginalTDO": {
+"fitness": 1.007650257442723e-12,
+"solution_sha1": "f521266db5daad4d9ff4d34fcb84cec85323e5cd"
+},
+"OriginalTHRO": {
+"fitness": 8.824181379651323e-07,
+"solution_sha1": "8ecd25ebc587eb4007db87102b40ccb53c57e891"
+},
+"OriginalTLO": {
+"fitness": 1.611918821921771e-14,
+"solution_sha1": "b973ff1b20b5018887f275c882b56edad50fc978"
+},
+"OriginalTOA": {
+"fitness": 1.3274511822465589e-73,
+"solution_sha1": "701b0479922fdd0b37ea6496f684334f0d927b6b"
+},
+"OriginalTS": {
+"fitness": 0.0013525956309658927,
+"solution_sha1": "38179dffb1c8779ed04037335fe50be7b6ac0297"
+},
+"OriginalTSA": {
+"fitness": 4.130514343839304e-05,
+"solution_sha1": "d73d1b2ce16afce28c86d1e7605e171f7f029811"
+},
+"OriginalTSO": {
+"fitness": 0.0,
+"solution_sha1": "b80de5d138758541c5f05265ad144ab9fa86d1db"
+},
+"OriginalTWO": {
+"fitness": 0.029024443440994058,
+"solution_sha1": "cdb3b7b2a6d95c014cbdcba039d5f3691c4d92fe"
+},
+"OriginalVCS": {
+"fitness": 4.5820857294769145e-31,
+"solution_sha1": "a013cfaa2e4103d2cb58160a9a8fa50c427e11bd"
+},
+"OriginalWCA": {
+"fitness": 0.032051035533528484,
+"solution_sha1": "090d87f69b5f6ee8111de989b863831c8f3e9310"
+},
+"OriginalWDO": {
+"fitness": 2.3363248193107212e-11,
+"solution_sha1": "d2f34cd540c06a82773ef180a399248e12acc739"
+},
+"OriginalWHO": {
+"fitness": 2.0215710117890635e-07,
+"solution_sha1": "551c5b1cff928f0676aaefb53de462dd5b122809"
+},
+"OriginalWOA": {
+"fitness": 1.5591725195536286,
+"solution_sha1": "34a52851655484302a8030e1ef0bb0831e1ccb0c"
+},
+"OriginalWaOA": {
+"fitness": 3.540242426983794e-16,
+"solution_sha1": "6298e614c7fb025eafe6667d8c52dbb87d106143"
+},
+"OriginalWarSO": {
+"fitness": 9.13391214692034e-50,
+"solution_sha1": "4b9f9d9ebd94fc32162fec45e382e7d58a628650"
+},
+"OriginalZOA": {
+"fitness": 2.134027523852408e-35,
+"solution_sha1": "07868e472eb5243ce368a195367217c4c75cc740"
+},
+"P_PSO": {
+"fitness": 0.01609580191099135,
+"solution_sha1": "a889fffcfcf08c4266f730f9cb178a08953d8965"
+},
+"ProbBeesA": {
+"fitness": 0.06515961670137924,
+"solution_sha1": "155d39a723a67852e6f57f22254e7944eac1ed53"
+},
+"QleSCA": {
+"fitness": 4.9136937121846243e-29,
+"solution_sha1": "ff9d3ac92c095c0693bd8a3509cca772f5dca512"
+},
+"RW_GWO": {
+"fitness": 2.3916510856607793e-13,
+"solution_sha1": "a58fcfb55b34399c6d4068e1e1ee3cc0ddb7ef6d"
+},
+"SADE": {
+"fitness": 2.248907436746333e-06,
+"solution_sha1": "e0c851906116c8bce673e76de14cce2565672a3d"
+},
+"SAP_DE": {
+"fitness": 0.040236056823463144,
+"solution_sha1": "dc0ec1f0a179bba9913449dbd4b2a95de026ee28"
+},
+"Simple_CMA_ES": {
+"fitness": 0.0004503886077646334,
+"solution_sha1": "4018baf09ff69ec86c996a4e148ec70aee07091d"
+},
+"SingleGA": {
+"fitness": 0.005163988830189932,
+"solution_sha1": "2a4c8d67645bd06fec4980d8cb93d16c045d1174"
+},
+"SwarmHC": {
+"fitness": 1.3418507120690624e-05,
+"solution_sha1": "9c8d5a048823487f06feead1fb94d6071114ef32"
+},
+"SwarmSA": {
+"fitness": 0.0016912562269501181,
+"solution_sha1": "4fe1ec2fc252e58734a0028638c37c47ad6c17d4"
+},
+"WMQIMRFO": {
+"fitness": 0.0,
+"solution_sha1": "b80de5d138758541c5f05265ad144ab9fa86d1db"
+},
+"WhaleFOA": {
+"fitness": 6.963523793782563e-08,
+"solution_sha1": "5788392b0d8f179c9991f2a67adef3f3ffe56fb8"
+}
+}
