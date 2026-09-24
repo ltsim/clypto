@@ -3,11 +3,11 @@ import typing
 
 import numpy as np
 import numpy.typing as npt
-from clypto.agents.legacy import LegacyAgent
+from clypto.optimizer.agents.legacy import LegacyAgent
 from clypto.hints.array import NDArrayType
-from clypto.utils.problem import Problem
-from clypto.utils.target import Target
-from clypto.utils.termination import Termination
+from clypto.optimizer.problem import Problem
+from clypto.optimizer.target import Target
+from clypto.optimizer.termination import Termination
 
 
 class BaseOptimizer(abc.ABC):

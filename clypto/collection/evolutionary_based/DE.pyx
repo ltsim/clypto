@@ -6,8 +6,8 @@
 
 import numpy as np
 from scipy.stats import cauchy
-from clypto.agents._core cimport _LegacyAgent
-from clypto.optimizer._legacy cimport _LegacyOptimizer
+from clypto.optimizer._native.agent cimport _LegacyAgent
+from clypto.optimizer._native.legacy cimport _LegacyOptimizer
 
 
 # --- dedicated agents (private to this module) ---

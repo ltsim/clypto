@@ -18,12 +18,12 @@ a compile flag to run the same JIT Cython builder.
 
 import typing
 
-from clypto.agents.precompile.runtime import RuntimeAgent
-from clypto.agents.precompile.declaration import Attribute
+from clypto.optimizer.agents.runtime import RuntimeAgent
+from clypto.optimizer.agents.declaration import Attribute
 from clypto.optimizer.legacy import LegacyOptimizer
 from clypto.optimizer.precompile.declaration import Argument
 from clypto.optimizer.precompile.base import DecoratedOptimizer
-from clypto.precompile.decoration import (
+from clypto.optimizer.precompile.decoration import (
     collect_declarations,
     decorate_with_base,
     maybe_compile,
@@ -56,7 +56,7 @@ def optimizer(cls=None, *, agent=None, compile=False):
         if agent is not None:
             selected_agent = agent
             if not issubclass(selected_agent, RuntimeAgent):
-                from clypto.agents.precompile.decorator import agent as agent_decorator
+                from clypto.optimizer.agents.decorator import agent as agent_decorator
 
                 selected_agent = agent_decorator(selected_agent)
             decorated.agent_class = selected_agent

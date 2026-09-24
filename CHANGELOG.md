@@ -6,6 +6,22 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Breaking: module layout (2026-09)
+
+The package is now split into `clypto.collection` (native `.pyx` algorithms), `clypto.optimizer` (the reusable Python API) and `clypto.hints`. Old paths were removed without shims; `import clypto as cy` names are unchanged.
+
+| Old | New |
+|-----|-----|
+| `clypto.utils.{problem,target,termination,validator,transfer,population,history,space}` | `clypto.optimizer.<same>` |
+| `clypto.utils.{chaotic,fuzzy}` | `clypto.optimizer._native.<same>` |
+| `clypto.utils._nogil` | `clypto.optimizer._native.nogil` |
+| `clypto.agents._core` | `clypto.optimizer._native.agent` |
+| `clypto.optimizer._legacy` | `clypto.optimizer._native.legacy` |
+| `clypto.agents.legacy`, `clypto.agents.precompile.*` | `clypto.optimizer.agents.*` |
+| `clypto.precompile` | `clypto.optimizer.precompile` (JIT in `compiler`) |
+
+Only `.pyx` is compiled now (`collection/` and `optimizer/_native/`); the public optimizer API ships as plain Python.
+
 ### Cython-native collection (2026-09)
 
 + **Native `.pyx` collection:** all 147 catalog modules / 244 optimizer classes were converted from pure-Python `.py` to native Cython `.pyx` with `cdef class` optimizers and typed `cdef` agent classes.

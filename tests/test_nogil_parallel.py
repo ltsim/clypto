@@ -14,7 +14,7 @@ pytest.importorskip("Cython")
 N_DIMS = 4
 
 _EVALUATOR_PYX = """
-from clypto.utils._nogil cimport _NogilEvaluator
+from clypto.optimizer._native.nogil cimport _NogilEvaluator
 
 
 cdef void sphere(const double* x, Py_ssize_t n, double* out) noexcept nogil:

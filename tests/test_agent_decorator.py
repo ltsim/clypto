@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import clypto as cy
-from clypto.utils.target import Target
+from clypto.optimizer.target import Target
 
 
 @cy.agent
@@ -107,7 +107,7 @@ def test_ellipsis_and_single_parameter_defaults():
 
 
 def test_decorated_agent_is_a_runtime_agent():
-    from clypto.agents.precompile.runtime import RuntimeAgent
+    from clypto.optimizer.agents.runtime import RuntimeAgent
 
     assert issubclass(CustomAgent, RuntimeAgent)
     assert isinstance(CustomAgent(), RuntimeAgent)

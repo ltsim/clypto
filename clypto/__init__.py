@@ -158,30 +158,31 @@ from clypto.collection.swarm_based import (
 )
 from clypto.collection.system_based import AEO, GCO
 from clypto.collection.system_based import WCA
-from clypto.agents.precompile import Attribute, RuntimeAgent, agent
-from clypto.optimizer.precompile import Argument, DecoratedOptimizer, legacy, optimizer
-from clypto.optimizer.legacy import LegacyOptimizer
-from clypto.optimizer._legacy import _LegacyOptimizer
-from clypto.utils import Problem
-from clypto.utils.population import Population
-from clypto.utils.problem import Problem
-from clypto.utils.space import (
-    IntegerVar,
-    FloatVar,
-    StringVar,
+from clypto.optimizer import (
+    Argument,
+    Attribute,
     BinaryVar,
     BoolVar,
     CategoricalVar,
-    SequenceVar,
+    DecoratedOptimizer,
+    FloatVar,
+    IntegerVar,
+    LegacyOptimizer,
+    Optimizer,
     PermutationVar,
+    Population,
+    Problem,
+    RuntimeAgent,
+    SequenceVar,
+    StringVar,
+    Termination,
     TransferBinaryVar,
     TransferBoolVar,
+    agent,
+    legacy,
+    optimizer,
 )
-from clypto.utils.termination import Termination
-
-# Backward-compatible alias: the classic base class was renamed to
-# ``LegacyOptimizer`` so that ``Optimizer`` can stay importable for existing code.
-Optimizer = LegacyOptimizer
+from clypto.optimizer._native.legacy import _LegacyOptimizer
 
 __EXCLUDE_MODULES = ["__builtins__", "current_module", "inspect", "sys"]
 

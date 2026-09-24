@@ -7,15 +7,15 @@ import time
 import typing
 
 import numpy as np
-from clypto.agents.precompile.runtime import RuntimeAgent
+from clypto.optimizer.agents.runtime import RuntimeAgent
 from clypto.hints.array import NDArrayType
 from clypto.optimizer.precompile.declaration import Argument
-from clypto.precompile.decoration import collect_declarations
-from clypto.utils.population import Population
-from clypto.utils.problem import Problem
-from clypto.utils.target import Target
-from clypto.utils.termination import Termination
-from clypto.utils.validator import Validator
+from clypto.optimizer.precompile.decoration import collect_declarations
+from clypto.optimizer.population import Population
+from clypto.optimizer.problem import Problem
+from clypto.optimizer.target import Target
+from clypto.optimizer.termination import Termination
+from clypto.optimizer.validator import Validator
 
 __all__ = ["DecoratedOptimizer"]
 

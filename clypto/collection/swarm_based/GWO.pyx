@@ -6,9 +6,9 @@
 
 import numpy as np
 
-from clypto.optimizer._legacy cimport _LegacyOptimizer
-from clypto.utils.chaotic import ChaoticMap as CM
-from clypto.utils.fuzzy import FuzzySystem as FS
+from clypto.optimizer._native.legacy cimport _LegacyOptimizer
+from clypto.optimizer._native.chaotic import ChaoticMap as CM
+from clypto.optimizer._native.fuzzy import FuzzySystem as FS
 
 
 cdef class OriginalGWO(_LegacyOptimizer):

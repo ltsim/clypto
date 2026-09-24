@@ -3,7 +3,7 @@
 # --------------------------------------------------%
 """The ``Argument`` declaration used by ``@cy.optimizer`` classes."""
 
-from clypto.precompile.decoration import Declaration
+from clypto.optimizer.precompile.decoration import Declaration
 
 __all__ = ["Argument"]
 

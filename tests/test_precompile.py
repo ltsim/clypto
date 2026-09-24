@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import clypto as cy
-from clypto.precompile import precompile
+from clypto.optimizer.precompile import precompile
 
 pytest.importorskip("Cython")
 
@@ -71,7 +71,7 @@ def test_precompile_rejects_non_optimizer():
 
 
 def test_precompile_raises_without_cython(monkeypatch):
-    runtime = sys.modules["clypto.precompile._runtime"]
+    runtime = sys.modules["clypto.optimizer.precompile._runtime"]
 
     class TempOptimizer(cy.LegacyOptimizer):
         def evolve(self, epoch):
