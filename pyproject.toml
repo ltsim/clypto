@@ -121,6 +121,10 @@ exclude = ["build", "*.c", "*.so"]
 select = ["E", "F", "W", "B", "C4", "C90"]
 ignore = ["E203", "E266"]
 
+[tool.ruff.lint.per-file-ignores]
+# package __init__ files re-export the collection (one file per algorithm variant)
+"__init__.py" = ["F401"]
+
 [tool.ruff.lint.mccabe]
 max-complexity = 18
 

@@ -32,6 +32,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev
 
+      - name: Install libomp (OpenMP for Apple clang)
+        if: runner.os == 'macOS'
+        run: brew install libomp
+
       - name: Build Cython extensions in place
         run: uv run --no-sync python setup.py build_ext --inplace
 
