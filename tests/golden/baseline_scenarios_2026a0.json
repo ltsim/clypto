@@ -1,0 +1,4244 @@
+{
+"ABFO": {
+"max8": {
+"fitness": -27.69734175143193,
+"solution_sha1": "b44bdc61256631319605871f839694ac367a130d"
+},
+"min12": {
+"fitness": 154.79111710061136,
+"solution_sha1": "3917378f6f2873a8d5734a060b2490fddd91994c"
+},
+"swarm-max": {
+"fitness": -30.42707446233067,
+"solution_sha1": "c32d01b0a05a0a5d8b13621f0d1ac9d1ec728943"
+},
+"swarm6": {
+"fitness": 82.4271812346851,
+"solution_sha1": "ab6a6e4c7e7d100f889eb9cd131c2bc35d94991d"
+}
+},
+"AIW_PSO": {
+"max8": {
+"fitness": -15.648212648110029,
+"solution_sha1": "fd2c0c4d2b719b45deed4bba2499a5e95bfcc215"
+},
+"min12": {
+"fitness": 109.86010004559887,
+"solution_sha1": "b824e72f45d211117d507739a7786c7703b3884b"
+},
+"swarm-max": {
+"fitness": -12.77686097245055,
+"solution_sha1": "cadd3c8405763ecee0491ab36e201fa7a90c40ba"
+},
+"swarm6": {
+"fitness": 22.432114335303254,
+"solution_sha1": "913584b48c008f59679054da06768f762d8c0d01"
+}
+},
+"AdaptiveBA": {
+"max8": {
+"fitness": -25.378859097509192,
+"solution_sha1": "5831971d7a735dafa06741c5886379d1db44e9c3"
+},
+"min12": {
+"fitness": 133.04244891924196,
+"solution_sha1": "8a716be0095a4aa9abcce15e1afeb605649f110f"
+},
+"swarm-max": {
+"fitness": -15.287780639762232,
+"solution_sha1": "75264f3ff9b012a7fce3caaa2239ff2023ca2c8f"
+},
+"swarm6": {
+"fitness": 33.91751668123164,
+"solution_sha1": "5d056c92050814758470461918d6633a69d09982"
+}
+},
+"AdaptiveEO": {
+"max8": {
+"fitness": -2.8249859689637227e-06,
+"solution_sha1": "1f534e392e93ab4df8890cbf883ba425fe7c4e07"
+},
+"min12": {
+"fitness": 1.6671985749909624,
+"solution_sha1": "af34881755b1922bf05b9be6e3d7000f438f7676"
+},
+"swarm-max": {
+"fitness": -1.5583108364560133e-05,
+"solution_sha1": "a7736b2cf99c73836c40a4dfc9c217aa53dae526"
+},
+"swarm6": {
+"fitness": 5.745717773411116,
+"solution_sha1": "fb3542e6d8a9601396bc14775afac27d8d82d922"
+}
+},
+"AugmentedAEO": {
+"max8": {
+"fitness": -0.15458265838162016,
+"solution_sha1": "ea336b3cf32417d20afe4e73845efbf22e90ea1f"
+},
+"min12": {
+"fitness": 48.248709020554685,
+"solution_sha1": "3a1e867a9f4b9a7ddacda6d0de37d67e64715875"
+},
+"swarm-max": {
+"fitness": -9.681824114263232e-05,
+"solution_sha1": "e681d2b2ab2c2d7bdb5844a2911ccdd27f8dc96d"
+},
+"swarm6": {
+"fitness": 13.944983844580321,
+"solution_sha1": "f2edf9dc7d560ddf127f372fa53c7a3f984a4de6"
+}
+},
+"BaseGA": {
+"max8": {
+"fitness": -3.6360134426781165,
+"solution_sha1": "932ee06fdb70b756354d9802d39667c75509c63d"
+},
+"min12": {
+"fitness": 21.150854885722865,
+"solution_sha1": "c7b02203c13cb7e4e4f528a06562f14a40f0de39"
+},
+"swarm-max": {
+"fitness": -7.137882345440212,
+"solution_sha1": "9b32c34377aecefd11b822f3ed776b0d2b55e691"
+},
+"swarm6": {
+"fitness": 19.529000977657446,
+"solution_sha1": "fa5c9478d6910037fb954c053726ddc8a3224bbf"
+}
+},
+"CG_GWO": {
+"max8": {
+"fitness": -1.6803335547889299e-06,
+"solution_sha1": "3790ec7aad7a5f1ea2faedcf598fb1dc08cb98ea"
+},
+"min12": {
+"fitness": 0.06416115195720806,
+"solution_sha1": "3a955ad311c832d859065011a49c7ad77953aff4"
+},
+"swarm-max": {
+"fitness": -3.308656668267659e-06,
+"solution_sha1": "52220cf8ad32563e2258c6a9a1f3d3aae82bf645"
+},
+"swarm6": {
+"fitness": 1.7867779565109956,
+"solution_sha1": "133a04afca9b0e9bcc1624cc7fcd57d1883041bb"
+}
+},
+"CL_PSO": {
+"max8": {
+"fitness": -8.38078442936895,
+"solution_sha1": "c6ea1d491f2ae4d18bc9f86c094d4decf74ee0bd"
+},
+"min12": {
+"fitness": 80.52734889816017,
+"solution_sha1": "cc889e333249568e9422dad30dba192f649de53e"
+},
+"swarm-max": {
+"fitness": -4.265582531665393,
+"solution_sha1": "e270daf219b3470616b6fa89c8ead9f6e44fe156"
+},
+"swarm6": {
+"fitness": 33.16007435685547,
+"solution_sha1": "b0fb26da6f665a15f7b71cde4b2f496a33d90006"
+}
+},
+"CMA_ES": {
+"max8": {
+"fitness": -4.64319101161863,
+"solution_sha1": "eca24afc42cb7483b40afa43b5ef87aaf3e13b9a"
+},
+"min12": {
+"fitness": 85.63103758690121,
+"solution_sha1": "887ee92839e8ff08bf5f8a14f28ddea81eab34f4"
+},
+"swarm-max": {
+"fitness": -5.19294640319003,
+"solution_sha1": "7b95cdf9798210674ba83e302d226c745050c893"
+},
+"swarm6": {
+"fitness": 49.284721873219986,
+"solution_sha1": "9140d2c321d75f9b6dbdc3f74f14aa9675a036de"
+}
+},
+"C_PSO": {
+"max8": {
+"fitness": -11.51053261763601,
+"solution_sha1": "04ff5ae8e19a1f83214320f5543276341cb8d619"
+},
+"min12": {
+"fitness": 107.71750971252233,
+"solution_sha1": "60d2b0455e22a9a0ab3d4affa4f6910951822999"
+},
+"swarm-max": {
+"fitness": -5.566762356427672,
+"solution_sha1": "7ad877b225e17857597b9479f4e5ba50dec2ae2b"
+},
+"swarm6": {
+"fitness": 25.778147237100505,
+"solution_sha1": "bddeb00cc365ad57a98003c7ca4c255a889d933c"
+}
+},
+"ChaoticGWO": {
+"max8": {
+"fitness": -0.004218570198503285,
+"solution_sha1": "e4cd05ca61befe2ade9e50893d63a6edfc42278e"
+},
+"min12": {
+"fitness": 14.156685886851335,
+"solution_sha1": "b2c3e42beb11471536e5deb908fd14cff0cfdb92"
+},
+"swarm-max": {
+"fitness": -0.0012553765708941424,
+"solution_sha1": "a95ac33689f286315fb6c86c39f714207904dcf1"
+},
+"swarm6": {
+"fitness": 15.889473043809865,
+"solution_sha1": "c5af30e09c081a061a3f4480dc9ac8f61ac8d5cf"
+}
+},
+"CleverBookBeesA": {
+"max8": {
+"fitness": -0.4454078698481024,
+"solution_sha1": "1741012fdadc6acc328b0f98ae23465b9c375694"
+},
+"min12": {
+"fitness": 18.818358015351933,
+"solution_sha1": "d19b892f67550a0ceb57d97771ca7ddfcf7fb550"
+},
+"swarm-max": {
+"fitness": -0.08321870405158172,
+"solution_sha1": "4c37f08efa66939535367753705fbdb42f5af30d"
+},
+"swarm6": {
+"fitness": 5.3934697981909,
+"solution_sha1": "1ce910d98457651fd244c0ed2c93f0adc54db7c2"
+}
+},
+"DS_GWO": {
+"max8": {
+"fitness": -25.865784842212324,
+"solution_sha1": "879ff4a41f17bbd2eb8fc9560d7e8e3dd1883ec8"
+},
+"min12": {
+"fitness": 148.2733338019193,
+"solution_sha1": "c5f1aeb08109fddce166ba449ffaf84006d88667"
+},
+"swarm-max": {
+"fitness": -27.19659741182842,
+"solution_sha1": "d3049109470de529ed2f36c319ba580f6ee04ee3"
+},
+"swarm6": {
+"fitness": 70.41313192160251,
+"solution_sha1": "f0ffd125282ef3f749b53637604e104a4e13ac96"
+}
+},
+"DevALO": {
+"max8": {
+"fitness": -3.4410993324544914,
+"solution_sha1": "783cd4b673fa6d43533e499859bee924d27ab219"
+},
+"min12": {
+"fitness": 43.38684621933835,
+"solution_sha1": "bb169ac6eb5a90271104254efc9522a588707d9d"
+},
+"swarm-max": {
+"fitness": -3.7630876870323844,
+"solution_sha1": "94cd92cce5d5f2b0ae04654568fb8f11212f7b20"
+},
+"swarm6": {
+"fitness": 27.321507894483844,
+"solution_sha1": "62da3e4474c9aa95c1002433d4173fada8e57ef3"
+}
+},
+"DevBA": {
+"max8": {
+"fitness": -99.26367405923878,
+"solution_sha1": "2b040b7429887c0bd544d9843367fe75a468b2fe"
+},
+"min12": {
+"fitness": 279.3740853177207,
+"solution_sha1": "00b80f6cd2060940c783eefd54832a0d5a90eaf5"
+},
+"swarm-max": {
+"fitness": -69.15844571762294,
+"solution_sha1": "ef4ecf4637f07703f24e91058e686f66c5870ef7"
+},
+"swarm6": {
+"fitness": 129.16497095411881,
+"solution_sha1": "8004cf01a79553a5138ab44b0ac1d09d4fd4344a"
+}
+},
+"DevBBO": {
+"max8": {
+"fitness": -1.6481983798839948,
+"solution_sha1": "a6172aca608a49e9dd5ea62ccba93818354c88f0"
+},
+"min12": {
+"fitness": 30.83158267649884,
+"solution_sha1": "dfe1570375b40f2c450e5c86f81aead9a3cd8a57"
+},
+"swarm-max": {
+"fitness": -6.341346229465673,
+"solution_sha1": "2ef53b49dc3d2c9fca835593f75b58bb9d996293"
+},
+"swarm6": {
+"fitness": 14.37691406438369,
+"solution_sha1": "b47cbeba88ef6558237efc708e9aa8515bd2b167"
+}
+},
+"DevBRO": {
+"max8": {
+"fitness": -7.32054217318716e-28,
+"solution_sha1": "c9bc6314a24311b64cd19c90d33b859b9ac715c1"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "3dbd630d0337e2526f1c2f39f4a60867e080ae28"
+},
+"swarm-max": {
+"fitness": -1.575705033062551e-20,
+"solution_sha1": "add0f7184f5a882be989bc290e445519852fd65d"
+},
+"swarm6": {
+"fitness": 4.050093593832571e-13,
+"solution_sha1": "bb94a5ee9a2aabdce4d08ec0b21119ffe0d2cdc4"
+}
+},
+"DevCHIO": {
+"max8": {
+"error": "TypeError"
+},
+"min12": {
+"error": "TypeError"
+},
+"swarm-max": {
+"error": "TypeError"
+},
+"swarm6": {
+"error": "TypeError"
+}
+},
+"DevDMOA": {
+"max8": {
+"fitness": -9.940806821241938e-07,
+"solution_sha1": "7df5fe20d275279780bec275afac06554c7c6b30"
+},
+"min12": {
+"fitness": 2.3132588011418136,
+"solution_sha1": "98b4bff971cc9a4bc5bc114e55592fd333d93d69"
+},
+"swarm-max": {
+"fitness": -1.5067892411669038e-06,
+"solution_sha1": "6d883d016e27e94b48b41c815e96848514d32f94"
+},
+"swarm6": {
+"fitness": 3.0957161779260147,
+"solution_sha1": "488b2edb7db2ecd1eae67431ebdfdb39f206a8f8"
+}
+},
+"DevEFO": {
+"max8": {
+"fitness": -2.5794438908529345,
+"solution_sha1": "80e2443f346bb1e0099e1798df9289d96e077c5d"
+},
+"min12": {
+"fitness": 87.77953285136083,
+"solution_sha1": "a1c3c4b70be58f0c53045fd189c3258515d34c0c"
+},
+"swarm-max": {
+"fitness": -1.5266993144526633,
+"solution_sha1": "722b572439bd8b9aa0256eb51a75b2e8748a5e71"
+},
+"swarm6": {
+"fitness": 25.778147237100505,
+"solution_sha1": "bddeb00cc365ad57a98003c7ca4c255a889d933c"
+}
+},
+"DevEPC": {
+"max8": {
+"fitness": -0.0010935783548107142,
+"solution_sha1": "d21d84552e8f955220a193a45725d3c02f63017d"
+},
+"min12": {
+"fitness": 69.02587338257497,
+"solution_sha1": "b5408d165a1b85faa75af1ff84a84f9bcd15cd0a"
+},
+"swarm-max": {
+"fitness": -0.0011751385804369178,
+"solution_sha1": "dcf29e3c70bec12ee6173067bd6cc948923e1a03"
+},
+"swarm6": {
+"fitness": 26.385198477786645,
+"solution_sha1": "331371e3e9bae587b3492d43fea82385c48c1032"
+}
+},
+"DevFBIO": {
+"max8": {
+"fitness": -5.906514678687835e-25,
+"solution_sha1": "cc1a479b9427a929751893e9def9457094dcf3f5"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "b723add0a2d57b65a862e531c585d8c695417722"
+},
+"swarm-max": {
+"fitness": -3.093056870293648e-21,
+"solution_sha1": "ca86b5a6f83d98745263a7dac11ef6fa9d08f92d"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "55cdcca9a84c56d0bd601ab04e69e0b14d35b562"
+}
+},
+"DevFOA": {
+"max8": {
+"fitness": -0.0,
+"solution_sha1": "c8d7d0ef0eedfa82d2ea1aa592845b9a6d4b02b7"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "c49a9785b2243f2f080daad1747f119acceccfa5"
+},
+"swarm-max": {
+"fitness": -0.0,
+"solution_sha1": "9438e360f578e12c0e0e8ed28e2c125c1cefee16"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "c17fd92682ca5b304ac71074b558dda9e8eb4d66"
+}
+},
+"DevFOX": {
+"max8": {
+"fitness": -1.9842845057582122e-110,
+"solution_sha1": "06cf95cf07c922a95ea21f98a0377f25a76959e1"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "eda41fba88fbbf96c58088e4f2b0a3ca70abfbd2"
+},
+"swarm-max": {
+"fitness": -8.079080538013177e-90,
+"solution_sha1": "d1042238d523dae1debff79ee2e8090fe5d84604"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "dda306afd3a144aa3256581fa30c211ae6c03879"
+}
+},
+"DevGCO": {
+"max8": {
+"fitness": -7.405074753907955,
+"solution_sha1": "11d06a1fe924e9e07390d5ac3200188d5860f658"
+},
+"min12": {
+"fitness": 121.8094971881233,
+"solution_sha1": "d3c02ed57acd4c61d0bb147b5cdf508c70404922"
+},
+"swarm-max": {
+"fitness": -7.4321966651788935,
+"solution_sha1": "0a90632ca2ebd3f31f87b26111ae2db42960e542"
+},
+"swarm6": {
+"fitness": 20.907565346329434,
+"solution_sha1": "fd7a399f99e045db39dfdef0fbb51293c5cbc49f"
+}
+},
+"DevGSKA": {
+"max8": {
+"fitness": -0.7851762792852671,
+"solution_sha1": "6a35e092793d3c0327b5eb560deda0fb3c6b07e9"
+},
+"min12": {
+"fitness": 59.289415866764166,
+"solution_sha1": "7c496dd7456318f5eb27a85600837b06d2fbd1df"
+},
+"swarm-max": {
+"fitness": -0.42358915064839553,
+"solution_sha1": "b807746df49939a2bda9bcab6aa207115c9a94a7"
+},
+"swarm6": {
+"fitness": 23.7254329708595,
+"solution_sha1": "61a607f813c525d9e9bcba27e89f25ceba3b3872"
+}
+},
+"DevHS": {
+"max8": {
+"fitness": -1.5744449662550752,
+"solution_sha1": "7660e2929d105c471215b8c3507b70018428f4b8"
+},
+"min12": {
+"fitness": 9.191597141871696,
+"solution_sha1": "4e5ad590238f9d94a18a865419647cd063e8f632"
+},
+"swarm-max": {
+"fitness": -0.9688823952490453,
+"solution_sha1": "9d25a7b6cab3de49b5c4e2959d12d756c4474204"
+},
+"swarm6": {
+"fitness": 15.475100123270536,
+"solution_sha1": "cf853cb7e55380a4571d5a06f7bd4296e6e7de81"
+}
+},
+"DevJA": {
+"max8": {
+"fitness": -11.238820212146052,
+"solution_sha1": "1476d3224577168dfabe39b8e7cd67f2b5acd3c1"
+},
+"min12": {
+"fitness": 121.49568446737207,
+"solution_sha1": "3ba89f582b2f189d4313ac27a418ff27cbbab49c"
+},
+"swarm-max": {
+"fitness": -2.468935778582213,
+"solution_sha1": "fbab1695ccaf62b97dfa2e2bb593407f2213c0b2"
+},
+"swarm6": {
+"fitness": 32.134613881056794,
+"solution_sha1": "978ca4ed03dfd160a3154da6aa444ea70130b804"
+}
+},
+"DevLCO": {
+"max8": {
+"fitness": -5.370627785524167e-30,
+"solution_sha1": "7dfda2a17b03d8d280326517f987bc17e09369c5"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "510440de39d33df7b52b3ccb80914f63db34bf63"
+},
+"swarm-max": {
+"fitness": -1.8909829491440714e-15,
+"solution_sha1": "b45d76d42884ce291ca075de3625c6f9800b65d5"
+},
+"swarm6": {
+"fitness": 15.20738027847284,
+"solution_sha1": "4348c17549e8ee82ae69b91de3541b78f4eda435"
+}
+},
+"DevMVO": {
+"max8": {
+"fitness": -0.906326586651919,
+"solution_sha1": "61008b90912021e0eef7a43aac0207211086711e"
+},
+"min12": {
+"fitness": 35.599860569862045,
+"solution_sha1": "3ae84432afcfa79798c70d26b815201b108192c7"
+},
+"swarm-max": {
+"fitness": -0.33335586523190397,
+"solution_sha1": "77213f897c3d262695eec10db1ab8b143e6b64b6"
+},
+"swarm6": {
+"fitness": 3.1907961144486165,
+"solution_sha1": "73eeb75cd9cee3efff0987583d60df5bc400b1da"
+}
+},
+"DevQSA": {
+"max8": {
+"fitness": -0.0016773698633782115,
+"solution_sha1": "1a1ba672a0e8cae01c0a7739f50736541a17adb8"
+},
+"min12": {
+"fitness": 23.403139401060812,
+"solution_sha1": "f11cf42b7ed80eb4bf8b210d9bf9b96d66247b76"
+},
+"swarm-max": {
+"fitness": -0.0005156805559955498,
+"solution_sha1": "63dea0172e864e950695e110e82f822e6ad3a18e"
+},
+"swarm6": {
+"fitness": 3.097624286153568,
+"solution_sha1": "5fbedd39ac06ad074ac36de91cd20bba92faddd9"
+}
+},
+"DevSARO": {
+"max8": {
+"fitness": -0.002013539742940755,
+"solution_sha1": "a5924656ddab81d4490b6ca8c92df1c3b0d02394"
+},
+"min12": {
+"fitness": 35.90612341193534,
+"solution_sha1": "16d170b213cf9fa5adcbc5e4a9ec492aedc34625"
+},
+"swarm-max": {
+"fitness": -0.0006451688891978273,
+"solution_sha1": "156c41b6b68d9fb1b06930be716c164bdbbb255d"
+},
+"swarm6": {
+"fitness": 13.951086781944518,
+"solution_sha1": "1dbe877ceee9b022db94784264343a04f2c83403"
+}
+},
+"DevSBO": {
+"max8": {
+"fitness": -1.6019255796991914,
+"solution_sha1": "7f65a547646cf7a8be4fbb9a0694b75f62cb1e53"
+},
+"min12": {
+"fitness": 16.504301471287746,
+"solution_sha1": "779c1baaf7ac434851d18e749825decb5271af0d"
+},
+"swarm-max": {
+"fitness": -1.0805775949375431,
+"solution_sha1": "26b393fcda2a7e4c0ce20ca49bb86e86ef06afaa"
+},
+"swarm6": {
+"fitness": 17.150885819203943,
+"solution_sha1": "c41625663df9f1f00588dd25479088fee5697a0e"
+}
+},
+"DevSCA": {
+"max8": {
+"fitness": -0.03032179169290513,
+"solution_sha1": "44262c4467158b7549ac3fea0e6ab7309354439c"
+},
+"min12": {
+"fitness": 62.04515611178594,
+"solution_sha1": "948f4449bd5e5538f3a6d6ef0f4a548eb7f7a358"
+},
+"swarm-max": {
+"fitness": -0.31318603855182703,
+"solution_sha1": "2554f1b3089ea3e055bec61ad3372badc8dfd6f5"
+},
+"swarm6": {
+"fitness": 23.548604029960032,
+"solution_sha1": "741a8b04cf595e118a2924f3c6056b90cccc8727"
+}
+},
+"DevSMA": {
+"max8": {
+"fitness": -0.0,
+"solution_sha1": "da4c4072d95629699188dda4cf0120861ce2a4f4"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "64db54eb354dfabce27a3bd537cfa16685403500"
+},
+"swarm-max": {
+"fitness": -0.0,
+"solution_sha1": "b1d82409c63fcf92c23abe0a3e6760839d2b0d25"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "2c24dd4d00b32841c9a55178e8348ef0d2492b52"
+}
+},
+"DevSMO": {
+"max8": {
+"fitness": -1.0155960084502136,
+"solution_sha1": "92c69e79d94011ec0ebb112778f74c1d790d99dd"
+},
+"min12": {
+"fitness": 35.963316751090346,
+"solution_sha1": "d7bbfb8c7317f07aee1fd150f6c64fbbe2af5e78"
+},
+"swarm-max": {
+"fitness": -1.0967183924559303,
+"solution_sha1": "215e192fa3a85c7233b7c56a5433b0c1a36327ea"
+},
+"swarm6": {
+"fitness": 10.517016345129932,
+"solution_sha1": "fabb1e69bc33761edea3b3c3ded713ae4ccf3011"
+}
+},
+"DevSOA": {
+"max8": {
+"fitness": -1.1795594963105223e-11,
+"solution_sha1": "22314f54fa8e9b724d936799c83497f71a907db6"
+},
+"min12": {
+"fitness": 4.121147867408581e-13,
+"solution_sha1": "cd4830bc31768f3658a33cfef53e3545c4641dc0"
+},
+"swarm-max": {
+"fitness": -7.120666048215391e-10,
+"solution_sha1": "7d55ff3eeebbac6648b71199ceef3bef50cf5db2"
+},
+"swarm6": {
+"fitness": 1.6887184983715997e-09,
+"solution_sha1": "49aded9856981577457d552e90a4f348fccda130"
+}
+},
+"DevSPBO": {
+"max8": {
+"fitness": -0.7023826357783564,
+"solution_sha1": "3792d5f5d5f5bf9cabadb6a6077e9300df67c14c"
+},
+"min12": {
+"fitness": 46.435967079417665,
+"solution_sha1": "528cd5d84e0db5f97f001bf80d9655f25799c977"
+},
+"swarm-max": {
+"fitness": -0.2637888978681479,
+"solution_sha1": "2ae806b7edba702f0255482caec09d2786181d6c"
+},
+"swarm6": {
+"fitness": 25.778147237100505,
+"solution_sha1": "bddeb00cc365ad57a98003c7ca4c255a889d933c"
+}
+},
+"DevSSA": {
+"max8": {
+"fitness": -6.51455962472504e-11,
+"solution_sha1": "1432b1c1ad9e3631f9313a506dc8986317a740df"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "56669de2812888581dd0b28b3d20da63f41636f7"
+},
+"swarm-max": {
+"fitness": -1.3011071850980414e-06,
+"solution_sha1": "b2e50a420046523b56d99da853788d53431c166a"
+},
+"swarm6": {
+"fitness": 4.681695031649724e-10,
+"solution_sha1": "89e5de3ce48fba2e0508cb95c2b0bc5ee2883168"
+}
+},
+"DevTLO": {
+"max8": {
+"fitness": -1.2668725468933631e-06,
+"solution_sha1": "0e58af5b26956fc3ebfc50a093ce442fd256b060"
+},
+"min12": {
+"fitness": 39.47813979282624,
+"solution_sha1": "809ae2c8e7a0c165c657bf3025fca0b6527e7a86"
+},
+"swarm-max": {
+"fitness": -0.00038850228451561266,
+"solution_sha1": "e2df0976ad349ec9c168ad2a2f04a7bfa125801c"
+},
+"swarm6": {
+"fitness": 10.828108580191198,
+"solution_sha1": "e29fdaf0e6a50445599612bda5a8e51d0d3a35a0"
+}
+},
+"DevTPO": {
+"max8": {
+"fitness": -1.029183938244077e-05,
+"solution_sha1": "74de744bf5ba18d172673a7b7919893fa36afca4"
+},
+"min12": {
+"fitness": 24.59360970737896,
+"solution_sha1": "d4fd97c9df7fec91b9663a55683ab1c914b6b37d"
+},
+"swarm-max": {
+"fitness": -1.882304034022653e-05,
+"solution_sha1": "f8238d16da96518155b43231868c7ddb952d9df1"
+},
+"swarm6": {
+"fitness": 9.338954844384702,
+"solution_sha1": "ab91b1b598a15860f7c280ee15f5e812e1abb261"
+}
+},
+"DevVCS": {
+"max8": {
+"fitness": -4.487491267150282e-05,
+"solution_sha1": "c8c37d8f6ff641eaca7bc7ffde21a30c2a35671b"
+},
+"min12": {
+"fitness": 0.003233501980716369,
+"solution_sha1": "166f5dbe2eda93f2a621a6909c3914b916e0aedc"
+},
+"swarm-max": {
+"fitness": -0.00021515711075232937,
+"solution_sha1": "52921f0830000d093fc2b151cebe12e62eb3aa2c"
+},
+"swarm6": {
+"fitness": 0.03625726244868588,
+"solution_sha1": "87a75273c14b7f7691637535ff86da215d39b905"
+}
+},
+"DevWOA": {
+"max8": {
+"fitness": -0.00040491790239628625,
+"solution_sha1": "9b7db813487527905b83c5c301ad5cfec13437b3"
+},
+"min12": {
+"fitness": 14.376340769822832,
+"solution_sha1": "449c461381cc6cbbeb2ec17c684fadab1f69a0fd"
+},
+"swarm-max": {
+"fitness": -0.005358760720426892,
+"solution_sha1": "1c0b6f77b64902969190a6262fc53f5cd67035de"
+},
+"swarm6": {
+"fitness": 4.24121440031773,
+"solution_sha1": "fc81b51d62938b8ca6081ce06ed3fedae777ac91"
+}
+},
+"ER_GWO": {
+"max8": {
+"fitness": -15.305685049897033,
+"solution_sha1": "cb809b4544fa14df47c93fc404696cfa7fe9cac2"
+},
+"min12": {
+"fitness": 107.30963398717589,
+"solution_sha1": "c9f7725137e6ab45f2a2488975fdbceedacf4236"
+},
+"swarm-max": {
+"fitness": -4.623840564968974,
+"solution_sha1": "5c77db834910edfcc42fe4acc5e2930ec5d3f0b4"
+},
+"swarm6": {
+"fitness": 70.41313192160251,
+"solution_sha1": "f0ffd125282ef3f749b53637604e104a4e13ac96"
+}
+},
+"EliteMultiGA": {
+"max8": {
+"fitness": -0.2149026641400123,
+"solution_sha1": "a5994b007d163eb7b182ccaf57ee912845f01d31"
+},
+"min12": {
+"fitness": 5.877486950781005,
+"solution_sha1": "4f7ea950dfd9df4adc157d55afdd6b726812333a"
+},
+"swarm-max": {
+"fitness": -0.042043220424176034,
+"solution_sha1": "5427ba9367b7b7bb5a4ce9df69828d8f7199caa2"
+},
+"swarm6": {
+"fitness": 11.885301962549775,
+"solution_sha1": "a3c414d79d9fde3461b3a438f7d6491eae05541a"
+}
+},
+"EliteSingleGA": {
+"max8": {
+"fitness": -0.6886572582694137,
+"solution_sha1": "19f41c50fae9e793d579d6f146929e5ba0f16a4e"
+},
+"min12": {
+"fitness": 3.579664432508693,
+"solution_sha1": "19b72a2ae101669b3f948a187cc137b3b17c3204"
+},
+"swarm-max": {
+"fitness": -0.14620913348334807,
+"solution_sha1": "e348d1cea8ab2dfe67008527e339db1e3e592a1d"
+},
+"swarm6": {
+"fitness": 8.527444767177187,
+"solution_sha1": "8d465e4b5b0c6eef3d053fba9d7e3154cc360052"
+}
+},
+"EnhancedAEO": {
+"max8": {
+"fitness": -1.9018667745826246e-13,
+"solution_sha1": "09a4766ddb2910ef128d7796a71266b7ce5aaa49"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "97f7475c2e0139efe1c5ca13ae065f93688da2e1"
+},
+"swarm-max": {
+"fitness": -2.6639231841395498e-14,
+"solution_sha1": "15959cdfc1c793511f80f29b7df0ceb04cea6162"
+},
+"swarm6": {
+"fitness": 5.3638441713133034e-05,
+"solution_sha1": "0fa2d2641bbf69f8ce41e67bd60630896c154395"
+}
+},
+"EnhancedTWO": {
+"max8": {
+"fitness": -26.255224272797587,
+"solution_sha1": "be6aaa172d9a6b89e0b00f4718b6da31faea442b"
+},
+"min12": {
+"fitness": 38.08085983259815,
+"solution_sha1": "ba24c5b1a09cb2b1f0ff268e5871a3e3e50d8e2b"
+},
+"swarm-max": {
+"fitness": -26.409321985489957,
+"solution_sha1": "bac6498a8e7108220cf0649f559165a5e626bcd8"
+},
+"swarm6": {
+"fitness": 11.618456830604266,
+"solution_sha1": "041f84f2e69ce3f281221d9e6cc00f5c9d8a6614"
+}
+},
+"ExGWO": {
+"max8": {
+"fitness": -0.7897863185584904,
+"solution_sha1": "d50cb41dada849420b0043c4ed494190947f01f0"
+},
+"min12": {
+"fitness": 24.60771246053244,
+"solution_sha1": "860dadf2b2b1ec3df665a917aa63e8398d96c650"
+},
+"swarm-max": {
+"fitness": -0.13376590692309637,
+"solution_sha1": "df49f20feee67b569c61a465b76a4a3e44644644"
+},
+"swarm6": {
+"fitness": 9.756990743126906,
+"solution_sha1": "cb3968ecfa905671004732642dedcb9a6853eee0"
+}
+},
+"FuzzyGWO": {
+"max8": {
+"fitness": -0.0009762378674142787,
+"solution_sha1": "60d29c89cfb6cecfad2360b9c00438110894b9e9"
+},
+"min12": {
+"fitness": 19.446894024714794,
+"solution_sha1": "3c049670bffc3d9a12a61c2adf875ccfbfdc1513"
+},
+"swarm-max": {
+"fitness": -0.0005645202903790355,
+"solution_sha1": "93700d9d1ebaf2bc98d3ff3dd78fc7ec610a8707"
+},
+"swarm6": {
+"fitness": 26.563432355562057,
+"solution_sha1": "cddf159d4197ceef24f89f480f926e7073219533"
+}
+},
+"GWO_WOA": {
+"max8": {
+"fitness": -6.80963733927007e-06,
+"solution_sha1": "41b5762381ed76bd2b87064631cc6f98eb57c750"
+},
+"min12": {
+"fitness": 14.134067266937137,
+"solution_sha1": "18e309fd6b9170bc916e4bd7f236d1eab23be01e"
+},
+"swarm-max": {
+"fitness": -0.00012780232519977615,
+"solution_sha1": "a1f61751193f27fb8c724ff69b328474309bc116"
+},
+"swarm6": {
+"fitness": 12.3750868094779,
+"solution_sha1": "3d3fbd37f6e41b32613bae6fd92dffdb88e64f29"
+}
+},
+"GaussianSA": {
+"max8": {
+"fitness": -22.286637155316072,
+"solution_sha1": "1bfa2a463b3f0ad7b1aafa9c443d36929e1c4d8e"
+},
+"min12": {
+"fitness": 148.2733338019193,
+"solution_sha1": "c5f1aeb08109fddce166ba449ffaf84006d88667"
+},
+"swarm-max": {
+"fitness": -25.603187651188886,
+"solution_sha1": "8d310a9c3c56211a40c52019dd425cea3c562ff6"
+},
+"swarm6": {
+"fitness": 47.79876731703172,
+"solution_sha1": "358541f75a4c0667fd62a877f0d7322e8698022a"
+}
+},
+"HI_WOA": {
+"max8": {
+"fitness": -0.03379164156097922,
+"solution_sha1": "3b9d16e611e83b0accb3e12f423e7efb2376440d"
+},
+"min12": {
+"fitness": 113.63467500685269,
+"solution_sha1": "d8d9267c4dc1d846125bd067bcca8ca0f21195d3"
+},
+"swarm-max": {
+"fitness": -0.01989600082614943,
+"solution_sha1": "84f89bd4469dd595c92613cb662b6b6d78498cc5"
+},
+"swarm6": {
+"fitness": 11.969518746225091,
+"solution_sha1": "7b7e5d29b2c4b829ae49d72cf32cb56595759b8e"
+}
+},
+"HPSO_TVAC": {
+"max8": {
+"fitness": -0.012954720926519756,
+"solution_sha1": "d5c5781a7d7146b7da3f822cc0d093e9e3a58568"
+},
+"min12": {
+"fitness": 34.44218479539252,
+"solution_sha1": "1183fba0ac7de7330500a481143504b6f2312a92"
+},
+"swarm-max": {
+"fitness": -0.0012371746538660667,
+"solution_sha1": "dfa491683b6d60d2ae14289c45cbf910366f12b2"
+},
+"swarm6": {
+"fitness": 4.833879510333091,
+"solution_sha1": "78b1a80301d011c35276db944fa412f920ecf98d"
+}
+},
+"IARO": {
+"max8": {
+"fitness": -0.0024000768881587415,
+"solution_sha1": "e2e44d607b5d9bc59d06c5a90f0df482199263d8"
+},
+"min12": {
+"fitness": 6.760146493434149e-05,
+"solution_sha1": "68591851bd534cfd6297a2fd74160c40754d0df1"
+},
+"swarm-max": {
+"fitness": -0.0031287345773095337,
+"solution_sha1": "7a6f85921b1b6c07763b5e53a41ac8f9f635403e"
+},
+"swarm6": {
+"fitness": 2.4564579346590705,
+"solution_sha1": "46f41e8a95308cbabbeaf02b07ae87bd970cc0a6"
+}
+},
+"IGWO": {
+"max8": {
+"fitness": -0.0025467094269250633,
+"solution_sha1": "832c2f8f4769dbdeb15933b15a09068252bc9ae8"
+},
+"min12": {
+"fitness": 70.05634897997541,
+"solution_sha1": "1513a80e0db8db1d8d99dbd6f0322f42b5b28184"
+},
+"swarm-max": {
+"fitness": -0.014236274616875702,
+"solution_sha1": "16dac514dab9bca30ae678e4e182664c3701e28c"
+},
+"swarm6": {
+"fitness": 6.706848003117713,
+"solution_sha1": "a2768ccbbb7b093397dd3c7acf9c9c7aae10d49a"
+}
+},
+"IOBL_GWO": {
+"max8": {
+"fitness": -1.5072036586535064e-21,
+"solution_sha1": "fb3d224655162f6ad5a9c093e39d87b0e0f3db9a"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "3186c93e43c298148f9cab91c9b33c4b42a1b51d"
+},
+"swarm-max": {
+"fitness": -1.267262644531967e-19,
+"solution_sha1": "1b6455133d7c6a04f4969fda8d18b96612860277"
+},
+"swarm6": {
+"fitness": 0.371321834468354,
+"solution_sha1": "e51e02049ec13984a323237244f38a290bb7cfaa"
+}
+},
+"ImprovedAEO": {
+"max8": {
+"fitness": -2.671165205288869e-15,
+"solution_sha1": "933a34b6bccc837d87afc237aa8e1cbce22646b0"
+},
+"min12": {
+"fitness": 3.2869706956262235e-11,
+"solution_sha1": "c04c7cf7db96cc197fe001fa42b30a4d0fab0c7b"
+},
+"swarm-max": {
+"fitness": -1.0747594391147612e-15,
+"solution_sha1": "2af329aabb723c8605389caf44e432f235583c09"
+},
+"swarm6": {
+"fitness": 0.7044880054344986,
+"solution_sha1": "d97adc19f63d015b0f035bffcca67f13cfd05ab4"
+}
+},
+"ImprovedBSO": {
+"max8": {
+"error": "TypeError"
+},
+"min12": {
+"fitness": 86.89727913281992,
+"solution_sha1": "c9fd7995fe85c73066cb712b587895ffca3ffc8b"
+},
+"swarm-max": {
+"error": "TypeError"
+},
+"swarm6": {
+"error": "TypeError"
+}
+},
+"ImprovedLCO": {
+"max8": {
+"fitness": -6.926602423461253e-25,
+"solution_sha1": "a2f757a8b9c00db343221e9edace3d9348689ced"
+},
+"min12": {
+"fitness": 7.851683335502457e-06,
+"solution_sha1": "ece04fd339d088643323cedb322efbd2722fe732"
+},
+"swarm-max": {
+"fitness": -2.511223588154829e-16,
+"solution_sha1": "f96958fd5f9f08e0f51275ba57f6e0a188d2d62a"
+},
+"swarm6": {
+"fitness": 4.973799150320701e-14,
+"solution_sha1": "21cae2c7175a09c35ad2506bf4574e5a6e39eea2"
+}
+},
+"ImprovedNMRA": {
+"max8": {
+"fitness": -1.3466044650127351,
+"solution_sha1": "05a41a0dc7d834361dae0bc532d7f634c83c34f3"
+},
+"min12": {
+"fitness": 27.00453439088284,
+"solution_sha1": "6ac104d3f07218ceea5d95c2c6787412ce49c2d8"
+},
+"swarm-max": {
+"fitness": -0.9756326806939334,
+"solution_sha1": "965e97c2f24aa64cade380ccf2499377b9f6f0f6"
+},
+"swarm6": {
+"fitness": 23.718965385646626,
+"solution_sha1": "995f8510a74462e026254c39708b23ef2a193903"
+}
+},
+"ImprovedQSA": {
+"max8": {
+"fitness": -1.0434362709555031e-11,
+"solution_sha1": "e6c0b426e05661932c12dcfbcb7d316967f6211e"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "9ba2822d57b11e110f66a64b268321a6b707e1a1"
+},
+"swarm-max": {
+"fitness": -3.2761369131550314e-10,
+"solution_sha1": "a188b17bfcfd03dd288bc602b4e9a2a84b97af6a"
+},
+"swarm6": {
+"fitness": 5.724274387830519e-10,
+"solution_sha1": "6e4974eee8b7b072fbd5c83453764b11f34d50b3"
+}
+},
+"ImprovedSFO": {
+"max8": {
+"fitness": -1.881827684334323e-10,
+"solution_sha1": "ad3de2af8c09e164f1f1131390b239390d1af3d9"
+},
+"min12": {
+"fitness": 4.919281337834036e-07,
+"solution_sha1": "6dc3019d08a42555eaefb4f3fdc7f98b63080e66"
+},
+"swarm-max": {
+"fitness": -1.4952551892125823,
+"solution_sha1": "29a7d65bec8113f5abcccb26f9f657fb9a8504aa"
+},
+"swarm6": {
+"fitness": 16.953290133996603,
+"solution_sha1": "b14c4a53b8919f76bfc18d524faf7d2a397442de"
+}
+},
+"ImprovedSLO": {
+"max8": {
+"fitness": -4.473932985933092e-08,
+"solution_sha1": "7326693cae7ea68378208e39bd279f5c787cb008"
+},
+"min12": {
+"fitness": 5.817696546728257e-08,
+"solution_sha1": "742987e0e3036705b1ba8f151ae208c541504177"
+},
+"swarm-max": {
+"fitness": -6.555095005920724e-05,
+"solution_sha1": "0ee61847249fc4dcf377dbe6f6a8814f60e083f3"
+},
+"swarm6": {
+"fitness": 0.1498735264462212,
+"solution_sha1": "b6b58482a15b30afee95b484e627ac16db45cc6d"
+}
+},
+"ImprovedTLO": {
+"max8": {
+"fitness": -3.485593293686926e-12,
+"solution_sha1": "b7aede0a77977b77bf0a599ab01d6e32e5deba9b"
+},
+"min12": {
+"fitness": 4.707564471573278e-08,
+"solution_sha1": "4d895cf12d68cce15f221ff6dddf0ec4fe96291a"
+},
+"swarm-max": {
+"fitness": -5.345580595087377e-11,
+"solution_sha1": "c1f36d799f1a91e71fb61a7e42262763bb1f2d41"
+},
+"swarm6": {
+"fitness": 0.001287362141475512,
+"solution_sha1": "469b1a5eb37ff3e4200c579371537a7cb18520f0"
+}
+},
+"IncrementalGWO": {
+"max8": {
+"fitness": -0.7633469653827722,
+"solution_sha1": "b31e1a788f0c711fc291eff80c10c58c63936b6a"
+},
+"min12": {
+"fitness": 83.49761794990175,
+"solution_sha1": "74a8c46a61acb08a1265fd6d1e88968b33f344df"
+},
+"swarm-max": {
+"fitness": -0.2401463979010912,
+"solution_sha1": "64c049ed089a013eafc0d86548b83b1052bc9145"
+},
+"swarm6": {
+"fitness": 1.916140098789242,
+"solution_sha1": "23bdf3ffa2305202998f22a53f3c492a5c1103e6"
+}
+},
+"LARO": {
+"max8": {
+"fitness": -4.636806485318285e-07,
+"solution_sha1": "b9ee6981c311b86c788d2c838d5d3b90e91c9e43"
+},
+"min12": {
+"fitness": 2.4981981994187663e-06,
+"solution_sha1": "b65b2922479f2e84cfcfb61496237e6a6ab96a1f"
+},
+"swarm-max": {
+"fitness": -0.00025183731667748516,
+"solution_sha1": "02982f6e02b45b00d3a9d3a4237c6388da8d5a60"
+},
+"swarm6": {
+"fitness": 0.04709856898740128,
+"solution_sha1": "b1ff539a32f8eb2e74ee87bbff61b00bbafbfa3d"
+}
+},
+"LDW_PSO": {
+"max8": {
+"fitness": -1.7191054565593415,
+"solution_sha1": "ebf023673383c8472c6b937f610247aa71d7a86a"
+},
+"min12": {
+"fitness": 108.60109899780893,
+"solution_sha1": "028a95dca14d7eaaafdc06350e01c9d483e43ba7"
+},
+"swarm-max": {
+"fitness": -0.9880719562137923,
+"solution_sha1": "594b58364d27072cd17c98b1e5a26e12a2092ffd"
+},
+"swarm6": {
+"fitness": 36.73317578553052,
+"solution_sha1": "84f9d22e6f2cbd6bdf1ea7b732ac05e11f24d766"
+}
+},
+"LevyEP": {
+"max8": {
+"fitness": -2.5341422464029515,
+"solution_sha1": "51f1fe7e5f20509723ba64e3f9fc52fa8a73b732"
+},
+"min12": {
+"fitness": 92.30566559724633,
+"solution_sha1": "83613d88024109dee349e75da45310c2d24a8e4f"
+},
+"swarm-max": {
+"fitness": -3.8782602085777187,
+"solution_sha1": "1e0ab6e96bb569538f48646d40d2665b4b9cd736"
+},
+"swarm6": {
+"fitness": 38.563923876805084,
+"solution_sha1": "e7989589de7c77b7800b0ad4268b4dcab70187b9"
+}
+},
+"LevyES": {
+"max8": {
+"fitness": -1.1425530037858562,
+"solution_sha1": "91f6f734b151790adabb808480428ddd8c7300aa"
+},
+"min12": {
+"fitness": 68.61133949258814,
+"solution_sha1": "12a3d4dba6e79d8cd4f2f2dfa2776c0fafae4638"
+},
+"swarm-max": {
+"fitness": -0.9132409338904939,
+"solution_sha1": "7654cadbe76d92e637db72e9dc4264ce87d2f717"
+},
+"swarm6": {
+"fitness": 12.235329585720777,
+"solution_sha1": "81e1e2fcbb50c0c755077567d660adeb728c3e93"
+}
+},
+"LevyJA": {
+"max8": {
+"fitness": -5.580481731195017,
+"solution_sha1": "5b57c92f94ee03ef67a3a1705280daf6a6788e73"
+},
+"min12": {
+"fitness": 66.97857400165705,
+"solution_sha1": "ca58adb48bae5dbbe0310e9e36f1a7cb0d7a9a44"
+},
+"swarm-max": {
+"fitness": -4.184185432438726,
+"solution_sha1": "7fe56d565c6f26725311cd21f607e9846d9e2b7d"
+},
+"swarm6": {
+"fitness": 34.25633338012847,
+"solution_sha1": "963e53c389ebfcce1d09cc948a0410f6dbc1a7a8"
+}
+},
+"LevyQSA": {
+"max8": {
+"fitness": -0.0004891500718888378,
+"solution_sha1": "09193998e6f5730854dc188944828d15ccf9b347"
+},
+"min12": {
+"fitness": 26.441235750380145,
+"solution_sha1": "70e1c909e32d2739dc0f5ff216e3545fa2af1046"
+},
+"swarm-max": {
+"fitness": -0.012548239121949153,
+"solution_sha1": "4c894024ffc983dbc81032fe2845be394ed43311"
+},
+"swarm6": {
+"fitness": 3.779798267039297,
+"solution_sha1": "50e8c84abba76d5979862e76f0f5a4384be3d9dc"
+}
+},
+"LevyTWO": {
+"max8": {
+"fitness": -26.726861891629945,
+"solution_sha1": "89ebd0e5c9eb8c4b3d11ffb59e63e8cd0b833e31"
+},
+"min12": {
+"fitness": 86.9090882349936,
+"solution_sha1": "346156419a186ed2bb3b69fede4c735b7ff4bc16"
+},
+"swarm-max": {
+"fitness": -22.92254881251007,
+"solution_sha1": "62060ba50ece120bff0a0766d09a3f6db3b09aa7"
+},
+"swarm6": {
+"fitness": 19.729335398834586,
+"solution_sha1": "31ef970c5fd33c9f62eefb7363aed1e3a7411485"
+}
+},
+"MGTO": {
+"max8": {
+"fitness": -0.0,
+"solution_sha1": "27b69d5cf27dd18a2f1274ab5c79475c48a7e95d"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "31844a4a1422db516ccd3a40aa78caaf1bd82bdc"
+},
+"swarm-max": {
+"fitness": -2.226170213948695e-71,
+"solution_sha1": "8c948bc6e1d5deb363d4ac7e02c688316f66e03f"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "fe17b7dc5e8470dfad84bbfdb60a2e6e11fe5266"
+}
+},
+"Matlab101GTO": {
+"max8": {
+"fitness": -1.2277682990122936e-64,
+"solution_sha1": "7ecc3699c7a3e318986ecafe017b0432a2136feb"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "c49a9785b2243f2f080daad1747f119acceccfa5"
+},
+"swarm-max": {
+"fitness": -1.7521013787792378e-57,
+"solution_sha1": "0daa061d9f3b4131af4b6939773091f74d063525"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "c17fd92682ca5b304ac71074b558dda9e8eb4d66"
+}
+},
+"Matlab102GTO": {
+"max8": {
+"fitness": -2.1817822622653997e-60,
+"solution_sha1": "ff6ba3f751fbc5e6bca4fc48d46e4a86d8a12494"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "f94ed93035cb7d4894310aae142c517b3fd43692"
+},
+"swarm-max": {
+"fitness": -3.838523916121634e-48,
+"solution_sha1": "010861804456c44364ac1072799b6f9702f68404"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "acfe207c41ce20a5d006704dd4d0c761e7c70140"
+}
+},
+"ModifiedAEO": {
+"max8": {
+"fitness": -5.5595435593066795e-14,
+"solution_sha1": "31c9d8cf61dbc91b62c25feb673443eeed51e0e1"
+},
+"min12": {
+"fitness": 6.338041202980094e-12,
+"solution_sha1": "5473e1a426c04927dc36317d6cc54646303245f0"
+},
+"swarm-max": {
+"fitness": -2.854536645865252e-16,
+"solution_sha1": "89e1449012eaff73b1752d7a0b604ae5961cde69"
+},
+"swarm6": {
+"fitness": 2.6711465800950123,
+"solution_sha1": "aee65e71ba76e80c6d3efbd7e6416bd84f6af51d"
+}
+},
+"ModifiedEO": {
+"max8": {
+"fitness": -1.5265631608324681e-09,
+"solution_sha1": "6dc18e9dcc2923d4d64398d3eeaa6783c6d529c6"
+},
+"min12": {
+"fitness": 3.404753101676761e-08,
+"solution_sha1": "2f7e088ccc3e02dbb9c9bfde06bb132ac3da869d"
+},
+"swarm-max": {
+"fitness": -2.067023341675273e-09,
+"solution_sha1": "1162b896eb50b9e0f5107a90beb907976ee811ac"
+},
+"swarm6": {
+"fitness": 1.6991627660445374e-07,
+"solution_sha1": "692e49d94aca1a9bcf480133c7bc1c2594c9a539"
+}
+},
+"ModifiedSLO": {
+"max8": {
+"fitness": -1.6152888559937675e-40,
+"solution_sha1": "6412454049ab056f61541507cfcc7f6af05069be"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "764f6375ce3bc125707ffc8e30c03bbff6857fd6"
+},
+"swarm-max": {
+"fitness": -0.0,
+"solution_sha1": "c896bd9385c3b1759e657f5b0bb5395e2380dd2f"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "89622bd24198a2d1364d149f4eb858da48f131b4"
+}
+},
+"MultiGA": {
+"max8": {
+"fitness": -2.874059479688799,
+"solution_sha1": "0abd5e12081e2b5a4589356da9339f88e7c88957"
+},
+"min12": {
+"fitness": 25.722156511658156,
+"solution_sha1": "6d0f1156ab8d93d9f5375b99a591934f38f84db9"
+},
+"swarm-max": {
+"fitness": -0.9461611604982325,
+"solution_sha1": "85b3d1004843a18a68d4e9316164087c8b8688ed"
+},
+"swarm6": {
+"fitness": 23.3816313767675,
+"solution_sha1": "04d94b60d61101afc779c9c928d4a4a2424b75c1"
+}
+},
+"OCRO": {
+"max8": {
+"error": "TypeError"
+},
+"min12": {
+"fitness": 3.9131343452089027,
+"solution_sha1": "607c6ed1159f1fbad75f9e75e285fc2f104dd123"
+},
+"swarm-max": {
+"error": "TypeError"
+},
+"swarm6": {
+"error": "TypeError"
+}
+},
+"OGWO": {
+"max8": {
+"fitness": -5.221747897040543e-07,
+"solution_sha1": "5db381fa0205fe80752f804758b7c45acebc53c4"
+},
+"min12": {
+"fitness": 22.13639401766204,
+"solution_sha1": "0652453d18b2bad52bd5f9b36982c6fe160e2bb9"
+},
+"swarm-max": {
+"fitness": -0.00014398792083864559,
+"solution_sha1": "86279809f2bc76eb89d39d37c046e7425157eef1"
+},
+"swarm6": {
+"fitness": 23.585216801536525,
+"solution_sha1": "d76b4aca69360af3e0b63b78317845ca25f8be69"
+}
+},
+"OppoQSA": {
+"max8": {
+"fitness": -5.586370120846301e-14,
+"solution_sha1": "d5d13f7f13a29036c895adefbf0fca13d21d7372"
+},
+"min12": {
+"fitness": 1.5631940186722204e-13,
+"solution_sha1": "b50b410938030ef2bb5782238e3c978fb87e8651"
+},
+"swarm-max": {
+"fitness": -8.37655389870136e-14,
+"solution_sha1": "e9dec061f80f83424e6ef5f89f6cc24d31ade8d3"
+},
+"swarm6": {
+"fitness": 5.7286300148007285e-09,
+"solution_sha1": "018a78b6f4b8060493c2a1e560665cc9fded5a91"
+}
+},
+"OppoTWO": {
+"max8": {
+"fitness": -55.034172443717715,
+"solution_sha1": "0e1d45b45b4955c6da0941be640f0051a9ce251b"
+},
+"min12": {
+"fitness": 24.417495745236153,
+"solution_sha1": "da34e61e7bc5e980bf0563defac28f4b19db3ed4"
+},
+"swarm-max": {
+"fitness": -21.330192165124192,
+"solution_sha1": "2730461ea9a99f7744570567c4302e616c6707a5"
+},
+"swarm6": {
+"fitness": 0.1507172183628498,
+"solution_sha1": "e2523a7d2dbbb058bd5f05ee5d409aba08f0ab0c"
+}
+},
+"OriginalABC": {
+"max8": {
+"fitness": -0.046162196013062304,
+"solution_sha1": "dc543b14a82cbc77d4bfe9d607569c59eabfd81e"
+},
+"min12": {
+"fitness": 91.5001827588265,
+"solution_sha1": "b4e35194c61b9a982a98dcf8784a2fd4c5aa4d67"
+},
+"swarm-max": {
+"fitness": -0.17323171919397146,
+"solution_sha1": "1502a83df10e92eaf886d24a27d176c3efea8106"
+},
+"swarm6": {
+"fitness": 29.063435915450366,
+"solution_sha1": "9c0b6f45c911acb6a05ae30d9aabec767841621e"
+}
+},
+"OriginalACOR": {
+"max8": {
+"fitness": -0.23466552769863136,
+"solution_sha1": "90ea575d95efa127d140fe6e2ccd98e5d8c6a39e"
+},
+"min12": {
+"fitness": 105.86517847558262,
+"solution_sha1": "e0f1f07b25320fd879b46a65858ec8fab4245c94"
+},
+"swarm-max": {
+"fitness": -0.05814852123757711,
+"solution_sha1": "45b46ec1db08b518c0c67cf1e476d312e58cbd14"
+},
+"swarm6": {
+"fitness": 24.337542015327962,
+"solution_sha1": "fc0460d067b62a40049d3d3beec276e387b9f402"
+}
+},
+"OriginalAEO": {
+"max8": {
+"fitness": -8.374827544856454e-19,
+"solution_sha1": "7a62b1dc2c358e4d3b3b748773e54a6fe538a08a"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "a31734a2ec8c62d8a0e1ae0d0a6466f93fc5622d"
+},
+"swarm-max": {
+"fitness": -7.79746462748681e-14,
+"solution_sha1": "5bfc92af85e096edb744a93acd88dcfa4b525e7d"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "48dcf048126759826c4c207b392a6cae0b3ee77f"
+}
+},
+"OriginalAFT": {
+"max8": {
+"fitness": -1.0239300579403863,
+"solution_sha1": "7cc1c72d970e53059aac2fbb0c9486e21df17f59"
+},
+"min12": {
+"fitness": 103.84835583125209,
+"solution_sha1": "9a5bbefe21d911781ad57c69c778e2d5124fa798"
+},
+"swarm-max": {
+"fitness": -0.17269565751079857,
+"solution_sha1": "44d394d63a92db9fef34e34059d6b2b942b4c273"
+},
+"swarm6": {
+"fitness": 14.258045170263927,
+"solution_sha1": "40d0ad415927aa5363fc5c0519ca9b86efd87023"
+}
+},
+"OriginalAGTO": {
+"max8": {
+"fitness": -4.6283838491984086e-23,
+"solution_sha1": "3c607f813436d16d637e642154f6ccc6dd43157c"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "dca7755a8ca2e8391f4fd8e67f2093086e66e6b5"
+},
+"swarm-max": {
+"fitness": -7.746993814623588e-21,
+"solution_sha1": "88a042a0860391ffc5a055397baf3dc52f12f9a8"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "2345f4a6c36c61ac3c13638d498f6794bbab146f"
+}
+},
+"OriginalALO": {
+"max8": {
+"fitness": -2.2296320953061226,
+"solution_sha1": "57de5d1b9dce92d801b1069fd2b335cea54e82bf"
+},
+"min12": {
+"fitness": 48.45634310567985,
+"solution_sha1": "fe3c7735d94a308326ac01d8a735e1023ceb79a1"
+},
+"swarm-max": {
+"fitness": -0.7355174553762701,
+"solution_sha1": "c6abb9dd0b2a497d680e2629be0b8c6b6e292f91"
+},
+"swarm6": {
+"fitness": 6.231552080624098,
+"solution_sha1": "084f4cfe392afb5ac0beefb63383a48dc521538e"
+}
+},
+"OriginalAO": {
+"max8": {
+"fitness": -1.0120387822151415e-05,
+"solution_sha1": "2773915d91b3956c1d59561ab8559629a0ed88c5"
+},
+"min12": {
+"fitness": 0.0002079841328850307,
+"solution_sha1": "98aed932e7dd42a9da2e70fca61f4da9650f1afa"
+},
+"swarm-max": {
+"fitness": -1.2609935076047704e-05,
+"solution_sha1": "5691b239267e25c3691fc235efe707a231be6ab5"
+},
+"swarm6": {
+"fitness": 0.0006029837382754977,
+"solution_sha1": "35b8eeb30f18c89081a6a67e943bb991b82762a8"
+}
+},
+"OriginalAOA": {
+"max8": {
+"fitness": -0.0,
+"solution_sha1": "c8d7d0ef0eedfa82d2ea1aa592845b9a6d4b02b7"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "8c58b82c1c734ef5702db84b8f31985af876b8e3"
+},
+"swarm-max": {
+"fitness": -0.0,
+"solution_sha1": "3c37c294359adfead232216b11d54d061092b040"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "471d782e113d364fa9746c78465101e9744d4187"
+}
+},
+"OriginalARO": {
+"max8": {
+"fitness": -0.002690718792558664,
+"solution_sha1": "261de4d4df7acc339865dc59dc6a6a11d5ab1548"
+},
+"min12": {
+"fitness": 0.16647732673074245,
+"solution_sha1": "1f9e1669e60cee0034306c3915826dd92a226226"
+},
+"swarm-max": {
+"fitness": -0.0030765271376054157,
+"solution_sha1": "b1616ccd844fe5bfbcc6238b5c4d5e25da334808"
+},
+"swarm6": {
+"fitness": 2.378467651385577,
+"solution_sha1": "82e6674f1b547bcfe26f37a79667309754ac21f3"
+}
+},
+"OriginalASO": {
+"max8": {
+"fitness": -7.393753502075491,
+"solution_sha1": "3a7a26958b2a4e706a9de01de0cd60631f4cea58"
+},
+"min12": {
+"fitness": 79.40620899166785,
+"solution_sha1": "a0c47386e795d182959734e9f49b56f5eb4cfbc4"
+},
+"swarm-max": {
+"fitness": -5.989950622841606,
+"solution_sha1": "1da183f09fe8fb65ec4357792aa271faa61482b9"
+},
+"swarm6": {
+"fitness": 36.71862582843455,
+"solution_sha1": "ef147fc73303b5571d2dc96a61d09e1f84feed00"
+}
+},
+"OriginalAVOA": {
+"max8": {
+"fitness": -1.4608689535583917e-16,
+"solution_sha1": "b088b9ac1df5a0b2b051386b183eadfcf2f65232"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "42735f77e28eee4ea78d117e55902ffc811b563f"
+},
+"swarm-max": {
+"fitness": -6.88893566633508e-15,
+"solution_sha1": "f3ff9d0d354ecc9a13342abc6bdeee436cc9405e"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "76129d5fc6c2393d2eb4a7b14f8cec3f9ee8a648"
+}
+},
+"OriginalArchOA": {
+"max8": {
+"fitness": -0.0002200412463241057,
+"solution_sha1": "331edffc4080800b50975f072fbbf86a69f68a20"
+},
+"min12": {
+"fitness": 4.2662197870413365e-05,
+"solution_sha1": "aa2725131a0c7806648022b56d7bd76123f0a537"
+},
+"swarm-max": {
+"fitness": -0.00014525329987080337,
+"solution_sha1": "ce5b4bad4938d836a97f4d2e57d2d44f3947a487"
+},
+"swarm6": {
+"fitness": 0.05426423772126299,
+"solution_sha1": "a6f34a050d4926e04bc11bf2610a94b44cbceea5"
+}
+},
+"OriginalBA": {
+"max8": {
+"fitness": -25.522475643853383,
+"solution_sha1": "815b373ede16fd4558116bbb300089c8457f9c90"
+},
+"min12": {
+"fitness": 147.16941753640947,
+"solution_sha1": "40c51f3e68c67a992485bd9c852b57bf8a6a02f5"
+},
+"swarm-max": {
+"fitness": -8.253486684515536,
+"solution_sha1": "be2a7a790b1cb45b49164ab8c59cd041b67afd67"
+},
+"swarm6": {
+"fitness": 50.540910528748554,
+"solution_sha1": "092153a4ac41bf840089aa922748c91f17d3cea3"
+}
+},
+"OriginalBBO": {
+"max8": {
+"fitness": -2.2160073263597018,
+"solution_sha1": "398d614e2fe0745f7b24d10b412605c52b160600"
+},
+"min12": {
+"fitness": 14.907788789725643,
+"solution_sha1": "8ab02dbf145886e7528ed5c5e5a0738e806a06a1"
+},
+"swarm-max": {
+"fitness": -0.7470232682387102,
+"solution_sha1": "63e0c3c205a3396bbe6913de969976be1a19387a"
+},
+"swarm6": {
+"fitness": 19.187325268404493,
+"solution_sha1": "cfeae477ddd87f0c93a16de3a2c3cd80e3d9a38d"
+}
+},
+"OriginalBBOA": {
+"max8": {
+"fitness": -0.4351532365622318,
+"solution_sha1": "f5b9c3152424ccdc26807474b686a4dd29f19fdb"
+},
+"min12": {
+"fitness": 39.86584875371031,
+"solution_sha1": "04fa9d4ca344d2f90622d5683839eda04f7559ea"
+},
+"swarm-max": {
+"fitness": -0.03137899708520977,
+"solution_sha1": "da32d1801982540b713c766078b26f4833a1b972"
+},
+"swarm6": {
+"fitness": 19.78109330428812,
+"solution_sha1": "cf0042958787273c7fbb55c42d1a930d5865bc0b"
+}
+},
+"OriginalBCO": {
+"max8": {
+"fitness": -68.97851633311033,
+"solution_sha1": "a86fa3054862c84345d515ff58094dd9ec225772"
+},
+"min12": {
+"fitness": 98.74456773169953,
+"solution_sha1": "f0a5145490cf180d5ad6eac9e028c4c78445a633"
+},
+"swarm-max": {
+"fitness": -24.09313090608159,
+"solution_sha1": "58ed048c5363d6ae89668ffc2ba1af273e113190"
+},
+"swarm6": {
+"fitness": 42.43786464443696,
+"solution_sha1": "67235045a4e510cffc9111e1d73f5a25ffae892b"
+}
+},
+"OriginalBES": {
+"max8": {
+"fitness": -2.3128764446389085e-90,
+"solution_sha1": "8f352f22c00a3cb47e2d341c921dc439e2bf4877"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "87ba0da5783f93af2e6abaef08be14d5f6f9554f"
+},
+"swarm-max": {
+"fitness": -5.325703522250107e-75,
+"solution_sha1": "120b0b0913be7421224fdebe9437ff19e3175b56"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "0aab9ce8b2a790d57b2a93499d8db8b8a9202e62"
+}
+},
+"OriginalBFO": {
+"max8": {
+"fitness": -57.766490489562784,
+"solution_sha1": "0049db25f4ccb197e99f4ddc2740720efb744d7b"
+},
+"min12": {
+"fitness": 123.7995584982636,
+"solution_sha1": "e5225f8e8b22a787a7fa6fd309938133becfb4de"
+},
+"swarm-max": {
+"fitness": -23.42772408783224,
+"solution_sha1": "9729a1f7070ba81ee564c4d81024a5a0caea06d9"
+},
+"swarm6": {
+"fitness": 25.778147237100505,
+"solution_sha1": "bddeb00cc365ad57a98003c7ca4c255a889d933c"
+}
+},
+"OriginalBMO": {
+"max8": {
+"fitness": -3.1789345502107218e-18,
+"solution_sha1": "6d4116172ad06aba63aa77ed665bd15a5e7f8e14"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "7615e98d7ff487e449f062008b3ce47f3882cc58"
+},
+"swarm-max": {
+"fitness": -1.4695083318433016e-22,
+"solution_sha1": "963786036cc5dc53f37c6bf7ec9bf40f07e6fbad"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "0b8187e75fcf2cca6717a7accf780ddec750a00b"
+}
+},
+"OriginalBRO": {
+"max8": {
+"fitness": -3.9805376294192802,
+"solution_sha1": "0243c534a1bc1a726322755519ab5f07ab3456ff"
+},
+"min12": {
+"fitness": 117.65517533332657,
+"solution_sha1": "aed578d3364f076d0e705bf9e2a7649cd9c24c12"
+},
+"swarm-max": {
+"fitness": -5.960755144464231,
+"solution_sha1": "c3000d4a3321c81f8eef17aeb30f3fe7e5a85649"
+},
+"swarm6": {
+"fitness": 49.37039033421716,
+"solution_sha1": "c023187f1705ff4c1806b87c0d849f3f80f8cc61"
+}
+},
+"OriginalBSA": {
+"max8": {
+"fitness": -2.0085266235947956,
+"solution_sha1": "d43955bbcb1feb1df86f0b7c2ee9a8dbe03521fb"
+},
+"min12": {
+"fitness": 39.80936978087675,
+"solution_sha1": "e08859866c0ce8a403a39d42874bc843c6bc2182"
+},
+"swarm-max": {
+"fitness": -0.3829513601362468,
+"solution_sha1": "2b8182f9d8912995b99416a65ed5f2fa157f0577"
+},
+"swarm6": {
+"fitness": 22.4004754450728,
+"solution_sha1": "e3a19d705c33bee1ed5725f01e38023c5bf6aa7c"
+}
+},
+"OriginalBSO": {
+"max8": {
+"error": "TypeError"
+},
+"min12": {
+"fitness": 73.21074362547355,
+"solution_sha1": "864fbc26b28ec0cb2e4b31e82d820e22c4c26b9b"
+},
+"swarm-max": {
+"error": "TypeError"
+},
+"swarm6": {
+"error": "TypeError"
+}
+},
+"OriginalBWO": {
+"max8": {
+"fitness": -0.4478941447652155,
+"solution_sha1": "9e95351c0eddc5408cbf48e4da0a6bcab0c40c84"
+},
+"min12": {
+"fitness": 14.620717103958995,
+"solution_sha1": "9c21708187836f68115f75fc0d48278616c6ac80"
+},
+"swarm-max": {
+"fitness": -0.40424291734890444,
+"solution_sha1": "fd10529cc7ba43335076b8f29e418fd7d701726c"
+},
+"swarm6": {
+"fitness": 4.77131967049209,
+"solution_sha1": "bc14bcc14f2c037726354498cef9c37c269f699b"
+}
+},
+"OriginalBeesA": {
+"max8": {
+"fitness": -11.0284019057248,
+"solution_sha1": "a8182172e2711e1c0b65fa918e21ffec3bbcf9f3"
+},
+"min12": {
+"fitness": 98.88621020103552,
+"solution_sha1": "c712226c6316b0126e14b76869bcdc2534433760"
+},
+"swarm-max": {
+"fitness": -5.011152135355297,
+"solution_sha1": "2fce8f78a9e6da896f9eeab6a964d01d91e56e28"
+},
+"swarm6": {
+"fitness": 11.945283297927652,
+"solution_sha1": "c8d4869f09371647c70c9f91a5b123e19b62a82c"
+}
+},
+"OriginalCA": {
+"max8": {
+"fitness": -25.865784842212324,
+"solution_sha1": "879ff4a41f17bbd2eb8fc9560d7e8e3dd1883ec8"
+},
+"min12": {
+"fitness": 105.73235457552781,
+"solution_sha1": "dd9f5942a64f1331ea2bb3ce6426655a5b1bb79f"
+},
+"swarm-max": {
+"fitness": -27.19659741182842,
+"solution_sha1": "d3049109470de529ed2f36c319ba580f6ee04ee3"
+},
+"swarm6": {
+"fitness": 34.709724478762254,
+"solution_sha1": "25ee34e02594f6cbfb3ce812a3f28895c02a38cb"
+}
+},
+"OriginalCDDO": {
+"max8": {
+"fitness": -0.6307250147813406,
+"solution_sha1": "3ba9a783345163a5c6b5fcce63eeeb7fb51f5fbd"
+},
+"min12": {
+"fitness": 77.70226489214548,
+"solution_sha1": "be5b6e571d993d545a871ed3310dce463e2b55fc"
+},
+"swarm-max": {
+"fitness": -3.746167225166901,
+"solution_sha1": "c5138e05e028a46aaf5f5063b0cf4228a26af405"
+},
+"swarm6": {
+"fitness": 12.096487820383146,
+"solution_sha1": "f4fc53b4e75c193fce5a57a8e7954b101175a574"
+}
+},
+"OriginalCDO": {
+"max8": {
+"fitness": -4.217312994769915e-11,
+"solution_sha1": "5b466c5f36fcd9cb4decc51243f9736fef135d0c"
+},
+"min12": {
+"fitness": 3.908979806510615e-10,
+"solution_sha1": "f661927ff2392a2befdf19bec24ce9371af44acb"
+},
+"swarm-max": {
+"fitness": -3.371914786838784e-09,
+"solution_sha1": "af2d2293f6e1be72ab2dac9937826e41142627ca"
+},
+"swarm6": {
+"fitness": 2.7113318168403566e-07,
+"solution_sha1": "a90e88843f26b6127d40688730f4b261b893d191"
+}
+},
+"OriginalCEM": {
+"max8": {
+"fitness": -16.169904985762244,
+"solution_sha1": "c761c6efdcc617908416b404661876f2800b8a68"
+},
+"min12": {
+"fitness": 139.8477115174651,
+"solution_sha1": "7c82e65e59682a0ae9a21aa01864a8e4164d6ae9"
+},
+"swarm-max": {
+"fitness": -5.0669669230624415,
+"solution_sha1": "c34722a51b9f250442e0ba52f2f6f231ff95461e"
+},
+"swarm6": {
+"fitness": 60.636805288668874,
+"solution_sha1": "a4d399cfb15fd6e944a5b63647a5fa0c67bfb439"
+}
+},
+"OriginalCGO": {
+"max8": {
+"fitness": -3.233183305398639e-22,
+"solution_sha1": "f6f41cc4abc0374cbe08f28dd445165aeb8b76e2"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "434c56e288545623bb81bb2357c73ddf42f28424"
+},
+"swarm-max": {
+"fitness": -4.066181706967294e-16,
+"solution_sha1": "c7ed3539c7c27cd49b8eb2c0bdfe61bac751b4bc"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "15d9988633f2fab8ce1ddd12867608888b8702fe"
+}
+},
+"OriginalCHIO": {
+"max8": {
+"error": "TypeError"
+},
+"min12": {
+"error": "TypeError"
+},
+"swarm-max": {
+"error": "TypeError"
+},
+"swarm6": {
+"error": "TypeError"
+}
+},
+"OriginalCOA": {
+"max8": {
+"fitness": -0.08317803721950137,
+"solution_sha1": "d4a7dd0b91bb881fb53f26c60fd7515ea9ba796f"
+},
+"min12": {
+"fitness": 1.1707740554811608e-08,
+"solution_sha1": "34d01a2fc0dbb666a7b1b352223ff5f517c15bb7"
+},
+"swarm-max": {
+"fitness": -0.02869670874319153,
+"solution_sha1": "3feec38719d2f1b292b1e4a4b943196906b1e8bb"
+},
+"swarm6": {
+"fitness": 9.591954346177545e-05,
+"solution_sha1": "f43ea5c13b34050325cbec0e13e34613c3dc16cd"
+}
+},
+"OriginalCRO": {
+"max8": {
+"fitness": -4.847653483995234,
+"solution_sha1": "c0484286ae56e26d90f95a6d711ea09aa865b053"
+},
+"min12": {
+"fitness": 64.19296838830113,
+"solution_sha1": "91b6edbc8f3de47f0008beacc5c3b54e9af29d68"
+},
+"swarm-max": {
+"fitness": -13.594266926180483,
+"solution_sha1": "101ae80f12eef68766e48773992fbb5ba19e1ba6"
+},
+"swarm6": {
+"fitness": 18.04871318332676,
+"solution_sha1": "c0964bced16307c0221c6aaae4028d6c0355d5e9"
+}
+},
+"OriginalCSA": {
+"max8": {
+"fitness": -18.150497760267758,
+"solution_sha1": "31671b81441d56cf671d2b460907637a5ad434e2"
+},
+"min12": {
+"fitness": 122.54793314980411,
+"solution_sha1": "fa8f8a7b7acccb18442b194f12881ce72029f22c"
+},
+"swarm-max": {
+"fitness": -5.741156026994083,
+"solution_sha1": "254bf95f6204dc2654ca6791734c31b06f765875"
+},
+"swarm6": {
+"fitness": 55.89578557691776,
+"solution_sha1": "14b0ec27cef714e6a5089121c42c11ddc33d7208"
+}
+},
+"OriginalCSO": {
+"max8": {
+"fitness": -13.840229798630402,
+"solution_sha1": "455f806a7e9f02a0043828df725be5d49de04f33"
+},
+"min12": {
+"fitness": 141.07223302794046,
+"solution_sha1": "ee18102554138c92b43aa17771412949ae17ac18"
+},
+"swarm-max": {
+"fitness": -19.36209736446195,
+"solution_sha1": "ee0e69729feba65e749d863bb1672b89bbb24faf"
+},
+"swarm6": {
+"fitness": 47.507488660928956,
+"solution_sha1": "2ac028256a659aa8f08a886f2f1d9c559be2847f"
+}
+},
+"OriginalCircleSA": {
+"max8": {
+"fitness": -1.3877858723817522,
+"solution_sha1": "875c683a9283928099a5ccd8e840bbdacd1bf5dd"
+},
+"min12": {
+"fitness": 101.79627997291196,
+"solution_sha1": "dea98f199545d612ccf2ae5e3ab70b4c9016022b"
+},
+"swarm-max": {
+"fitness": -2.769470192108745,
+"solution_sha1": "bad60332fe56c608128cbd8a558292c5d7b16a98"
+},
+"swarm6": {
+"fitness": 9.06268846215847,
+"solution_sha1": "18be0f6c20128fb9e0627f70893fac4a3b3e10c1"
+}
+},
+"OriginalCoatiOA": {
+"max8": {
+"fitness": -1.912974434325804e-19,
+"solution_sha1": "dbfd0a176ac5b3056f269720708ace3d3856792d"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "e1584028f4afe8b2dfb1b416aa19e748f96601d2"
+},
+"swarm-max": {
+"fitness": -3.6769881580947544e-17,
+"solution_sha1": "ed2eb38eae294849ce8804dcfe8306a0ee7969cb"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "e60dbd5cddf1c7c8de038737b3a8a806be64f446"
+}
+},
+"OriginalDE": {
+"max8": {
+"fitness": -8.411925072576777,
+"solution_sha1": "f53e6505924d229cbf2354681ee66ba835fa2f55"
+},
+"min12": {
+"fitness": 39.18537483076145,
+"solution_sha1": "4ba131a340fd0f5161debc1333974d6374d33764"
+},
+"swarm-max": {
+"fitness": -2.4847226359638444,
+"solution_sha1": "12d9ef8b4c2f364e88d916595307b16a88954221"
+},
+"swarm6": {
+"fitness": 7.293871711087569,
+"solution_sha1": "a20b4ad1513751b5372aff92fa20ed72c3974510"
+}
+},
+"OriginalDMOA": {
+"max8": {
+"fitness": -0.03178618035507378,
+"solution_sha1": "903972e741fa31656ed4b8ec0f1fad6052cf0701"
+},
+"min12": {
+"fitness": 39.45953164497057,
+"solution_sha1": "d9fdb36815407742464e57de86cca7d4a6f4bc87"
+},
+"swarm-max": {
+"fitness": -0.008085292363456847,
+"solution_sha1": "d3c578b22f2bb61bd6425ce5b91546bb8fd118ce"
+},
+"swarm6": {
+"fitness": 8.373661982781996,
+"solution_sha1": "6396a1932a51e80f5e956f3053c76a2c08aca206"
+}
+},
+"OriginalDO": {
+"max8": {
+"fitness": -0.3762075237690974,
+"solution_sha1": "1585aa395498f16517ccb088dc467a5f1fdce3ee"
+},
+"min12": {
+"fitness": 30.558941379519794,
+"solution_sha1": "46b23f7a677908d4da20402540f325a0cb804aae"
+},
+"swarm-max": {
+"fitness": -0.10067626182458651,
+"solution_sha1": "924de898a5da2de298ba3cb31e15e995114eed92"
+},
+"swarm6": {
+"fitness": 13.81397926414509,
+"solution_sha1": "0d7e63e489055cca3f13f90a4b595a9acd19c66b"
+}
+},
+"OriginalDOA": {
+"max8": {
+"fitness": -0.6875379967042948,
+"solution_sha1": "e326bc85ef7ef31308584e2b2f57a49330a18629"
+},
+"min12": {
+"fitness": 15.526161093548893,
+"solution_sha1": "4f250805f786ce76ec3514800e3c6f1aeb52012e"
+},
+"swarm-max": {
+"fitness": -0.24153362140044127,
+"solution_sha1": "9ad0f0258da08e7f0353b4cc73ef6d9f336188e7"
+},
+"swarm6": {
+"fitness": 8.087213871923652,
+"solution_sha1": "0fce201de156bdf7c5d26cd0f9874092025989a2"
+}
+},
+"OriginalEAO": {
+"max8": {
+"fitness": -2.178984854254933e-34,
+"solution_sha1": "589626153f0c96c0d05c0656353fa4a0bd3935e0"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "200f87aa1164a1b4fca03e66ccff5f0cad054f43"
+},
+"swarm-max": {
+"fitness": -2.1799036124892006e-28,
+"solution_sha1": "46d13407db0c3441ee88721c717a4f643a9d2b2e"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "2952763590c9866a710f91710db016a187eeb4aa"
+}
+},
+"OriginalEFO": {
+"max8": {
+"fitness": -17.61961199645065,
+"solution_sha1": "964ab05c4b1a568107221f2c2c5de4b5bdd77066"
+},
+"min12": {
+"fitness": 92.43747129202632,
+"solution_sha1": "203d96ae37534982ffc1645428b4818dffd94867"
+},
+"swarm-max": {
+"fitness": -9.076057825384972,
+"solution_sha1": "d559a6677cf48e59c31bfa1eeb60285102b452e3"
+},
+"swarm6": {
+"fitness": 54.12229375506718,
+"solution_sha1": "5a06dc3461c5e63aa36d46d6ec5a1bf23f1a45b4"
+}
+},
+"OriginalEHO": {
+"max8": {
+"error": "TypeError"
+},
+"min12": {
+"fitness": 47.34806057156476,
+"solution_sha1": "5c3e8097b0d706a169c1ee3ab9edfcbd0e7c83ad"
+},
+"swarm-max": {
+"error": "TypeError"
+},
+"swarm6": {
+"error": "TypeError"
+}
+},
+"OriginalEO": {
+"max8": {
+"fitness": -0.0002065491414576553,
+"solution_sha1": "1f9abe2ec6510cba51102de3269e8ccbdc0fca55"
+},
+"min12": {
+"fitness": 10.800201065011663,
+"solution_sha1": "e10f25e29cc1d5c9e7efea759152cf61c710bc32"
+},
+"swarm-max": {
+"fitness": -0.0014847701402943094,
+"solution_sha1": "437e7552f39aa5997474a5cfadcfe55ac4c0bd14"
+},
+"swarm6": {
+"fitness": 7.081364878649012,
+"solution_sha1": "809bb5cc1e462419cd4f975cd0b8769be3d1a64a"
+}
+},
+"OriginalEOA": {
+"max8": {
+"fitness": -0.012093922990501993,
+"solution_sha1": "0d974d7f64378fddab27cdf5e1a3c6947d6bf63d"
+},
+"min12": {
+"fitness": 30.366023544099917,
+"solution_sha1": "2a3d2233e7bc8d72a63d3ec15d6cc4b10be4c642"
+},
+"swarm-max": {
+"fitness": -0.010153479170064067,
+"solution_sha1": "71f55a999cd96b42dceb013c32b9e68fb036007e"
+},
+"swarm6": {
+"fitness": 22.08577704558639,
+"solution_sha1": "f1b5297508b2062ee9cb41e0460037733f721295"
+}
+},
+"OriginalEP": {
+"max8": {
+"fitness": -25.21868903645437,
+"solution_sha1": "e9e26d5e97244ba2c2e6beb157502403f3253d07"
+},
+"min12": {
+"fitness": 126.61407383440275,
+"solution_sha1": "6bce3051001338500fdaad8555c66c0c6545c1d9"
+},
+"swarm-max": {
+"fitness": -26.724177264973758,
+"solution_sha1": "98015a3a4c707ac2f7c04f9521133c577aee1a05"
+},
+"swarm6": {
+"fitness": 48.909141435761654,
+"solution_sha1": "95f7413109d05b860bd352df1d6d0f4ce514bdac"
+}
+},
+"OriginalES": {
+"max8": {
+"fitness": -1.7714442720870802,
+"solution_sha1": "eb66af461ba4716afa421704f52c329c6b46dd38"
+},
+"min12": {
+"fitness": 78.95066774177427,
+"solution_sha1": "9a3fac03994b49ed250958f6a74321b4bccc5b9a"
+},
+"swarm-max": {
+"fitness": -2.5759153338592555,
+"solution_sha1": "adc3b260d450bcc828010daf38b7dce29338b9e5"
+},
+"swarm6": {
+"fitness": 26.06261109568694,
+"solution_sha1": "b0be230030de0705ef8a85aad4e2d249068f29c6"
+}
+},
+"OriginalESO": {
+"max8": {
+"fitness": -168.37681572793616,
+"solution_sha1": "d385ab35ed79db4e0b613699549c1c2951a11fea"
+},
+"min12": {
+"fitness": 67.25838258972747,
+"solution_sha1": "5e0f4e587b84291daeb7a911f75c4c80e1af45c2"
+},
+"swarm-max": {
+"fitness": -144.40059406316678,
+"solution_sha1": "ba08e63ec5303594191a4acae4ad3af012b2ba0d"
+},
+"swarm6": {
+"fitness": 15.199353103723631,
+"solution_sha1": "3e0c3c10afd31928182f9c954e388d94cad28661"
+}
+},
+"OriginalESOA": {
+"max8": {
+"fitness": -4.06680038034492e-34,
+"solution_sha1": "6ecd0bd19af4af2e290fe7604800af0297bb2417"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "64ddc0e5ff0d0a9e790ee35c62877ba54659637a"
+},
+"swarm-max": {
+"fitness": -1.9823453750997156e-28,
+"solution_sha1": "075d49c017cd665a32220f305d1e960496fdc66f"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "337c4315730356004c78006cb953c6cfec7e57e8"
+}
+},
+"OriginalEVO": {
+"max8": {
+"fitness": -1.8388589821471983,
+"solution_sha1": "361e15f22d833918e37e953d61ff3b67a15c690e"
+},
+"min12": {
+"fitness": 20.220188259354757,
+"solution_sha1": "2d66590571501861c406e86f1455cc6b46eee5a1"
+},
+"swarm-max": {
+"fitness": -1.6220751682032772,
+"solution_sha1": "ae27b541a34d317fb3847210a899677559761a55"
+},
+"swarm6": {
+"fitness": 10.636764797689558,
+"solution_sha1": "58e198c27370c71fc29e776b7a0b050a78feeb19"
+}
+},
+"OriginalFA": {
+"max8": {
+"fitness": -0.054200029957920746,
+"solution_sha1": "29df4e21ccf7432de863f31649008f9a3839aa89"
+},
+"min12": {
+"fitness": 20.74203667806856,
+"solution_sha1": "7b5e0e0b82344059432b3b366d96fc78bcf9e215"
+},
+"swarm-max": {
+"fitness": -0.09627003090690107,
+"solution_sha1": "77ac6a078c7188737531a87608770180ebfb6236"
+},
+"swarm6": {
+"fitness": 3.217866164647589,
+"solution_sha1": "f0378264605f5ffcf6e751d90c50d3463b592fdc"
+}
+},
+"OriginalFBIO": {
+"max8": {
+"fitness": -2.797344123700751e-24,
+"solution_sha1": "47309dabfe55fe32cf76ba8856bd8ac24fec7135"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "2e854b2a225e0ebb2fd648748486314e378562fd"
+},
+"swarm-max": {
+"fitness": -7.691126852861383e-20,
+"solution_sha1": "41fa6536bbb6b667438d79aa208054b48c679693"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "b186abb508eae386adf7011f0f1f78939801bf24"
+}
+},
+"OriginalFDO": {
+"max8": {
+"fitness": -0.5758732250727516,
+"solution_sha1": "a57636c9aecfdb0a830bd78c4913c0f941b4932d"
+},
+"min12": {
+"fitness": 22.934289859212228,
+"solution_sha1": "42c793100699145d3564d844225406871df12665"
+},
+"swarm-max": {
+"fitness": -0.8084949298236197,
+"solution_sha1": "1bcaae7d1db8dcd8076f924bf04d822f4be8630c"
+},
+"swarm6": {
+"fitness": 7.147626837751012,
+"solution_sha1": "59a0b877b6c7ef1e9b4fc1b8be4ce1646cc7c607"
+}
+},
+"OriginalFFA": {
+"max8": {
+"fitness": -9.612204998792528,
+"solution_sha1": "cd52603ab980913a1ba037a0e4983675d821119f"
+},
+"min12": {
+"fitness": 84.50532042706374,
+"solution_sha1": "bddeea7c46479bc882102870a8118de924716e81"
+},
+"swarm-max": {
+"fitness": -2.7471992183115668,
+"solution_sha1": "0400103b3898ebf2eee9693e6237b695648d85ef"
+},
+"swarm6": {
+"fitness": 25.099376227084655,
+"solution_sha1": "92a554cb7cb560a80e3ba72edda647588526bfaa"
+}
+},
+"OriginalFFO": {
+"max8": {
+"fitness": -1.4247423385884928e-07,
+"solution_sha1": "f5d4f445b2db60281e478accb4460aefc514581f"
+},
+"min12": {
+"fitness": 2.9151667604310205e-06,
+"solution_sha1": "01a38cb96e5538fe592e8843722627f6c664246a"
+},
+"swarm-max": {
+"fitness": -1.1861454529739749e-07,
+"solution_sha1": "227a08d3c7d95d0fda5c5af2364d6d885de0cb47"
+},
+"swarm6": {
+"fitness": 0.7064734398900612,
+"solution_sha1": "81f92717dacdee5b0c847048cbb05e80dbdc76e3"
+}
+},
+"OriginalFLA": {
+"max8": {
+"fitness": -0.08554514390239444,
+"solution_sha1": "6556696d6f24e0784e1e8e4e851bc825f9a0baab"
+},
+"min12": {
+"fitness": 27.627893396981406,
+"solution_sha1": "e794c934c6e7a9fec8a066d6e83be4a46913c1dc"
+},
+"swarm-max": {
+"fitness": -0.13521082145464158,
+"solution_sha1": "26f0a4717cd7412480ad02c17be1cf49b312daf0"
+},
+"swarm6": {
+"fitness": 12.832866910059863,
+"solution_sha1": "77d623e8b11a048e10319c79fc722c975405d568"
+}
+},
+"OriginalFOA": {
+"max8": {
+"fitness": -21.555713831623507,
+"solution_sha1": "1c549f19e58d8ad8ec6766cdbc17ed57634afcbb"
+},
+"min12": {
+"fitness": 171.13066228411816,
+"solution_sha1": "1db3b172cfa2ecab8101119e2ee57331e7e3873d"
+},
+"swarm-max": {
+"fitness": -12.041655401848121,
+"solution_sha1": "e2886915b8e17cc6297ce968ca9a975cc15e6620"
+},
+"swarm6": {
+"fitness": 75.99043391461579,
+"solution_sha1": "7d36697fbe7e59ac430918b7d63692b0ac7d903e"
+}
+},
+"OriginalFOX": {
+"max8": {
+"fitness": -2.0054493891249758e-113,
+"solution_sha1": "9a7a01f55002baacf274e06c5572cdbab87e9534"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "f2b898f2de82e7d5b3b2fa0469d77f538bd52b93"
+},
+"swarm-max": {
+"fitness": -2.9182416488610053e-92,
+"solution_sha1": "c32fb1b960e69f2c98137953b8526882a5c8caca"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "132237a076c505386202ae55a68a2d76d283c7b6"
+}
+},
+"OriginalFPA": {
+"max8": {
+"fitness": -5.921867583502429,
+"solution_sha1": "68bb72e2eec98366ff3c2cee2bcad934c7fa5cdf"
+},
+"min12": {
+"fitness": 55.18081922090222,
+"solution_sha1": "1d1f842cf9c65db10cdf733d01a454ff88b90867"
+},
+"swarm-max": {
+"fitness": -5.632072773195828,
+"solution_sha1": "dd5581cb74dcb04e4cd69606b715d98feae30b6b"
+},
+"swarm6": {
+"fitness": 26.509064353230563,
+"solution_sha1": "150b4dd24ab302b1e449a0832d631d0c47bd54bc"
+}
+},
+"OriginalGA": {
+"max8": {
+"fitness": -25.865784842212324,
+"solution_sha1": "879ff4a41f17bbd2eb8fc9560d7e8e3dd1883ec8"
+},
+"min12": {
+"fitness": 148.2733338019193,
+"solution_sha1": "c5f1aeb08109fddce166ba449ffaf84006d88667"
+},
+"swarm-max": {
+"fitness": -27.19659741182842,
+"solution_sha1": "d3049109470de529ed2f36c319ba580f6ee04ee3"
+},
+"swarm6": {
+"fitness": 70.41313192160251,
+"solution_sha1": "f0ffd125282ef3f749b53637604e104a4e13ac96"
+}
+},
+"OriginalGBO": {
+"max8": {
+"fitness": -1.9980786079196827e-05,
+"solution_sha1": "a00b23849ecffce4e96c04060bf8dbebca263217"
+},
+"min12": {
+"fitness": 23.88741510135246,
+"solution_sha1": "85216bae05d6222d0b41ae85781b30793d822081"
+},
+"swarm-max": {
+"fitness": -0.020655496580773106,
+"solution_sha1": "a8058117cacf1df36f2ac233a256ccb66027d7c7"
+},
+"swarm6": {
+"fitness": 15.470905323777842,
+"solution_sha1": "1a2c82e0e51ad4ec6afc3e252a87796164fe8ba2"
+}
+},
+"OriginalGCO": {
+"max8": {
+"fitness": -9.911407010578957,
+"solution_sha1": "13ad73180c8b074bfe39ffdab6ee415a1a9b156d"
+},
+"min12": {
+"fitness": 110.98064505706672,
+"solution_sha1": "a5c3ab4eef070a8f697c4b6f966795f7beb6b385"
+},
+"swarm-max": {
+"fitness": -16.207354021245642,
+"solution_sha1": "83dd82eb173dec3c586f86a45829a88502315a97"
+},
+"swarm6": {
+"fitness": 36.48573541192129,
+"solution_sha1": "1f4ced2108f4397e2315a4822a99e9514e926e72"
+}
+},
+"OriginalGJO": {
+"max8": {
+"fitness": -2.9239545228109225e-06,
+"solution_sha1": "5e7ab39c7fbfef0d251dcf61d75e5c21272cffa9"
+},
+"min12": {
+"fitness": 0.05877220074478373,
+"solution_sha1": "8c87a9520e5cc62e3efa922c95188727a3954e93"
+},
+"swarm-max": {
+"fitness": -2.1864746844763046e-06,
+"solution_sha1": "6ffe4a0d33d788682d4869ddc936e552a34aad40"
+},
+"swarm6": {
+"fitness": 1.225357704723443,
+"solution_sha1": "ad0e86e2b52017cb0352fe716a64c6a8e4e44d43"
+}
+},
+"OriginalGOA": {
+"max8": {
+"fitness": -0.02031649641458088,
+"solution_sha1": "10e9c773c0410e82b9336c4047961055527a2a94"
+},
+"min12": {
+"fitness": 49.6290001974685,
+"solution_sha1": "42d1aef9d8732a2388262a9222ca9d48b72de05c"
+},
+"swarm-max": {
+"fitness": -0.015536766906260775,
+"solution_sha1": "f6c6399b3b977d4f4e0c96f98948fa4c591d6bf4"
+},
+"swarm6": {
+"fitness": 8.701926596160455,
+"solution_sha1": "fd259dbb4247d2622badfb6f7e6744c49fc5c8d0"
+}
+},
+"OriginalGSKA": {
+"max8": {
+"fitness": -0.5089153973902211,
+"solution_sha1": "ddbc5f4ee0a9e80a9bd5d31f76e35ca5e561a99a"
+},
+"min12": {
+"fitness": 90.51270774994293,
+"solution_sha1": "8d154941c4806849d7419f1223e37a761f59a55f"
+},
+"swarm-max": {
+"fitness": -0.9009294386933866,
+"solution_sha1": "fa3bb684bbb2fa944c6ef3c68726f703ad040d00"
+},
+"swarm6": {
+"fitness": 18.71492952182176,
+"solution_sha1": "3392820720655f1322a72e2eecc0fb5987f9782b"
+}
+},
+"OriginalGTO": {
+"max8": {
+"fitness": -7.004215574182688e-55,
+"solution_sha1": "e5855085035058aadff247f079f44c11f4923d6d"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "33fa942f8d9d9efb2a411446d8b3933f367e5a0e"
+},
+"swarm-max": {
+"fitness": -2.2241651662016626e-48,
+"solution_sha1": "4301f06e0724178e28bfad3107cb344e5716312c"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "acfe207c41ce20a5d006704dd4d0c761e7c70140"
+}
+},
+"OriginalGWO": {
+"max8": {
+"fitness": -0.0005085394906121043,
+"solution_sha1": "dc0518629bf8e3931f6b16c8bcd941267f5a00e7"
+},
+"min12": {
+"fitness": 17.29614424272816,
+"solution_sha1": "040aee38c1e4c74b8ade303025468df1f18f93bc"
+},
+"swarm-max": {
+"fitness": -0.0026722215007193312,
+"solution_sha1": "44a62b937a4a7e937d440bf14ccbee65111a304f"
+},
+"swarm6": {
+"fitness": 15.889473043809865,
+"solution_sha1": "c5af30e09c081a061a3f4480dc9ac8f61ac8d5cf"
+}
+},
+"OriginalHBA": {
+"max8": {
+"fitness": -1.4670399523395602e-11,
+"solution_sha1": "c393e78fce7e4c47a5f670e80db15b0ad007b5d6"
+},
+"min12": {
+"fitness": 7.65965069149388e-11,
+"solution_sha1": "58e7d20eaa6b188366b57526d1f4b02bce6fa759"
+},
+"swarm-max": {
+"fitness": -1.5932647682258603e-10,
+"solution_sha1": "676ed427528c4fc7cb230f8a26048a5bc9f9dcdd"
+},
+"swarm6": {
+"fitness": 4.886841509232909e-08,
+"solution_sha1": "2eddb7435a879378b137d60d6d2ba6c1d3b0f92b"
+}
+},
+"OriginalHBO": {
+"max8": {
+"fitness": -2.9590107537610564,
+"solution_sha1": "5f00054895ac0db0c3acac8852ca27e5123c9f8f"
+},
+"min12": {
+"fitness": 83.71088733780135,
+"solution_sha1": "da027f770ad8f21078a2a46c36e3f16e99b66449"
+},
+"swarm-max": {
+"fitness": -11.357588770991287,
+"solution_sha1": "2798c6c62e1428f7401bb7bf9d25123ec24cd610"
+},
+"swarm6": {
+"fitness": 39.24459263354704,
+"solution_sha1": "716d9ef98b674da43dcde855025d28ecc3e6e9b6"
+}
+},
+"OriginalHC": {
+"max8": {
+"fitness": -0.44444279908600864,
+"solution_sha1": "fccf0252913ebd1dd72578ded48a0826deba7d0e"
+},
+"min12": {
+"fitness": 102.46075929005431,
+"solution_sha1": "6a1147ace2b48d169e442fe9a5221409ff1d4590"
+},
+"swarm-max": {
+"fitness": -0.26492731984182044,
+"solution_sha1": "088ce9f944e64b4a21223f3d1c14dc02e1bcc6f5"
+},
+"swarm6": {
+"fitness": 56.654512688068316,
+"solution_sha1": "355cba186de2a36d6ae5a3055edae3870171b4aa"
+}
+},
+"OriginalHCO": {
+"max8": {
+"fitness": -6.402347029817056,
+"solution_sha1": "c18d4475091161153cad79225b2730240fa3522a"
+},
+"min12": {
+"fitness": 60.46796459675234,
+"solution_sha1": "b4cba370a6bf87e7e34639a0e6c25000d5a462fa"
+},
+"swarm-max": {
+"fitness": -1.442600293875999,
+"solution_sha1": "4b24593d849fa7899bdb4b3550ad347fd86ed328"
+},
+"swarm6": {
+"fitness": 17.090259223655934,
+"solution_sha1": "2e1d3a8d8317256836263500b7da1b51b29e941f"
+}
+},
+"OriginalHGS": {
+"max8": {
+"fitness": -0.0,
+"solution_sha1": "c8d7d0ef0eedfa82d2ea1aa592845b9a6d4b02b7"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "c49a9785b2243f2f080daad1747f119acceccfa5"
+},
+"swarm-max": {
+"fitness": -0.0,
+"solution_sha1": "9438e360f578e12c0e0e8ed28e2c125c1cefee16"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "63890006a3326bc1b732d7f90a905807213335e4"
+}
+},
+"OriginalHGSO": {
+"max8": {
+"fitness": -4.110006703570175e-18,
+"solution_sha1": "19af3f275380f65ee9fe1c5b878ec35cd63013c0"
+},
+"min12": {
+"fitness": 50.44349631380628,
+"solution_sha1": "0d7638d23e12e78c2fedce9ffab8837aa4bd1528"
+},
+"swarm-max": {
+"fitness": -1.2619604627243574e-09,
+"solution_sha1": "ffaf853902a761c272c40c4edc79e5ec3e62758d"
+},
+"swarm6": {
+"fitness": 6.324238357785362,
+"solution_sha1": "e915750ae641e33842dfe8191aad2a4a9f358e1c"
+}
+},
+"OriginalHHO": {
+"max8": {
+"fitness": -2.9503206716378916e-16,
+"solution_sha1": "c3280141ae8d38c857528d89e922f967554fa284"
+},
+"min12": {
+"fitness": 3.979039320256561e-13,
+"solution_sha1": "74324e26ac210719097eda43697cc3be1ab3df45"
+},
+"swarm-max": {
+"fitness": -8.419880520612368e-11,
+"solution_sha1": "01091eba5fd976927b014ef08c5902b22e434ab1"
+},
+"swarm6": {
+"fitness": 9.502301168140548e-09,
+"solution_sha1": "4e4c84e2201e649b721c057663f94fd60593874a"
+}
+},
+"OriginalHS": {
+"max8": {
+"fitness": -0.6693045075349765,
+"solution_sha1": "9ada0a3b1860354166f143668814b81e078942e2"
+},
+"min12": {
+"fitness": 16.05772725244941,
+"solution_sha1": "a7dd7d29f3077b4347a1199c18e71a2fd7e98dd0"
+},
+"swarm-max": {
+"fitness": -0.5836684203314358,
+"solution_sha1": "ad84062d9fa7f541c02df8dbd6134379845a7692"
+},
+"swarm6": {
+"fitness": 6.855093732427761,
+"solution_sha1": "89168f5e587dfe996d20ea3c0465cc8c8a19734f"
+}
+},
+"OriginalICA": {
+"max8": {
+"fitness": -0.3826464113971454,
+"solution_sha1": "0e3593b49ec0020fbb6807eaaac26cd4ebe8de48"
+},
+"min12": {
+"fitness": 48.72766843749382,
+"solution_sha1": "5c44fb217355a46829ae0b76b723adf720ca450c"
+},
+"swarm-max": {
+"fitness": -0.7199395964232279,
+"solution_sha1": "6065a13bcba317d57dfb860f4f3982592d99be44"
+},
+"swarm6": {
+"fitness": 13.425480833028352,
+"solution_sha1": "bc9e0aac39e2b3749933a7c3cf168a85bd648265"
+}
+},
+"OriginalIMODE": {
+"max8": {
+"fitness": -66.60923873774647,
+"solution_sha1": "74c27411f0ec44652ceb8ca957049f1ecc815d6a"
+},
+"min12": {
+"fitness": 2.029581581614721,
+"solution_sha1": "9f54d0cc1c7460ce0852f57aa86f1f2cef6ae382"
+},
+"swarm-max": {
+"fitness": -66.37108404803115,
+"solution_sha1": "bd78796c2d02265a8f831ef9d6b30fe31e13c200"
+},
+"swarm6": {
+"fitness": 4.8447904241570825,
+"solution_sha1": "9f46147a781f5d11b9ee8f85e0463e49bf4a7e8a"
+}
+},
+"OriginalINFO": {
+"max8": {
+"fitness": -0.00038986990651037094,
+"solution_sha1": "7a93e06ea0126d8adbeb6006ad74d1de7bc3a081"
+},
+"min12": {
+"fitness": 23.74963898808855,
+"solution_sha1": "fb5d9e9767a11b9b86c2a6d23a09a34c0e4dd902"
+},
+"swarm-max": {
+"fitness": -9.69285373192289e-05,
+"solution_sha1": "8de32f70428fbc6a2182e939d86de8e1cd4b464f"
+},
+"swarm6": {
+"fitness": 13.615548389796714,
+"solution_sha1": "02aeb75de2d4a3ac1bc602e297ee636609d7809b"
+}
+},
+"OriginalIWO": {
+"max8": {
+"fitness": -0.010889841184707445,
+"solution_sha1": "70e000fc56e92c2fc97ad01740e3c2a55cb96411"
+},
+"min12": {
+"fitness": 13.649678328361077,
+"solution_sha1": "5b1fafe3b15537757404faa458e3e558d1011866"
+},
+"swarm-max": {
+"fitness": -0.01356330078751388,
+"solution_sha1": "eea0ae9acbf6fec96265add3e398e37d85045c7c"
+},
+"swarm6": {
+"fitness": 1.863185894788188,
+"solution_sha1": "6fa76c92b2bcad579103f389e1b8805f913ff687"
+}
+},
+"OriginalJA": {
+"max8": {
+"fitness": -47.93113745238955,
+"solution_sha1": "45ce63390eb3136abf5afaec38bbd75990b9cf5c"
+},
+"min12": {
+"fitness": 179.79110765640334,
+"solution_sha1": "b4c9a87d1225f98bdca5205432f7c1e0338196c3"
+},
+"swarm-max": {
+"fitness": -17.856515725774223,
+"solution_sha1": "5c352545c378e80445b5d95c691d608cdc3433a3"
+},
+"swarm6": {
+"fitness": 58.85837188428445,
+"solution_sha1": "e67b70dbce7cfa3f61496a99874d5d58e90935a4"
+}
+},
+"OriginalLCO": {
+"max8": {
+"fitness": -2.224864375577127e-23,
+"solution_sha1": "14eb9a26fe19f77c0c73ddc9625ee05df0864780"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "4766dad1c22e758516b7ab4b6b2546bc00e15b97"
+},
+"swarm-max": {
+"fitness": -5.067809542082164e-16,
+"solution_sha1": "28e1ba5b283c0437edab307d914d5d47e36cd9f0"
+},
+"swarm6": {
+"fitness": 14.24580999601379,
+"solution_sha1": "0b4620e9d0e6cdd5552fe3986c58d3a0e5f8e8fd"
+}
+},
+"OriginalMA": {
+"max8": {
+"fitness": -16.888888888888886,
+"solution_sha1": "86d96f7e55d9af91232b68fe90606e3e0b788d5b"
+},
+"min12": {
+"fitness": 141.2222222222222,
+"solution_sha1": "8f86d370fe9144394735385055df42b639286e4e"
+},
+"swarm-max": {
+"fitness": -10.555555555555557,
+"solution_sha1": "8d19ad3d97a1cafb1b0b2c4376f0104171924045"
+},
+"swarm6": {
+"fitness": 30.77777777777776,
+"solution_sha1": "a72cdee21edf68418a7353c1130c4a3678c89af5"
+}
+},
+"OriginalMFO": {
+"max8": {
+"fitness": -4.270474436373796,
+"solution_sha1": "55d735e200be18c87b19af70c00b1f976ac27ba8"
+},
+"min12": {
+"fitness": 33.69619558656784,
+"solution_sha1": "54ea678a47ccacdcf88b6b4eaea418f630bdba5d"
+},
+"swarm-max": {
+"fitness": -1.7988547427740025,
+"solution_sha1": "7127d7aee15d01c4e8d9c22abdab8071a14cd041"
+},
+"swarm6": {
+"fitness": 11.531831093634466,
+"solution_sha1": "4645cb62cc67a3055c0899711771246c554f2579"
+}
+},
+"OriginalMGO": {
+"max8": {
+"fitness": -1.4696989288716652e-05,
+"solution_sha1": "a03d1f23078c3814b5e722d840cd5eff10608995"
+},
+"min12": {
+"fitness": 6.165644129102063,
+"solution_sha1": "5731c6d5b04b9870e4b9aa0ac8be5cb425c40172"
+},
+"swarm-max": {
+"fitness": -5.033788030920954e-06,
+"solution_sha1": "b9e8c08891c20a18d314cd0d9fcc6c81fd223202"
+},
+"swarm6": {
+"fitness": 1.7994593324110113,
+"solution_sha1": "a6ea4a42419671eef5d7357114f6386fef48c41b"
+}
+},
+"OriginalMPA": {
+"max8": {
+"fitness": -0.11327013714089623,
+"solution_sha1": "2fdb161b4f1b23a31ccf570578ea0cf768e0ce95"
+},
+"min12": {
+"fitness": 52.82524063015809,
+"solution_sha1": "7b2b6a8bc0e0c4fb0d0ebeb2656973ce36894e91"
+},
+"swarm-max": {
+"fitness": -0.19849679208556298,
+"solution_sha1": "dc808411de9912c10f1813b779d45f9d9bed5f3a"
+},
+"swarm6": {
+"fitness": 20.169348116543688,
+"solution_sha1": "9a81a18170a5c6448ea16756b26859f6aa22ff57"
+}
+},
+"OriginalMRFO": {
+"max8": {
+"fitness": -5.256804059606078e-32,
+"solution_sha1": "0933a93d46493b7adf43c21f74d68318194a5da2"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "e5e98d8878568043bc52fe27715b27581e3b5337"
+},
+"swarm-max": {
+"fitness": -1.1733246873972066e-27,
+"solution_sha1": "a62ab797c288dc9f2017d596b707a589fe676cfc"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "6eecac8c6e8f9cab77a779d59a5be3bf68293209"
+}
+},
+"OriginalMSA": {
+"max8": {
+"fitness": -0.2464912742893007,
+"solution_sha1": "e4f98853a1db972f2d0777a53b5e203f490b6a15"
+},
+"min12": {
+"fitness": 30.156415549256565,
+"solution_sha1": "04835ce8039cbf246d5e3ac500624359e110fcf7"
+},
+"swarm-max": {
+"fitness": -0.012906516540455912,
+"solution_sha1": "24192b36606b7366efc457a52c06c710cbb3bf67"
+},
+"swarm6": {
+"fitness": 8.227831610371958,
+"solution_sha1": "0e85884604e8744e7dea3dbf462fd4113172691b"
+}
+},
+"OriginalMSO": {
+"max8": {
+"fitness": -0.854082313866195,
+"solution_sha1": "01505524ea5800fb7fdc59b31f4d6978397c98f4"
+},
+"min12": {
+"fitness": 31.809001850157202,
+"solution_sha1": "6815fdf03bd72a8d956cd249b40af76dc7e6375b"
+},
+"swarm-max": {
+"fitness": -0.49829778648032874,
+"solution_sha1": "bcb23e9693f6c8b617a43627f0fd5f07243373fd"
+},
+"swarm6": {
+"fitness": 11.26526391128256,
+"solution_sha1": "4f4e27efba814e4a787a48634c80fb7ec63a00c8"
+}
+},
+"OriginalMShOA": {
+"max8": {
+"fitness": -2.40805511533263e-31,
+"solution_sha1": "5057510ead5b7cdee1cc27384913aab1046c0ca5"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "18c38f9c1abcf9dfbdbe59c55423253cecd20065"
+},
+"swarm-max": {
+"fitness": -1.4047757873409848e-33,
+"solution_sha1": "5aaf978283f24e7e8358b68ee8b3ff74f68565ab"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "a501991883a8c91c8c26ad74f3564c2c434db568"
+}
+},
+"OriginalMVO": {
+"max8": {
+"fitness": -0.004539603635936063,
+"solution_sha1": "fb32bc96053d2159f965821e05829515c473391c"
+},
+"min12": {
+"fitness": 28.046148377616603,
+"solution_sha1": "0f91ee0e4664626c23ade53fccd922c6601194d5"
+},
+"swarm-max": {
+"fitness": -0.00239514702512847,
+"solution_sha1": "61173dc9d236b3a7007242c93cd9eb6818e0b84d"
+},
+"swarm6": {
+"fitness": 6.185212912728545,
+"solution_sha1": "0c08eb5f3bf272dcc67e2882d0db5a716f8f07fd"
+}
+},
+"OriginalNGO": {
+"max8": {
+"fitness": -0.17581328939644592,
+"solution_sha1": "aee48ee70529b404ee43e2f7cd38888815cd723c"
+},
+"min12": {
+"fitness": 19.584556815625348,
+"solution_sha1": "496d5bddf5706e4250da52c71f265cb4ef147eed"
+},
+"swarm-max": {
+"fitness": -0.9048427977165678,
+"solution_sha1": "b96ac072a3af0a5e3dd94a55b44c0c4c8a5ab6fd"
+},
+"swarm6": {
+"fitness": 11.4100865871564,
+"solution_sha1": "d83e365136c9280882bd9931f60d3334f9ab57a2"
+}
+},
+"OriginalNMRA": {
+"max8": {
+"fitness": -1.834716357974938e-18,
+"solution_sha1": "4bfececf0e0eb48fc225b30f896afa3433bef4a9"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "5e206bb9beaa5019480bb6e62c9c387effe772e8"
+},
+"swarm-max": {
+"fitness": -1.7211057170658198e-18,
+"solution_sha1": "d5933723dec2522830cd6bf108c10ae450e25771"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "eb596be27843d9a3e316042717d9cff89f17296c"
+}
+},
+"OriginalNRO": {
+"max8": {
+"fitness": -0.002920063024760023,
+"solution_sha1": "0ed440c0ea6776912fa11591a7cead6f1f9d9e60"
+},
+"min12": {
+"fitness": 59.49193992573654,
+"solution_sha1": "3cc64f3a562941bc4e84198e01c350dfcd26f10e"
+},
+"swarm-max": {
+"fitness": -0.0028814910251279287,
+"solution_sha1": "a60e3036ad9732cb0386fc6521bf3766b424b416"
+},
+"swarm6": {
+"fitness": 10.992823805913133,
+"solution_sha1": "0a10fbcdbdea7f9e1675d709fb893b6fe90f0bb8"
+}
+},
+"OriginalOOA": {
+"max8": {
+"fitness": -6.644558417059081e-12,
+"solution_sha1": "8e20510fe19845ce5361b6caf3b1ec7b4dd52ec7"
+},
+"min12": {
+"fitness": 2.6338398129155394e-10,
+"solution_sha1": "63bfbf5e70da4a5d59007fa56c965028edd4c211"
+},
+"swarm-max": {
+"fitness": -3.675870003203678e-13,
+"solution_sha1": "93d09a573c45b806b96ce58fedd84d3165e8723e"
+},
+"swarm6": {
+"fitness": 3.6327728381024826e-06,
+"solution_sha1": "61d2089da33090dca419b99b86bef459166ba6cf"
+}
+},
+"OriginalPFA": {
+"max8": {
+"fitness": -2.257101546416752e-08,
+"solution_sha1": "595e9b9fc821d9e8f3de13a4a4ecdd5543a9aaf1"
+},
+"min12": {
+"fitness": 2.291106742297245,
+"solution_sha1": "f26f503d81e04e935591c49e9167524073234b2a"
+},
+"swarm-max": {
+"fitness": -5.637539615513593e-07,
+"solution_sha1": "bf510ee7f8ae867cd3a657bd076e8d641e066794"
+},
+"swarm6": {
+"fitness": 5.224305605123405,
+"solution_sha1": "ed9b66226768d1611ce08c34de6d041c257955b1"
+}
+},
+"OriginalPOA": {
+"max8": {
+"fitness": -7.993448123979564e-11,
+"solution_sha1": "64a1deadfb1f927990ef045217c173473141019f"
+},
+"min12": {
+"fitness": 1.4083459278804469,
+"solution_sha1": "7885dbb4bdf9d731bb63c1591f798fd8be694246"
+},
+"swarm-max": {
+"fitness": -9.805197694926918e-07,
+"solution_sha1": "e77b25be0f509d711fb154689677a3b8374d26c1"
+},
+"swarm6": {
+"fitness": 5.367276501998319,
+"solution_sha1": "79f727fafaddea2709bf15f1c42e9567f0f7c8a8"
+}
+},
+"OriginalPSO": {
+"max8": {
+"fitness": -0.024269934214636184,
+"solution_sha1": "45b5a4173700b3179a23457083c1f6588e9e2fa6"
+},
+"min12": {
+"fitness": 38.364248506598244,
+"solution_sha1": "d8736ee271384f2975fb22281a698567736539af"
+},
+"swarm-max": {
+"fitness": -0.22142173251041336,
+"solution_sha1": "9e846d3711d9cde40f491ef44dbd7435901620cb"
+},
+"swarm6": {
+"fitness": 6.9868717675820164,
+"solution_sha1": "8670567c4895d1f72c6ca99d5a249de8ed0681c7"
+}
+},
+"OriginalQSA": {
+"max8": {
+"fitness": -0.08830204409135496,
+"solution_sha1": "53d6d7bd5c05059183304358af4b93329ff50fef"
+},
+"min12": {
+"fitness": 49.910322953047796,
+"solution_sha1": "e1c8a37c5f9e2202a5954a404a4e493815006031"
+},
+"swarm-max": {
+"fitness": -0.0455662566718586,
+"solution_sha1": "0ef38dcb635b778a09f265d37ef6ad90ed9ac090"
+},
+"swarm6": {
+"fitness": 11.472153983871358,
+"solution_sha1": "0b27e658214341eee69b296147e6bf59d4ff6393"
+}
+},
+"OriginalRIME": {
+"max8": {
+"fitness": -0.12344880379390857,
+"solution_sha1": "269c4e7d9f86597b591277a5156d6dd0cc8db308"
+},
+"min12": {
+"fitness": 42.10411661315253,
+"solution_sha1": "eb826e9b5621260a65e8d2d73399d89888c40a4f"
+},
+"swarm-max": {
+"fitness": -0.025540048660901024,
+"solution_sha1": "35bb7f48e928a3cf43d80d93b99b0e006a65133c"
+},
+"swarm6": {
+"fitness": 13.365912349963054,
+"solution_sha1": "e0e01a9c375a19f5da56dd905106394a4853c9fb"
+}
+},
+"OriginalRUN": {
+"max8": {
+"fitness": -3.718150666952707e-12,
+"solution_sha1": "121c95467c252fe5e5e77a8ca4af78962f53c9a4"
+},
+"min12": {
+"fitness": 9.094947017729282e-13,
+"solution_sha1": "d308ff3f976ce674c4ebed4cb9637b206b0369de"
+},
+"swarm-max": {
+"fitness": -2.887680034108746e-12,
+"solution_sha1": "eea5cc4c1a7ab8813e143cc0d0c81180247260d5"
+},
+"swarm6": {
+"fitness": 6.685579734266867e-08,
+"solution_sha1": "2de76fbe03b0e63a3d609f6faaa1029347ba40d6"
+}
+},
+"OriginalSA": {
+"max8": {
+"fitness": -21.826300730194625,
+"solution_sha1": "fd5305224daa87f4e07e7c2f60710c43d2efbac8"
+},
+"min12": {
+"fitness": 148.2733338019193,
+"solution_sha1": "c5f1aeb08109fddce166ba449ffaf84006d88667"
+},
+"swarm-max": {
+"fitness": -25.603187651188886,
+"solution_sha1": "8d310a9c3c56211a40c52019dd425cea3c562ff6"
+},
+"swarm6": {
+"fitness": 30.898614176077537,
+"solution_sha1": "9a0a47b7a6fd6ddcfd088c322f87c7aee329440b"
+}
+},
+"OriginalSARO": {
+"max8": {
+"fitness": -0.0968888284063282,
+"solution_sha1": "2d89fd6323532530eea935a87267b9ab3e7fa35e"
+},
+"min12": {
+"fitness": 46.78838634596232,
+"solution_sha1": "f437e776eede5c1e192312b3fc3df540107565df"
+},
+"swarm-max": {
+"fitness": -0.04967664981870478,
+"solution_sha1": "a9d9ad89b0b3870209d9c6c0bf30d6e474d4978e"
+},
+"swarm6": {
+"fitness": 14.066733500991603,
+"solution_sha1": "1a47e2413a168aff6541b3259bb46d8c79becb7e"
+}
+},
+"OriginalSBO": {
+"max8": {
+"fitness": -18.50990761860415,
+"solution_sha1": "3e70e24e11f3fee22b999eaf31d636e3d7f70aa9"
+},
+"min12": {
+"fitness": 122.01836755925011,
+"solution_sha1": "3f6014ae199a6ab7678c06674a23827b6ba4140b"
+},
+"swarm-max": {
+"fitness": -0.038333169824911945,
+"solution_sha1": "837063b31f81d518fd13d04fc2bf60b40717d736"
+},
+"swarm6": {
+"fitness": 8.070445460746306,
+"solution_sha1": "08224d24f5db5ce8fe9af81ad7d17224535b5062"
+}
+},
+"OriginalSCA": {
+"max8": {
+"fitness": -0.03545993359621313,
+"solution_sha1": "9e33c7481da5ce137e5e515954cdf1e08e285642"
+},
+"min12": {
+"fitness": 36.88364193856799,
+"solution_sha1": "1eb8f8e923361d118c472f72fc03403367962ac3"
+},
+"swarm-max": {
+"fitness": -0.13936114323035645,
+"solution_sha1": "5ef34ed08d92bbbaabfe14bc111691a39491db1a"
+},
+"swarm6": {
+"fitness": 5.022406448649868,
+"solution_sha1": "47c19ebaadff15646fb7bd847490e01d7af0839b"
+}
+},
+"OriginalSCSO": {
+"max8": {
+"fitness": -2.2006141931976846e-08,
+"solution_sha1": "dc2e9c1190fb35c8d0f9b28abac9a657c336a4e5"
+},
+"min12": {
+"fitness": 3.3097620644184644e-08,
+"solution_sha1": "c646cf95001b32d9e6635962de8b7b6eca51a603"
+},
+"swarm-max": {
+"fitness": -4.028911325516026e-07,
+"solution_sha1": "9fec9dfa38fef3caaa82f7732b2cc3fec421b2f7"
+},
+"swarm6": {
+"fitness": 2.9434399806405054e-07,
+"solution_sha1": "6b14758078aa52adcb31047d79b1f9d45d0bcb2b"
+}
+},
+"OriginalSFO": {
+"max8": {
+"fitness": -1.6563876273078398e-07,
+"solution_sha1": "24e587fbbd1c1872b0b96513bb346cc0926227d1"
+},
+"min12": {
+"fitness": 8.910403153095103e-07,
+"solution_sha1": "77e21951c3f388501bd47b29173f698f32f11d1a"
+},
+"swarm-max": {
+"fitness": -1.7529155025048038,
+"solution_sha1": "7cc5650fd7a037315faa0bcd6d633efefbf28735"
+},
+"swarm6": {
+"fitness": 21.94540420135837,
+"solution_sha1": "24d64c3cb74267e9897dfbba358c247142ef4197"
+}
+},
+"OriginalSFOA": {
+"max8": {
+"fitness": -9.833197448393144e-135,
+"solution_sha1": "7a189ed9c81d8f69d172ec1a80896e983cbc1f85"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "43dfd26af511458e8796b2fb1a346320c1684a9a"
+},
+"swarm-max": {
+"fitness": -3.241669809045005e-128,
+"solution_sha1": "a298300edad9d084ec017dfeacae425821ff5d77"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "0b3c73ddf9e32dbec38fd0594bf8f01e5fe0a711"
+}
+},
+"OriginalSHIO": {
+"max8": {
+"fitness": -4.48830195451465e-05,
+"solution_sha1": "88f1f7821571251cc99c3cf2340287d8186e9fbb"
+},
+"min12": {
+"fitness": 32.223941017668366,
+"solution_sha1": "81f06d1b1786c1fa1172ed5f751cfe092f4e0882"
+},
+"swarm-max": {
+"fitness": -2.1033592987663126e-07,
+"solution_sha1": "1bd8e9ca21dd59d89959373eaa882722171dfbf5"
+},
+"swarm6": {
+"fitness": 16.411699283065253,
+"solution_sha1": "0e63549f22760d9a83bb1064dc6b9941de885d3a"
+}
+},
+"OriginalSHO": {
+"max8": {
+"fitness": -25.379031611790086,
+"solution_sha1": "c257aff81809cd3344d81d7c40562c0674171410"
+},
+"min12": {
+"fitness": 137.85374671655887,
+"solution_sha1": "eac13b888833e23272769fcd79fd8bf87abc0f1e"
+},
+"swarm-max": {
+"fitness": -27.100555449842776,
+"solution_sha1": "2d1bc7d65cb5b277ae0e8fa159a07e42caef8b05"
+},
+"swarm6": {
+"fitness": 34.437482535400726,
+"solution_sha1": "9e99948e3904f571e1b94a4d017affb7e79c37e0"
+}
+},
+"OriginalSLO": {
+"max8": {
+"fitness": -2.597085536704711,
+"solution_sha1": "51875559344cdc4b290c07cd920fe9b667c449ac"
+},
+"min12": {
+"fitness": 50.93870822438711,
+"solution_sha1": "7248b8a1e431764b136c2fc104f015c65d0637d7"
+},
+"swarm-max": {
+"fitness": -0.6780558695555879,
+"solution_sha1": "7324e71ae06255b840a9031b24b862399ccbfb1c"
+},
+"swarm6": {
+"fitness": 4.8706079408477265,
+"solution_sha1": "16a28f82308a7554fc2366280c5e49fea48e5b83"
+}
+},
+"OriginalSMA": {
+"max8": {
+"fitness": -0.0,
+"solution_sha1": "75aec20dd1357accbfba9ead747a648fb4eddb4a"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "b6877ee4187014a4a500d7a86f3d9188b12ffbcf"
+},
+"swarm-max": {
+"fitness": -0.0,
+"solution_sha1": "762e46d608dbc0e56bb56cea654dbf9a099d964d"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "dfbe40a8034414170bee8ab322c04da2410c70a8"
+}
+},
+"OriginalSOA": {
+"max8": {
+"fitness": -14.847879737377694,
+"solution_sha1": "254f57182a8bd8fc6802f8622bc3ef16e570d107"
+},
+"min12": {
+"fitness": 174.62347923362162,
+"solution_sha1": "8e6c9b6433c1521095b60816e6ed578e31648c81"
+},
+"swarm-max": {
+"fitness": -12.610678251810247,
+"solution_sha1": "130131cafde73b97784ed6efdd67a41e19bd374c"
+},
+"swarm6": {
+"fitness": 101.2771321971668,
+"solution_sha1": "2654c46556ae65229ef82e21f62c474416cda916"
+}
+},
+"OriginalSOO": {
+"max8": {
+"fitness": -1.2702514682532687e-42,
+"solution_sha1": "3a982b34cd39cd071f289b873bd3d73b82fa9e12"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "b1304d781b1b714b56888f43004d0ff2106ee764"
+},
+"swarm-max": {
+"error": "ValueError"
+},
+"swarm6": {
+"error": "ValueError"
+}
+},
+"OriginalSOS": {
+"max8": {
+"fitness": -3.9324620878340864e-13,
+"solution_sha1": "7904707c0397756b863c3ee476ea9e96bf06f4b9"
+},
+"min12": {
+"fitness": 1.736973975141609e-05,
+"solution_sha1": "e81c7853702123922c2a9717e0cd690a10a2f619"
+},
+"swarm-max": {
+"fitness": -8.18203871046179e-14,
+"solution_sha1": "39995b6e601c7b1f8683fd5a811e5c2571c70efa"
+},
+"swarm6": {
+"fitness": 9.652794119574537e-10,
+"solution_sha1": "2cebf28ba019d01dc7d016696a7c6ad75293a39f"
+}
+},
+"OriginalSPBO": {
+"max8": {
+"fitness": -0.3666017272142117,
+"solution_sha1": "69eb7a5d88901b200abc1ecbf19f18e3d4158ffe"
+},
+"min12": {
+"fitness": 11.557034166037568,
+"solution_sha1": "8c035a2d89a4e507968baf6d3c31326f01997b7a"
+},
+"swarm-max": {
+"fitness": -0.28613295931007043,
+"solution_sha1": "0390345573ea149438cd6bbba28844fc60f74405"
+},
+"swarm6": {
+"fitness": 3.98909815690142,
+"solution_sha1": "f6bada5956e73c666caa76f326e0dc8bf05b2058"
+}
+},
+"OriginalSRSR": {
+"max8": {
+"fitness": -0.0008336852564357656,
+"solution_sha1": "024429c8639107cbeeef12e3314260a48af2fa08"
+},
+"min12": {
+"fitness": 7.996083507279124,
+"solution_sha1": "75068bee2459249008ea012d9d4b8ba5347c3a5c"
+},
+"swarm-max": {
+"fitness": -0.000612430682332331,
+"solution_sha1": "145522d0eb00e31f447bd05146baf087ceb0ff3a"
+},
+"swarm6": {
+"fitness": 2.9969322215450305,
+"solution_sha1": "691f37c6fd21e72a5634fe5dc8b3fa6436184174"
+}
+},
+"OriginalSSA": {
+"max8": {
+"fitness": -9.59271838951276e-07,
+"solution_sha1": "19142890e3566347108e2ceb8dc0446ed5d37c32"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "3b8b7436e3ef2a73743ac9310305fc1136895079"
+},
+"swarm-max": {
+"fitness": -2.5918805221446424e-05,
+"solution_sha1": "e1eb24066be06a9ba72bb4202e4e12525ebb6adc"
+},
+"swarm6": {
+"fitness": 6.898773960983817e-06,
+"solution_sha1": "dd85295c94732b868b55a61c4920f4e9684cca64"
+}
+},
+"OriginalSSDO": {
+"max8": {
+"fitness": -2.8550619698626984e-05,
+"solution_sha1": "dc2d8fd4762c8edcef0c8c6491a4dc06899e8d57"
+},
+"min12": {
+"fitness": 0.01964992167006585,
+"solution_sha1": "41d2957fa68945e9977320260fcc73d5c1e77194"
+},
+"swarm-max": {
+"fitness": -27.19659741182842,
+"solution_sha1": "d3049109470de529ed2f36c319ba580f6ee04ee3"
+},
+"swarm6": {
+"fitness": 70.41313192160251,
+"solution_sha1": "f0ffd125282ef3f749b53637604e104a4e13ac96"
+}
+},
+"OriginalSSO": {
+"max8": {
+"fitness": -0.15881833058890255,
+"solution_sha1": "0839809dddf700f5aa2b4e253a59b3da6dffb874"
+},
+"min12": {
+"fitness": 32.04964726195121,
+"solution_sha1": "75937a856e12de5b87b0e05dc7357c2e28f7e5b5"
+},
+"swarm-max": {
+"fitness": -0.05665862483601305,
+"solution_sha1": "8f50b3bb58bab4d646ee25b384c7ccc3fee27061"
+},
+"swarm6": {
+"fitness": 10.260545086666731,
+"solution_sha1": "3e36daabdf4223cee87d658dd1d20c751513c1d9"
+}
+},
+"OriginalSSpiderA": {
+"max8": {
+"fitness": -3.875330048373612e-05,
+"solution_sha1": "cfc8d2d2923562c0943777f1712b38856f581739"
+},
+"min12": {
+"fitness": 0.0013285110090635044,
+"solution_sha1": "172ddaaa45507ca7f4fb2327b4fbaf587788bd05"
+},
+"swarm-max": {
+"error": "crash"
+},
+"swarm6": {
+"error": "crash"
+}
+},
+"OriginalSSpiderO": {
+"max8": {
+"fitness": -1.6295216746337509,
+"solution_sha1": "10f9136c0905c300b3b56316dfe7a636ec2fb68d"
+},
+"min12": {
+"fitness": 57.39362532772074,
+"solution_sha1": "9f3c0ea0590c2f0838c212a0c4d63c7ede8dffc4"
+},
+"swarm-max": {
+"fitness": -0.5101586986226269,
+"solution_sha1": "c9ed640202991b6d1b88cd1cf8e788f32edcc5d0"
+},
+"swarm6": {
+"fitness": 24.184075534910846,
+"solution_sha1": "90c001a6fe4f8476b0cc02bc184393564a2a0cf3"
+}
+},
+"OriginalSTO": {
+"max8": {
+"fitness": -3.044209000423433e-20,
+"solution_sha1": "4cfa25f1e5e24efc4d16e6554fdb861f1196de3a"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "ab44fa9fc3eb1b181653c0f97e2767c9fd26396b"
+},
+"swarm-max": {
+"fitness": -4.755721394014268e-19,
+"solution_sha1": "ec4751777c43179c938cbb739e4fd3c530972566"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "0eaba2a073d46c029ee0d7390db3b8c8fdcd8105"
+}
+},
+"OriginalSeaHO": {
+"max8": {
+"fitness": -8.482516690572011e-15,
+"solution_sha1": "b7192541bbfefac51e1e4f756233fc6942c180ea"
+},
+"min12": {
+"fitness": 1.3073986337985843e-12,
+"solution_sha1": "658b5a0520fea9885dadf9f4134d96b95961262c"
+},
+"swarm-max": {
+"fitness": -1.91100567771361e-09,
+"solution_sha1": "86b028413e63a2d1d6b3c3a20cdd033f5d391a57"
+},
+"swarm6": {
+"fitness": 3.304023721284466e-12,
+"solution_sha1": "ebe26be8525bebc8db544f60a561cfd89e5054f8"
+}
+},
+"OriginalServalOA": {
+"max8": {
+"fitness": -1.9501626180020573e-07,
+"solution_sha1": "3cd8e4293301af824d4a3113e1baf296db842ada"
+},
+"min12": {
+"fitness": 0.9701661058456494,
+"solution_sha1": "656281834a7bb2e73506a26874e2ce5892166a7e"
+},
+"swarm-max": {
+"fitness": -2.0978427409926033e-06,
+"solution_sha1": "1517f1757b3a83be01ce27f65d08d00f41facd10"
+},
+"swarm6": {
+"fitness": 0.03825295526203831,
+"solution_sha1": "a64c3e2cc7a03d98f297d0baf1cbcc0a472fe663"
+}
+},
+"OriginalSquirrelSA": {
+"max8": {
+"fitness": -0.14131378770706132,
+"solution_sha1": "ff5663466464cfc7746f4baa23abf99d9abcc5fa"
+},
+"min12": {
+"fitness": 41.44723310557592,
+"solution_sha1": "6d8f997c9b58ed9888027641a8f272dc8d43e8ff"
+},
+"swarm-max": {
+"fitness": -0.22371558308572773,
+"solution_sha1": "04b69a7ed45fb3fd4f12543a30d28895e199d17b"
+},
+"swarm6": {
+"fitness": 15.46411108457501,
+"solution_sha1": "04ca8499cbcbc49e9ecbfe1877cf670198ce5123"
+}
+},
+"OriginalTDO": {
+"max8": {
+"fitness": -4.816624749863717e-06,
+"solution_sha1": "36a0a504f2ae78fcbf552281238e9b297f5d42fe"
+},
+"min12": {
+"fitness": 12.389883659646713,
+"solution_sha1": "6822b57ebb0dae28efea455946ec71b11a2dc2a9"
+},
+"swarm-max": {
+"fitness": -1.0523838101587729e-05,
+"solution_sha1": "05712e647048c2e549549e3c5f8621e617b59c67"
+},
+"swarm6": {
+"fitness": 9.429568013264806,
+"solution_sha1": "cfc851393140f9453f939dcfe3b690a0a89295a4"
+}
+},
+"OriginalTHRO": {
+"max8": {
+"fitness": -0.0002526654553997527,
+"solution_sha1": "5a4adc10eec154295cf20f1340b6e58c95c3b183"
+},
+"min12": {
+"fitness": 1.0968009302679462,
+"solution_sha1": "3520a19415861d3d276d813fcfceb0aa38bf5dd9"
+},
+"swarm-max": {
+"fitness": -0.000713105923860832,
+"solution_sha1": "169e428fb1bde762ad62f66921912f41ed01d55b"
+},
+"swarm6": {
+"fitness": 0.01528626853198034,
+"solution_sha1": "df6bb2cb7dea412833d4c69275de62b69a1479e9"
+}
+},
+"OriginalTLO": {
+"max8": {
+"fitness": -7.1301439451941215e-06,
+"solution_sha1": "678b58b39f320624d7b9f6d7f89097f810cd94cd"
+},
+"min12": {
+"fitness": 43.28585438169327,
+"solution_sha1": "1b0d7c6b3add70de04171f4ffab127e17bda3a53"
+},
+"swarm-max": {
+"fitness": -7.426908295195333e-06,
+"solution_sha1": "155c080dab60a4ddd80d1865f449c9c391eeab98"
+},
+"swarm6": {
+"fitness": 14.674896356986672,
+"solution_sha1": "ec143ec2ea507aa0645748c87da71ebd2f40b26e"
+}
+},
+"OriginalTOA": {
+"max8": {
+"fitness": -2.1357923847668806e-25,
+"solution_sha1": "6edf55cbc8053bfa3030c2a3bf6b6c1d43e6b1a1"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "04abb8202ed22a91d061b00fc1b0ad50b272d58f"
+},
+"swarm-max": {
+"fitness": -2.4420339096440258e-20,
+"solution_sha1": "66daa3dab4e8bd38b64569c469cbd7f59daabef9"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "f6c77d57feb972cb65a3a4fa9632038438499ac8"
+}
+},
+"OriginalTS": {
+"max8": {
+"fitness": -8.82208181500096,
+"solution_sha1": "fdad09eea366b6e82f193cfc4ec05590094cc00c"
+},
+"min12": {
+"fitness": 101.73067329395971,
+"solution_sha1": "81bfb2fecf0fc91d570e3986782058252f1be261"
+},
+"swarm-max": {
+"fitness": -14.256202943030083,
+"solution_sha1": "846406c65ad61e669a2cdf56519009c1ddfbd452"
+},
+"swarm6": {
+"fitness": 14.894863063475974,
+"solution_sha1": "6a43021168aff5509687a137bf728eb0d5026e9f"
+}
+},
+"OriginalTSA": {
+"max8": {
+"fitness": -0.2883504814242,
+"solution_sha1": "3a2b095c5aa38e9f4fa1089178a1c995041865f1"
+},
+"min12": {
+"fitness": 51.53680774481286,
+"solution_sha1": "d4c92c7506c6457c460a97e28cf9933a40741a1f"
+},
+"swarm-max": {
+"fitness": -0.8498073900630259,
+"solution_sha1": "7959992984460e8b85e14b11558d63eb24d2ccbb"
+},
+"swarm6": {
+"fitness": 34.01421645709829,
+"solution_sha1": "d500675ed1042416e53f2d7f78ef9e56e4fca0f6"
+}
+},
+"OriginalTSO": {
+"max8": {
+"fitness": -0.0,
+"solution_sha1": "c8d7d0ef0eedfa82d2ea1aa592845b9a6d4b02b7"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "4735dcfc882eb8d97cc74535de05cbe97d9f9fea"
+},
+"swarm-max": {
+"fitness": -0.0,
+"solution_sha1": "9438e360f578e12c0e0e8ed28e2c125c1cefee16"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "dfbe40a8034414170bee8ab322c04da2410c70a8"
+}
+},
+"OriginalTWO": {
+"max8": {
+"fitness": -52.82246455588523,
+"solution_sha1": "83fa4398ae6ccbdcc0d8a02b71706a63267cd863"
+},
+"min12": {
+"fitness": 83.47731755335118,
+"solution_sha1": "43dc538b4877a73155b2767e3fde043d23e05de4"
+},
+"swarm-max": {
+"fitness": -49.15343019131236,
+"solution_sha1": "09c8d0f37b4745ac65df739a8f5754229bf970b3"
+},
+"swarm6": {
+"fitness": 18.91966541632086,
+"solution_sha1": "e2f25a79894d59153c2aa031af8f27177f0b4a07"
+}
+},
+"OriginalVCS": {
+"max8": {
+"fitness": -1.0812696380014132e-16,
+"solution_sha1": "7262820e5f4aa3b1d96f506ff67434652112206e"
+},
+"min12": {
+"fitness": 0.0014006823677732427,
+"solution_sha1": "394cde9e5bd22c7a9f6d2c98b3e493aa1753efaf"
+},
+"swarm-max": {
+"fitness": -6.871663382344259e-13,
+"solution_sha1": "0462abdc7ce6e5bde63d9d15ccfb6468edb6cc71"
+},
+"swarm6": {
+"fitness": 0.00024159421899838662,
+"solution_sha1": "4595340df2540ee9f26d5127ec4ba21b12ec3d7d"
+}
+},
+"OriginalWCA": {
+"max8": {
+"fitness": -2.2564190543951965,
+"solution_sha1": "1a9681e5415749437b4681a5c79e40ea00a3b878"
+},
+"min12": {
+"fitness": 62.76801255530227,
+"solution_sha1": "8dadf22265f764f8bde0705c04277f01ea323454"
+},
+"swarm-max": {
+"fitness": -0.8206754031459598,
+"solution_sha1": "3669ad713d5621238ca4d6e2f2af00f20489e4e6"
+},
+"swarm6": {
+"fitness": 22.547595854516146,
+"solution_sha1": "0d36e221a480d86609fecac47b67676e8827d1a6"
+}
+},
+"OriginalWDO": {
+"max8": {
+"fitness": -0.0001411279899612666,
+"solution_sha1": "2d6abf8adc0883166f71de192fd13b9a5c403f48"
+},
+"min12": {
+"fitness": 131.40451156032606,
+"solution_sha1": "b5c2e265e8a0a1e49c84a8c29d0f7644d4382481"
+},
+"swarm-max": {
+"fitness": -0.008047918901049089,
+"solution_sha1": "a368a151f5d770d4c711acdc2288ba7e2987a911"
+},
+"swarm6": {
+"fitness": 54.85850503043076,
+"solution_sha1": "b8af925e0d0111ec3d006382eb049853c95d72c1"
+}
+},
+"OriginalWHO": {
+"max8": {
+"fitness": -0.00022451188101129134,
+"solution_sha1": "d06bb92ecc0bb5d32cba52262c73389b2fc620aa"
+},
+"min12": {
+"fitness": 31.790826471532924,
+"solution_sha1": "86070dfda223228ed34eee25b385d008d5dcb55d"
+},
+"swarm-max": {
+"fitness": -0.00042141357447027244,
+"solution_sha1": "08c7452984474ddf4ffa8b6c41fce29dd8038254"
+},
+"swarm6": {
+"fitness": 12.671245775850153,
+"solution_sha1": "e652ffba272b95547c923aeb9dc8a99deae7b262"
+}
+},
+"OriginalWOA": {
+"max8": {
+"fitness": -76.58194817850278,
+"solution_sha1": "d2c22776e1b747557f665516532fae79438519a0"
+},
+"min12": {
+"fitness": 151.09252010256543,
+"solution_sha1": "328b0397b304b88edb3a5d8ea47ab60bb8a8c2ec"
+},
+"swarm-max": {
+"fitness": -0.07237548149066349,
+"solution_sha1": "063b90233569b6ac31129cc4bedb2a3f50b09ab7"
+},
+"swarm6": {
+"fitness": 0.003792866995738109,
+"solution_sha1": "408871bf439bb404eec22fa543feca16a732e6d3"
+}
+},
+"OriginalWaOA": {
+"max8": {
+"fitness": -5.120558955717865e-10,
+"solution_sha1": "b02febe138e370860e091a1854d238c044b87fac"
+},
+"min12": {
+"fitness": 1.390210897511679e-05,
+"solution_sha1": "83c5d5074b84bfb940bca9e04311b3b462829bb1"
+},
+"swarm-max": {
+"fitness": -1.430091609852493e-06,
+"solution_sha1": "7d8475d366299ea6faa1964d5fa3e16589697823"
+},
+"swarm6": {
+"fitness": 0.1554015066065091,
+"solution_sha1": "aab16c785dbfb0b996f403ca9fe7d6da15e4001c"
+}
+},
+"OriginalWarSO": {
+"max8": {
+"fitness": -6.9771868037641715e-25,
+"solution_sha1": "7ee90dbc69af22545d95bc12f9596e8dfca7ec2c"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "77738f05bb9f6ba43eec49004ccf97eb76ef54a8"
+},
+"swarm-max": {
+"fitness": -0.0,
+"solution_sha1": "9438e360f578e12c0e0e8ed28e2c125c1cefee16"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "581d3ecd17c5c20846bd09718e8a7de84d444456"
+}
+},
+"OriginalZOA": {
+"max8": {
+"fitness": -2.877136744200817e-16,
+"solution_sha1": "7ae45957b34cbd6be7c563936e0c626f212a47d5"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "95b5589262f84f23ac33775f66be6b20e568ac9f"
+},
+"swarm-max": {
+"fitness": -9.357700071259146e-15,
+"solution_sha1": "fc8574b3bc3c47b89a2b186a40ba19b3008e7493"
+},
+"swarm6": {
+"fitness": 7.617018127348274e-12,
+"solution_sha1": "d0335f6ef94a7119822fa6a713882e6f0523d55a"
+}
+},
+"P_PSO": {
+"max8": {
+"fitness": -2.1376204708188755,
+"solution_sha1": "f898ff551c479e7bcba7f6210bc37764fa8ee34d"
+},
+"min12": {
+"fitness": 67.41975923016994,
+"solution_sha1": "29babdbf5edb7563374e7fe1e3e4bf3b0c97a0d5"
+},
+"swarm-max": {
+"fitness": -0.1943565100582553,
+"solution_sha1": "0c3f12804f40283c930b137c43b9f498d4430f66"
+},
+"swarm6": {
+"fitness": 25.2568351872847,
+"solution_sha1": "5b63adc388d7a6b06cf34f113c47e51bb689eeaa"
+}
+},
+"ProbBeesA": {
+"max8": {
+"fitness": -8.23709348333204,
+"solution_sha1": "13ff0e14db02da19e066b4842ad3324890fd338a"
+},
+"min12": {
+"fitness": 102.11689349058709,
+"solution_sha1": "3c27cb58b80f46a613693a888dc45db5041671df"
+},
+"swarm-max": {
+"fitness": -5.566762356427672,
+"solution_sha1": "f741e782fbb0cb025e7b33f17450b5105b62b46d"
+},
+"swarm6": {
+"fitness": 24.434561130289026,
+"solution_sha1": "c7387b218d369b626020c309430a0f6476fc2164"
+}
+},
+"QleSCA": {
+"max8": {
+"fitness": -1.486693187222594e-13,
+"solution_sha1": "1cfcc1e356b5a24bfee0947044997cc2e8048fa0"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "028c7b11b32ad3598bc79c82cbad63069077c360"
+},
+"swarm-max": {
+"fitness": -9.653019781242238e-19,
+"solution_sha1": "a74c5954e23a919fbb777cac34bdd6fa0b63afd3"
+},
+"swarm6": {
+"fitness": 9.237055564881302e-13,
+"solution_sha1": "01d8bc6b72ee32cb3a1a0b2e47abd073e01ec18b"
+}
+},
+"RW_GWO": {
+"max8": {
+"fitness": -0.0017099570569641337,
+"solution_sha1": "2065bba90f23d139b8bfdca86457221f7adf2f34"
+},
+"min12": {
+"fitness": 26.46273854964936,
+"solution_sha1": "12051077ac29b6d6c3589cdf2aa581efd7f96419"
+},
+"swarm-max": {
+"fitness": -0.0007063841926630445,
+"solution_sha1": "b8892662a09284ef3b888ac3a7599c338c99fd99"
+},
+"swarm6": {
+"fitness": 3.9098122924226715,
+"solution_sha1": "1f0990467a9d1251f7ca2c2cb0ed0e066efefff1"
+}
+},
+"SADE": {
+"max8": {
+"fitness": -0.3232259704643138,
+"solution_sha1": "6be505f9e0bfa2e56e0eb9ace006de5d6e5be0df"
+},
+"min12": {
+"fitness": 47.30384630427683,
+"solution_sha1": "4cb579d63a81dce5589b5e5780a8d008df884953"
+},
+"swarm-max": {
+"fitness": -0.34658040757006786,
+"solution_sha1": "d05f7a362ddb558a913513c2b66091a9d27da276"
+},
+"swarm6": {
+"fitness": 11.308797754392671,
+"solution_sha1": "31d8be87480e53e372388270f9ae34b879dfc3fa"
+}
+},
+"SAP_DE": {
+"max8": {
+"fitness": -36.59990646383844,
+"solution_sha1": "39304a068368eb769976492fa35103542196037e"
+},
+"min12": {
+"fitness": 91.62947990357056,
+"solution_sha1": "69c66acfe0cf14d36554f719dcbba0fc5d14501a"
+},
+"swarm-max": {
+"fitness": -35.75825361609068,
+"solution_sha1": "7932317d408226ae6af9fe22c0dd50b947c38f17"
+},
+"swarm6": {
+"fitness": 55.89321182196633,
+"solution_sha1": "7399be60b1b42db5158394a50d50ad2b7d50d840"
+}
+},
+"Simple_CMA_ES": {
+"max8": {
+"fitness": -2.945042340049601,
+"solution_sha1": "ea34a08b153ebbc0e94c56625ec86e6c9104f53b"
+},
+"min12": {
+"fitness": 106.2202939576223,
+"solution_sha1": "17743a8095ef5f94b0e43801dfcbfb21b3a452f4"
+},
+"swarm-max": {
+"fitness": -1.4859972268466248,
+"solution_sha1": "a0244924ddc08ac6e51384dd6e48de67537e9be3"
+},
+"swarm6": {
+"fitness": 39.42695992471309,
+"solution_sha1": "5b6f36f4172bf3e216972ff21f0caed5dbc8eca5"
+}
+},
+"SingleGA": {
+"max8": {
+"fitness": -0.06463694546085291,
+"solution_sha1": "ba045ac8c2f338d752006e9fc5bd0e0a62934a6b"
+},
+"min12": {
+"fitness": 0.899565163119405,
+"solution_sha1": "3625353fe3562033413967cefb99e6b5b655a2f2"
+},
+"swarm-max": {
+"fitness": -0.0665361786744796,
+"solution_sha1": "f4a9ef8cc207db3eaa7d5d07ddc67209f4da2b20"
+},
+"swarm6": {
+"fitness": 2.736161227728097,
+"solution_sha1": "62617e7dd75621c2f379f03cd7a1f6db383f528d"
+}
+},
+"SwarmHC": {
+"max8": {
+"fitness": -0.021305654599965838,
+"solution_sha1": "1b805f98167c5ab272d0c4c80f9b3192542c4db5"
+},
+"min12": {
+"fitness": 61.4387235473467,
+"solution_sha1": "14413f0e8c7a2dbe8efbdbee4166c68ddc3a1c63"
+},
+"swarm-max": {
+"fitness": -0.007039003391301889,
+"solution_sha1": "33eb2b1856aeeb9770bd42e094d99b33ec882aff"
+},
+"swarm6": {
+"fitness": 14.913014610948338,
+"solution_sha1": "0aecd4bd7faba1e6a77b106afff0fc06d968b7ef"
+}
+},
+"SwarmSA": {
+"max8": {
+"fitness": -0.13399643478098908,
+"solution_sha1": "134b5ce451391493aa837d0ec70348cb7c696715"
+},
+"min12": {
+"fitness": 37.68896588222323,
+"solution_sha1": "7cd101a7a5d0635cb14538f4a016f18a4c89bf1d"
+},
+"swarm-max": {
+"fitness": -0.10288298425310392,
+"solution_sha1": "45e6df7076d61ac8183db5958424cfd002e445d4"
+},
+"swarm6": {
+"fitness": 9.788818703058467,
+"solution_sha1": "4b2d720c93be3e6fc7e0daff67477b74765d24c0"
+}
+},
+"WMQIMRFO": {
+"max8": {
+"fitness": -9.235659949283023e-33,
+"solution_sha1": "33f936132d70b84d24a528586c1883e108febfdf"
+},
+"min12": {
+"fitness": 0.0,
+"solution_sha1": "7c0b92dd87de44e447a490ec45d167ba23d1678a"
+},
+"swarm-max": {
+"fitness": -9.076370278949964e-32,
+"solution_sha1": "9c53dc4a0fd0f61ebb7842fd3c02fcd8bd7daef5"
+},
+"swarm6": {
+"fitness": 0.0,
+"solution_sha1": "d4846f8ddf7bd76975bd4939aaa04ac3f6818e46"
+}
+},
+"WhaleFOA": {
+"max8": {
+"fitness": -0.0750855197819848,
+"solution_sha1": "d523fb8d703a4c3f9ef5198aab5aca2335377030"
+},
+"min12": {
+"fitness": 111.92784644054724,
+"solution_sha1": "0b4e7859b0c7b3ed127ba9ec7d149a0134aa1852"
+},
+"swarm-max": {
+"fitness": -1.9135050084226952,
+"solution_sha1": "7775f6fa5f0d03efd4fbafd4fd3373a5e7b7978f"
+},
+"swarm6": {
+"fitness": 32.57558902454684,
+"solution_sha1": "5dd0781dc3f831fe5a1da7c0d0f100f8cddc7177"
+}
+}
+}

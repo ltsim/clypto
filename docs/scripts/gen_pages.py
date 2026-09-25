@@ -202,16 +202,29 @@ def _source_link(path: Path) -> str:
     return f"{REPO_URL}/{rel}"
 
 
+def _class_docstrings(path: Path) -> list[tuple[str, str | None]]:
+    """``(name, docstring)`` of each top-level class of a ``.pyx``.
+
+    Native bodies (``cdef`` methods, ``<double>`` casts) are not valid Python, so
+    they are scanned for the class header and its docstring instead of parsed.
+    """
+    text = path.read_text(encoding="utf-8")
+    heads = list(re.finditer(r"^(?:cdef )?class (\w+)[^\n]*:[ \t]*\n", text, re.M))
+    found = []
+    for k, head in enumerate(heads):
+        stop = heads[k + 1].start() if k + 1 < len(heads) else len(text)
+        doc = re.match(r'\s*(?:[rR])?("""|\'\'\')(.*?)\1', text[head.end():stop], re.S)
+        found.append((head.group(1), doc.group(2) if doc else None))
+    return found
+
+
 def _collect_classes(path: Path) -> list[dict]:
-    tree = _parse(path)
     classes: list[dict] = []
-    for node in tree.body:
-        if not isinstance(node, ast.ClassDef):
-            continue
-        lines = _clean_doc(ast.get_docstring(node, clean=False))
+    for name, doc in _class_docstrings(path):
+        lines = _clean_doc(doc)
         classes.append(
             {
-                "name": node.name,
+                "name": name,
                 "summary": _first_paragraph(lines),
                 "params": _extract_hyperparameters(lines),
                 "references": _extract_references(lines),
@@ -223,12 +236,16 @@ def _collect_classes(path: Path) -> list[dict]:
 def _generate_category(category: str) -> tuple[int, int]:
     label = CATEGORY_LABELS[category]
     directory = COLLECTION_ROOT / category
-    modules = sorted(p for p in directory.glob("*.pyx") if p.name != "__init__.py")
+    # One package per algorithm (``<Module>/<Class>.pyx``), one file per variant.
+    modules = sorted(p for p in directory.iterdir() if (p / "__init__.py").exists())
+
+    def module_classes(module: Path) -> list[dict]:
+        return [cls for f in sorted(module.glob("*.pyx")) for cls in _collect_classes(f) if not cls["name"].startswith("_")]
 
     catalog: list[tuple[str, dict]] = []
     for module in modules:
-        for cls in _collect_classes(module):
-            catalog.append((module.stem, cls))
+        for cls in module_classes(module):
+            catalog.append((module.name, cls))
 
     lines: list[str] = [
         f"# {label} algorithms",
@@ -241,16 +258,16 @@ def _generate_category(category: str) -> tuple[int, int]:
         "| --- | --- | --- | --- |",
     ]
     for module_name, cls in catalog:
-        link = _source_link(COLLECTION_ROOT / category / f"{module_name}.pyx")
+        link = _source_link(COLLECTION_ROOT / category / module_name / f"{cls['name']}.pyx")
         summary = cls["summary"].replace("|", "\\|") or "-"
         lines.append(f"| [{module_name}]({link}) | `{cls['name']}` | {summary} | [source]({link}) |")
 
     lines += ["", "## Modules", ""]
     for module in modules:
-        classes = _collect_classes(module)
+        classes = module_classes(module)
         if not classes:
             continue
-        lines.append(f"### {module.stem}")
+        lines.append(f"### {module.name}")
         lines.append("")
         for cls in classes:
             lines.append(f"#### `{cls['name']}`")
