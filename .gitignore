@@ -361,3 +361,11 @@ pyrightconfig.json
 
 # Sphinx documentation
 docs/build/
+
+# Agent harness
+graphify-out/
+.claude/
+.opencode/
+AGENT.md
+AGENTS.md
+CLAUDE.md
