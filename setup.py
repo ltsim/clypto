@@ -10,9 +10,9 @@ from setuptools import setup
 # setup.py is kept only because cythonize() must run as code -- it can't be
 # expressed declaratively in pyproject.toml.
 #
-# Only native .pyx is compiled: the algorithm collection and the Cython-only
-# engine it cimports (clypto/optimizer/_native). The public optimizer API ships
-# as plain Python.
+# Only native .pyx is compiled: the algorithm collections (clypto/native/collection/{vectorize,legacy})
+# and the Cython-only engine they cimport (clypto/optimizer/_native). The public optimizer API ships
+# as plain Python. CLYPTO_LEGACY=0 skips the frozen legacy collection (development builds).
 
 COMPILER_DIRECTIVES = {
     "language_level": "3",
@@ -51,13 +51,16 @@ def openmp_flags():
 
 
 def get_ext_modules():
-    extensions = cythonize(
-        ["clypto/collection/**/*.pyx", "clypto/optimizer/_native/*.pyx"],
-        compiler_directives=COMPILER_DIRECTIVES,
-        quiet=True,
-    )
+    sources = ["clypto/native/collection/vectorize/**/*.pyx", "clypto/optimizer/_native/*.pyx"]
+    if os.environ.get("CLYPTO_LEGACY", "1") != "0":
+        sources.append("clypto/native/collection/legacy/**/*.pyx")
+    extensions = cythonize(sources, compiler_directives=COMPILER_DIRECTIVES, quiet=True)
     compile_args, link_args = openmp_flags()
     for ext in extensions:
+        if ext.name.startswith("clypto.native.collection.legacy."):
+            # classic per-agent code never uses prange: no OpenMP, only the no-FMA flag shared with the golden baseline
+            ext.extra_compile_args += [a for a in compile_args if a == "-ffp-contract=off"]
+            continue
         ext.extra_compile_args += compile_args
         ext.extra_link_args += link_args
     return extensions

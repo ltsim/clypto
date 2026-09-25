@@ -104,8 +104,10 @@ version = { attr = "clypto.__version__" }
 exclude = ["tests*", "examples*"]
 
 [tool.pytest.ini_options]
+addopts = "-m 'not slow'"
 markers = [
     "smoke: fast post-build check that every optimizer runs end to end",
+    "slow: statistical comparison of the vectorize and legacy collections (run with -m slow)",
 ]
 
 [tool.ruff]

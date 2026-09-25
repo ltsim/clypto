@@ -16,7 +16,7 @@ from pathlib import Path
 from mkdocs_gen_files import open as gen_open
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-COLLECTION_ROOT = REPO_ROOT / "clypto" / "collection"
+COLLECTION_ROOT = REPO_ROOT / "clypto" / "native" / "collection" / "vectorize"
 REPO_URL = "https://github.com/ltsim/clypto/blob/master"
 
 
@@ -253,6 +253,10 @@ def _generate_category(category: str) -> tuple[int, int]:
         f"`clypto.collection.{category}` ships **{len(catalog)} optimizer "
         f"{'class' if len(catalog) == 1 else 'classes'}** across "
         f"**{len(modules)} {'module' if len(modules) == 1 else 'modules'}**.",
+        "",
+        "Sources link to the vectorized collection (`clypto/native/collection/vectorize`); the classic "
+        "implementations are frozen in `clypto/native/collection/legacy` "
+        '(`cy.get_all_optimizers(engine="legacy")`).',
         "",
         "| Module | Class | Summary | Source |",
         "| --- | --- | --- | --- |",

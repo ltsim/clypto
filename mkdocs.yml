@@ -83,6 +83,7 @@ nav:
       - Installation: installation.md
       - Quickstart: quickstart.md
       - Tutorial: tutorial.md
+      - Legacy and vectorized collections: vectorization.md
   - Custom Optimizers:
       - Overview: custom-optimizers/index.md
       - Your first optimizer: custom-optimizers/01-first-optimizer.md

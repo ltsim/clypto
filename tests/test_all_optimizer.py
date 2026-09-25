@@ -3,6 +3,9 @@ import pytest
 
 import clypto as cy
 
+from tests._engines import ENGINES
+
+CASES = {f"{engine}-{name}": cls for engine in ENGINES for name, cls in cy.get_all_optimizers(engine=engine).items()}
 OPTIMIZERS = cy.get_all_optimizers()
 N_DIMS = 5
 
@@ -26,7 +29,7 @@ def test_all_optimizers_discovered():
 
 
 @pytest.mark.smoke
-@pytest.mark.parametrize("optimizer", OPTIMIZERS.values(), ids=OPTIMIZERS.keys())
+@pytest.mark.parametrize("optimizer", CASES.values(), ids=CASES.keys())
 def test_all_optimizers_run(optimizer, problem):
     # epoch=50 / pop_size=25 is the smallest budget every optimizer accepts:
     # several validators scale their ranges with the budget (e.g. CHIO.max_age,

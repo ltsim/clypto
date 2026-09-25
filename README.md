@@ -127,6 +127,10 @@ $ make build-ext            # python setup.py build_ext --inplace
 $ uv run --no-sync pytest tests/   # or: make uv-test
 ```
 
+The collection is built twice: `clypto/native/collection/vectorize` (whole-population NumPy/C code, the default) and
+`clypto/native/collection/legacy` (the frozen classic per-agent algorithms). `CLYPTO_LEGACY=0 make build-ext` skips the legacy
+tree for faster development builds; `cy.get_all_optimizers(engine="legacy")` then raises an `ImportError`.
+
 > **Note:** a fresh clone ships `.pyx`/`.pxd` sources, not compiled extensions. Build first (`make build-ext` or `pip install .`); without a build, `import clypto` fails because the compiled collection modules do not exist.
 
 ## Writing and compiling custom optimizers

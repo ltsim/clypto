@@ -44,6 +44,13 @@ print(f"Best solution: {g_best.solution}")
 print(f"Best fitness:  {g_best.target.fitness}")
 ```
 
+### Engines: `vectorize` and `legacy`
+
+The collection ships twice, both Cythonized. `clypto.collection.*` and `cy.get_all_optimizers()` return the
+**vectorized** classes (`clypto/native/collection/vectorize`). The classic per-agent implementations are frozen in
+`clypto/native/collection/legacy` and reachable with `cy.get_all_optimizers(engine="legacy")` or
+`from clypto.native.collection.legacy.swarm_based import PSO`. Class names are the same in both.
+
 ## Complete script
 
 ```python

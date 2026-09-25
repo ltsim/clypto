@@ -9,13 +9,17 @@ compiled.
 import importlib
 import importlib.machinery
 
+import pytest
+
 import clypto as cy
+from tests._engines import ENGINES
 
 EXTENSION_SUFFIXES = tuple(importlib.machinery.EXTENSION_SUFFIXES)
 
 
-def test_all_optimizer_modules_are_compiled():
-    modules = sorted({cls.__module__ for cls in cy.get_all_optimizers().values()})
+@pytest.mark.parametrize("engine", ENGINES)
+def test_all_optimizer_modules_are_compiled(engine):
+    modules = sorted({cls.__module__ for cls in cy.get_all_optimizers(engine=engine).values()})
     assert modules, "no optimizers discovered"
 
     not_compiled = [

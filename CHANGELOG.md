@@ -6,6 +6,17 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Legacy and vectorize collections (2026-09)
+
++ **`clypto/native/collection/{legacy,vectorize}`**: the Cythonized collection now lives in two trees with the same classes and module layout (`<category>/<Module>/<Class>.pyx`). `legacy` is the frozen classic per-agent implementation (on `_LegacyOptimizer`, regenerated from the pre-native sources and checked against the golden baselines); `vectorize` is the vectorized collection. `clypto.collection.<category>.<Module>` and `get_all_optimizers()` resolve to `vectorize`; `get_all_optimizers(engine="legacy")` / `get_optimizer_by_name(name, engine="legacy")` return the classic classes (`engine` is keyword-only).
++ **Free vectorization**: `vectorize` no longer has to be bit-identical to `legacy`. Algorithms that updated agents one at a time now draw block random numbers, update the whole population per phase and evaluate each phase in one batch (`ops.step`, `ops.scatter`, `ops.replace`, `ops.roulette`, ...). Classes that are not bit-identical are listed in `tests/golden/vectorize_exactness.json` and checked by `benchmarks/compare_engines.py` (30 seeds, four functions, Mann-Whitney U with Holm correction, median guard, NFE budget) instead of golden hashes.
++ **Determinism**: JADE and SHADE (scipy's global RNG in legacy) now draw from `self.generator`; the same seed gives the same result.
++ **Build**: `setup.py` compiles both trees (about 490 extensions); `CLYPTO_LEGACY=0` skips `legacy`.
++ **Benchmark**: `benchmarks/bench_engines.py` times every class on both engines (scalar and `vectorized=True` objectives) and optionally against `mealpy-lts`.
++ **Result** (d=30, pop=50, epoch=100, sphere): the vectorize collection runs at a median **x5.9** of legacy (was x1.4 before the vectorization) and **x7.1** of `mealpy-lts`; a batch objective adds another x2.0 median. 57 classes are more than 10x faster (GSKA x137, SCSO x103, SMA x83, SCA x62), 9 are slower than legacy (OCRO, GaussianSA, EVO, ICA, CRO, HBO, OppoQSA, ImprovedSFO, QleSCA: sequential or object-based).
++ **Statistical equivalence** (`benchmarks/compare_engines.py`): 195 of 243 classes pass outright, 28 only trip the median guard, 11 are significantly better than legacy (quirks fixed: AFT, ACOR, BeesA, FA, FOA, GSKA, ...), 6 are slightly worse (DevEPC, MultiGA, ServalOA, DMOA, LevyTWO, DO). 39 classes (QSA, HBO, BRO, CSO, ESOA, ICA, IMODE, ... ) stay on `AgentListOptimizer`; the reasons are in `docs/vectorization.md`.
++ **Behavior notes**: WOA/SBO keep the classic "refresh only the fitness" quirk; FA now keeps all sparks (legacy kept the last firework's); AFT/ACOR/BeesA/FOA/GSKA fix legacy update quirks and converge better; SADE adapts `cr`/`p1` on the intended period.
+
 ### Whole collection on the native engine (2026-09)
 
 + **All 243 optimizers now run on `LegacyNativeOptimizer`** (no more `_LegacyOptimizer` in the collection). 144 of them keep agents as rows of a `NativePopulation` (batched evaluation, block RNG draws in the classic order, whole-array NumPy transitions, `ops.accept`/`ops.commit` for the survivor selection); the other 99 (algorithms with per-agent state, archives, groups, or that re-rank the population mid-epoch: BA, BeesA, GTO/AGTO, COA, EHO, ES/CMA-ES, GA, SHADE family, IMODE, ...) run on `AgentListOptimizer`, a compatibility layer that keeps the classic list-of-agents method set on the native engine (about legacy speed).
