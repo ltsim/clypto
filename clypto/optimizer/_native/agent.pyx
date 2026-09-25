@@ -75,3 +75,57 @@ cdef class _LegacyAgent:
         if self.target is None:
             raise ValueError("Agent cannot generate a value from fitness")
         return self.target.fitness
+
+
+cdef class LegacyNativeAgent:
+    """Agent for ``LegacyNativeOptimizer``: typed fields, no ``update(**kwargs)``.
+
+    Assign attributes directly (``agent.solution = x``; ``agent.target = t``).
+    Subclasses that add fields must override ``copy()``.
+    """
+
+    def __init__(self, solution=None, NativeTarget target=None):
+        self.solution = solution
+        self.target = target
+
+    cpdef LegacyNativeAgent copy(self):
+        if type(self) is not LegacyNativeAgent:
+            raise NotImplementedError(f"{type(self).__name__} must implement its own copy()")
+        return LegacyNativeAgent(self.solution, None if self.target is None else self.target.copy())
+
+    cpdef bint sync_if_duplicate(self, LegacyNativeAgent other):
+        if self == other:
+            self.target = other.target
+            return True
+        return False
+
+    cdef int _compare_fitness(self, LegacyNativeAgent other, str minmax):
+        cdef double f1 = self.target.fitness
+        cdef double f2 = other.target.fitness
+        if f1 == f2:
+            return 0
+        if minmax == "min":
+            return -1 if f1 < f2 else 1
+        return -1 if f1 > f2 else 1
+
+    cpdef LegacyNativeAgent get_better_solution(self, LegacyNativeAgent other, str minmax="min"):
+        return self if self._compare_fitness(other, minmax) <= 0 else other
+
+    cpdef bint is_better_than(self, LegacyNativeAgent other, str minmax="min"):
+        return self._compare_fitness(other, minmax) == -1
+
+    def __repr__(self):
+        return f"Agent(target={self.target}, solution={self.solution})"
+
+    def __eq__(self, other):
+        if not isinstance(other, LegacyNativeAgent):
+            return False
+        return np.allclose(self.solution, other.solution, atol=1e-6)
+
+    def __hash__(self):
+        return hash(tuple(np.round(self.solution, 6)))
+
+    def __float__(self):
+        if self.target is None:
+            raise ValueError("Agent cannot generate a value from fitness")
+        return self.target.fitness

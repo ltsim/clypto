@@ -6,6 +6,37 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Whole collection on the native engine (2026-09)
+
++ **All 243 optimizers now run on `LegacyNativeOptimizer`** (no more `_LegacyOptimizer` in the collection). 144 of them keep agents as rows of a `NativePopulation` (batched evaluation, block RNG draws in the classic order, whole-array NumPy transitions, `ops.accept`/`ops.commit` for the survivor selection); the other 99 (algorithms with per-agent state, archives, groups, or that re-rank the population mid-epoch: BA, BeesA, GTO/AGTO, COA, EHO, ES/CMA-ES, GA, SHADE family, IMODE, ...) run on `AgentListOptimizer`, a compatibility layer that keeps the classic list-of-agents method set on the native engine (about legacy speed).
++ **Bit-identical results**: every class matches the classic build for the golden baseline (min, sphere) and for `tests/golden/baseline_scenarios_2026a0.json` (max, `mode="swarm"`, other dimensions/budgets; `tests/test_golden_scenarios.py`). Ties, in-epoch aliasing of `g_best`, and the classic quirks are reproduced (for instance ArchOA/TWO evaluate the uncorrected position in sequential mode).
++ **New helpers**: `clypto.optimizer._native.ops` (row selection/commit, agent-list helpers) and `clypto.optimizer._native.agent_list` (`AgentListOptimizer`, `FieldAgent`).
++ **Behavior changes**: `name=`/`mode=` are keyword-only for every optimizer and unknown keyword arguments raise `TypeError`; attributes some algorithms hung on `self.problem` now live on the optimizer (`NativeProblem` has no `__dict__`); `EnhancedTWO` now subclasses `OriginalTWO`; `OriginalSOO` works in `mode="swarm"`/`"parallel"` (it raised before); `DS_GWO` keeps the classic quirk of having no `evolve`.
++ **Note**: `OriginalSSpiderA` in `mode="swarm"` raised an out-of-range index in the classic build (a crash with bounds checks off); the agent-list modules compile with `boundscheck=True` so it now raises `IndexError`.
+
+### One file per algorithm variant (2026-09)
+
++ **`collection/<category>/<Module>/<Class>.pyx`**: every catalog module became a package with one `.pyx` per optimizer class (236 files for the 146 modules, plus the 7 PSO variants), instead of all variants in one `<Module>.pyx`. The class bodies were moved verbatim; results are bit-identical to the golden baseline.
++ **Imports keep working**: each package `__init__.py` re-exports its classes, so `from clypto.collection.swarm_based import PSO`, `PSO.OriginalPSO` and `from clypto.collection.swarm_based.ARO import OriginalARO` are unchanged, as are `get_all_optimizers()` and `get_optimizer_by_name()`.
++ **Layout rules**: a variant that subclasses a sibling `cdef class` cimports it through a `<Class>.pxd` (e.g. `GWO/OriginalGWO.pxd`); a private agent class used by one variant lives in that variant's file, one shared by several goes to `_base.pyx` (PSO: `_PSOBase`).
++ **Docs**: the catalog generator scans the per-class `.pyx` files (native bodies are not parsed as Python) and links each class to its own source file.
+
+### Vectorized native population + OpenMP (2026-09)
+
++ **`NativePopulation`** (`clypto.optimizer._native.population`): the native engine keeps agents as rows of one C-contiguous buffer `[F | O | X | fields...]` instead of a list of agent objects. Algorithms declare extra per-agent fields with the `layout(d, m)` hook and fill them in `init_fields(pop)`; `pop[i]` returns a snapshot agent. `LegacyNativeOptimizer` gained batch evaluation (`evaluate`), row-wise greedy selection in C (`select_better`, OpenMP) and dropped the list-based helpers (still in `legacy.pyx` for unmigrated algorithms).
++ **PSO vectorized, results unchanged**: OriginalPSO/LDW_PSO use a C move kernel with OpenMP; AIW_PSO, P_PSO and C_PSO use matrix NumPy; HPSO_TVAC and CL_PSO keep the agent-by-agent order they depend on. All 7 variants stay bit-identical to the golden baseline: random numbers are drawn in blocks in the classic order, and the classic aliasing of `g_best` to the best agent is reproduced by processing the population in two chunks around that row.
++ **OpenMP is actually enabled now**: `setup.py` passes `-fopenmp` (Linux), `/openmp` (Windows) or libomp (macOS) plus `-ffp-contract=off`. Before this, `prange` compiled without OpenMP and `mode="parallel"` ran serially. `CLYPTO_OPENMP=0` builds without it. macOS wheels bundle `libomp.dylib` (delocate).
++ **`Problem(vectorized=True)`**: `obj_func` receives an `(n, n_dims)` matrix and returns `(n,)` or `(n, n_objs)`; the native engine evaluates each batch in one call, the classic engine one row at a time.
++ **Benchmark**: `benchmarks/bench_pso.py --repo NAME=PATH ...` compares checkouts and checks the fitness is identical.
+
+### Native legacy engine, PSO pilot (2026-09)
+
++ **`LegacyNativeOptimizer`** (`clypto.optimizer._native.optimizer`): no instance `__dict__`; every attribute is a typed field and subclasses declare their own (`cdef public double c1`). Lifecycle hooks (`initialize_variables`, `generate_empty_agent`, `generate_agent`, `amend_solution`, `evolve`, ...) are `cdef`. The constructor takes `parameters`, `sort_flag`, `parallelizable`, `name`, `mode` instead of `**kwargs`. `solve()` is `cpdef` with a typed epoch loop; the per-epoch best-agent update reads fitness into a typed buffer and only rebuilds the sorted population when `sort_flag` is set (same agent picked, ties included).
++ **`LegacyNativeAgent`**: no `update(**kwargs)`; assign fields directly (`agent.solution = x`). Subclasses with extra fields override `copy()`.
++ **`NativeTarget` / `NativeProblem`**: Cython versions of `Target`/`Problem`. `solve()` accepts a dict, a `Problem` (its `obj_func` override is honored) or a `NativeProblem`.
++ **`cy` helpers** (`from clypto.optimizer._native cimport utils as cy`): `cy.validator(type, value, bound, name)` and `cy.compare_target(x, y, minmax)`.
++ **PSO migrated** (all 7 variants, one shared `PSOAgent`): results are bit-identical to the golden baseline, 1.2–1.6x faster. Optimizers now take `name=`/`mode=` as keyword-only arguments; other unknown keyword arguments raise `TypeError`. The rest of the collection still runs on `_LegacyOptimizer` until migrated.
+
 ### Breaking: module layout (2026-09)
 
 The package is now split into `clypto.collection` (native `.pyx` algorithms), `clypto.optimizer` (the reusable Python API) and `clypto.hints`. Old paths were removed without shims; `import clypto as cy` names are unchanged.

@@ -1,0 +1,113 @@
+#!/usr/bin/env python
+# Created by "Thieu" at 18:09, 13/03/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
+# --------------------------------------------------%
+
+import numpy as np
+from clypto.optimizer._native cimport utils as cy
+from clypto.optimizer._native import ops
+from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer._native.population cimport NativePopulation
+
+
+cdef class OriginalRIME(LegacyNativeOptimizer):
+    """
+    The original version of: physical phenomenon of RIME-ice  (RIME)
+
+    Links:
+        1. https://doi.org/10.1016/j.neucom.2023.02.010
+        2. https://www.mathworks.com/matlabcentral/fileexchange/124610-rime-a-physics-based-optimization
+
+    Notes (parameters):
+        1. sr (float): Soft-rime parameters, default=5.0
+        2. The algorithm is straightforward and does not require any specialized knowledge or techniques.
+        3. The algorithm may exhibit slow convergence and may not perform optimally.
+
+    Examples
+    ~~~~~~~~
+    >>> from clypto.collection.physics_based import RIME    >>> import numpy as np
+    >>> from clypto import FloatVar
+    >>>
+    >>> def objective_function(solution):
+    >>>     return np.sum(solution**2)
+    >>>
+    >>> problem_dict = {
+    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "minmax": "min",
+    >>>     "obj_func": objective_function
+    >>> }
+    >>>
+    >>> model = RIME.OriginalRIME(epoch=1000, pop_size=50, sr = 5.0)
+    >>> g_best = model.solve(problem_dict)
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+
+    References
+    ~~~~~~~~~~
+    [1] Su, H., Zhao, D., Heidari, A. A., Liu, L., Zhang, X., Mafarja, M., & Chen, H. (2023). RIME: A physics-based optimization. Neurocomputing.
+    """
+
+    cdef public object sr
+
+    def __init__(
+        self,
+        epoch: int = 10000,
+        pop_size: int = 100,
+        sr: float = 5.0,
+        *,
+        name: str | None = None,
+        mode: str | None = None,
+    ) -> None:
+        """
+        Args:
+            epoch (int): maximum number of iterations, default = 10000
+            pop_size (int): number of population size, default = 100
+            sr (float): Soft-rime parameters, default=5.0
+        """
+        LegacyNativeOptimizer.__init__(
+            self,
+            parameters=["epoch", "pop_size", "sr"],
+            sort_flag=False,
+            parallelizable=True,
+            name=name,
+            mode=mode,
+        )
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
+        self.sr = cy.validator(float, sr, (0.0, 100.0), "sr")
+
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand = pop.empty_like()
+        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
+        cdef bint swarm = self.mode in self.AVAILABLE_MODES
+        Xp = pop.X
+        g_best = np.array(self.g_best_x())
+        rime_factor = (
+                (self.generator.random() - 0.5)
+                * 2
+                * np.cos(np.pi * epoch / (self.epoch / 10))
+                * (1 - np.round(epoch * self.sr / self.epoch) / self.sr)
+        )
+        ee = np.sqrt((epoch + 1) / self.epoch)
+        fits = np.array(pop.F).reshape((1, -1))
+        fits_norm = fits / np.linalg.norm(fits, axis=1, keepdims=True)
+        LB = self.problem.lb
+        UB = self.problem.ub
+        pop_new = []
+        for idx in range(0, self.pop_size):
+            pos_new = Xp[idx].copy()
+            for jdx in range(0, self.problem.n_dims):
+                # Soft-rime search strategy
+                if self.generator.random() < ee:
+                    pos_new[jdx] = g_best[jdx] + rime_factor * (
+                            LB[jdx] + self.generator.random() * (UB[jdx] - LB[jdx])
+                    )
+                # Hard-rime puncture mechanism
+                if self.generator.random() < fits_norm[0, idx]:
+                    pos_new[jdx] = g_best[jdx]
+            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
+        if swarm:
+            ops.finish(self, cand, 0, n)

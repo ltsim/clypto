@@ -51,6 +51,8 @@ class Problem:
         self.__obj_func = kwargs.get("obj_func", lambda _: 0)
         self.__name = kwargs.get("name", "Problem")
         self.__evaluator = kwargs.get("evaluator", None)
+        # vectorized=True: obj_func takes an (n, n_dims) matrix and returns (n,) or (n, n_objs).
+        self.__vectorized = bool(kwargs.get("vectorized", False))
         self.__bounds = None
         self.__n_objs = None
         self.__lb = None
@@ -92,6 +94,10 @@ class Problem:
 
         for idx in range(len(self.__bounds)):
             self.__bounds[idx].seed = seed
+
+    @property
+    def vectorized(self) -> bool:
+        return self.__vectorized
 
     @property
     def evaluator(self):
@@ -174,6 +180,9 @@ class Problem:
         Returns:
             float: Function value of `x`.
         """
+        if self.__vectorized:
+            return self.__obj_func(np.asarray(x)[None, :])[0]
+
         return self.__obj_func(x)
 
     def get_name(self) -> str:

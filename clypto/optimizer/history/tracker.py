@@ -149,7 +149,7 @@ class Tracker:
             self._group["solution"][idx, :n_agents] = self._solutions(pop)
             self._group["fitness"][idx, :n_agents] = self._fitnesses(pop)
             if self._n_objs is None:
-                self._n_objs = int(np.asarray(pop[0].target.objectives).ravel().size)
+                self._n_objs = int(self._objectives(pop).shape[1])
                 if self._n_objs > 1:
                     self._create_objectives_array()
             if self._n_objs > 1:
@@ -227,16 +227,23 @@ class Tracker:
             name for name in _POPULATION_ARRAYS if name in self._group
         )
 
+    # A NativePopulation exposes its buffer as X/F/O views; lists hold agents.
     @staticmethod
-    def _solutions(pop: list) -> np.ndarray:
+    def _solutions(pop) -> np.ndarray:
+        if hasattr(pop, "X"):
+            return np.asarray(pop.X, dtype=np.float64)
         return np.asarray([agent.solution for agent in pop], dtype=np.float64)
 
     @staticmethod
-    def _fitnesses(pop: list) -> np.ndarray:
+    def _fitnesses(pop) -> np.ndarray:
+        if hasattr(pop, "F"):
+            return np.asarray(pop.F, dtype=np.float64)
         return np.asarray([agent.target.fitness for agent in pop], dtype=np.float64)
 
     @staticmethod
-    def _objectives(pop: list) -> np.ndarray:
+    def _objectives(pop) -> np.ndarray:
+        if hasattr(pop, "O"):
+            return np.asarray(pop.O, dtype=np.float64)
         return np.asarray(
             [np.asarray(agent.target.objectives).ravel() for agent in pop],
             dtype=np.float64,

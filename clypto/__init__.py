@@ -183,6 +183,7 @@ from clypto.optimizer import (
     optimizer,
 )
 from clypto.optimizer._native.legacy import _LegacyOptimizer
+from clypto.optimizer._native.optimizer import LegacyNativeOptimizer
 
 __EXCLUDE_MODULES = ["__builtins__", "current_module", "inspect", "sys"]
 
@@ -205,7 +206,8 @@ def get_all_optimizers(verbose=False):
             for cls_name, cls_obj in inspect.getmembers(obj):
                 if (
                         inspect.isclass(cls_obj)
-                        and issubclass(cls_obj, _LegacyOptimizer)
+                        and not cls_name.startswith("_")
+                        and issubclass(cls_obj, (_LegacyOptimizer, LegacyNativeOptimizer))
                         and cls_obj is not Optimizer
                 ):
                     cls[cls_name] = cls_obj
@@ -258,7 +260,11 @@ def get_optimizer_by_name(name: str, verbose=False):
         ):
             flag = True
             for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, _LegacyOptimizer):
+                if (
+                        inspect.isclass(cls_obj)
+                        and not cls_name.startswith("_")
+                        and issubclass(cls_obj, (_LegacyOptimizer, LegacyNativeOptimizer))
+                ):
                     cls[cls_name] = cls_obj
     if verbose:
         if not flag:
