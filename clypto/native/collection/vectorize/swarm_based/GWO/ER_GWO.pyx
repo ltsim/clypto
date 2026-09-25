@@ -83,30 +83,15 @@ cdef class ER_GWO(LegacyNativeOptimizer):
         self.a_final = cy.validator(float, a_final, [0.0, self.a_initial], "a_final")
         self.miu_factor = cy.validator(float, miu_factor, [1.0001, 1.01], "miu_factor")
 
-    cdef void evolve(self, int epoch):
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        # linearly decreased from 2 to 0
-        a = self.a_initial - (self.a_initial - self.a_final) * self.miu_factor**epoch
-        best = pop.X[self.sorted_order(pop)[:3]][None]
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        X = pop.X
+        a = self.a_initial - (self.a_initial - self.a_final) * self.miu_factor**epoch_c
+        best = X[self.sorted_order(pop)[:3]][None]
         R = self.generator.random((n, 6, d))  # per agent: A1..A3 then C1..C3 draws
-        A = a * (2 * R[:, :3] - 1)
-        C = 2 * R[:, 3:]
-        Xs = best - A * np.abs(C * best - pop.X[:, None, :])
-        pos = np.empty((n, d))
-        for idx in range(n):
-            X1, X2, X3 = Xs[idx]
-            dist1 = np.linalg.norm(X1)
-            dist2 = np.linalg.norm(X2)
-            dist3 = np.linalg.norm(X3)
-            total = dist1 + dist2 + dist3
-            if total == 0:
-                # Avoid division by zero
-                pos[idx] = (X1 + X2 + X3) / 3.0
-            else:
-                # Normalize distances to avoid division by zero
-                pos[idx] = (X1 * dist1 + X2 * dist2 + X3 * dist3) / total
-        cand.X[:] = self.correct_solution(pos)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
+        Xs = best - (a * (2 * R[:, :3] - 1)) * np.abs(2 * R[:, 3:] * best - X[:, None, :])  # (n, 3, d)
+        dist = np.linalg.norm(Xs, axis=2)  # (n, 3)
+        total = dist.sum(axis=1)
+        weighted = (Xs * dist[..., None]).sum(axis=1) / np.where(total == 0, 1.0, total)[:, None]
+        ops.step(self, np.where((total == 0)[:, None], Xs.sum(axis=1) / 3.0, weighted))

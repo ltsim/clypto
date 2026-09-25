@@ -5,9 +5,9 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.SLO.OriginalSLO import OriginalSLO
-from clypto.collection.swarm_based.SLO.ModifiedSLO import ModifiedSLO
+from clypto.native.collection.vectorize.swarm_based.SLO.OriginalSLO import OriginalSLO
+from clypto.native.collection.vectorize.swarm_based.SLO.ModifiedSLO import ModifiedSLO
 
-from clypto.collection.swarm_based.SLO.ImprovedSLO import ImprovedSLO
+from clypto.native.collection.vectorize.swarm_based.SLO.ImprovedSLO import ImprovedSLO
 
 __all__ = ["OriginalSLO", "ModifiedSLO", "ImprovedSLO"]

@@ -5,10 +5,10 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.evolutionary_based.DE.OriginalDE import OriginalDE
-from clypto.collection.evolutionary_based.DE.JADE import JADE
+from clypto.native.collection.vectorize.evolutionary_based.DE.OriginalDE import OriginalDE
+from clypto.native.collection.vectorize.evolutionary_based.DE.JADE import JADE
 
-from clypto.collection.evolutionary_based.DE.SADE import SADE
-from clypto.collection.evolutionary_based.DE.SAP_DE import SAP_DE
+from clypto.native.collection.vectorize.evolutionary_based.DE.SADE import SADE
+from clypto.native.collection.vectorize.evolutionary_based.DE.SAP_DE import SAP_DE
 
 __all__ = ["OriginalDE", "JADE", "SADE", "SAP_DE"]

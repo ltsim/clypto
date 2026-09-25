@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.bio_based.SBO.DevSBO cimport DevSBO
+from clypto.native.collection.vectorize.bio_based.SBO.DevSBO cimport DevSBO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -73,53 +73,28 @@ cdef class OriginalSBO(DevSBO):
         """
         super().__init__(epoch, pop_size, alpha, p_m, psw, name=name, mode=mode)
 
-    def roulette_wheel_selection__(self, fitness_list: list | np.ndarray | None = None) -> int:
-        r = self.generator.uniform()
-        c = np.cumsum(fitness_list)
-        f = np.where(r < c)[0][0]
-        return f
-
     cdef void evolve(self, int epoch_c):
-        # The classic sequential path only refreshes the *targets* of the population (with the
-        # candidates' fitness) and never moves it; swarm modes replace the population.
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx, jdx, n = pop.n
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        # (percent of the difference between the upper and lower limit (Eq. 7))
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         self.sigma = self.psw * (self.problem.ub - self.problem.lb)
-        ## Calculate the probability of bowers using Eqs. (1) and (2)
-        fx_list = np.array(pop.F)
-        fit_list = fx_list.copy()
-        for idx in range(0, self.pop_size):
-            if fx_list[idx] < 0:
-                fit_list[idx] = 1.0 + np.abs(fx_list[idx])
-            else:
-                fit_list[idx] = 1.0 / (1.0 + np.abs(fx_list[idx]))
-        fit_sum = np.sum(fit_list)
-        ## Calculating the probability of each bower
-        prob_list = fit_list / fit_sum
-        for idx in range(0, self.pop_size):
-            pos_new = Xp[idx].copy()
-            for jdx in range(0, self.problem.n_dims):
-                ### Select a bower using roulette wheel
-                rdx = self.roulette_wheel_selection__(prob_list)
-                ### Calculating Step Size
-                lamda = self.alpha / (1 + prob_list[rdx])
-                pos_new[jdx] = Xp[idx][jdx] + lamda * ((Xp[rdx][jdx] + g_best[jdx]) / 2 - Xp[idx][jdx])
-                ### Mutation
-                if self.generator.uniform() < self.p_m:
-                    pos_new[jdx] = Xp[idx][jdx] + self.generator.normal(0, 1) * self.sigma[jdx]
-            pos_new = self.correct_solution(pos_new)
-            if swarm:
-                Xc[idx] = pos_new
-            else:
-                tar = self.get_target(pos_new)
-                pop.O[idx] = tar.objectives
-                pop.F[idx] = tar.fitness
-        if swarm:
-            self.evaluate(cand, 0, n)
+        fx = np.array(pop.F)
+        fit = np.where(fx < 0, 1.0 + np.abs(fx), 1.0 / (1.0 + np.abs(fx)))
+        prob = fit / np.sum(fit)
+        # per (agent, dimension): roulette wheel on prob, step towards the mean of that agent and the best
+        rdx = np.minimum(np.searchsorted(np.cumsum(prob), rng.random((n, d)), side="right"), n - 1)
+        lamda = self.alpha / (1 + prob[rdx])
+        pos = X + lamda * ((X[rdx, np.arange(d)[None, :]] + g) / 2 - X)
+        pos = np.where(rng.random((n, d)) < self.p_m, X + rng.normal(0, 1, (n, d)) * self.sigma, pos)
+        # The classic code only refreshes the fitness of the population with the candidates' values in the
+        # sequential mode (positions stay) and replaces the population in swarm modes; both are kept.
+        cdef NativePopulation cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(pos)
+        self.evaluate(cand, 0, n)
+        if self.mode in self.AVAILABLE_MODES:
             self.pop = cand
+        else:
+            pop.buf[:, :pop.cX] = cand.buf[:, :pop.cX]

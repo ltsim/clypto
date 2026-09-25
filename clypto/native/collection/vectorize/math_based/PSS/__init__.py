@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.PSS.OriginalPSS import OriginalPSS
+from clypto.native.collection.vectorize.math_based.PSS.OriginalPSS import OriginalPSS
 
 __all__ = ["OriginalPSS"]

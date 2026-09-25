@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.DMOA.OriginalDMOA import OriginalDMOA
-from clypto.collection.swarm_based.DMOA.DevDMOA import DevDMOA
+from clypto.native.collection.vectorize.swarm_based.DMOA.OriginalDMOA import OriginalDMOA
+from clypto.native.collection.vectorize.swarm_based.DMOA.DevDMOA import DevDMOA
 
 __all__ = ["OriginalDMOA", "DevDMOA"]

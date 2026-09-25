@@ -71,30 +71,17 @@ cdef class OriginalGJO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
         E1 = 1.5 * (1.0 - (epoch / self.epoch))
-        RL = self.get_levy_flight_step(
-            beta=1.5,
-            multiplier=0.05,
-            size=(self.pop_size, self.problem.n_dims),
-            case=-1,
-        )
+        RL = self.get_levy_flight_step(beta=1.5, multiplier=0.05, size=(n, d), case=-1)
         order = self.sorted_order(pop)
-        male = np.array(pop.X[order[0]])
-        female = np.array(pop.X[order[1]])
-        Xp = np.array(pop.X)
-        # one draw per (agent, dimension), agent by agent
-        E = E1 * (2 * self.generator.random((n, d)) - 1)
+        male = np.array(X[order[0]])
+        female = np.array(X[order[1]])
+        Xo = np.array(X)
+        E = E1 * (2 * rng.random((n, d)) - 1)
         exploit = np.abs(E) < 1
-        t1 = np.where(exploit, np.abs(RL * male - Xp), np.abs(male - RL * Xp))
-        t2 = np.where(exploit, np.abs(RL * female - Xp), np.abs(female - RL * Xp))
-        male_pos = male - E * t1
-        female_pos = female - E * t2
-        pos_new = (male_pos + female_pos) / 2
-        Xc = cand.X
-        for idx in range(n):
-            Xc[idx] = self.correct_solution(pos_new[idx])
-        # every agent is replaced by its candidate
-        self.evaluate(cand, 0, n)
-        self.pop = cand
+        t1 = np.where(exploit, np.abs(RL * male - Xo), np.abs(male - RL * Xo))
+        t2 = np.where(exploit, np.abs(RL * female - Xo), np.abs(female - RL * Xo))
+        ops.replace(self, ((male - E * t1) + (female - E * t2)) / 2)

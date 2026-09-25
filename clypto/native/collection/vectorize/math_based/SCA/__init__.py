@@ -5,9 +5,9 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.math_based.SCA.DevSCA import DevSCA
-from clypto.collection.math_based.SCA.OriginalSCA import OriginalSCA
+from clypto.native.collection.vectorize.math_based.SCA.DevSCA import DevSCA
+from clypto.native.collection.vectorize.math_based.SCA.OriginalSCA import OriginalSCA
 
-from clypto.collection.math_based.SCA.QleSCA import QleSCA
+from clypto.native.collection.vectorize.math_based.SCA.QleSCA import QleSCA
 
 __all__ = ["DevSCA", "OriginalSCA", "QleSCA"]

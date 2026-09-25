@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.physics_based.MVO.DevMVO cimport DevMVO
+from clypto.native.collection.vectorize.physics_based.MVO.DevMVO cimport DevMVO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -69,80 +69,29 @@ cdef class OriginalMVO(DevMVO):
         """
         super().__init__(epoch, pop_size, wep_min, wep_max, name=name, mode=mode)
 
-    def roulette_wheel_selection__(self, weights=None):
-        accumulation = np.cumsum(weights)
-        p = self.generator.uniform() * accumulation[-1]
-        chosen_idx = None
-        for idx in range(len(accumulation)):
-            if accumulation[idx] > p:
-                chosen_idx = idx
-                break
-        return chosen_idx
-
-    def normalize__(self, d, to_sum=True):
-        # d is a (n x dimension) np np.array
-        d -= np.min(d, axis=0)
-        if to_sum:
-            total_vector = np.sum(d, axis=0)
-            if 0 in total_vector:
-                return self.generator.uniform(0.2, 0.8, self.pop_size)
-            return d / np.sum(d, axis=0)
-        else:
-            ptp_vector = np.ptp(d, axis=0)
-            if 0 in ptp_vector:
-                return self.generator.uniform(0.2, 0.8, self.pop_size)
-            return d / np.ptp(d, axis=0)
-
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        # Eq. (3.3) in the paper
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
         wep = self.wep_min + epoch * ((self.wep_max - self.wep_min) / self.epoch)
-        # Travelling Distance Rate (Formula): Eq. (3.4) in the paper
         tdr = 1 - epoch ** (1.0 / 6) / (<object>self.epoch) ** (<object>(1.0 / 6))
-        list_fitness_raw = np.array(pop.F)
-        maxx = max(list_fitness_raw)
-        if maxx > (2 ** 64 - 1):
-            list_fitness_normalized = self.generator.uniform(0, 0.1, self.pop_size)
+        raw = np.array(pop.F)
+        if raw.max() > (2 ** 64 - 1):
+            norm = rng.uniform(0, 0.1, n)
         else:
-            ### Normalize inflation rates (NI in Eq. (3.1) in the paper)
-            list_fitness_normalized = np.reshape(
-                self.normalize__(np.array([list_fitness_raw])), self.pop_size
-            )  # Matrix
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            black_hole_pos = Xp[idx].copy()
-            for jdx in range(0, self.problem.n_dims):
-                r1 = self.generator.uniform()
-                if r1 < list_fitness_normalized[idx]:
-                    white_hole_id = self.roulette_wheel_selection__(
-                        (-1.0 * list_fitness_raw)
-                    )
-                    if white_hole_id == None or white_hole_id == -1:
-                        white_hole_id = 0
-                    # Eq. (3.1) in the paper
-                    black_hole_pos[jdx] = Xp[white_hole_id][jdx]
-                # Eq. (3.2) in the paper if the boundaries are all the same
-                r2 = self.generator.uniform()
-                if r2 < wep:
-                    r3 = self.generator.uniform()
-                    if r3 < 0.5:
-                        black_hole_pos[jdx] = g_best[
-                                                  jdx
-                                              ] + tdr * self.generator.uniform(
-                            self.problem.lb[jdx], self.problem.ub[jdx]
-                        )
-                    else:
-                        black_hole_pos[jdx] = g_best[
-                                                  jdx
-                                              ] - tdr * self.generator.uniform(
-                            self.problem.lb[jdx], self.problem.ub[jdx]
-                        )
-            ops.commit(self, pop, cand, idx, self.correct_solution(black_hole_pos), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+            f = raw - raw.min()
+            norm = f / f.sum() if f.sum() != 0 else rng.uniform(0.2, 0.8, n)
+        # per (agent, dimension): take the value of a white hole chosen by roulette wheel on -fitness
+        cum = np.cumsum(-1.0 * raw)
+        p = rng.random((n, d)) * cum[-1]
+        greater = cum[None, None, :] > p[..., None]
+        white = np.where(greater.any(axis=-1), greater.argmax(axis=-1), 0)
+        pos = np.where(rng.random((n, d)) < norm[:, None], X[white, np.arange(d)[None, :]], X)
+        # wormhole: move around the best
+        u = rng.uniform(lb, ub, (n, d))
+        pos = np.where(rng.random((n, d)) < wep, np.where(rng.random((n, d)) < 0.5, g + tdr * u, g - tdr * u), pos)
+        ops.step(self, pos)

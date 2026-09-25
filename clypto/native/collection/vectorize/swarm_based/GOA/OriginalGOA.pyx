@@ -88,28 +88,24 @@ cdef class OriginalGOA(LegacyNativeOptimizer):
         return f * np.exp(-r_vector / l) - np.exp(-r_vector)
 
     cdef void evolve(self, int epoch_c):
-        # The social interaction of every grasshopper with all the others is vectorized over the swarm;
-        # in sequential mode each agent sees the rows replaced before it.
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d, i0, i1
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         lb, ub = self.problem.lb, self.problem.ub
         # Eq.(2.8) in the paper
         c = self.c_max - epoch * ((self.c_max - self.c_min) / self.epoch)
-        N = self.generator.normal(0, 1, (n, d))  # one draw of d normals per agent
+        N = rng.normal(0, 1, (n, d))
         ran = (c / 2) * (ub - lb)
-        for idx in range(0, self.pop_size):
-            diff = Xp[idx] - Xp[:self.pop_size]
-            dist = np.sqrt(np.sum(diff ** 2, axis=1))
-            r_ij_vector = diff / (dist[:, None] + self.EPSILON)  # xj - xi / dij in Eq.(2.7)
+        S = np.empty((n, d))
+        step = max(1, 4000000 // max(1, n * d))  # agents per block: bounded (block, n, d) temporaries
+        for i0 in range(0, n, step):
+            i1 = min(n, i0 + step)
+            diff = X[i0:i1, None, :] - X[None, :, :]
+            dist = np.sqrt(np.sum(diff ** 2, axis=2))
+            r_ij = diff / (dist[..., None] + self.EPSILON)  # xj - xi / dij in Eq.(2.7)
             xj_xi = 2 + np.remainder(dist, 2)  # |xjd - xid| in Eq. (2.7)
-            s_ij = ran * self.s_function__(xj_xi)[:, None] * r_ij_vector
-            S_i_total = np.add.reduce(s_ij, axis=0)
-            x_new = c * N[idx] * S_i_total + g_best  # Eq. (2.7) in the paper
-            ops.commit(self, pop, cand, idx, self.correct_solution(x_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+            S[i0:i1] = np.sum(ran * self.s_function__(xj_xi)[..., None] * r_ij, axis=1)
+        ops.step(self, c * N * S + g)  # Eq. (2.7) in the paper

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.SOS.OriginalSOS import OriginalSOS
+from clypto.native.collection.vectorize.bio_based.SOS.OriginalSOS import OriginalSOS
 
 __all__ = ["OriginalSOS"]

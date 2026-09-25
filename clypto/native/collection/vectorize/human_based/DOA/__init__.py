@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.DOA.OriginalDOA import OriginalDOA
+from clypto.native.collection.vectorize.human_based.DOA.OriginalDOA import OriginalDOA
 
 __all__ = ["OriginalDOA"]

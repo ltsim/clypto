@@ -76,37 +76,25 @@ cdef class OriginalCoatiOA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx
-        minmax = self.problem.minmax
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        # Phase1: Hunting and attacking strategy on iguana (Exploration Phase)
-        size2 = int(self.pop_size / 2)
-        for idx in range(0, size2):
-            pos_new = Xp[idx] + self.generator.random() * (g_best - self.generator.integers(1, 3) * Xp[idx])  # Eq. 4
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, pos_new, tar)
-
-        for idx in range(size2, self.pop_size):
-            iguana_x = self.problem.generate_solution(encoded=True)
-            iguana_tar = self.get_target(iguana_x)
-            if self.compare_fitness(iguana_tar.fitness, pop.F[idx], minmax):
-                pos_new = Xp[idx] + self.generator.random() * (iguana_x - self.generator.integers(1, 3) * Xp[idx])  # Eq. 6
-            else:
-                pos_new = Xp[idx] + self.generator.random() * (Xp[idx] - iguana_x)  # Eq. 6
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, pos_new, tar)
-
-        # Phase2: The process of escaping from predators (Exploitation Phase)
-        for idx in range(0, self.pop_size):
-            LO, HI = self.problem.lb / epoch, self.problem.ub / epoch
-            pos_new = Xp[idx] + (1 - 2 * self.generator.random()) * (LO + self.generator.random() * (HI - LO))  # Eq. 8
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, pos_new, tar)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        cdef NativePopulation iguana
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        h = int(n / 2)
+        # Phase1: hunting and attacking strategy on iguana (exploration phase), Eqs. 4 and 6
+        pos = np.empty((n, d))
+        pos[:h] = X[:h] + rng.random((h, 1)) * (g - rng.integers(1, 3, size=(h, 1)) * X[:h])
+        iguana = pop.take(np.arange(n - h))
+        iguana.X[:] = lb + rng.random((n - h, d)) * (ub - lb)
+        self.evaluate(iguana, 0, n - h)
+        xi, xs = iguana.X, X[h:]
+        toward = ops.better(self, iguana.F, pop.F[h:])[:, None]
+        R = rng.random((n - h, 1))
+        pos[h:] = np.where(toward, xs + R * (xi - rng.integers(1, 3, size=(n - h, 1)) * xs), xs + R * (xs - xi))
+        ops.step(self, pos)
+        # Phase2: the process of escaping from predators (exploitation phase), Eq. 8
+        X = pop.X
+        LO, HI = lb / epoch, ub / epoch
+        ops.step(self, X + (1 - 2 * rng.random((n, 1))) * (LO + rng.random((n, 1)) * (HI - LO)))

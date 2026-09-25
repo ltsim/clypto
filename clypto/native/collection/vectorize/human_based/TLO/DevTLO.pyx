@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 10:14, 18/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class DevTLO(AgentListOptimizer):
+cdef class DevTLO(LegacyNativeOptimizer):
     """
     The developed version: Teaching Learning-based Optimization (TLO)
 
@@ -75,56 +71,18 @@ cdef class DevTLO(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def evolve_agents(self, epoch):
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            ## Teaching Phrase
-            TF = self.generator.integers(1, 3)  # 1 or 2 (never 3)
-            list_pos = np.array([agent.solution for agent in self.objs])
-            DIFF_MEAN = self.generator.random(self.problem.n_dims) * (
-                    self.g_best.solution - TF * np.mean(list_pos, axis=0)
-            )
-            pos_new = self.objs[idx].solution + DIFF_MEAN
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-        pop_child = []
-        for idx in range(0, self.pop_size):
-            ## Learning Phrase
-            pos_new = self.objs[idx].solution.copy().astype(float)
-            id_partner = self.generator.choice(
-                np.setxor1d(np.array(range(self.pop_size)), np.array([idx]))
-            )
-            if self.compare_target(
-                    self.objs[idx].target, self.objs[id_partner].target, self.problem.minmax
-            ):
-                pos_new += self.generator.random(self.problem.n_dims) * (
-                        self.objs[idx].solution - self.objs[id_partner].solution
-                )
-            else:
-                pos_new += self.generator.random(self.problem.n_dims) * (
-                        self.objs[id_partner].solution - self.objs[idx].solution
-                )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_child.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_child = self.update_target_for_population(pop_child)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_child, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        # teacher phase
+        TF = rng.integers(1, 3, size=(n, 1))  # 1 or 2 (never 3)
+        ops.step(self, X + rng.random((n, d)) * (g - TF * np.mean(np.ascontiguousarray(X), axis=0)))
+        # learner phase: learn from a random partner
+        X = pop.X
+        j = ops.others(self, n)[:, 0]
+        ahead = ops.better(self, np.asarray(pop.F), np.asarray(pop.F)[j])[:, None]
+        r = rng.random((n, d))
+        ops.step(self, np.where(ahead, X + r * (X - X[j]), X + r * (X[j] - X)))

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.GJO.OriginalGJO import OriginalGJO
+from clypto.native.collection.vectorize.swarm_based.GJO.OriginalGJO import OriginalGJO
 
 __all__ = ["OriginalGJO"]

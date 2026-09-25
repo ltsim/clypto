@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.MGO.OriginalMGO import OriginalMGO
+from clypto.native.collection.vectorize.swarm_based.MGO.OriginalMGO import OriginalMGO
 
 __all__ = ["OriginalMGO"]

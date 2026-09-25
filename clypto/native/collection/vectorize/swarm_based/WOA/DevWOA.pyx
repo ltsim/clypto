@@ -70,43 +70,18 @@ cdef class DevWOA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         a = 2 - 2 * epoch / self.epoch  # linearly decreased from 2 to 0
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            r = self.generator.random()
-            A = 2 * a * r - a
-            C = 2 * r
-            l = self.generator.uniform(-1, 1)
-            p = 0.5
-            b = 1
-
-            # Get pos1
-            pos1 = g_best - A * np.abs(
-                C * g_best - Xp[idx]
-            )
-
-            # Get pos2
-            id_r2 = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            pos2 = Xp[id_r2] - A * np.abs(
-                C * Xp[id_r2] - Xp[idx]
-            )
-
-            # Get pos3
-            D1 = np.abs(g_best - Xp[idx])
-            pos3 = g_best + np.exp(b * l) * np.cos(2 * np.pi * l) * D1
-
-            # Get final pos_new
-            pos_new = pos1 if np.abs(A) < 1 else pos2
-            pos_new = np.where(
-                self.generator.random(size=self.problem.n_dims) < p, pos_new, pos3
-            )
-
-            # Correct solution
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        r = rng.random((n, 1))
+        A = 2 * a * r - a
+        C = 2 * r
+        l = rng.uniform(-1, 1, size=(n, 1))
+        pos1 = g - A * np.abs(C * g - X)
+        x2 = X[ops.others(self, n)[:, 0]]
+        pos2 = x2 - A * np.abs(C * x2 - X)
+        pos3 = g + np.exp(l) * np.cos(2 * np.pi * l) * np.abs(g - X)
+        pos = np.where(rng.random((n, d)) < 0.5, np.where(np.abs(A) < 1, pos1, pos2), pos3)
+        ops.step(self, pos)

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.human_based.BRO.DevBRO import DevBRO
-from clypto.collection.human_based.BRO.OriginalBRO import OriginalBRO
+from clypto.native.collection.vectorize.human_based.BRO.DevBRO import DevBRO
+from clypto.native.collection.vectorize.human_based.BRO.OriginalBRO import OriginalBRO
 
 __all__ = ["DevBRO", "OriginalBRO"]

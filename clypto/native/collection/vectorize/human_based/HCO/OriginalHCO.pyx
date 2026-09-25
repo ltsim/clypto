@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 08:57, 12/03/2023 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalHCO(AgentListOptimizer):
+cdef class OriginalHCO(LegacyNativeOptimizer):
     """
     The original version of: Human Conception Optimizer (HCO)
 
@@ -101,80 +97,47 @@ cdef class OriginalHCO(AgentListOptimizer):
         self.c2 = cy.validator(float, c2, [1.0, 100.0], "c2")
 
     cdef void initialization(self):
-        AgentListOptimizer.initialization(self)
-        pop_op = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.problem.ub + self.problem.lb - self.objs[idx].solution
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_op.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_op = self.update_target_for_population(pop_op)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_op, self.problem.minmax
-            )
-        _, (best,), (worst,) = self.get_special_agents(
-            self.objs, n_best=1, n_worst=1, minmax=self.problem.minmax
-        )
-        pfit = (
-                       worst.target.fitness - best.target.fitness
-               ) * self.wfp + best.target.fitness
-        for idx in range(0, self.pop_size):
-            if self.compare_fitness(
-                    pfit, self.objs[idx].target.fitness, self.problem.minmax
-            ):
-                while True:
-                    agent = self.generate_agent()
-                    if self.compare_fitness(
-                            agent.target.fitness, pfit, self.problem.minmax
-                    ):
-                        self.objs[idx] = agent
-                        break
-        self.vec = self.generator.uniform(
-            self.problem.lb, self.problem.ub, (self.pop_size, self.problem.n_dims)
-        )
-        self.pop_p = [agent.copy() for agent in self.objs]
-        self.pop = self.mirror__()
+        cdef NativePopulation pop, cand
+        cdef Py_ssize_t n, d
+        LegacyNativeOptimizer.initialization(self)
+        pop = self.pop
+        n, d = pop.n, pop.d
+        lb, ub = self.problem.lb, self.problem.ub
+        ops.step(self, ub + lb - pop.X)  # opposition-based initialization
+        pop = self.pop
+        F = np.asarray(pop.F)
+        best, worst = F.min(), F.max()
+        if self.problem.minmax == "max":
+            best, worst = worst, best
+        pfit = (worst - best) * self.wfp + best
+        # agents worse than pfit are re-drawn until they are better than pfit
+        bad = np.flatnonzero(ops.better(self, pfit, F))
+        while len(bad):
+            cand = pop.take(bad)
+            cand.X[:] = self.generator.uniform(lb, ub, (len(bad), d))
+            self.evaluate(cand, 0, len(bad))
+            ok = ops.better(self, np.asarray(cand.F), pfit)
+            pop.buf[bad[ok]] = cand.buf[ok]
+            bad = bad[~ok]
+        self.vec = self.generator.uniform(lb, ub, (n, d))
+        self.pop_p = pop.take(np.arange(n))
 
-    def evolve_agents(self, epoch):
-        lamda = self.generator.random()
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        gb_fit = self.current_g_best().target.fitness
+        lamda = rng.random()
         neu = 2
-        fits = np.array([agent.target.fitness for agent in self.objs])
+        fits = np.array(pop.F)
         fit_mean = np.mean(fits)
-        RR = (self.g_best.target.fitness - fits) ** 2
+        RR = (gb_fit - fits) ** 2
         rr = (fit_mean - fits) ** 2
-        ll = RR - rr
-        LL = self.g_best.target.fitness - fit_mean
-        VV = lamda * (ll / (4 * neu * LL))
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            a1 = self.pop_p[idx].solution - self.objs[idx].solution
-            a2 = self.g_best.solution - self.objs[idx].solution
-            self.vec[idx] = (
-                    self.wfv * (VV[idx] + self.vec[idx])
-                    + self.c1 * a1 * np.sin(2 * np.pi * epoch / self.epoch)
-                    + self.c2 * a2 * np.sin(2 * np.pi * epoch / self.epoch)
-            )
-            pos_new = self.objs[idx].solution + self.vec[idx]
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-
-        for idx in range(0, self.pop_size):
-            if self.compare_target(
-                    pop_new[idx].target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = pop_new[idx].copy()
-                if self.compare_target(
-                        pop_new[idx].target, self.pop_p[idx].target, self.problem.minmax
-                ):
-                    self.pop_p[idx] = pop_new[idx].copy()
+        LL = gb_fit - fit_mean
+        VV = lamda * ((RR - rr) / (4 * neu * LL))
+        s = np.sin(2 * np.pi * epoch_c / self.epoch)
+        self.vec = self.wfv * (VV[:, None] + self.vec) + self.c1 * (self.pop_p.X - X) * s + self.c2 * (g - X) * s
+        ops.step(self, X + self.vec)
+        ops.greedy(self, self.pop, dst=self.pop_p)  # personal bests

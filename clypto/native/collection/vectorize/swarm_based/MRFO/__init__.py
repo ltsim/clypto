@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.MRFO.OriginalMRFO import OriginalMRFO
-from clypto.collection.swarm_based.MRFO.WMQIMRFO import WMQIMRFO
+from clypto.native.collection.vectorize.swarm_based.MRFO.OriginalMRFO import OriginalMRFO
+from clypto.native.collection.vectorize.swarm_based.MRFO.WMQIMRFO import WMQIMRFO
 
 __all__ = ["OriginalMRFO", "WMQIMRFO"]

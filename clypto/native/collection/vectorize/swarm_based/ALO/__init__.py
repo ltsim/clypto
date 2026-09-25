@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.ALO.OriginalALO import OriginalALO
-from clypto.collection.swarm_based.ALO.DevALO import DevALO
+from clypto.native.collection.vectorize.swarm_based.ALO.OriginalALO import OriginalALO
+from clypto.native.collection.vectorize.swarm_based.ALO.DevALO import DevALO
 
 __all__ = ["OriginalALO", "DevALO"]

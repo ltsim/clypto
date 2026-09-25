@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.HBO.OriginalHBO import OriginalHBO
+from clypto.native.collection.vectorize.human_based.HBO.OriginalHBO import OriginalHBO
 
 __all__ = ["OriginalHBO"]

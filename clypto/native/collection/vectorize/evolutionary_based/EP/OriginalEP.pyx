@@ -92,34 +92,28 @@ cdef class OriginalEP(LegacyNativeOptimizer):
 
     def tournament__(self, NativePopulation pop):
         """Every agent enters n_bout_size tournaments against random agents; the winner scores."""
-        cdef Py_ssize_t i, idx, rand_idx, m = pop.n
-        F, win = pop.F, pop.field("WIN")[:, 0]
-        minmax = self.problem.minmax
-        for i in range(0, m):
-            ## Tournament winner (Tried with bout_size times)
-            for idx in range(0, self.n_bout_size):
-                rand_idx = self.generator.integers(0, m)
-                if self.compare_fitness(F[i], F[rand_idx], minmax):
-                    win[i] += 1
-                else:
-                    win[rand_idx] += 1
+        m = pop.n
+        F, win = np.asarray(pop.F), pop.field("WIN")[:, 0]
+        opp = self.generator.integers(0, m, size=(m, self.n_bout_size))
+        mine = self.problem.minmax
+        wins = (F[:, None] < F[opp]) if mine == "min" else (F[:, None] > F[opp])
+        win[:] += wins.sum(axis=1)
+        np.add.at(win, opp[~wins], 1)
+
+    def offspring__(self, NativePopulation pop):
+        """Gaussian mutation of every agent and of its strategy; the children are evaluated."""
+        child = pop.empty_like()
+        S = np.array(pop.field("S"))
+        child.X[:] = self.correct_solution(pop.X + S * self.generator.normal(0, 1.0, S.shape))
+        child.field("S")[:] = S + self.generator.normal(0, 1.0, S.shape) * np.abs(S) ** 0.5
+        child.field("WIN")[:] = 0
+        self.evaluate(child, 0, child.n)
+        return child
 
     cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation child = pop.empty_like()
-        cdef NativePopulation both
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        Xp, S = pop.X, pop.field("S")
-        # offspring: the strategy draw of generate_empty_agent is made and dropped, as in the classic code
-        for idx in range(0, self.pop_size):
-            pos_new = Xp[idx] + S[idx] * self.generator.normal(0, 1.0, d)
-            child.X[idx] = self.correct_solution(pos_new)
-            self.generator.uniform(0, self.distance, d)
-            child.field("S")[idx] = S[idx] + self.generator.normal(0, 1.0, d) * np.abs(S[idx]) ** 0.5
-        child.field("WIN")[:] = 0
-        self.evaluate(child, 0, n)
-        # Update the global best
+        cdef NativePopulation child = self.offspring__(pop)
         both = child.take(self.sorted_order(child)).concat(pop)
         self.tournament__(both)
-        order = sorted(range(both.n), key=lambda i: both.field("WIN")[i, 0], reverse=True)
+        order = np.argsort(-both.field("WIN")[:, 0], kind="stable")
         self.pop = both.take(order[:self.pop_size])

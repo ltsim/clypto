@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 17:41, 21/05/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalWarSO(AgentListOptimizer):
+cdef class OriginalWarSO(LegacyNativeOptimizer):
     """
     The original version of: War Strategy Optimization (WarSO) algorithm
 
@@ -85,32 +81,23 @@ cdef class OriginalWarSO(AgentListOptimizer):
         self.wl = 2 * np.ones(self.pop_size)
         self.wg = np.zeros(self.pop_size)
 
-    def evolve_agents(self, epoch):
-        pop_sorted, indices = self.get_sorted_indices_population(
-            self.objs, self.problem.minmax
-        )
-        self.wl = self.wl[indices]
-        self.wg = self.wg[indices]
-        com = self.generator.permutation(self.pop_size)
-        for idx in range(0, self.pop_size):
-            r1 = self.generator.random()
-            if r1 < self.rr:
-                pos_new = 2 * r1 * (
-                    self.g_best.solution - self.objs[com[idx]].solution
-                ) + self.wl[idx] * self.generator.random() * (
-                    pop_sorted[idx].solution - self.objs[idx].solution
-                )
-            else:
-                pos_new = 2 * r1 * (
-                    pop_sorted[idx].solution - self.g_best.solution
-                ) + self.generator.random() * (
-                    self.wl[idx] * self.g_best.solution - self.objs[idx].solution
-                )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
-                self.wg[idx] += 1
-                self.wl[idx] = 1 * self.wl[idx] * (1 - self.wg[idx] / self.epoch) ** 2
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        order = self.sorted_order(pop)
+        self.wl = self.wl[order]
+        self.wg = self.wg[order]
+        Xs = X[order]  # the sorted warriors
+        com = rng.permutation(n)
+        r1 = rng.random((n, 1))
+        pos = np.where(r1 < self.rr,
+                       2 * r1 * (g - X[com]) + self.wl[:, None] * rng.random((n, 1)) * (Xs - X),
+                       2 * r1 * (Xs - g) + rng.random((n, 1)) * (self.wl[:, None] * g - X))
+        before = np.array(pop.F)
+        ops.step(self, pos)
+        improved = ops.better(self, np.asarray(self.pop.F), before)
+        self.wg[improved] += 1
+        self.wl[improved] = 1 * self.wl[improved] * (1 - self.wg[improved] / self.epoch) ** 2

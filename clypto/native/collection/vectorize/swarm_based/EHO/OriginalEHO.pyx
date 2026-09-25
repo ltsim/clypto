@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 18:41, 08/04/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalEHO(AgentListOptimizer):
+cdef class OriginalEHO(LegacyNativeOptimizer):
     """
     The original version of: Elephant Herding Optimization (EHO)
 
@@ -92,54 +88,26 @@ cdef class OriginalEHO(AgentListOptimizer):
         self.n_clans = cy.validator(int, n_clans, [2, int(self.pop_size / 5)], "n_clans")
         self.n_individuals = int(self.pop_size / self.n_clans)
 
-    cdef void initialization(self):
-        AgentListOptimizer.initialization(self)
-        self.pop_group = self.generate_group_population(
-            self.objs, self.n_clans, self.n_individuals
-        )
-        self.pop = self.mirror__()
-
-    def evolve_agents(self, epoch):
-        # Clan updating operator
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            clan_idx = int(idx / self.n_individuals)
-            pos_clan_idx = int(idx % self.n_individuals)
-            if (
-                    pos_clan_idx == 0
-            ):  # The best in clan, because all clans are sorted based on fitness
-                center = np.mean(
-                    np.array([agent.solution for agent in self.pop_group[clan_idx]]),
-                    axis=0,
-                )
-                pos_new = self.beta * center
-            else:
-                pos_new = self.pop_group[clan_idx][
-                              pos_clan_idx
-                          ].solution + self.alpha * self.generator.random() * (
-                                  self.pop_group[clan_idx][0].solution
-                                  - self.pop_group[clan_idx][pos_clan_idx].solution
-                          )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-        self.pop_group = self.generate_group_population(
-            self.objs, self.n_clans, self.n_individuals
-        )
-        # Separating operator
-        for idx in range(0, self.n_clans):
-            self.pop_group[idx] = self.get_sorted_population(
-                self.pop_group[idx], self.problem.minmax
-            )
-            self.pop_group[idx][-1] = self.generate_agent()
-        self.objs = [agent for pack in self.pop_group for agent in pack]
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation fresh
+        cdef Py_ssize_t n = pop.n, d = pop.d, nc = self.n_clans, ni = self.n_individuals, m = nc * ni  # (m <= n rows belong to a clan)
+        cdef object rng = self.generator
+        # clan updating operator: clans are consecutive blocks of rows, the first one of a block is its best
+        X3 = np.array(pop.X[:m]).reshape(nc, ni, d)
+        pos = np.empty_like(X3)
+        pos[:, 0] = self.beta * X3.mean(axis=1)
+        pos[:, 1:] = X3[:, 1:] + self.alpha * rng.random((nc, ni - 1, 1)) * (X3[:, :1] - X3[:, 1:])
+        ops.step(self, pos.reshape(m, d), stop=m)
+        # every clan is sorted by fitness and its worst member is replaced by a new random agent (separating operator)
+        pop = self.pop
+        F = np.asarray(pop.F)[:m].reshape(nc, ni)
+        order = np.argsort(F, axis=1)
+        if self.problem.minmax == "max":
+            order = order[:, ::-1]
+        pop = pop.take(np.concatenate([(order + ni * np.arange(nc)[:, None]).ravel(), np.arange(m, n)]))
+        fresh = pop.take(ni * np.arange(1, nc + 1) - 1)
+        fresh.X[:] = self.correct_solution(rng.uniform(self.problem.lb, self.problem.ub, (nc, d)))
+        self.evaluate(fresh, 0, nc)
+        pop.buf[ni * np.arange(1, nc + 1) - 1] = fresh.buf
+        self.pop = pop

@@ -107,24 +107,23 @@ cdef class OriginalWDO(LegacyNativeOptimizer):
         )
 
     cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        g_best = np.array(self.g_best_x())
-        rand_dim = np.array([self.generator.integers(0, d) for idx in range(n)])
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        rand_dim = rng.integers(0, d, size=n)
         V = self.dyn_list_velocity
         temp = V[np.arange(n), rand_dim][:, None] * np.ones((1, d))
         i1 = np.arange(1, n + 1)
-        X = pop.X
         vel = (
                 (1 - self.alp) * V
                 - self.g_c * X
-                + ((1 - 1.0 / i1) * self.RT)[:, None] * (g_best - X)
+                + ((1 - 1.0 / i1) * self.RT)[:, None] * (g - X)
                 + self.c_e * temp / i1[:, None]
         )
         vel = np.clip(vel, -self.max_v, self.max_v)
-        # Update air parcel positions, check the bound and calculate pressure (fitness)
         V[:] = vel
-        cand.X[:] = self.correct_solution(X + vel)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
+        ops.step(self, X + vel)

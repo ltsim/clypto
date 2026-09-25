@@ -1,5 +1,5 @@
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.collection.swarm_based.PSO._base cimport _PSOBase
+from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
 
 cdef class P_PSO(_PSOBase):

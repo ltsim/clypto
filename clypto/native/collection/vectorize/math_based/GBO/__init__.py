@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.GBO.OriginalGBO import OriginalGBO
+from clypto.native.collection.vectorize.math_based.GBO.OriginalGBO import OriginalGBO
 
 __all__ = ["OriginalGBO"]

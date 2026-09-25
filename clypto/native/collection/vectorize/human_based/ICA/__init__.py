@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.ICA.OriginalICA import OriginalICA
+from clypto.native.collection.vectorize.human_based.ICA.OriginalICA import OriginalICA
 
 __all__ = ["OriginalICA"]

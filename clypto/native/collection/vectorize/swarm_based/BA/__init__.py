@@ -5,9 +5,9 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.BA.OriginalBA import OriginalBA
-from clypto.collection.swarm_based.BA.AdaptiveBA import AdaptiveBA
+from clypto.native.collection.vectorize.swarm_based.BA.OriginalBA import OriginalBA
+from clypto.native.collection.vectorize.swarm_based.BA.AdaptiveBA import AdaptiveBA
 
-from clypto.collection.swarm_based.BA.DevBA import DevBA
+from clypto.native.collection.vectorize.swarm_based.BA.DevBA import DevBA
 
 __all__ = ["OriginalBA", "AdaptiveBA", "DevBA"]

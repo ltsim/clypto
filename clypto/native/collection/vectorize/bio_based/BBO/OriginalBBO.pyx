@@ -84,35 +84,19 @@ cdef class OriginalBBO(LegacyNativeOptimizer):
         self.mr = 1 - self.mu
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        lb, ub = self.problem.lb, self.problem.ub
         pop_elites = pop.take(self.sorted_order(pop)[:self.n_elites])
-        for idx in range(0, self.pop_size):
-            # Probabilistic migration to the i-th position
-            pos_new = Xp[idx].copy()
-            for j in range(self.problem.n_dims):
-                if self.generator.random() < self.mr[idx]:  # Should we immigrate?
-                    # Pick a position from which to emigrate (roulette wheel selection)
-                    random_number = self.generator.random() * np.sum(self.mu)
-                    select = self.mu[0]
-                    select_index = 0
-                    while (random_number > select) and (
-                            select_index < self.pop_size - 1
-                    ):
-                        select_index += 1
-                        select += self.mu[select_index]
-                    # this is the migration step
-                    pos_new[j] = Xp[select_index][j]
-            noise = self.generator.uniform(self.problem.lb, self.problem.ub)
-            condition = self.generator.random(self.problem.n_dims) < self.p_m
-            pos_new = np.where(condition, noise, pos_new)
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm, True)
-        if swarm:
-            ops.finish(self, cand, 0, n)
-        # replace the solutions with their new migrated and mutated versions then Merge Populations
-        merged = pop.concat(pop_elites)
+        # Probabilistic migration: dimension j of agent i immigrates with probability mr[i] from an agent chosen by roulette wheel on mu
+        immigrate = rng.random((n, d)) < self.mr[:n, None]
+        emigrant = np.minimum(np.searchsorted(np.cumsum(self.mu), rng.random((n, d)) * np.sum(self.mu), side="left"), n - 1)
+        pos = np.where(immigrate, X[emigrant, np.arange(d)[None, :]], X)
+        # mutation
+        pos = np.where(rng.random((n, d)) < self.p_m, rng.uniform(lb, ub, (n, d)), pos)
+        ops.step(self, pos)
+        # merge the migrated and mutated population with the elites
+        merged = self.pop.concat(pop_elites)
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

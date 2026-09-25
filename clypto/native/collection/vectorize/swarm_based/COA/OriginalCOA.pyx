@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 13:59, 24/06/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -16,11 +14,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalCOA(AgentListOptimizer):
+cdef class OriginalCOA(LegacyNativeOptimizer):
     """
     The original version of: Coyote Optimization Algorithm (COA)
 
@@ -90,104 +86,60 @@ cdef class OriginalCOA(AgentListOptimizer):
         self.n_coyotes = cy.validator(int, n_coyotes, [2, int(self.pop_size / 2)], "n_coyotes")
         self.n_packs = int(pop_size / self.n_coyotes)
 
+    cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
+        return [("AGE", 1)]  # age of every coyote
+
+    cdef void init_fields(self, NativePopulation pop):
+        pop.field("AGE")[:] = 1
+
     cdef void initialization(self):
-        AgentListOptimizer.initialization(self)
-        self.pop_group = self.generate_group_population(
-            self.objs, self.n_packs, self.n_coyotes
-        )
+        LegacyNativeOptimizer.initialization(self)
         self.ps = 1.0 / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
-        self.pop = self.mirror__()
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        age = 1
-        return FieldAgent(solution=solution, age=age)
-
-    def evolve_agents(self, epoch):
-        # Execute the operations inside each pack
-        for p in range(self.n_packs):
-            # Get the coyotes that belong to each pack
-            self.pop_group[p] = self.get_sorted_population(
-                self.pop_group[p], self.problem.minmax
-            )
-            # Detect alphas according to the costs (Eq. 5)
-            # Compute the social tendency of the pack (Eq. 6)
-            tendency = np.mean([agent.solution for agent in self.pop_group[p]])
-
-            #  Update coyotes' social condition
-            pop_new = []
-            for i in range(self.n_coyotes):
-                rc1, rc2 = self.generator.choice(
-                    list(set(range(0, self.n_coyotes)) - {i}), 2, replace=False
-                )
-                # Try to update the social condition according to the alpha and the pack tendency(Eq. 12)
-                pos_new = (
-                    self.pop_group[p][i].solution
-                    + self.generator.random()
-                    * (self.pop_group[p][0].solution - self.pop_group[p][rc1].solution)
-                    + self.generator.random()
-                    * (tendency - self.pop_group[p][rc2].solution)
-                )
-                # Keep the coyotes in the search space (optimization problem constraint)
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
-                agent.age = self.pop_group[p][i].age
-                pop_new.append(agent)
-                if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
-            # Evaluate the new social condition (Eq. 13)
-            pop_new = self.update_target_for_population(pop_new)
-            # Adaptation (Eq. 14)
-            self.pop_group[p] = self.greedy_selection_population(
-                self.pop_group[p], pop_new, self.problem.minmax
-            )
-
-            # Birth of a new coyote from random parents (Eq. 7 and Alg. 1)
-            id_dad, id_mom = self.generator.choice(
-                list(range(0, self.n_coyotes)), 2, replace=False
-            )
-            prob1 = (1.0 - self.ps) / 2.0
-            # Generate the pup considering intrinsic and extrinsic influence
-            pup = np.where(
-                self.generator.random(self.problem.n_dims) < prob1,
-                self.pop_group[p][id_dad].solution,
-                self.pop_group[p][id_mom].solution,
-            )
-            # Eventual noise
-            pos_new = self.generator.normal(0, 1) * pup
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-
-            # Verify if the pup will survive
-            packs = self.get_sorted_population(self.pop_group[p], self.problem.minmax)
-            # Find index of element has fitness larger than new child. If existed an element like that, new child is good
-            if self.compare_target(agent.target, packs[-1].target, self.problem.minmax):
-                if self.problem.minmax == "min":
-                    packs = sorted(packs, key=lambda agent: agent.age)
-                else:
-                    packs = sorted(packs, key=lambda agent: agent.age, reverse=True)
-                # Replace worst element by new child, New born child with age = 0
-                packs[-1] = agent
-                self.pop_group[p] = [agent.copy() for agent in packs]
-
-        # A coyote can leave a pack and enter in another pack (Eq. 4)
-        if self.n_packs > 1:
-            if self.generator.random() < self.p_leave:
-                id_pack1, id_pack2 = self.generator.choice(
-                    list(range(0, self.n_packs)), 2, replace=False
-                )
-                id1, id2 = self.generator.choice(
-                    list(range(0, self.n_coyotes)), 2, replace=False
-                )
-                self.pop_group[id_pack1][id1], self.pop_group[id_pack2][id2] = (
-                    self.pop_group[id_pack2][id2],
-                    self.pop_group[id_pack1][id1],
-                )
-
-        # Update coyotes ages
-        for id_pack in range(0, self.n_packs):
-            for id_coy in range(0, self.n_coyotes):
-                self.pop_group[id_pack][id_coy].age += 1
-        self.objs = [agent for pack in self.pop_group for agent in pack]
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation pup
+        cdef Py_ssize_t n = pop.n, d = pop.d, npk = self.n_packs, nc = self.n_coyotes, m = npk * nc
+        cdef object rng = self.generator
+        # every pack (a block of nc rows) is sorted by fitness, its best coyote leads
+        F = np.asarray(pop.F)[:m].reshape(npk, nc)
+        order = np.argsort(F, axis=1)
+        if self.problem.minmax == "max":
+            order = order[:, ::-1]
+        pop = self.pop = pop.take(np.concatenate([(order + nc * np.arange(npk)[:, None]).ravel(), np.arange(m, n)]))
+        X3 = np.array(pop.X[:m]).reshape(npk, nc, d)
+        tendency = X3.mean(axis=(1, 2))[:, None, None]  # (the classic code takes the mean of all the elements of the pack)
+        # social condition: towards the alpha and the pack tendency (Eq. 12)
+        rc = np.stack([ops.others(self, nc, 2) for _ in range(npk)])  # (npk, nc, 2) random pack mates
+        pack = np.arange(npk)[:, None]
+        pos = X3 + rng.random((npk, nc, 1)) * (X3[:, :1] - X3[pack, rc[:, :, 0]]) + rng.random((npk, nc, 1)) * (tendency - X3[pack, rc[:, :, 1]])
+        ops.step(self, pos.reshape(m, d), stop=m)
+        # birth of a pup per pack from two random parents (Eq. 7)
+        pop = self.pop
+        X3 = np.array(pop.X[:m]).reshape(npk, nc, d)
+        F = np.asarray(pop.F)[:m].reshape(npk, nc)
+        dad = rng.integers(0, nc, size=npk)
+        mom = (dad + rng.integers(1, nc, size=npk)) % nc
+        prob1 = (1.0 - self.ps) / 2.0
+        p = np.arange(npk)
+        pups = rng.normal(0, 1, (npk, 1)) * np.where(rng.random((npk, d)) < prob1, X3[p, dad], X3[p, mom])
+        pup = pop.take(np.arange(npk))
+        pup.X[:] = self.correct_solution(pups)
+        self.evaluate(pup, 0, npk)
+        pup.field("AGE")[:] = 1
+        worst = F.max(axis=1) if self.problem.minmax == "min" else F.min(axis=1)
+        survive = ops.better(self, np.asarray(pup.F), worst)
+        ages = np.asarray(pop.field("AGE"))[:m, 0].reshape(npk, nc)
+        victim = ages.argmax(axis=1) if self.problem.minmax == "min" else ages.argmin(axis=1)  # the oldest (the youngest for max)
+        rows = (p * nc + victim)[survive]
+        pop.buf[rows] = pup.buf[np.flatnonzero(survive)]
+        # a coyote can leave its pack and join another one (Eq. 4)
+        if npk > 1 and rng.random() < self.p_leave:
+            pk1, pk2 = rng.choice(npk, 2, replace=False)
+            i1, i2 = rng.choice(nc, 2, replace=False)
+            a, b = pk1 * nc + i1, pk2 * nc + i2
+            tmp = np.array(pop.buf[a])
+            pop.buf[a] = pop.buf[b]
+            pop.buf[b] = tmp
+        pop.field("AGE")[:m] += 1

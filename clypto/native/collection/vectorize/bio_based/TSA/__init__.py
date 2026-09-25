@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.TSA.OriginalTSA import OriginalTSA
+from clypto.native.collection.vectorize.bio_based.TSA.OriginalTSA import OriginalTSA
 
 __all__ = ["OriginalTSA"]

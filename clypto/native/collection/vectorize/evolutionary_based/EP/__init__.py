@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.evolutionary_based.EP.OriginalEP import OriginalEP
-from clypto.collection.evolutionary_based.EP.LevyEP import LevyEP
+from clypto.native.collection.vectorize.evolutionary_based.EP.OriginalEP import OriginalEP
+from clypto.native.collection.vectorize.evolutionary_based.EP.LevyEP import LevyEP
 
 __all__ = ["OriginalEP", "LevyEP"]

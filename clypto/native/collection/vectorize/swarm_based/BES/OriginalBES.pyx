@@ -110,42 +110,22 @@ cdef class OriginalBES(LegacyNativeOptimizer):
         return x_list, y_list, x1_list, y1_list
 
     cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        ## 0. Pre-definded
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         x_list, y_list, x1_list, y1_list = self.create_x_y_x1_y1__()
-
-        # Three parts: selecting the search space, searching within the selected search space and swooping.
-        ## 1. Select space
-        pos_mean = np.mean(np.array(Xp), axis=0)
-        for idx in range(0, self.pop_size):
-            pos_new = g_best + self.alpha * self.generator.uniform() * (pos_mean - Xp[idx])
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
-
-        ## 2. Search in space
-        pos_mean = np.mean(np.array(Xp), axis=0)
-        for idx in range(0, self.pop_size):
-            idx_rand = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            pos_new = Xp[idx] + y_list[idx] * (Xp[idx] - Xp[idx_rand]) + x_list[idx] * (Xp[idx] - pos_mean)
-            # sequential mode: later agents read the rows already replaced
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
-
-        ## 3. Swoop
-        pos_mean = np.mean(np.array(Xp), axis=0)
-        for idx in range(0, self.pop_size):
-            pos_new = (
-                    self.generator.uniform() * g_best
-                    + x1_list[idx] * (Xp[idx] - self.c1 * pos_mean)
-                    + y1_list[idx] * (Xp[idx] - self.c2 * g_best)
-            )
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
+        # 1. Select space
+        pos_mean = np.mean(np.array(X), axis=0)
+        ops.step(self, g + self.alpha * rng.uniform(size=(n, 1)) * (pos_mean - X))
+        # 2. Search in space
+        pos_mean = np.mean(np.array(pop.X), axis=0)
+        X = pop.X
+        rand_agent = X[ops.others(self, n)[:, 0]]
+        ops.step(self, X + y_list[:, None] * (X - rand_agent) + x_list[:, None] * (X - pos_mean))
+        # 3. Swoop
+        pos_mean = np.mean(np.array(pop.X), axis=0)
+        X = pop.X
+        ops.step(self, rng.uniform(size=(n, 1)) * g + x1_list[:, None] * (X - self.c1 * pos_mean) + y1_list[:, None] * (X - self.c2 * g))

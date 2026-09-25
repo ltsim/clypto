@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 09:16, 15/08/2025 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class DevEPC(AgentListOptimizer):
+cdef class DevEPC(LegacyNativeOptimizer):
     """
     The developed version of: Emperor Penguins Colony (EPC)
 
@@ -167,38 +163,36 @@ cdef class DevEPC(AgentListOptimizer):
         )
         return new_position
 
-    def evolve_agents(self, epoch):
-        # Decrease heat absorption coefficient
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        F = np.asarray(pop.F)
         self.heat_radiation = self.heat_radiation * self.heat_damping_factor
-        # Decrease mutation factor
-        self.current_mutation_factor = self.mutation_factor * (1 - epoch / self.epoch)
-
-        # For each penguin i
-        for idx in range(self.pop_size):
-            # For each penguin j
-            for jdx in range(self.pop_size):
-                # Move penguin i towards penguin j if j has better cost
-                if self.compare_target(
-                        self.objs[jdx].target, self.objs[idx].target, self.problem.minmax
-                ):
-                    # Calculate distance between penguins
-                    distance = np.linalg.norm(
-                        self.objs[jdx].solution - self.objs[idx].solution
-                    )
-                    # Calculate attractiveness
-                    attractiveness = self.calculate_attractiveness(
-                        self.heat_radiation, distance
-                    )
-                    # Normalize attractiveness
-                    if attractiveness > 1:
-                        attractiveness = 1.0 / (1.0 + attractiveness)
-                    # Perform spiral movement
-                    pos_new = self.spiral_movement(
-                        self.objs[idx].solution, self.objs[jdx].solution, attractiveness
-                    )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
-                    if self.compare_target(
-                            agent.target, self.objs[idx].target, self.problem.minmax
-                    ):
-                        self.objs[idx] = agent
+        self.current_mutation_factor = self.mutation_factor * (1 - epoch_c / self.epoch)
+        # every penguin moves towards each penguin that is better than it (one candidate per such pair)
+        better = (F[None, :] < F[:, None]) if self.problem.minmax == "min" else (F[None, :] > F[:, None])
+        i, j = np.nonzero(better)
+        m = len(i)
+        if m == 0:
+            return
+        diff = X[j] - X[i]
+        dist = np.linalg.norm(diff, axis=1)
+        att = np.where(dist == 0, self.heat_radiation, self.heat_radiation * np.exp(-self.mu * dist) / np.where(dist == 0, 1.0, dist))
+        att = np.where(att > 1, 1.0 / (1.0 + att), att)
+        direction = diff / np.where(dist == 0, 1.0, dist)[:, None]
+        if d >= 2:
+            theta = self.spiral_b * np.pi
+            c, s = np.cos(theta), np.sin(theta)
+            rotated = direction.copy()
+            rotated[:, 0] = c * direction[:, 0] - s * direction[:, 1]
+            rotated[:, 1] = s * direction[:, 0] + c * direction[:, 1]
+            direction = rotated
+        pos = X[i] + (att * dist * self.spiral_a)[:, None] * direction + self.current_mutation_factor * rng.uniform(-1, 1, (m, d))
+        pos = np.where((dist == 0)[:, None], X[i], pos)
+        cand = pop.take(i)
+        cand.X[:] = self.correct_solution(pos)
+        self.evaluate(cand, 0, m)
+        ops.scatter(self, cand, i)

@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.EFO.DevEFO import DevEFO
-from clypto.collection.physics_based.EFO.OriginalEFO import OriginalEFO
+from clypto.native.collection.vectorize.physics_based.EFO.DevEFO import DevEFO
+from clypto.native.collection.vectorize.physics_based.EFO.OriginalEFO import OriginalEFO
 
 __all__ = ["DevEFO", "OriginalEFO"]

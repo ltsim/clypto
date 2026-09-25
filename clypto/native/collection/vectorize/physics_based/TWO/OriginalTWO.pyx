@@ -99,57 +99,31 @@ cdef class OriginalTWO(LegacyNativeOptimizer):
         return teams
 
     def forces__(self, NativePopulation pop, epoch):
-        """Loop 1: the teams pull each other; positions are updated in place, one team after the other
-        (the classic candidate list shares its agents with the population)."""
-        cdef Py_ssize_t idx, jdx
-        lb, ub = self.problem.lb, self.problem.ub
-        Xp, W = pop.X, pop.field("W")[:, 0]
-        for idx in range(self.pop_size):
-            pos_new = Xp[idx].copy().astype(float)
-            for jdx in range(self.pop_size):
-                if W[idx] < W[jdx]:
-                    force = max(W[idx] * self.muy_s, W[jdx] * self.muy_s)
-                    resultant_force = force - W[idx] * self.muy_k
-                    g = Xp[jdx] - Xp[idx]
-                    acceleration = resultant_force * g / (W[idx] * self.muy_k)
-                    delta_x = 0.5 * acceleration + np.power(self.alpha, epoch) * self.beta * (ub - lb) * self.generator.normal(0, 1, pop.d)
-                    pos_new += delta_x
-            Xp[idx] = pos_new
+        """The teams pull each other (Loop 1); returns the new positions (n, d), not yet bounded.
 
-    def bound__(self, NativePopulation pop, Py_ssize_t idx, epoch):
-        """Loop 2 body: the classic bound handling of team ``idx`` (returns the uncorrected position)."""
-        cdef Py_ssize_t jdx
+        Team i is pulled by every heavier team j; the noise terms of the pulls are summed as one Gaussian.
+        """
         lb, ub = self.problem.lb, self.problem.ub
-        Xp = pop.X
-        pos_new = Xp[idx].copy().astype(float)
-        for jdx in range(pop.d):
-            if pos_new[jdx] < lb[jdx] or pos_new[jdx] > ub[jdx]:
-                if self.generator.random() <= 0.5:
-                    g_best = self.g_best_x()  # aliased to the best row: sees the updates made so far
-                    pos_new[jdx] = g_best[jdx] + self.generator.standard_normal() / epoch * (g_best[jdx] - pos_new[jdx])
-                    if pos_new[jdx] < lb[jdx] or pos_new[jdx] > ub[jdx]:
-                        pos_new[jdx] = Xp[idx][jdx]
-                else:
-                    if pos_new[jdx] < lb[jdx]:
-                        pos_new[jdx] = lb[jdx]
-                    if pos_new[jdx] > ub[jdx]:
-                        pos_new[jdx] = ub[jdx]
-        return pos_new
+        X, W = np.array(pop.X), np.array(pop.field("W")[:, 0])
+        n, d = X.shape
+        pulled = W[:, None] < W[None, :]  # (i, j): j heavier than i
+        force = np.maximum(W[:, None] * self.muy_s, W[None, :] * self.muy_s)
+        C = np.where(pulled, (force - W[:, None] * self.muy_k) / (W[:, None] * self.muy_k), 0.0)
+        noise = np.power(self.alpha, epoch) * self.beta * (ub - lb) * np.sqrt(pulled.sum(axis=1))[:, None] * self.generator.normal(0, 1, (n, d))
+        return X + 0.5 * (C @ X - C.sum(axis=1)[:, None] * X) + noise
+
+    def bound__(self, pos, epoch):
+        """Out-of-bound coordinates: half the time re-drawn around the best, else clipped (returns the position)."""
+        lb, ub = self.problem.lb, self.problem.ub
+        g = np.array(self.g_best_x())
+        out = (pos < lb) | (pos > ub)
+        around = g + self.generator.standard_normal(pos.shape) / epoch * (g - pos)
+        around = np.where((around < lb) | (around > ub), pos, around)
+        return np.where(out & (self.generator.random(pos.shape) <= 0.5), around, np.where(out, np.clip(pos, lb, ub), pos))
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        self.forces__(pop, epoch)
-        for idx in range(self.pop_size):
-            pos_new = self.correct_solution(self.bound__(pop, idx, epoch))
-            if swarm:
-                pop.X[idx] = pos_new
-            else:
-                # the candidate is the population's own agent: it is always replaced
-                ops.set_row(pop, idx, pos_new, self.get_target(pos_new))
-        if swarm:
-            self.evaluate(pop, 0, pop.n)
+        pos = self.forces__(pop, epoch_c)
+        pop.X[:] = self.correct_solution(self.bound__(pos, epoch_c))
+        self.evaluate(pop, 0, pop.n)
         self.update_weight__(pop)

@@ -78,29 +78,20 @@ cdef class OriginalSCSO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        cols = np.arange(d)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         guides_r = self.ss - (self.ss * epoch / self.epoch)
         # roulette wheel over the 360 angles (the cumulative probabilities never change) and their cosines
         cum = np.cumsum(self.pp / np.sum(self.pp))
-        cos_table = np.array([np.cos(k) for k in range(len(self.pp))])
-        for idx in range(0, self.pop_size):
-            r = self.generator.random() * guides_r
-            R = (2 * guides_r) * self.generator.random() - guides_r  # controls to transition phases
-            if -1 <= R <= 1:
-                # per dimension: the roulette draw, then one draw for the random position
-                U = self.generator.random((d, 2))
-                teta = np.searchsorted(cum, U[:, 0], side="right")
-                rand_pos = np.abs(U[:, 1] * g_best - Xp[idx])
-                pos_new = g_best - r * rand_pos * cos_table[teta]
-            else:
-                # per dimension: the roulette draw (unused), the random agent and the random factor
-                U = self.generator.random((d, 3))
-                cp = (U[:, 1] * self.pop_size).astype(int)
-                pos_new = r * (Xp[cp, cols] - U[:, 2] * Xp[idx])
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        self.pop = cand
+        cos_table = np.cos(np.arange(len(self.pp)))
+        A = rng.random((n, 2))
+        r = A[:, 0] * guides_r
+        R = (2 * guides_r) * A[:, 1] - guides_r  # controls to transition phases
+        U = rng.random((n, d, 3))
+        teta = np.searchsorted(cum, U[..., 0], side="right")
+        pos_attack = g - r[:, None] * np.abs(U[..., 1] * g - X) * cos_table[teta]
+        cp = (U[..., 1] * n).astype(int)
+        pos_search = r[:, None] * (X[cp, np.arange(d)[None, :]] - U[..., 2] * X)
+        ops.replace(self, np.where((np.abs(R) <= 1)[:, None], pos_attack, pos_search))

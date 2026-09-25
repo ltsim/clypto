@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 14:14, 01/03/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalACOR(AgentListOptimizer):
+cdef class OriginalACOR(LegacyNativeOptimizer):
     """
     The original version of: Ant Colony Optimization Continuous (ACOR)
 
@@ -90,42 +86,25 @@ cdef class OriginalACOR(AgentListOptimizer):
         self.intent_factor = cy.validator(float, intent_factor, (0, 1.0), "intent_factor")
         self.zeta = cy.validator(float, zeta, (0, 5), "zeta")
 
-    def evolve_agents(self, epoch):
-        # Calculate Selection Probabilities
-        pop_rank = np.array([idx for idx in range(1, self.pop_size + 1)])
-        qn = self.intent_factor * self.pop_size
-        matrix_w = (
-                1 / (np.sqrt(2 * np.pi) * qn) * np.exp(-0.5 * ((pop_rank - 1) / qn) ** 2)
-        )
-        matrix_p = matrix_w / np.sum(matrix_w)  # Normalize to find the probability.
-        # Means and Standard Deviations
-        matrix_pos = np.array([agent.solution for agent in self.objs])
-        matrix_sigma = []
-        for idx in range(0, self.pop_size):
-            matrix_i = np.repeat(
-                self.objs[idx].solution.reshape((1, -1)), self.pop_size, axis=0
-            )
-            D = np.sum(np.abs(matrix_pos - matrix_i), axis=0)
-            temp = self.zeta * D / (self.pop_size - 1)
-            matrix_sigma.append(temp)
-        matrix_sigma = np.array(matrix_sigma)
-
-        # Generate Samples
-        pop_new = []
-        for idx in range(0, self.sample_count):
-            child = np.zeros(self.problem.n_dims)
-            for jdx in range(0, self.problem.n_dims):
-                rdx = self.get_index_roulette_wheel_selection(matrix_p)
-                child[jdx] = (
-                        self.objs[rdx].solution[jdx]
-                        + self.generator.normal() * matrix_sigma[rdx, jdx]
-                )  # (1)
-            pos_new = self.correct_solution(child)  # (2)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
-        self.objs = self.get_sorted_and_trimmed_population(
-            self.objs + pop_new, self.pop_size, self.problem.minmax
-        )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation sample, both
+        cdef Py_ssize_t n = pop.n, d = pop.d, m = self.sample_count
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        qn = self.intent_factor * n
+        w = 1 / (np.sqrt(2 * np.pi) * qn) * np.exp(-0.5 * ((np.arange(1, n + 1) - 1) / qn) ** 2)
+        p = w / np.sum(w)  # probability of every rank
+        # sigma[i, j] = zeta * sum_k |X[k, j] - X[i, j]| / (n - 1)
+        sigma = np.empty((n, d))
+        step = max(1, 4000000 // max(1, n * d))
+        for i0 in range(0, n, step):
+            i1 = min(n, i0 + step)
+            sigma[i0:i1] = self.zeta * np.abs(X[None, :, :] - X[i0:i1, None, :]).sum(axis=1) / (n - 1)
+        rdx = rng.choice(n, size=(m, d), p=p)  # a rank chosen per (sample, dimension)
+        cols = np.arange(d)[None, :]
+        sample = pop.take(np.zeros(m, dtype=int))
+        sample.X[:] = self.correct_solution(X[rdx, cols] + rng.normal(size=(m, d)) * sigma[rdx, cols])
+        self.evaluate(sample, 0, m)
+        both = pop.concat(sample)
+        self.pop = both.take(self.sorted_order(both)[:self.pop_size])

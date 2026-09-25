@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.TS.OriginalTS import OriginalTS
+from clypto.native.collection.vectorize.math_based.TS.OriginalTS import OriginalTS
 
 __all__ = ["OriginalTS"]

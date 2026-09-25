@@ -1,19 +1,15 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 09:33, 16/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.evolutionary_based.GA.BaseGA cimport BaseGA
+from clypto.native.collection.vectorize.evolutionary_based.GA.BaseGA cimport BaseGA
 import numpy as np
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
 cdef class SingleGA(BaseGA):
@@ -111,32 +107,5 @@ cdef class SingleGA(BaseGA):
         self.mutation = cy.validator(str, mutation, ["flip", "swap", "scramble", "inversion"], "mutation")
         self.k_way = cy.validator(float, k_way, (0, 1.0), "k_way")
 
-    def mutation_process__(self, child):
-        if self.mutation == "swap":
-            idx1, idx2 = self.generator.choice(
-                range(0, self.problem.n_dims), 2, replace=False
-            )
-            child[idx1], child[idx2] = child[idx2], child[idx1]
-            return child
-        elif self.mutation == "inversion":
-            cut1, cut2 = self.generator.choice(
-                range(0, self.problem.n_dims), 2, replace=False
-            )
-            temp = child[cut1:cut2]
-            temp = temp[::-1]
-            child[cut1:cut2] = temp
-            return child
-        elif self.mutation == "scramble":
-            cut1, cut2 = self.generator.choice(
-                range(0, self.problem.n_dims), 2, replace=False
-            )
-            temp = child[cut1:cut2]
-            self.generator.shuffle(temp)
-            child[cut1:cut2] = temp
-            return child
-        else:  # "flip"
-            idx = self.generator.integers(0, self.problem.n_dims)
-            child[idx] = self.generator.uniform(
-                self.problem.lb[idx], self.problem.ub[idx]
-            )
-            return child
+    def mutation_batch__(self, child, multipoints=None):
+        return BaseGA.mutation_batch__(self, child, False)

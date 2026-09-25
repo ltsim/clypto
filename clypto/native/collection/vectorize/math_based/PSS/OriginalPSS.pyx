@@ -90,59 +90,32 @@ cdef class OriginalPSS(LegacyNativeOptimizer):
         self.new_solution = True
 
     def create_population(self, pop_size=None):
+        n = self.pop_size if pop_size is None else pop_size
         if self.sampling_method == "MC":
-            pop = self.generator.random(self.pop_size, self.problem.n_dims)
-        else:  # Default: "LHS"
-            sampler = qmc.LatinHypercube(d=self.problem.n_dims)
-            pop = sampler.random(n=pop_size)
-        return pop
+            return self.generator.random((n, self.problem.n_dims))
+        # default: "LHS" (the sampler draws from our generator, so a seed reproduces the run)
+        return qmc.LatinHypercube(d=self.problem.n_dims, rng=self.generator).random(n=n)
 
     cdef void initialization(self):
-        lb_pop = np.repeat(np.reshape(self.problem.lb, (1, -1)), self.pop_size, axis=0)
-        ub_pop = np.repeat(np.reshape(self.problem.ub, (1, -1)), self.pop_size, axis=0)
-        steps_mat = np.repeat(np.reshape(self.steps, (1, -1)), self.pop_size, axis=0)
-        random_pop = self.create_population(self.pop_size)
-        pop = (
-                np.round((lb_pop + random_pop * (ub_pop - lb_pop)) / steps_mat) * steps_mat
-        )
-        self.pop = self.new_population(np.array([self.correct_solution(pos) for pos in pop]))
+        lb, ub = self.problem.lb, self.problem.ub
+        pos = np.round((lb + self.create_population(self.pop_size) * (ub - lb)) / self.steps) * self.steps
+        self.pop = self.new_population(self.correct_solution(pos))
 
-    cdef void evolve(self, int epoch):
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, k, n = self.pop_size, d = pop.d
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
         lb, ub = self.problem.lb, self.problem.ub
         gb = self.current_g_best()
-        g_best_pos, g_best_fit = gb.solution, gb.target.fitness
-        pop_rand = self.create_population(self.pop_size)
-        Xp, Xc = pop.X, cand.X
-        for idx in range(0, n):
-            pos_new = Xp[idx].copy()
-            for k in range(d):
-                # Update the ranges
-                deviation = self.generator.uniform(min(0, g_best_pos[k]), max(0, g_best_pos[k]))
-                if self.new_solution:
-                    # The deviation is positive dynamic real number
-                    deviation = abs(0.5 * (1.0 - self.acceptance_rate) * (ub[k] - lb[k])) * (1 - (epoch / self.epoch))
-                reduced_lb = g_best_pos[k] - deviation
-                reduced_lb = np.amax([reduced_lb, lb[k]])
-                reduced_ub = reduced_lb + deviation * 2.0
-                reduced_ub = np.amin([reduced_ub, ub[k]])
-                # Choose new solution
-                if self.generator.random() <= self.acceptance_rate:
-                    # choose a solution from the prominent domain
-                    pos_new[k] = reduced_lb + pop_rand[idx, k] * (reduced_ub - reduced_lb)
-                else:
-                    # choose a solution from the overall domain
-                    pos_new[k] = lb[k] + pop_rand[idx, k] * (ub[k] - lb[k])
-                # Round for the step size
-                pos_new = np.round(pos_new / self.steps) * self.steps
-            # Check the bound
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        self.pop = cand
-        best = self.sorted_order(cand)[0]
-        if self.compare_fitness(cand.F[best], g_best_fit, self.problem.minmax):
-            self.new_solution = True
+        g, g_fit = np.array(gb.solution), gb.target.fitness
+        rand = self.create_population(n)
+        if self.new_solution:
+            deviation = np.abs(0.5 * (1.0 - self.acceptance_rate) * (ub - lb)) * (1 - (epoch_c / self.epoch))
         else:
-            self.new_solution = False
+            deviation = rng.uniform(np.minimum(0, g), np.maximum(0, g), (n, d))
+        reduced_lb = np.maximum(g - deviation, lb)
+        reduced_ub = np.minimum(reduced_lb + deviation * 2.0, ub)
+        pos = np.where(rng.random((n, d)) <= self.acceptance_rate,
+                       reduced_lb + rand * (reduced_ub - reduced_lb), lb + rand * (ub - lb))
+        ops.replace(self, np.round(pos / self.steps) * self.steps)
+        self.new_solution = bool(ops.better(self, np.asarray(self.pop.F)[ops.best_row(self, self.pop)], g_fit))

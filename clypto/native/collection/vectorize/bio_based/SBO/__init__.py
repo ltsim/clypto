@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.SBO.DevSBO import DevSBO
-from clypto.collection.bio_based.SBO.OriginalSBO import OriginalSBO
+from clypto.native.collection.vectorize.bio_based.SBO.DevSBO import DevSBO
+from clypto.native.collection.vectorize.bio_based.SBO.OriginalSBO import OriginalSBO
 
 __all__ = ["DevSBO", "OriginalSBO"]

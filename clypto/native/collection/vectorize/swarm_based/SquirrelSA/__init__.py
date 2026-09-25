@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.SquirrelSA.OriginalSquirrelSA import OriginalSquirrelSA
+from clypto.native.collection.vectorize.swarm_based.SquirrelSA.OriginalSquirrelSA import OriginalSquirrelSA
 
 __all__ = ["OriginalSquirrelSA"]

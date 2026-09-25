@@ -83,82 +83,38 @@ cdef class OriginalSFOA(LegacyNativeOptimizer):
         self.gp = cy.validator(float, gp, [0, 1.0], "gp")
 
     cdef void evolve(self, int epoch_c):
-        # A different number of draws per agent depending on the branch: candidates are built agent
-        # by agent (same draw order) from the unchanged population; evaluation is batched.
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        me = np.arange(n)
         theta = np.pi / 2 * epoch / self.epoch
         tEO = (self.epoch - epoch) / self.epoch * np.cos(theta)
-
-        if self.generator.random() < self.gp:  # exploration of starfish
-            for idx in range(self.pop_size):
-                pos_new = Xp[idx].copy()
-                if self.problem.n_dims > 5:
-                    # for nD is larger than 5
-                    jp1 = self.generator.choice(self.problem.n_dims, 5, replace=False)
-                    pm = (
-                                 2 * self.generator.random(size=self.problem.n_dims) - 1
-                         ) * np.pi
-                    pos1 = pos_new + pm * (g_best - pos_new) * np.cos(
-                        theta
-                    )
-                    pos2 = pos_new - pm * (g_best - pos_new) * np.sin(
-                        theta
-                    )
-                    pos = np.where(
-                        self.generator.random(size=self.problem.n_dims) < self.gp,
-                        pos1,
-                        pos2,
-                    )
-                    pos_new[jp1] = pos[jp1]
-                    # Boundary check for individual dimension
-                    pos_new[jp1] = np.where(
-                        (pos_new[jp1] < self.problem.lb[jp1])
-                        | (pos_new[jp1] > self.problem.ub[jp1]),
-                        Xp[idx][jp1],
-                        pos_new[jp1],
-                    )
-                else:
-                    # for nD is not larger than 5
-                    jp2 = self.generator.integers(0, self.problem.n_dims)
-                    im = self.generator.choice(self.pop_size, 2, replace=False)
-                    diff1 = self.pop[im[0]].solution[jp2] - pos_new[jp2]
-                    diff2 = self.pop[im[1]].solution[jp2] - pos_new[jp2]
-                    rand1 = 2 * self.generator.random() - 1
-                    rand2 = 2 * self.generator.random() - 1
-                    pos_new[jp2] = tEO * pos_new[jp2] + rand1 * diff1 + rand2 * diff2
-                    # Boundary check for individual dimension
-                    if (
-                            pos_new[jp2] > self.problem.ub[jp2]
-                            or pos_new[jp2] < self.problem.lb[jp2]
-                    ):
-                        pos_new[jp2] = Xp[idx][jp2]
-                Xc[idx] = self.correct_solution(pos_new)
+        if rng.random() < self.gp:  # exploration of starfish
+            if d > 5:
+                # five random dimensions of every agent move around the best
+                pick = rng.random((n, d)).argsort(axis=1).argsort(axis=1) < 5
+                pm = (2 * rng.random((n, d)) - 1) * np.pi
+                pos = np.where(rng.random((n, d)) < self.gp, X + pm * (g - X) * np.cos(theta), X - pm * (g - X) * np.sin(theta))
+                pos = np.where(pick & ((pos < lb) | (pos > ub)), X, np.where(pick, pos, X))
+            else:
+                # one random dimension moves with the help of two other agents
+                jp = rng.integers(0, d, size=n)
+                i1, i2 = ops.two_others(self, n, 1)
+                diff1 = X[i1[:, 0], jp] - X[me, jp]
+                diff2 = X[i2[:, 0], jp] - X[me, jp]
+                v = tEO * X[me, jp] + (2 * rng.random(n) - 1) * diff1 + (2 * rng.random(n) - 1) * diff2
+                v = np.where((v > ub[jp]) | (v < lb[jp]), X[me, jp], v)
+                pos = np.array(X)
+                pos[me, jp] = v
         else:  # exploitation of starfish
-            df = self.generator.choice(self.pop_size, 5, replace=False)
-            # five arms of starfish
-            dm1 = g_best - self.pop[df[0]].solution
-            dm2 = g_best - self.pop[df[1]].solution
-            dm3 = g_best - self.pop[df[2]].solution
-            dm4 = g_best - self.pop[df[3]].solution
-            dm5 = g_best - self.pop[df[4]].solution
-            dm = [dm1, dm2, dm3, dm4, dm5]
-            for idx in range(self.pop_size):
-                r1, r2 = self.generator.random(size=2)
-                kp = self.generator.choice(5, size=2, replace=False)
-                pos_new = (
-                        Xp[idx] + r1 * dm[kp[0]] + r2 * dm[kp[1]]
-                )  # exploitation
-                if idx == self.pop_size - 1:  # last individual
-                    pos_new = (
-                            np.exp(-epoch * self.pop_size / self.epoch)
-                            * Xp[idx]
-                    )  # regeneration of starfish
-                Xc[idx] = self.correct_solution(pos_new)
-        # Update population with greedy strategy
-        self.evaluate(cand, 0, n)
-        ops.greedy(self, cand)
+            df = rng.choice(n, 5, replace=False)
+            dm = g - X[df]  # (5, d)
+            kp = rng.random((n, 5)).argsort(axis=1)[:, :2]
+            r = rng.random((n, 2, 1))
+            pos = X + r[:, 0] * dm[kp[:, 0]] + r[:, 1] * dm[kp[:, 1]]
+            pos[n - 1] = np.exp(-epoch * n / self.epoch) * X[n - 1]  # regeneration of starfish
+        ops.step(self, pos)

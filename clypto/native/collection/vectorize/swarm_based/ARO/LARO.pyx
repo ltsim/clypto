@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 22:46, 26/10/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class LARO(AgentListOptimizer):
+cdef class LARO(LegacyNativeOptimizer):
     """
     The improved version of:  Lévy flight, and the selective opposition version of the artificial rabbit algorithm (LARO)
 
@@ -71,75 +67,47 @@ cdef class LARO(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def evolve_agents(self, epoch):
+    def random_dims__(self, n, d):
+        """0/1 mask (n, d): ceil(u * d) random dimensions of every row are 1."""
+        k = np.ceil(self.generator.random(n) * d)
+        ranks = self.generator.random((n, d)).argsort(axis=1).argsort(axis=1)
+        return (ranks < k[:, None]).astype(float)
+
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
         theta = 2 * (1 - (epoch + 1) / self.epoch)
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            L = (np.exp(1) - np.exp((epoch / self.epoch) ** 2)) * (
-                np.sin(2 * np.pi * self.generator.random())
-            )
-            temp = np.zeros(self.problem.n_dims)
-            rd_index = self.generator.choice(
-                np.arange(0, self.problem.n_dims),
-                int(np.ceil(self.generator.random() * self.problem.n_dims)),
-                replace=False,
-            )
-            temp[rd_index] = 1
-            R = L * temp  # Eq 2
-            A = 2 * np.log(1.0 / self.generator.random()) * theta  # Eq. 15
-            if A > 1:  # # detour foraging strategy
-                rand_idx = self.generator.integers(0, self.pop_size)
-                pos_new = (
-                        self.objs[rand_idx].solution
-                        + R * (self.objs[idx].solution - self.objs[rand_idx].solution)
-                        + np.round(0.5 * (0.05 + self.generator.random()))
-                        * self.generator.normal(0, 1)
-                )  # Eq. 1
-            else:  # Random hiding stage
-                gr = np.zeros(self.problem.n_dims)
-                rd_index = self.generator.choice(
-                    np.arange(0, self.problem.n_dims),
-                    int(np.ceil(self.generator.random() * self.problem.n_dims)),
-                    replace=False,
-                )
-                gr[rd_index] = 1  # Eq. 12
-                H = self.generator.normal(0, 1) * (epoch / self.epoch)  # Eq. 8
-                b = self.objs[idx].solution + H * gr * self.objs[idx].solution  # Eq. 13
-                levy = self.get_levy_flight_step(beta=1.5, multiplier=0.1)
-                pos_new = self.objs[idx].solution + R * (
-                        levy * b - self.objs[idx].solution
-                )  # Eq. 11
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, minmax=self.problem.minmax
-            )
-        # Selective Opposition (SO) Strategy
+        L = (np.exp(1) - np.exp((epoch / self.epoch) ** 2)) * np.sin(2 * np.pi * rng.random(n))
+        R = L[:, None] * self.random_dims__(n, d)  # Eq 2
+        A = 2 * np.log(1.0 / rng.random(n)) * theta  # Eq. 15
+        # detour foraging strategy, Eq. 1
+        rand_agent = X[rng.integers(0, n, size=n)]
+        detour = rand_agent + R * (X - rand_agent) + np.round(0.5 * (0.05 + rng.random((n, 1)))) * rng.normal(0, 1, (n, 1))
+        # random hiding stage, Eqs. 8, 11, 12, 13
+        gr = self.random_dims__(n, d)
+        H = rng.normal(0, 1, (n, 1)) * (epoch / self.epoch)
+        b = X + H * gr * X
+        hiding = X + R * (self.get_levy_flight_step(beta=1.5, multiplier=0.1, size=n, case=-1)[:, None] * b - X)
+        ops.step(self, np.where((A > 1)[:, None], detour, hiding))
+        # second phase: agents far from the best in most dimensions and with a negative rank correlation jump to the mirror image
+        X = np.array(self.pop.X)
+        gb_fit = self.current_g_best().target.fitness
+        g = np.array(self.g_best_x())
         TS = 2 - (2 * epoch / self.epoch)
-        for idx in range(0, self.pop_size):
-            if self.objs[idx].target.fitness != self.g_best.target.fitness:
-                dd = np.abs(self.g_best.solution - self.objs[idx].solution)
-                idx_far = np.sign(dd - TS) < 0
-                n_df = np.sum(idx_far)
-                n_dc = np.sum(np.sign(dd - TS) > 0)
-                src = 1 - 6 * np.sum(dd ** 2) / np.dot(dd, (dd ** 2 - 1))
-                if len(dd[idx_far]) == 0:
-                    df_lb, df_ub = np.min(dd), np.max(dd)
-                else:
-                    df_lb, df_ub = np.min(dd[idx_far]), np.max(dd[idx_far])
-                if src <= 0 and n_df > n_dc:
-                    pos_new = df_lb + df_ub - self.objs[idx].solution
-                    pos_new = self.correct_solution(pos_new)
-                    target = self.get_target(pos_new)
-                    if self.compare_target(
-                            target, self.objs[idx].target, self.problem.minmax
-                    ):
-                        self.objs[idx].update(solution=pos_new, target=target)
+        dd = np.abs(g - X)
+        far, close = dd < TS, dd > TS
+        n_df, n_dc = far.sum(axis=1), close.sum(axis=1)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            src = 1 - 6 * np.sum(dd ** 2, axis=1) / np.sum(dd * (dd ** 2 - 1), axis=1)
+        df_lb = np.where(n_df > 0, np.where(far, dd, np.inf).min(axis=1), dd.min(axis=1))
+        df_ub = np.where(n_df > 0, np.where(far, dd, -np.inf).max(axis=1), dd.max(axis=1))
+        sel = np.flatnonzero((np.asarray(self.pop.F) != gb_fit) & (src <= 0) & (n_df > n_dc))
+        if len(sel):
+            cand = self.pop.take(sel)
+            cand.X[:] = self.correct_solution((df_lb + df_ub)[sel][:, None] - X[sel])
+            self.evaluate(cand, 0, len(sel))
+            ops.scatter(self, cand, sel)

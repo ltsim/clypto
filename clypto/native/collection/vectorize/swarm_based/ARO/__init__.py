@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.ARO.OriginalARO import OriginalARO
-from clypto.collection.swarm_based.ARO.LARO import LARO
+from clypto.native.collection.vectorize.swarm_based.ARO.OriginalARO import OriginalARO
+from clypto.native.collection.vectorize.swarm_based.ARO.LARO import LARO
 
-from clypto.collection.swarm_based.ARO.IARO import IARO
+from clypto.native.collection.vectorize.swarm_based.ARO.IARO import IARO
 
 __all__ = ["OriginalARO", "LARO", "IARO"]

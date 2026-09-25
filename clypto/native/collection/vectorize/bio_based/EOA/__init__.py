@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.EOA.OriginalEOA import OriginalEOA
+from clypto.native.collection.vectorize.bio_based.EOA.OriginalEOA import OriginalEOA
 
 __all__ = ["OriginalEOA"]

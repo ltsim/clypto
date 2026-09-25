@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.AVOA.OriginalAVOA import OriginalAVOA
+from clypto.native.collection.vectorize.swarm_based.AVOA.OriginalAVOA import OriginalAVOA
 
 __all__ = ["OriginalAVOA"]

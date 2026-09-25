@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.HC.OriginalHC import OriginalHC
-from clypto.collection.math_based.HC.SwarmHC import SwarmHC
+from clypto.native.collection.vectorize.math_based.HC.OriginalHC import OriginalHC
+from clypto.native.collection.vectorize.math_based.HC.SwarmHC import SwarmHC
 
 __all__ = ["OriginalHC", "SwarmHC"]

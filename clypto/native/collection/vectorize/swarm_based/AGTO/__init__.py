@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.AGTO.OriginalAGTO import OriginalAGTO
-from clypto.collection.swarm_based.AGTO.MGTO import MGTO
+from clypto.native.collection.vectorize.swarm_based.AGTO.OriginalAGTO import OriginalAGTO
+from clypto.native.collection.vectorize.swarm_based.AGTO.MGTO import MGTO
 
 __all__ = ["OriginalAGTO", "MGTO"]

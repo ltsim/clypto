@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.bio_based.VCS.DevVCS cimport DevVCS
+from clypto.native.collection.vectorize.bio_based.VCS.DevVCS cimport DevVCS
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -76,53 +76,23 @@ cdef class OriginalVCS(DevVCS):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        ## Viruses diffusion
-        for idx in range(0, self.pop_size):
-            sigma = (np.log1p(epoch) / self.epoch) * (
-                    Xp[idx] - g_best
-            )
-            gauss = np.array(
-                [
-                    self.generator.normal(g_best[j], np.abs(sigma[j]))
-                    for j in range(0, self.problem.n_dims)
-                ]
-            )
-            pos_new = (
-                    gauss
-                    + self.generator.uniform() * g_best
-                    - self.generator.uniform() * Xp[idx]
-            )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
-        ## Host cells infection
-        x_mean = self.calculate_xmean__(pop)
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        # Phase 1: Gaussian search around the best
+        sigma = (np.log1p(epoch) / self.epoch) * (X - g)
+        pos = rng.normal(g, np.abs(sigma)) + rng.uniform(size=(n, 1)) * g - rng.uniform(size=(n, 1)) * X
+        ops.step(self, pos)
+        # Phase 2: around the (weighted) mean of the best agents
+        x_mean = self.calculate_xmean__(self.pop)
         sigma = self.sigma * (1 - epoch / self.epoch)
-        for idx in range(0, self.pop_size):
-            ## Basic / simple version, not the original version in the paper
-            pos_new = x_mean + sigma * self.generator.normal(0, 1, self.problem.n_dims)
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
-        ## Immune response
-        for idx in range(0, self.pop_size):
-            pr = (self.problem.n_dims - idx + 1) / self.problem.n_dims
-            pos_new = Xp[idx].copy()
-            for j in range(0, self.problem.n_dims):
-                if self.generator.uniform() > pr:
-                    id1, id2 = self.generator.choice(
-                        list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
-                    )
-                    pos_new[j] = (
-                            Xp[id1][j]
-                            - (Xp[id2][j] - Xp[idx][j])
-                            * self.generator.uniform()
-                    )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        ops.step(self, x_mean + sigma * rng.normal(0, 1, (n, d)))
+        # Phase 3: recombination with two random agents
+        X = self.pop.X
+        pr = ((d - np.arange(n) + 1) / d)[:, None]
+        id1, id2 = ops.two_others(self, n, d)
+        cols = np.arange(d)[None, :]
+        pos = np.where(rng.uniform(size=(n, d)) > pr, X[id1, cols] - (X[id2, cols] - X) * rng.uniform(size=(n, d)), X)
+        ops.step(self, pos)

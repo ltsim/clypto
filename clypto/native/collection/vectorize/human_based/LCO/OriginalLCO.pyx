@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 11:16, 18/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalLCO(AgentListOptimizer):
+cdef class OriginalLCO(LegacyNativeOptimizer):
     """
     The original version of: Life Choice-based Optimization (LCO)
 
@@ -78,49 +74,19 @@ cdef class OriginalLCO(AgentListOptimizer):
         self.r1 = cy.validator(float, r1, [1.0, 3.0], "r1")
         self.n_agents = int(np.ceil(np.sqrt(self.pop_size)))
 
-    def evolve_agents(self, epoch):
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            prob = self.generator.random()
-            if prob > 0.875:  # Update using Eq. 1, update from n best position
-                temp = np.array(
-                    [
-                        self.generator.random() * self.objs[j].solution
-                        for j in range(0, self.n_agents)
-                    ]
-                )
-                temp = np.mean(temp, axis=0)
-            elif prob < 0.7:  # Update using Eq. 2-6
-                f1 = 1 - epoch / self.epoch
-                f2 = 1 - f1
-                prev_pos = (
-                    self.g_best.solution if idx == 0 else self.objs[idx - 1].solution
-                )
-                best_diff = (
-                        f1 * self.r1 * (self.g_best.solution - self.objs[idx].solution)
-                )
-                better_diff = f2 * self.r1 * (prev_pos - self.objs[idx].solution)
-                temp = (
-                        self.objs[idx].solution
-                        + self.generator.random() * better_diff
-                        + self.generator.random() * best_diff
-                )
-            else:
-                temp = (
-                        self.problem.ub
-                        - (self.objs[idx].solution - self.problem.lb)
-                        * self.generator.random()
-                )
-            pos_new = self.correct_solution(temp)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        prob = rng.random((n, 1))
+        # Eq. 1: mean of random fractions of the n_agents best positions
+        top = (rng.random((n, self.n_agents, 1)) * X[None, :self.n_agents]).mean(axis=1)
+        prev = np.vstack([g[None], X[:-1]])  # the better neighbour (the best for the first agent)
+        f1 = 1 - epoch_c / self.epoch
+        f2 = 1 - f1
+        eq2 = X + rng.random((n, 1)) * (f2 * self.r1 * (prev - X)) + rng.random((n, 1)) * (f1 * self.r1 * (g - X))
+        eq3 = ub - (X - lb) * rng.random((n, 1))
+        ops.step(self, np.where(prob > 0.875, top, np.where(prob < 0.7, eq2, eq3)))

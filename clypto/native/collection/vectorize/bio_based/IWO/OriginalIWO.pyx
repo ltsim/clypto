@@ -108,29 +108,18 @@ cdef class OriginalIWO(LegacyNativeOptimizer):
         self.sigma_end = cy.validator(float, sigma_end, (0, 0.5), "sigma_end")
 
     cdef void evolve(self, int epoch_c):
-        # The number of seeds of each plant depends on its fitness ratio: candidates are built
-        # plant by plant (same draw order), evaluated together and the best ones survive.
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
-        cdef Py_ssize_t idx, jdx
-        # Update Standard Deviation
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
         sigma = (1.0 - epoch_c / self.epoch) ** self.exponent * (self.sigma_start - self.sigma_end) + self.sigma_end
         order = self.sorted_order(pop)
-        Xs, Fs = pop.X[order], pop.F[order]  # the sorted population
-        best_fit, worst_fit = Fs[0], Fs[-1]
-        moves = []
-        for idx in range(0, self.pop_size):
-            temp = best_fit - worst_fit
-            if temp == 0:
-                ratio = self.generator.random()
-            else:
-                ratio = (Fs[idx] - worst_fit) / temp
-            s = int(np.ceil(self.seed_min + (self.seed_max - self.seed_min) * ratio))
-            if s > int(np.sqrt(self.pop_size)):
-                s = int(np.sqrt(self.pop_size))
-            for jdx in range(s):
-                # Initialize Offspring and Generate Random Location
-                pos_new = Xs[idx] + sigma * self.generator.normal(0, 1, self.problem.n_dims)
-                moves.append(self.correct_solution(pos_new))
-        cand = self.new_population(np.array(moves))
+        Xs, Fs = pop.X[order], np.asarray(pop.F)[order]  # the sorted population
+        temp = Fs[0] - Fs[-1]
+        ratio = rng.random(n) if temp == 0 else (Fs - Fs[-1]) / temp
+        # number of seeds of every plant (better plants spread more seeds)
+        s = np.minimum(np.ceil(self.seed_min + (self.seed_max - self.seed_min) * ratio).astype(int), int(np.sqrt(self.pop_size)))
+        parent = np.repeat(np.arange(n), s)
+        pos = Xs[parent] + sigma * rng.normal(0, 1, (len(parent), d))
+        cand = self.new_population(self.correct_solution(pos))
         self.pop = cand.take(self.sorted_order(cand)[:self.pop_size])

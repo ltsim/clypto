@@ -9,7 +9,7 @@
 
 import numpy as np
 
-from clypto.collection.human_based.BRO.DevBRO cimport DevBRO
+from clypto.native.collection.vectorize.human_based.BRO.DevBRO cimport DevBRO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer

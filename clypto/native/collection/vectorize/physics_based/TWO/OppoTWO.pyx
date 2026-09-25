@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from clypto.collection.physics_based.TWO.OriginalTWO cimport OriginalTWO
+from clypto.native.collection.vectorize.physics_based.TWO.OriginalTWO cimport OriginalTWO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -67,37 +67,18 @@ cdef class OppoTWO(OriginalTWO):
         self.update_weight__(self.pop)
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
         lb, ub = self.problem.lb, self.problem.ub
-        ## Apply force of others solution on each individual solution
-        self.forces__(pop, epoch)
-        ## Amend solution and update fitness value
-        Xp = pop.X
-        for idx in range(self.pop_size):
-            g_best = self.g_best_x()  # aliased to the best row: sees the updates made so far
-            pos_new = g_best + self.generator.normal(0, 1, self.problem.n_dims) / (epoch) * (g_best - Xp[idx])
-            conditions = np.logical_or(Xp[idx] < lb, Xp[idx] > ub)
-            conditions = np.logical_and(conditions, self.generator.random(self.problem.n_dims) < 0.5)
-            pos_new = np.where(conditions, pos_new, Xp[idx])
-            pos_c = self.correct_solution(pos_new)
-            if swarm:
-                Xp[idx] = pos_c
-            else:
-                # the classic sequential path evaluates the *uncorrected* position
-                ops.set_row(pop, idx, pos_c, self.get_target(pos_new))
-        if swarm:
-            self.evaluate(pop, 0, pop.n)
-        ## Opposition-based here
-        cand = pop.empty_like()
-        g_best = np.array(self.g_best_x())
-        for idx in range(self.pop_size):
-            C_op = self.correct_solution(lb + ub - g_best + self.generator.uniform() * (g_best - Xp[idx]))
-            ops.commit(self, pop, cand, idx, self.correct_solution(C_op), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, pop.n)
+        pos = self.forces__(pop, epoch_c)
+        g = np.array(self.g_best_x())
+        around = g + rng.normal(0, 1, (n, d)) / epoch_c * (g - pos)
+        redraw = ((pos < lb) | (pos > ub)) & (rng.random((n, d)) < 0.5)
+        pop.X[:] = self.correct_solution(np.where(redraw, around, pos))
+        self.evaluate(pop, 0, n)
+        # opposition-based candidates around the best
+        g = np.array(self.g_best_x())
+        X = pop.X
+        ops.step(self, self.correct_solution(lb + ub - g + rng.uniform(size=(n, 1)) * (g - X)))
         self.update_weight__(pop)

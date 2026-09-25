@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 14:01, 16/11/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -16,11 +14,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalFOA(AgentListOptimizer):
+cdef class OriginalFOA(LegacyNativeOptimizer):
     """
     The original version of: Fruit-fly Optimization Algorithm (FOA)
 
@@ -77,39 +73,19 @@ cdef class OriginalFOA(AgentListOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
     def norm_consecutive_adjacent__(self, position=None):
-        return np.array(
-            [
-                np.linalg.norm([position[x], position[x + 1]])
-                for x in range(0, self.problem.n_dims - 1)
-            ]
-            + [np.linalg.norm([position[-1], position[0]])]
-        )
+        """The smell concentration of a position (or of every row): norms of consecutive coordinate pairs."""
+        return np.hypot(position, np.roll(position, -1, axis=-1))
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        solution = self.norm_consecutive_adjacent__(solution)
-        return FieldAgent(solution=solution)
+    cdef void initialization(self):
+        cdef NativePopulation pop = self.pop
+        n, d = self.pop_size, self.problem.n_dims
+        pos = self.problem.lb + self.generator.random((n, d)) * (self.problem.ub - self.problem.lb)
+        self.pop = self.new_population(self.norm_consecutive_adjacent__(pos))
 
-    def evolve_agents(self, epoch):
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.objs[
-                idx
-            ].solution + self.generator.random() * self.generator.normal(
-                self.problem.lb, self.problem.ub
-            )
-            pos_new = self.norm_consecutive_adjacent__(pos_new)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                pop_new, self.objs, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        pos = X + rng.random((n, 1)) * rng.normal(self.problem.lb, self.problem.ub, (n, d))
+        ops.step(self, self.norm_consecutive_adjacent__(pos))

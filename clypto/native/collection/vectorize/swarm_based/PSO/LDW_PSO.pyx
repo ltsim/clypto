@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.collection.swarm_based.PSO.OriginalPSO cimport OriginalPSO
+from clypto.native.collection.vectorize.swarm_based.PSO.OriginalPSO cimport OriginalPSO
 
 
 cdef class LDW_PSO(OriginalPSO):

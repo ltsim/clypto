@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.BeesA.CleverBookBeesA import CleverBookBeesA
-from clypto.collection.swarm_based.BeesA.OriginalBeesA import OriginalBeesA
+from clypto.native.collection.vectorize.swarm_based.BeesA.CleverBookBeesA import CleverBookBeesA
+from clypto.native.collection.vectorize.swarm_based.BeesA.OriginalBeesA import OriginalBeesA
 
-from clypto.collection.swarm_based.BeesA.ProbBeesA import ProbBeesA
+from clypto.native.collection.vectorize.swarm_based.BeesA.ProbBeesA import ProbBeesA
 
 __all__ = ["CleverBookBeesA", "OriginalBeesA", "ProbBeesA"]

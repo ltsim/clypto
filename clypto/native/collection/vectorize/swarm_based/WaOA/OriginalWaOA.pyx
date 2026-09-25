@@ -75,34 +75,15 @@ cdef class OriginalWaOA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        for idx in range(0, self.pop_size):
-            # Phase 1: Feeding strategy (exploration)
-            kk = self.generator.permutation(self.pop_size)[0]
-            if self.compare_fitness(pop.F[kk], pop.F[idx], self.problem.minmax):  # Eq. 4
-                pos_new = Xp[idx] + self.generator.random() * (
-                        Xp[kk]
-                        - self.generator.integers(1, 3) * Xp[idx]
-                )
-            else:
-                pos_new = Xp[idx] + self.generator.random() * (
-                        Xp[idx] - Xp[kk]
-                )
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
-                ops.set_row(pop, idx, pos_new, tar)
-
-            # PHASE 2 Exploitation
-            LB, UB = self.problem.lb / epoch, self.problem.ub / epoch
-            pos_new = (
-                    Xp[idx] + LB + (UB - self.generator.random() * LB)
-            )  # Eq. 7
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
-                ops.set_row(pop, idx, pos_new, tar)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        # Phase 1: feeding strategy (exploration), Eq. 4
+        kk = rng.integers(0, n, size=n)
+        toward = ops.better(self, pop.F[kk], pop.F)[:, None]
+        r1 = rng.integers(1, 3, size=(n, 1))
+        R = rng.random((n, 1))
+        ops.step(self, np.where(toward, X + R * (X[kk] - r1 * X), X + R * (X - X[kk])))
+        # PHASE 2: exploitation (Eq. 7)
+        LB, UB = self.problem.lb / epoch, self.problem.ub / epoch
+        ops.step(self, X + LB + (UB - rng.random((n, 1)) * LB))

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.CoatiOA.OriginalCoatiOA import OriginalCoatiOA
+from clypto.native.collection.vectorize.swarm_based.CoatiOA.OriginalCoatiOA import OriginalCoatiOA
 
 __all__ = ["OriginalCoatiOA"]

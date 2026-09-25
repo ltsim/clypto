@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from clypto.collection.math_based.SCA.DevSCA cimport DevSCA
+from clypto.native.collection.vectorize.math_based.SCA.DevSCA cimport DevSCA
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -63,37 +63,22 @@ cdef class OriginalSCA(DevSCA):
         self.sort_flag = False
 
     cdef object amend_solution(self, object solution):
-        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub, size=np.shape(solution))
         return np.where(
             np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub),
             solution,
             rand_pos,
         )
 
-    cdef void evolve(self, int epoch):
-        # amend_solution draws random numbers after each agent, so the per-agent draw
-        # order is kept; evaluation and selection are batched.
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        # Eq 3.4, r1 decreases linearly from a to 0
-        a = 2.0
-        r1 = a * (1.0 - epoch / self.epoch)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        r1 = 2.0 * (1.0 - epoch / self.epoch)
         g = np.array(self.g_best_x())
-        X, Xc = pop.X, cand.X
-        for idx in range(n):
-            pos_new = X[idx].copy()
-            for jdx in range(d):  # j-th dimension
-                # Update r2, r3, and r4 for Eq. (3.3)
-                r2 = 2 * np.pi * self.generator.uniform()
-                r3 = 2 * self.generator.uniform()
-                r4 = self.generator.uniform()
-                # Eq. 3.3, 3.1 and 3.2
-                if r4 < 0.5:
-                    pos_new[jdx] = pos_new[jdx] + r1 * np.sin(r2) * np.abs(r3 * g[jdx] - pos_new[jdx])
-                else:
-                    pos_new[jdx] = pos_new[jdx] + r1 * np.cos(r2) * np.abs(r3 * g[jdx] - pos_new[jdx])
-            # Check the bound
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
+        R = rng.random((n, 3, d))  # per agent and dimension: r2, r3 and the sin/cos switch
+        r2 = 2 * np.pi * R[:, 0]
+        step = r1 * np.abs(2 * R[:, 1] * g - X)
+        ops.step(self, X + np.where(R[:, 2] < 0.5, np.sin(r2), np.cos(r2)) * step)

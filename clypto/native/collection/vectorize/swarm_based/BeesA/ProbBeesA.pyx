@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 15:34, 01/03/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class ProbBeesA(AgentListOptimizer):
+cdef class ProbBeesA(LegacyNativeOptimizer):
     """
     The original version of: Probabilistic Bees Algorithm (P-BeesA)
 
@@ -95,51 +91,29 @@ cdef class ProbBeesA(AgentListOptimizer):
         self.dyn_radius = self.dance_radius
         self.recruited_bee_count = int(round(self.recruited_bee_ratio * self.pop_size))
 
-    def perform_dance__(self, position, r):
-        jdx = self.generator.choice(list(range(0, self.problem.n_dims)))
-        position[jdx] = position[jdx] + r * self.generator.uniform(-1, 1)
-        return self.correct_solution(position)
-
-    def evolve_agents(self, epoch):
-        # Calculate Scores
-        fit_list = np.array([agent.target.fitness for agent in self.objs])
-        fit_list = 1.0 / (fit_list + self.EPSILON)
-        d_fit = fit_list / np.mean(fit_list)
-        for idx in range(0, self.pop_size):
-            # Determine Rejection Probability based on Score
-            if d_fit[idx] < 0.9:
-                reject_prob = 0.6
-            elif 0.9 <= d_fit[idx] < 0.95:
-                reject_prob = 0.2
-            elif 0.95 <= d_fit[idx] < 1.15:
-                reject_prob = 0.05
-            else:
-                reject_prob = 0
-            # Check for Acceptance/Rejection
-            if self.generator.random() >= reject_prob:  # Acceptance
-                # Calculate New Bees Count
-                bee_count = int(np.ceil(d_fit[idx] * self.recruited_bee_count))
-                if bee_count < 2:
-                    bee_count = 2
-                if bee_count > self.pop_size:
-                    bee_count = self.pop_size
-                # Create New Bees(Solutions)
-                pop_child = []
-                for j in range(0, bee_count):
-                    pos_new = self.perform_dance__(
-                        self.objs[idx].solution, self.dyn_radius
-                    )
-                    agent = self.generate_empty_agent(pos_new)
-                    pop_child.append(agent)
-                    if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self.get_target(pos_new)
-                pop_child = self.update_target_for_population(pop_child)
-                local_best = self.get_best_agent(pop_child, self.problem.minmax)
-                if self.compare_target(
-                        local_best.target, self.objs[idx].target, self.problem.minmax
-                ):
-                    self.objs[idx] = local_best
-            else:
-                self.objs[idx] = self.generate_agent()
-        # Damp Dance Radius
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand, fresh
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        fit = 1.0 / (np.array(pop.F) + self.EPSILON)
+        d_fit = fit / np.mean(fit)
+        reject_prob = np.select([d_fit < 0.9, d_fit < 0.95, d_fit < 1.15], [0.6, 0.2, 0.05], default=0.0)
+        accepted = rng.random(n) >= reject_prob
+        bees = np.clip(np.ceil(d_fit * self.recruited_bee_count).astype(int), 2, n)
+        counts = np.where(accepted, bees, 0)
+        parent = np.repeat(np.arange(n), counts)
+        pos = np.array(pop.X[parent])
+        pos[np.arange(len(parent)), rng.integers(0, d, size=len(parent))] += self.dyn_radius * rng.uniform(-1, 1, len(parent))
+        cand = pop.take(parent)
+        cand.X[:] = self.correct_solution(pos)
+        self.evaluate(cand, 0, len(parent))
+        ops.scatter(self, cand, parent)
+        # rejected sites are abandoned: their bees scout new random sources
+        lost = np.flatnonzero(~accepted)
+        if len(lost):
+            fresh = pop.take(lost)
+            fresh.X[:] = self.problem.lb + rng.random((len(lost), d)) * (self.problem.ub - self.problem.lb)
+            self.evaluate(fresh, 0, len(lost))
+            pop.buf[lost] = fresh.buf
         self.dyn_radius = self.dance_reduction * self.dance_radius

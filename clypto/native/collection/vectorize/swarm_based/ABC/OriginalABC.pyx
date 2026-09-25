@@ -82,45 +82,42 @@ cdef class OriginalABC(LegacyNativeOptimizer):
 
     cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx
-        minmax = self.problem.minmax
-        Xp = pop.X
-        for idx in range(0, self.pop_size):
-            # Choose a random employed bee to generate a new solution
-            rdx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            # Generate a new solution by the equation x_{ij} = x_{ij} + phi_{ij} * (x_{tj} - x_{ij})
-            phi = self.generator.uniform(low=-1, high=1, size=self.problem.n_dims)
-            pos_new = Xp[idx] + phi * (Xp[rdx] - Xp[idx])
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, pos_new, tar)
-                self.trials[idx] = 0
+        cdef NativePopulation cand, scouts
+        cdef Py_ssize_t i, n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        # Employed bees: a random other bee as guide
+        X = pop.X
+        before = np.array(pop.F)
+        phi = rng.uniform(low=-1, high=1, size=(n, d))
+        ops.step(self, X + phi * (X[ops.others(self, n)[:, 0]] - X))
+        improved = ops.better(self, pop.F, before)
+        self.trials = np.where(improved, 0, self.trials + 1)
+        # Onlooker bees: roulette wheel on the employed fitness (Eq. of the classic code), guided by another bee
+        fits = np.array(pop.F)
+        if np.ptp(fits) == 0:
+            selected = rng.integers(0, n, size=n)
+        else:
+            f = fits - fits.min() if np.any(fits < 0) else fits
+            f = f.max() - f if self.problem.minmax == "min" else f
+            selected = rng.choice(n, size=n, p=f / f.sum())
+        X = pop.X
+        guide = (selected + rng.integers(1, n, size=n)) % n
+        phi = rng.uniform(low=-1, high=1, size=(n, d))
+        cand = pop.take(selected)
+        cand.X[:] = self.correct_solution(X[selected] + phi * (X[guide] - X[selected]))
+        self.evaluate(cand, 0, n)
+        for i in range(n):  # bees chosen several times keep their best candidate
+            s = selected[i]
+            if ops.better(self, cand.F[i], pop.F[s]):
+                pop.buf[s] = cand.buf[i]
+                self.trials[s] = 0
             else:
-                self.trials[idx] += 1
-        # Onlooker bees phase
-        # Calculate the probabilities of each employed bee
-        employed_fits = np.array(pop.F)
-        for idx in range(0, self.pop_size):
-            # Select an employed bee using roulette wheel selection
-            selected_bee = self.get_index_roulette_wheel_selection(employed_fits)
-            # Choose a random employed bee to generate a new solution
-            rdx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx, selected_bee}))
-            # Generate a new solution by the equation x_{ij} = x_{ij} + phi_{ij} * (x_{tj} - x_{ij})
-            phi = self.generator.uniform(low=-1, high=1, size=self.problem.n_dims)
-            pos_new = Xp[selected_bee] + phi * (Xp[rdx] - Xp[selected_bee])
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[selected_bee], minmax):
-                ops.set_row(pop, selected_bee, pos_new, tar)
-                self.trials[selected_bee] = 0
-            else:
-                self.trials[selected_bee] += 1
-        # Scout bees phase
-        # Check the number of trials for each employed bee and abandon the food source if the limit is exceeded
-        abandoned = np.where(self.trials >= self.n_limits)[0]
-        for idx in abandoned:
-            pos_new = self.problem.generate_solution(encoded=True)
-            ops.set_row(pop, idx, pos_new, self.get_target(pos_new))
-            self.trials[idx] = 0
+                self.trials[s] += 1
+        # Scout bees: abandon the food sources whose trials exceed the limit
+        abandoned = np.flatnonzero(self.trials >= self.n_limits)
+        if len(abandoned):
+            scouts = pop.take(abandoned)
+            scouts.X[:] = self.problem.lb + rng.random((len(abandoned), d)) * (self.problem.ub - self.problem.lb)
+            self.evaluate(scouts, 0, len(abandoned))
+            pop.buf[abandoned] = scouts.buf
+            self.trials[abandoned] = 0

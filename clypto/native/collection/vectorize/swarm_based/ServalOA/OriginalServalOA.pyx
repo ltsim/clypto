@@ -76,34 +76,11 @@ cdef class OriginalServalOA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        kk = self.generator.permutation(self.pop_size)[0]
-        for idx in range(self.pop_size):
-            # Phase 1: Prey Selection and Attacking (Exploration)
-            pos_new = Xp[idx] + self.generator.random(
-                self.problem.n_dims
-            ) * (
-                              Xp[kk]
-                              - self.generator.integers(1, 3, self.problem.n_dims)
-                              * Xp[idx]
-                      )
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
-                ops.set_row(pop, idx, pos_new, tar)
-
-            # Phase 2: Chase Process (Exploitation)
-            pos_new = (
-                    Xp[idx]
-                    + self.generator.integers(1, 3, self.problem.n_dims)
-                    * (self.problem.ub - self.problem.lb)
-                    / epoch
-            )  # Eq. 6
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
-                ops.set_row(pop, idx, pos_new, tar)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        kk = rng.integers(0, n)
+        # Phase 1: prey selection and attacking (exploration)
+        ops.step(self, X + rng.random((n, d)) * (X[kk] - rng.integers(1, 3, size=(n, d)) * X))
+        # Phase 2: chase process (exploitation), Eq. 6
+        ops.step(self, X + rng.integers(1, 3, size=(n, d)) * (self.problem.ub - self.problem.lb) / epoch)

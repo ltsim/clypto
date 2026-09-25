@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.RIME.OriginalRIME import OriginalRIME
+from clypto.native.collection.vectorize.physics_based.RIME.OriginalRIME import OriginalRIME
 
 __all__ = ["OriginalRIME"]

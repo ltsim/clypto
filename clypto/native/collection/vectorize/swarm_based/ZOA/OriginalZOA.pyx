@@ -77,33 +77,17 @@ cdef class OriginalZOA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        # PHASE1: Foraging Behaviour (one agent per row: the draws follow the agent order)
-        for idx in range(0, self.pop_size):
-            r1 = np.round(1 + self.generator.random())
-            pos_new = Xp[idx] + self.generator.random(d) * (g_best - r1 * Xp[idx])  # Eq. 3
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand, old_first=False)
-
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        # PHASE1: foraging behaviour (Eq. 3)
+        r1 = np.round(1 + rng.random((n, 1)))
+        ops.step(self, X + rng.random((n, d)) * (g - r1 * X))
         # PHASE2: defense strategies against predators
-        kk = self.generator.permutation(self.pop_size)[0]
-        cand = pop.empty_like()
-        Xp = pop.X
-        for idx in range(0, self.pop_size):
-            if self.generator.random() < 0.5:
-                # S1: the lion attacks the zebra and thus the zebra chooses an escape strategy
-                r2 = 0.1
-                pos_new = Xp[idx] + r2 * (2 + self.generator.random(d) - 1) * (1 - epoch / self.epoch) * Xp[idx]
-            else:
-                # S2: other predators attack the zebra and the zebra will choose the offensive strategy
-                r2 = self.generator.integers(1, 3)
-                pos_new = Xp[idx] + self.generator.random(d) * (Xp[kk] - r2 * Xp[idx])
-            # sequential mode: later agents read the rows already replaced (Xp[kk])
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        kk = rng.integers(0, n)
+        s1 = rng.random(n) < 0.5
+        pos_s1 = X + 0.1 * (2 + rng.random((n, d)) - 1) * (1 - epoch / self.epoch) * X
+        r2 = rng.integers(1, 3, size=(n, 1))
+        pos_s2 = X + rng.random((n, d)) * (X[kk] - r2 * X)
+        ops.step(self, np.where(s1[:, None], pos_s1, pos_s2))

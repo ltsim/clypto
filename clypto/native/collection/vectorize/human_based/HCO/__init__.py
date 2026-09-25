@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.HCO.OriginalHCO import OriginalHCO
+from clypto.native.collection.vectorize.human_based.HCO.OriginalHCO import OriginalHCO
 
 __all__ = ["OriginalHCO"]

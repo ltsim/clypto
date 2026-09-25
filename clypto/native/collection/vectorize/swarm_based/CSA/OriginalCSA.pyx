@@ -80,21 +80,15 @@ cdef class OriginalCSA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef NativePopulation head, new, ordered
-        cdef Py_ssize_t idx, n = pop.n
-        g_best = np.array(self.g_best_x())
-        ## Generate levy-flight solution (the steps are drawn agent by agent)
-        k = np.empty(n)
-        for idx in range(0, self.pop_size):
-            levy_step = self.get_levy_flight_step(multiplier=0.001, case=-1)
-            k[idx] = 1.0 / np.sqrt(epoch) * np.sign(self.generator.random() - 0.5) * levy_step
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
         X = pop.X
-        cand.X[:] = self.correct_solution(X + k[:, None] * (X - g_best))
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
+        g = np.array(self.g_best_x())
+        ## Generate levy-flight solution
+        levy = self.get_levy_flight_step(multiplier=0.001, size=n, case=-1)
+        k = 1.0 / np.sqrt(epoch) * np.sign(rng.random(n) - 0.5) * levy
+        ops.step(self, X + k[:, None] * (X - g))
         ## Abandoned some worst nests
         ordered = pop.take(self.sorted_order(pop))
-        new = self.new_population(self.generator.uniform(self.problem.lb, self.problem.ub, (self.n_cut, pop.d)))
-        head = ordered.take(np.arange(self.pop_size - self.n_cut))
-        self.pop = head.concat(new)
+        new = self.new_population(rng.uniform(self.problem.lb, self.problem.ub, (self.n_cut, d)))
+        self.pop = ordered.take(np.arange(self.pop_size - self.n_cut)).concat(new)

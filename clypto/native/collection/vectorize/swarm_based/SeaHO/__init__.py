@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.SeaHO.OriginalSeaHO import OriginalSeaHO
+from clypto.native.collection.vectorize.swarm_based.SeaHO.OriginalSeaHO import OriginalSeaHO
 
 __all__ = ["OriginalSeaHO"]

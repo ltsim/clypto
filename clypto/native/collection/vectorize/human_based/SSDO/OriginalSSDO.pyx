@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 11:17, 18/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -16,11 +14,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalSSDO(AgentListOptimizer):
+cdef class OriginalSSDO(LegacyNativeOptimizer):
     """
     The original version of: Social Ski-Driver Optimization (SSDO)
 
@@ -53,6 +49,7 @@ cdef class OriginalSSDO(AgentListOptimizer):
     data using social ski driver algorithm. Neural Computing and Applications, 32(11), pp.6925-6938.
     """
 
+    cdef public object local_v
     def __init__(
         self,
         epoch: int = 10000,
@@ -77,52 +74,26 @@ cdef class OriginalSSDO(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
-        pos_local = solution.copy()
-        return FieldAgent(
-            solution=solution, velocity=velocity, local_solution=pos_local
-        )
+    cdef void initialization(self):
+        LegacyNativeOptimizer.initialization(self)
+        self.local_v = np.array(self.pop.X)  # local solution of every agent (its previous position)
 
-    def evolve_agents(self, epoch):
-        c = 2 - epoch * (2.0 / self.epoch)  # a decreases linearly from 2 to 0
-        ## Calculate the mean of the best three solutions in each dimension. Eq 9
-        _, pop_best3, _ = self.get_special_agents(
-            self.objs, n_best=3, minmax=self.problem.minmax
-        )
-        pos_mean = np.mean(np.array([agent.solution for agent in pop_best3]))
-        pop_new = [agent.copy() for agent in self.objs]
-        # Updating velocity vectors
-        r1 = self.generator.uniform()  # r1, r2 is a random number in [0,1]
-        r2 = self.generator.uniform()
-        for i in range(0, self.pop_size):
-            if r2 <= 0.5:  ## Use Sine function to move
-                vel_new = c * np.sin(r1) * (
-                    self.objs[i].local_solution - self.objs[i].solution
-                ) + (2 - c) * np.sin(r1) * (pos_mean - self.objs[i].solution)
-            else:  ## Use Cosine function to move
-                vel_new = c * np.cos(r1) * (
-                    self.objs[i].local_solution - self.objs[i].solution
-                ) + (2 - c) * np.cos(r1) * (pos_mean - self.objs[i].solution)
-            pop_new[i].velocity = vel_new
-        ## Reproduction
-        for idx in range(0, self.pop_size):
-            pos_new = (
-                self.generator.normal(0, 1, self.problem.n_dims) * pop_new[idx].solution
-                + self.generator.random() * pop_new[idx].velocity
-            )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            agent.local_solution = self.objs[idx].solution.copy()
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, pop_new[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        c = 2 - epoch_c * (2.0 / self.epoch)  # a decreases linearly from 2 to 0
+        pos_mean = np.mean(X[self.sorted_order(pop)[:3]])  # (the classic code takes the mean of all the elements)
+        r1 = rng.uniform()  # r1, r2 is a random number in [0,1]
+        r2 = rng.uniform()
+        trig = np.sin(r1) if r2 <= 0.5 else np.cos(r1)  # sine or cosine move
+        vel = c * trig * (self.local_v - X) + (2 - c) * trig * (pos_mean - X)
+        pos = rng.normal(0, 1, (n, d)) * X + rng.random((n, 1)) * vel
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(pos)
+        self.evaluate(cand, 0, n)
+        ok = ops.better(self, np.asarray(cand.F), np.asarray(pop.F))
+        self.local_v = np.where(ok[:, None], X, self.local_v)
+        pop.buf[ok] = cand.buf[ok]

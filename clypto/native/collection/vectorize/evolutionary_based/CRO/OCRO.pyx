@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.evolutionary_based.CRO.OriginalCRO cimport OriginalCRO
+from clypto.native.collection.vectorize.evolutionary_based.CRO.OriginalCRO cimport OriginalCRO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer

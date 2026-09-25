@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.evolutionary_based.CRO.OriginalCRO import OriginalCRO
-from clypto.collection.evolutionary_based.CRO.OCRO import OCRO
+from clypto.native.collection.vectorize.evolutionary_based.CRO.OriginalCRO import OriginalCRO
+from clypto.native.collection.vectorize.evolutionary_based.CRO.OCRO import OCRO
 
 __all__ = ["OriginalCRO", "OCRO"]

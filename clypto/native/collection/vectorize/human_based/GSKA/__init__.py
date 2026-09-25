@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.GSKA.DevGSKA import DevGSKA
-from clypto.collection.human_based.GSKA.OriginalGSKA import OriginalGSKA
+from clypto.native.collection.vectorize.human_based.GSKA.DevGSKA import DevGSKA
+from clypto.native.collection.vectorize.human_based.GSKA.OriginalGSKA import OriginalGSKA
 
 __all__ = ["DevGSKA", "OriginalGSKA"]

@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 09:33, 16/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class BaseGA(AgentListOptimizer):
+cdef class BaseGA(LegacyNativeOptimizer):
     """
     The original version of: Genetic Algorithm (GA)
 
@@ -129,167 +125,132 @@ cdef class BaseGA(AgentListOptimizer):
             else:
                 self.mutation = cy.validator(str, mutation, ["flip", "swap", "scramble", "inversion"], "mutation")
 
-    def selection_process__(self, list_fitness):
+    def select_pairs__(self, F, m):
+        """``m`` pairs of parents (two index arrays into the mating pool with fitness ``F``)."""
+        rng = self.generator
+        N = len(F)
         if self.selection == "roulette":
-            id_c1 = self.get_index_roulette_wheel_selection(list_fitness)
-            id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
-            if id_c2 == id_c1:
-                # Fall back to a uniform pick among the remaining indices instead of
-                # retrying roulette selection, which can loop forever once floating-point
-                # underflow drives every other candidate's probability to exactly 0.0.
-                others = [i for i in range(len(list_fitness)) if i != id_c1]
-                id_c2 = self.generator.choice(others)
+            i1, i2 = ops.roulette(self, F, m), ops.roulette(self, F, m)
+            i2 = np.where(i1 == i2, (i1 + rng.integers(1, N, size=m)) % N, i2)
         elif self.selection == "random":
-            id_c1, id_c2 = self.generator.choice(range(self.pop_size), 2, replace=False)
-        else:  ## tournament
-            id_c1, id_c2 = self.get_index_kway_tournament_selection(
-                self.objs, k_way=self.k_way, output=2
-            )
-        return self.objs[id_c1].solution, self.objs[id_c2].solution
+            i1 = rng.integers(0, N, size=m)
+            i2 = (i1 + rng.integers(1, N, size=m)) % N
+        else:  # tournament
+            top = self.tournament__(F, m, 2)
+            i1, i2 = top[:, 0], top[:, 1]
+        return i1, i2
 
-    def selection_process_00__(self, pop_selected):
+    def select_pairs_pools__(self, F_dad, F_mom, m):
+        """One parent from each of two mating pools."""
+        rng = self.generator
         if self.selection == "roulette":
-            list_fitness = np.array([agent.target.fitness for agent in pop_selected])
-            id_c1 = self.get_index_roulette_wheel_selection(list_fitness)
-            id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
-            if id_c2 == id_c1:
-                # Fall back to a uniform pick among the remaining indices instead of
-                # retrying roulette selection, which can loop forever once floating-point
-                # underflow drives every other candidate's probability to exactly 0.0.
-                others = [i for i in range(len(list_fitness)) if i != id_c1]
-                id_c2 = self.generator.choice(others)
-        elif self.selection == "random":
-            id_c1, id_c2 = self.generator.choice(
-                range(len(pop_selected)), 2, replace=False
-            )
-        else:  ## tournament
-            id_c1, id_c2 = self.get_index_kway_tournament_selection(
-                pop_selected, k_way=self.k_way, output=2
-            )
-        return pop_selected[id_c1].solution, pop_selected[id_c2].solution
+            return ops.roulette(self, F_dad, m), ops.roulette(self, F_mom, m)
+        if self.selection == "random":
+            return rng.integers(0, len(F_dad), size=m), rng.integers(0, len(F_mom), size=m)
+        return self.tournament__(F_dad, m, 1)[:, 0], self.tournament__(F_mom, m, 1)[:, 0]
 
-    def selection_process_01__(self, pop_dad, pop_mom):
-        if self.selection == "roulette":
-            list_fit_dad = np.array([agent.target.fitness for agent in pop_dad])
-            list_fit_mom = np.array([agent.target.fitness for agent in pop_mom])
-            id_c1 = self.get_index_roulette_wheel_selection(list_fit_dad)
-            id_c2 = self.get_index_roulette_wheel_selection(list_fit_mom)
-        elif self.selection == "random":
-            id_c1 = self.generator.choice(range(len(pop_dad)))
-            id_c2 = self.generator.choice(range(len(pop_mom)))
-        else:  ## tournament
-            id_c1 = self.get_index_kway_tournament_selection(
-                pop_dad, k_way=self.k_way, output=1
-            )[0]
-            id_c2 = self.get_index_kway_tournament_selection(
-                pop_mom, k_way=self.k_way, output=1
-            )[0]
-        return pop_dad[id_c1].solution, pop_mom[id_c2].solution
+    def tournament__(self, F, m, output, reverse=False):
+        """``m`` k-way tournaments: the ``output`` best (worst when ``reverse``) of ``k`` random agents each, (m, output)."""
+        F = np.asarray(F)
+        N = len(F)
+        k = int(self.k_way * N) if 0 < self.k_way < 1 else int(self.k_way)
+        k = max(k, output)
+        picked = np.argpartition(self.generator.random((m, N)), k - 1, axis=1)[:, :k]
+        order = np.argsort(F[picked], axis=1)
+        if (self.problem.minmax == "max") != bool(reverse):
+            order = order[:, ::-1]
+        return np.take_along_axis(picked, order[:, :output], axis=1)
 
-    def crossover_process__(self, dad, mom):
+    def crossover_batch__(self, dad, mom):
+        rng = self.generator
+        m, d = dad.shape
+        cols = np.arange(d)[None, :]
         if self.crossover == "arithmetic":
-            w1, w2 = self.crossover_arithmetic(dad, mom)
-        elif self.crossover == "one_point":
-            cut = self.generator.integers(1, self.problem.n_dims - 1)
-            w1 = np.concatenate([dad[:cut], mom[cut:]])
-            w2 = np.concatenate([mom[:cut], dad[cut:]])
-        elif self.crossover == "multi_points":
-            idxs = self.generator.choice(
-                range(1, self.problem.n_dims - 1), 2, replace=False
-            )
-            cut1, cut2 = np.min(idxs), np.max(idxs)
-            w1 = np.concatenate([dad[:cut1], mom[cut1:cut2], dad[cut2:]])
-            w2 = np.concatenate([mom[:cut1], dad[cut1:cut2], mom[cut2:]])
-        else:  # uniform
-            flip = self.generator.integers(0, 2, self.problem.n_dims)
-            w1 = dad * flip + mom * (1 - flip)
-            w2 = mom * flip + dad * (1 - flip)
-        return w1, w2
+            r = rng.uniform(size=(m, 1))
+            return r * dad + (1 - r) * mom, r * mom + (1 - r) * dad
+        if self.crossover == "one_point":
+            mask = cols < rng.integers(1, d - 1, size=(m, 1))
+            return np.where(mask, dad, mom), np.where(mask, mom, dad)
+        if self.crossover == "multi_points":
+            a = rng.integers(1, d - 1, size=(m, 1))
+            b = (a - 1 + rng.integers(1, d - 2, size=(m, 1))) % (d - 2) + 1  # a second, different cut
+            mask = (cols >= np.minimum(a, b)) & (cols < np.maximum(a, b))
+            return np.where(mask, mom, dad), np.where(mask, dad, mom)
+        flip = rng.integers(0, 2, size=(m, d))  # uniform
+        return dad * flip + mom * (1 - flip), mom * flip + dad * (1 - flip)
 
-    def mutation_process__(self, child):
+    def mutation_batch__(self, child, multipoints=None):
+        rng = self.generator
+        m, d = child.shape
+        me = np.arange(m)
+        lb, ub = self.problem.lb, self.problem.ub
+        child = np.array(child)
+        if self.mutation_multipoints if multipoints is None else multipoints:
+            if self.mutation == "swap":  # (the classic loop returns after its first swap: gene 0 with a random gene)
+                j = rng.integers(1, d, size=m)
+                tmp = child[me, 0].copy()
+                child[me, 0], child[me, j] = child[me, j], tmp
+                return child
+            return np.where(rng.uniform(0, 1, (m, d)) < self.pm, rng.uniform(lb, ub, (m, d)), child)  # flip
+        if self.mutation == "swap":
+            i1 = rng.integers(0, d, size=m)
+            i2 = (i1 + rng.integers(1, d, size=m)) % d
+            tmp = child[me, i1].copy()
+            child[me, i1], child[me, i2] = child[me, i2], tmp
+        elif self.mutation in ("inversion", "scramble"):
+            for i in range(m):
+                cut1, cut2 = rng.choice(d, 2, replace=False)
+                seg = child[i, cut1:cut2]
+                child[i, cut1:cut2] = seg[::-1] if self.mutation == "inversion" else rng.permutation(seg)
+        else:  # "flip"
+            j = rng.integers(0, d, size=m)
+            child[me, j] = lb[j] + rng.random(m) * (ub[j] - lb[j])
+        return child
 
-        if self.mutation_multipoints:
-            if self.mutation == "swap":
-                for idx in range(self.problem.n_dims):
-                    idx_swap = self.generator.choice(
-                        list(set(range(0, self.problem.n_dims)) - {idx})
-                    )
-                    child[idx], child[idx_swap] = child[idx_swap], child[idx]
-                    return child
-            else:  # "flip"
-                mutation_child = self.problem.generate_solution()
-                flag_child = self.generator.uniform(0, 1, self.problem.n_dims) < self.pm
-                return np.where(flag_child, mutation_child, child)
+    def breed__(self, pool_x, i1, i2):
+        """Children of the parent pairs ``(i1, i2)``: crossover (probability pc) then mutation; two children per pair."""
+        dad, mom = pool_x[i1], pool_x[i2]
+        cross = (self.generator.random(len(i1)) < self.pc)[:, None]
+        c1, c2 = self.crossover_batch__(dad, mom)
+        c1, c2 = np.where(cross, c1, dad), np.where(cross, c2, mom)
+        return self.mutation_batch__(np.vstack([c1, c2]))
+
+    def elite_step__(self):
+        """Elite strategies: the best agents survive, the rest is replaced by children (one child per pair)."""
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation kids
+        cdef Py_ssize_t n = pop.n, e = self.n_elite_best
+        X, F = np.asarray(pop.X), np.asarray(pop.F)
+        m = n - e
+        if self.strategy == 0:
+            i1, i2 = self.select_pairs__(F[e:], m)
+            pool = X[e:]
+            dad, mom = pool[i1], pool[i2]
         else:
-            if self.mutation == "swap":
-                idx1, idx2 = self.generator.choice(
-                    range(0, self.problem.n_dims), 2, replace=False
-                )
-                child[idx1], child[idx2] = child[idx2], child[idx1]
-                return child
-            elif self.mutation == "inversion":
-                cut1, cut2 = self.generator.choice(
-                    range(0, self.problem.n_dims), 2, replace=False
-                )
-                temp = child[cut1:cut2]
-                temp = temp[::-1]
-                child[cut1:cut2] = temp
-                return child
-            elif self.mutation == "scramble":
-                cut1, cut2 = self.generator.choice(
-                    range(0, self.problem.n_dims), 2, replace=False
-                )
-                temp = child[cut1:cut2]
-                self.generator.shuffle(temp)
-                child[cut1:cut2] = temp
-                return child
-            else:  # "flip"
-                idx = self.generator.integers(0, self.problem.n_dims)
-                child[idx] = self.generator.uniform(
-                    self.problem.lb[idx], self.problem.ub[idx]
-                )
-                return child
+            w = self.n_elite_worst
+            i1, i2 = self.select_pairs_pools__(F[e:e + w], F[e + w:], m)
+            dad, mom = X[e:e + w][i1], X[e + w:][i2]
+        cross = (self.generator.random(m) < self.pc)[:, None]
+        c1, c2 = self.crossover_batch__(dad, mom)
+        c1, c2 = np.where(cross, c1, dad), np.where(cross, c2, mom)
+        child = np.where((self.generator.random(m) <= 0.5)[:, None], c1, c2)
+        kids = pop.take(np.arange(e, n))
+        kids.X[:] = self.correct_solution(self.mutation_batch__(child))
+        self.evaluate(kids, 0, m)
+        self.pop = pop.take(np.arange(e)).concat(kids)
 
-    def survivor_process__(self, pop, pop_child):
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            id_child = self.get_index_kway_tournament_selection(
-                pop, k_way=0.1, output=1, reverse=True
-            )[0]
-            agent_x = pop_child[idx]
-            agent_y = pop[id_child]
-            pop_new.append(self.get_better_agent(agent_x, agent_y, self.problem.minmax))
-        return pop_new
-
-    def evolve_agents(self, epoch):
-        list_fitness = np.array([agent.target.fitness for agent in self.objs])
-        pop_new = []
-        for i in range(0, -(-self.pop_size // 2)):  # ceil division, safe for odd pop_size
-            ### Selection
-            child1, child2 = self.selection_process__(list_fitness)
-
-            ### Crossover
-            if self.generator.random() < self.pc:
-                child1, child2 = self.crossover_process__(child1, child2)
-
-            ### Mutation
-            child1 = self.mutation_process__(child1)
-            child2 = self.mutation_process__(child2)
-
-            child1 = self.correct_solution(child1)
-            child2 = self.correct_solution(child2)
-
-            agent1 = self.generate_empty_agent(child1)
-            agent2 = self.generate_empty_agent(child2)
-
-            pop_new.append(agent1)
-            pop_new.append(agent2)
-
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-2].target = self.get_target(child1)
-                pop_new[-1].target = self.get_target(child2)
-        pop_new = pop_new[: self.pop_size]
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-        ### Survivor Selection
-        self.objs = self.survivor_process__(self.objs, pop_new)
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation kids, both
+        cdef Py_ssize_t n = pop.n
+        X, F = np.asarray(pop.X), np.asarray(pop.F)
+        i1, i2 = self.select_pairs__(F, -(-n // 2))  # ceil division, safe for odd pop_size
+        children = self.breed__(X, i1, i2)
+        kids = pop.take(np.arange(n))
+        kids.X[:] = self.correct_solution(children[:n])
+        self.evaluate(kids, 0, n)
+        # survivor selection: every child fights the worst of a random tenth of the population
+        rival = self.tournament__(F, n, 1, reverse=True)[:, 0]
+        wins = ops.better(self, np.asarray(kids.F), F[rival])
+        both = pop.concat(kids)
+        self.pop = both.take(np.where(wins, n + np.arange(n), rival))

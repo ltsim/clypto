@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.NGO.OriginalNGO import OriginalNGO
+from clypto.native.collection.vectorize.swarm_based.NGO.OriginalNGO import OriginalNGO
 
 __all__ = ["OriginalNGO"]

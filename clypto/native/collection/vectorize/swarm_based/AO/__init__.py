@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.AO.OriginalAO import OriginalAO
-from clypto.collection.swarm_based.AO.AAO import AAO
+from clypto.native.collection.vectorize.swarm_based.AO.OriginalAO import OriginalAO
+from clypto.native.collection.vectorize.swarm_based.AO.AAO import AAO
 
 __all__ = ["OriginalAO", "AAO"]

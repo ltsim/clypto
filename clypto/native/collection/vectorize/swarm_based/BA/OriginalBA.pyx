@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 12:00, 17/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -16,11 +14,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalBA(AgentListOptimizer):
+cdef class OriginalBA(LegacyNativeOptimizer):
     """
     The original version of: Bat-inspired Algorithm (BA)
 
@@ -65,6 +61,8 @@ cdef class OriginalBA(AgentListOptimizer):
     cdef public object alpha
     cdef public object gamma
 
+    cdef public object velocity
+    cdef public object pulse_frequency
     def __init__(
         self,
         epoch: int = 10000,
@@ -102,45 +100,25 @@ cdef class OriginalBA(AgentListOptimizer):
         self.pf_max = cy.validator(float, pf_max, [5.0, 20.0], "pf_max")
         self.alpha = self.gamma = 0.9
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
-        pulse_frequency = (
-            self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
-        )
-        return FieldAgent(
-            solution=solution, velocity=velocity, pulse_frequency=pulse_frequency
-        )
+    cdef void initialization(self):
+        LegacyNativeOptimizer.initialization(self)
+        n, d = self.pop.n, self.pop.d
+        self.velocity = self.generator.uniform(self.problem.lb, self.problem.ub, (n, d))
+        self.pulse_frequency = self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform(size=(n, 1))
 
-    def evolve_agents(self, epoch):
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.objs[idx].copy()
-            vec = agent.velocity + self.objs[idx].pulse_frequency * (
-                self.objs[idx].solution - self.g_best.solution
-            )
-            x_new = self.objs[idx].solution + agent.velocity
-            ## Local Search around g_best position
-            if self.generator.random() > self.pulse_rate:
-                x_new = self.g_best.solution + 0.001 * self.generator.normal(
-                    self.problem.n_dims
-                )
-            pos_new = self.correct_solution(x_new)
-            agent.update(solution=pos_new, velocity=vec)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
-        for idx in range(self.pop_size):
-            ## Replace the old position by the new one when its has better fitness.
-            ##  and then update loudness and emission rate
-            if (
-                self.compare_target(
-                    pop_new[idx].target, self.objs[idx].target, self.problem.minmax
-                )
-                and self.generator.random() < self.loudness
-            ):
-                self.objs[idx].update(
-                    solution=pop_new[idx].solution, target=pop_new[idx].target
-                )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        x_new = X + self.velocity
+        ## Local search around g_best position
+        x_new = np.where((rng.random(n) > self.pulse_rate)[:, None], g + 0.001 * rng.normal(d, 1.0, (n, 1)), x_new)
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(x_new)
+        self.evaluate(cand, 0, n)
+        ## Replace the old position by the new one when it is better (and the sound is quiet enough)
+        ok = ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) < self.loudness)
+        pop.buf[ok] = cand.buf[ok]

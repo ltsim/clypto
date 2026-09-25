@@ -69,57 +69,25 @@ cdef class OriginalBBOA(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        gw_pos, gw_fit = self.g_worst.solution, self.g_worst.target.fitness
-        pp = epoch / self.epoch
-
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        gw = np.array(self.g_worst.solution)
+        pp = epoch_c / self.epoch
         ## Pedal marking behaviour
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            if pp <= 1 / 3:  # Gait while walking
-                pos_new = Xp[idx] + (
-                        -pp
-                        * self.generator.random(self.problem.n_dims)
-                        * Xp[idx]
-                )
-            elif 1 / 3 < pp <= 2 / 3:  # Careful Stepping
-                qq = pp * self.generator.random(self.problem.n_dims)
-                pos_new = Xp[idx] + (
-                        qq
-                        * (
-                                g_best
-                                - self.generator.integers(1, 3) * gw_pos
-                        )
-                )
-            else:
-                ww = 2 * pp * np.pi * self.generator.random(self.problem.n_dims)
-                pos_new = (
-                        Xp[idx]
-                        + (ww * g_best - np.abs(Xp[idx]))
-                        - (ww * gw_pos - np.abs(Xp[idx]))
-                )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
-
+        if pp <= 1 / 3:  # Gait while walking
+            pos = X + (-pp * rng.random((n, d)) * X)
+        elif pp <= 2 / 3:  # Careful stepping
+            pos = X + pp * rng.random((n, d)) * (g - rng.integers(1, 3, size=(n, 1)) * gw)
+        else:
+            ww = 2 * pp * np.pi * rng.random((n, d))
+            pos = X + (ww * g - np.abs(X)) - (ww * gw - np.abs(X))
+        ops.step(self, pos)
         ## Sniffing of pedal marks
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            kk = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            if self.compare_fitness(pop.F[idx], pop.F[kk], self.problem.minmax):
-                pos_new = Xp[idx] + self.generator.random() * (
-                        Xp[idx] - Xp[kk]
-                )
-            else:
-                pos_new = Xp[idx] + self.generator.random() * (
-                        Xp[kk] - Xp[idx]
-                )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        X = self.pop.X
+        kk = ops.others(self, n)[:, 0]
+        mine_better = ops.better(self, self.pop.F, self.pop.F[kk])[:, None]
+        r = rng.random((n, 1))
+        ops.step(self, np.where(mine_better, X + r * (X - X[kk]), X + r * (X[kk] - X)))

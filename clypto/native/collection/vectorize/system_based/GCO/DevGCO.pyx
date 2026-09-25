@@ -75,38 +75,23 @@ cdef class DevGCO(LegacyNativeOptimizer):
 
     cdef void initialize_variables(self):
         self.dyn_list_cell_counter = np.ones(self.pop_size)  # CEll Counter
-        self.dyn_list_life_signal = 70 * np.ones(
-            self.pop_size
-        )  # 70% to duplicate, and 30% to die  # LIfe-Signal
+        self.dyn_list_life_signal = 70 * np.ones(self.pop_size)  # 70% to duplicate, and 30% to die  # LIfe-Signal
 
-    cdef void evolve(self, int epoch):
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        g_best = np.array(self.g_best_x())
-        Xp, Xc = pop.X, cand.X
-        ## Dark-zone process    (can be parallelization)
-        for idx in range(0, self.pop_size):
-            if self.generator.uniform(0, 100) < self.dyn_list_life_signal[idx]:
-                self.dyn_list_cell_counter[idx] += 1
-            else:
-                self.dyn_list_cell_counter[idx] = 1
-            # Mutate process
-            r1, r2 = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 2, replace=False)
-            pos_new = g_best + self.wf * (Xp[r2] - Xp[r1])
-            condition = self.generator.random(d) < self.cr
-            pos_new = np.where(condition, pos_new, Xp[idx])
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        better = cand.F < pop.F
-        if self.problem.minmax != "min":
-            better = ~better
-        self.dyn_list_cell_counter[better] += 10
-        rows = np.flatnonzero(better)
-        pop.buf[rows] = cand.buf[rows]
-        ## Light-zone process   (no needs parallelization)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        up = rng.uniform(0, 100, n) < self.dyn_list_life_signal
+        self.dyn_list_cell_counter = np.where(up, self.dyn_list_cell_counter + 1, 1.0)
+        r1, r2 = ops.two_others(self, n, 1)
+        pos = np.where(rng.random((n, d)) < self.cr, g + self.wf * (X[r2[:, 0]] - X[r1[:, 0]]), X)
+        before = np.array(pop.F)
+        ops.step(self, pos)
+        self.dyn_list_cell_counter[ops.better(self, np.asarray(pop.F), before)] += 10
         fit_list = np.array(pop.F)
         fit_max = np.max(fit_list)
         fit_min = np.min(fit_list)
         self.dyn_list_cell_counter[:] = 10
-        self.dyn_list_cell_counter += 10 * (pop.F - fit_max) / (fit_min - fit_max + self.EPSILON)
+        self.dyn_list_cell_counter += 10 * (fit_list - fit_max) / (fit_min - fit_max + self.EPSILON)

@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.WOA.OriginalWOA import OriginalWOA
-from clypto.collection.swarm_based.WOA.DevWOA import DevWOA
+from clypto.native.collection.vectorize.swarm_based.WOA.OriginalWOA import OriginalWOA
+from clypto.native.collection.vectorize.swarm_based.WOA.DevWOA import DevWOA
 
-from clypto.collection.swarm_based.WOA.HI_WOA import HI_WOA
+from clypto.native.collection.vectorize.swarm_based.WOA.HI_WOA import HI_WOA
 
 __all__ = ["OriginalWOA", "DevWOA", "HI_WOA"]

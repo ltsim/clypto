@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.VCS.DevVCS import DevVCS
-from clypto.collection.bio_based.VCS.OriginalVCS import OriginalVCS
+from clypto.native.collection.vectorize.bio_based.VCS.DevVCS import DevVCS
+from clypto.native.collection.vectorize.bio_based.VCS.OriginalVCS import OriginalVCS
 
 __all__ = ["DevVCS", "OriginalVCS"]

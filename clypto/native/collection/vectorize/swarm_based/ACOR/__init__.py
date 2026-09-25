@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.ACOR.OriginalACOR import OriginalACOR
+from clypto.native.collection.vectorize.swarm_based.ACOR.OriginalACOR import OriginalACOR
 
 __all__ = ["OriginalACOR"]

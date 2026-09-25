@@ -76,26 +76,15 @@ cdef class OriginalFFO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx
-        minmax = self.problem.minmax
-        Xp = pop.X
-        for idx in range(0, self.pop_size):
-            # PHASE 1: THE DIGGING TO LOOK FOR PREY UNDER THE SAND (EXPLOITATION)
-            rr = 0.2 * (1 - epoch / self.epoch) * Xp[idx]
-            pos_new = Xp[idx] + (2 * self.generator.random() * 1) * rr
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, pos_new, tar)
-
-            # PHASE 2: ESCAPE STRATEGY FROM THE PREDATORS’ ATTACK (EXPLORATION)
-            kk = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            if self.compare_fitness(pop.F[kk], pop.F[idx], minmax):
-                pos_new = Xp[idx] + self.generator.random() * (Xp[kk] - self.generator.integers(1, 3) * Xp[idx])
-            else:
-                pos_new = Xp[idx] + self.generator.random() * (Xp[idx] - Xp[kk])
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, pos_new, tar)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        # PHASE 1: the digging to look for prey under the sand (exploitation)
+        rr = 0.2 * (1 - epoch / self.epoch) * X
+        ops.step(self, X + (2 * rng.random((n, 1)) * 1) * rr)
+        # PHASE 2: escape strategy from the predators' attack (exploration)
+        kk = ops.others(self, n)[:, 0]
+        toward = ops.better(self, pop.F[kk], pop.F)[:, None]
+        r1 = rng.integers(1, 3, size=(n, 1))
+        R = rng.random((n, 1))
+        ops.step(self, np.where(toward, X + R * (X[kk] - r1 * X), X + R * (X - X[kk])))

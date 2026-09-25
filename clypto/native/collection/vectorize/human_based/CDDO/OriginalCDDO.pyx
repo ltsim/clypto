@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 23:41, 15/08/2025 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -10,11 +8,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalCDDO(AgentListOptimizer):
+cdef class OriginalCDDO(LegacyNativeOptimizer):
     """
     The original version of: Child Drawing Development Optimization (CCDO)
 
@@ -94,62 +90,37 @@ cdef class OriginalCDDO(AgentListOptimizer):
         self.creativity_rate = cy.validator(float, creativity_rate, [0.0, 1.0], "creativity_rate")
 
     cdef void before_main_loop(self):
-        self.LR = self.generator.uniform(0.1, 1.0)  # Child level rate
-        self.SR = self.generator.uniform(0.1, 1.0)  # Child Skill Rate
-        self.pop_local = self.objs.copy()
-        # Golden ratio
-        self.list_gr = []
-        for idx in range(self.pop_size):
-            p1 = self.generator.integers(0, self.problem.n_dims)
-            p2 = self.generator.integers(0, self.problem.n_dims)
-            if self.objs[idx].solution[p1] == 0:
-                self.list_gr.append(self.objs[idx].solution[p2])
-            else:
-                self.list_gr.append(
-                    self.objs[idx].solution[p1]
-                    + self.objs[idx].solution[p2] / self.objs[idx].solution[p1]
-                )
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        self.LR = rng.uniform(0.1, 1.0)  # Child level rate
+        self.SR = rng.uniform(0.1, 1.0)  # Child Skill Rate
+        self.pop_local = pop.take(np.arange(n))
+        p1 = rng.integers(0, d, size=n)
+        p2 = rng.integers(0, d, size=n)
+        x1, x2 = pop.X[np.arange(n), p1], pop.X[np.arange(n), p2]
+        self.list_gr = np.where(x1 == 0, x2, x1 + x2 / np.where(x1 == 0, 1, x1))
 
-    def evolve_agents(self, epoch):
-        # Pattern matrix
-        _, pattern, _ = self.get_special_agents(
-            self.objs, n_best=self.pattern_size, minmax=self.problem.minmax
-        )
-        for idx in range(0, self.pop_size):
-            hand_pressure = self.generator.integers(
-                self.problem.lb[0], self.problem.ub[0] + 1
-            )
-            pp = self.generator.integers(0, self.problem.n_dims)
-            pos_new = self.objs[idx].solution.copy()
-            if self.objs[idx].solution[pp] <= hand_pressure:
-                # Update the drawings
-                pos_new = (
-                        self.list_gr[idx]
-                        + self.SR
-                        * self.generator.random(self.problem.n_dims)
-                        * (self.pop_local[idx].solution - self.objs[idx].solution)
-                        + self.LR
-                        * self.generator.random(self.problem.n_dims)
-                        * (self.g_best.solution - self.objs[idx].solution)
-                )
-                self.LR = self.generator.integers(6, 11) / 10
-                self.SR = self.generator.integers(6, 11) / 10
-            elif 1.5 < self.list_gr[idx] < 2:
-                # Consider the learnt patterns
-                pos_new = (
-                        pattern[self.generator.integers(0, self.pattern_size)].solution
-                        - self.creativity_rate * self.pop_local[idx].solution
-                )
-                self.LR = self.generator.integers(0, 6) / 10
-                self.SR = self.generator.integers(0, 6) / 10
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            self.objs[idx] = agent
-            if self.mode not in self.AVAILABLE_MODES:
-                self.objs[idx].target = self.get_target(pos_new)
-        if self.mode in self.AVAILABLE_MODES:
-            self.objs = self.update_target_for_population(self.objs)
-        # Update the local information
-        self.pop_local = self.greedy_selection_population(
-            self.pop_local, self.objs, self.problem.minmax
-        )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        Pl = self.pop_local.X
+        g = np.array(self.g_best_x())
+        pattern = np.array(X[self.sorted_order(pop)[:self.pattern_size]])
+        hand_pressure = rng.integers(self.problem.lb[0], self.problem.ub[0] + 1, size=n)
+        pp = rng.integers(0, d, size=n)
+        cond1 = X[np.arange(n), pp] <= hand_pressure
+        cond2 = ~cond1 & (1.5 < self.list_gr) & (self.list_gr < 2)
+        pos1 = self.list_gr[:, None] + self.SR * rng.random((n, d)) * (Pl - X) + self.LR * rng.random((n, d)) * (g - X)
+        pos2 = pattern[rng.integers(0, self.pattern_size, size=n)] - self.creativity_rate * Pl
+        pos = np.where(cond1[:, None], pos1, np.where(cond2[:, None], pos2, X))
+        if cond1.any():
+            self.LR = rng.integers(6, 11) / 10
+            self.SR = rng.integers(6, 11) / 10
+        elif cond2.any():
+            self.LR = rng.integers(0, 6) / 10
+            self.SR = rng.integers(0, 6) / 10
+        ops.replace(self, pos)
+        ops.greedy(self, self.pop, dst=self.pop_local)

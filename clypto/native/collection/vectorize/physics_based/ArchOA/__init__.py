@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.physics_based.ArchOA.OriginalArchOA import OriginalArchOA
+from clypto.native.collection.vectorize.physics_based.ArchOA.OriginalArchOA import OriginalArchOA
 
 __all__ = ["OriginalArchOA"]

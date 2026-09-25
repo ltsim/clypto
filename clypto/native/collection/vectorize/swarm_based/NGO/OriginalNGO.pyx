@@ -77,40 +77,15 @@ cdef class OriginalNGO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        ## UPDATE Northern goshawks based on PHASE1 and PHASE2
-
-        for idx in range(0, self.pop_size):
-            # Phase 1: Exploration
-            kk = self.generator.permutation(self.pop_size)[0]
-            if pop.F[kk] < pop.F[idx]:  # Eq. 4 (the classic call compares with the default minmax="min")
-                pos_new = Xp[idx] + self.generator.random(
-                    self.problem.n_dims
-                ) * (
-                                  Xp[kk]
-                                  - self.generator.integers(1, 3) * Xp[idx]
-                          )
-            else:
-                pos_new = Xp[idx] + self.generator.random(
-                    self.problem.n_dims
-                ) * (Xp[idx] - Xp[kk])
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
-                ops.set_row(pop, idx, pos_new, tar)
-
-            # PHASE 2 Exploitation
-            R = 0.02 * (1.0 - epoch / self.epoch)  # Eq. 6
-            pos_new = (
-                    Xp[idx]
-                    + (-R + 2 * R * self.generator.random(self.problem.n_dims))
-                    * Xp[idx]
-            )  # Eq. 7
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
-                ops.set_row(pop, idx, pos_new, tar)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        # Phase 1: exploration (Eq. 4)
+        kk = rng.integers(0, n, size=n)
+        toward = ops.better(self, pop.F[kk], pop.F)[:, None]
+        r1 = rng.integers(1, 3, size=(n, 1))
+        R = rng.random((n, d))
+        ops.step(self, np.where(toward, X + R * (X[kk] - r1 * X), X + R * (X - X[kk])))
+        # Phase 2: exploitation (Eqs. 6 and 7)
+        R2 = 0.02 * (1.0 - epoch / self.epoch)
+        ops.step(self, X + (-R2 + 2 * R2 * rng.random((n, d))) * X)

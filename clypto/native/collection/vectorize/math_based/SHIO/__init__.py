@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.SHIO.OriginalSHIO import OriginalSHIO
+from clypto.native.collection.vectorize.math_based.SHIO.OriginalSHIO import OriginalSHIO
 
 __all__ = ["OriginalSHIO"]

@@ -69,42 +69,30 @@ cdef class OriginalWOA(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
     cdef void evolve(self, int epoch_c):
-        # The classic code only refreshes the *targets* of the population with the candidates'
-        # fitness (sequential mode) and never moves it; swarm modes replace the population.
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        cols = np.arange(d)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        # The classic code only refreshes the *fitness* of the population with the candidates' values in the
+        # sequential mode (positions stay) and replaces the population in swarm modes; both are kept.
+        g = np.array(self.g_best_x())
         a = 2 - 2 * epoch / self.epoch  # linearly decreased from 2 to 0
         a2 = -1 + epoch * ((-1) / self.epoch)
-        for idx in range(0, self.pop_size):
-            r1, r2 = self.generator.random(size=2)
-            A = a * (2 * r1 - a)
-            C = 2 * r2
-            b = 1
-            l = (a2 - 1) * self.generator.random() + 1
-            p = self.generator.random()
-            if p < 0.5:
-                if np.abs(A) >= 1:
-                    # one random whale per dimension
-                    ids = np.array([self.generator.choice(list(set(range(0, self.pop_size)) - {idx})) for _ in range(d)])
-                    x_rand = Xp[ids, cols]
-                    pos_new = x_rand - A * np.abs(C * x_rand - Xp[idx])
-                else:
-                    pos_new = g_best - A * np.abs(C * g_best - Xp[idx])
-            else:
-                D1 = np.abs(g_best - Xp[idx])
-                pos_new = D1 * np.exp(b * l) * np.cos(l * 2 * np.pi) + g_best
-            Xc[idx] = self.correct_solution(pos_new)
-            if not swarm:
-                tar = self.get_target(Xc[idx])
-                pop.O[idx] = tar.objectives
-                pop.F[idx] = tar.fitness
-        if swarm:
-            self.evaluate(cand, 0, n)
+        R = rng.random((n, 4))
+        A = (a * (2 * R[:, 0] - a))[:, None]
+        C = (2 * R[:, 1])[:, None]
+        l = ((a2 - 1) * R[:, 2] + 1)[:, None]
+        others = ops.others(self, n, d)  # one random other whale per dimension
+        x_rand = X[others, np.arange(d)[None, :]]
+        search = x_rand - A * np.abs(C * x_rand - X)
+        encircle = g - A * np.abs(C * g - X)
+        spiral = np.abs(g - X) * np.exp(l) * np.cos(l * 2 * np.pi) + g
+        pos = np.where((R[:, 3] < 0.5)[:, None], np.where(np.abs(A) >= 1, search, encircle), spiral)
+        cdef NativePopulation cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(pos)
+        self.evaluate(cand, 0, n)
+        if self.mode in self.AVAILABLE_MODES:
             self.pop = cand
+        else:
+            pop.buf[:, :pop.cX] = cand.buf[:, :pop.cX]

@@ -1,19 +1,15 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 09:33, 16/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.evolutionary_based.GA.MultiGA cimport MultiGA
+from clypto.native.collection.vectorize.evolutionary_based.GA.MultiGA cimport MultiGA
 import numpy as np
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 from clypto.optimizer.validator import Validator
 
 
@@ -119,44 +115,5 @@ cdef class EliteMultiGA(MultiGA):
                     self.n_elite_worst = 1
         self.strategy = cy.validator(int, strategy, [0, 1], "strategy")
 
-    def evolve_agents(self, epoch):
-        pop_new = self.objs[: self.n_elite_best]
-        if self.strategy == 0:
-            pop_old = self.objs[self.n_elite_best:]
-            for idx in range(self.n_elite_best, self.pop_size):
-                ### Selection
-                child1, child2 = self.selection_process_00__(pop_old)
-                ### Crossover
-                if self.generator.uniform() < self.pc:
-                    child1, child2 = self.crossover_process__(child1, child2)
-                child = child1 if self.generator.random() <= 0.5 else child2
-                ### Mutation
-                child = self.mutation_process__(child)
-                ### Survivor Selection
-                pos_new = self.correct_solution(child)
-                agent = self.generate_empty_agent(pos_new)
-                pop_new.append(agent)
-                if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
-            self.objs = self.update_target_for_population(pop_new)
-        else:
-            pop_dad = self.objs[
-                self.n_elite_best: self.n_elite_best + self.n_elite_worst
-            ]
-            pop_mom = self.objs[self.n_elite_best + self.n_elite_worst:]
-            for idx in range(self.n_elite_best, self.pop_size):
-                ### Selection
-                child1, child2 = self.selection_process_01__(pop_dad, pop_mom)
-                ### Crossover
-                if self.generator.uniform() < self.pc:
-                    child1, child2 = self.crossover_process__(child1, child2)
-                child = child1 if self.generator.random() <= 0.5 else child2
-                ### Mutation
-                child = self.mutation_process__(child)
-                ### Survivor Selection
-                pos_new = self.correct_solution(child)
-                agent = self.generate_empty_agent(pos_new)
-                pop_new.append(agent)
-                if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
-            self.objs = self.update_target_for_population(pop_new)
+    cdef void evolve(self, int epoch_c):
+        self.elite_step__()

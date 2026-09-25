@@ -9,4 +9,4 @@ cdef class DevHS(LegacyNativeOptimizer):
     cdef public object dyn_fw
 
     cdef void initialize_variables(self)
-    cdef void evolve(self, int epoch)
+    cdef void evolve(self, int epoch_c)

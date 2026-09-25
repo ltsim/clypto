@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 00:08, 27/10/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalAGTO(AgentListOptimizer):
+cdef class OriginalAGTO(LegacyNativeOptimizer):
     """
     The original version of: Artificial Gorilla Troops Optimization (AGTO)
 
@@ -87,76 +83,31 @@ cdef class OriginalAGTO(AgentListOptimizer):
         self.p2 = cy.validator(float, p2, (0, 1), "p2")
         self.beta = cy.validator(float, beta, [-10.0, 10.0], "beta")
 
-    def evolve_agents(self, epoch):
-        a = (np.cos(2 * self.generator.random()) + 1) * (1 - epoch / self.epoch)
-        c = a * (2 * self.generator.random() - 1)
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        lb, ub = self.problem.lb, self.problem.ub
+        a = (np.cos(2 * rng.random()) + 1) * (1 - epoch_c / self.epoch)
+        c = a * (2 * rng.random() - 1)
         ## Exploration
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            if self.generator.random() < self.p1:
-                pos_new = self.problem.generate_solution()
-            else:
-                if self.generator.random() >= 0.5:
-                    z = self.generator.uniform(-a, a, self.problem.n_dims)
-                    rand_idx = self.generator.integers(0, self.pop_size)
-                    pos_new = (self.generator.random() - a) * self.objs[
-                        rand_idx
-                    ].solution + c * z * self.objs[idx].solution
-                else:
-                    id1, id2 = self.generator.choice(
-                        list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
-                    )
-                    pos_new = (
-                            self.objs[idx].solution
-                            - c * (c * self.objs[idx].solution - self.objs[id1].solution)
-                            + self.generator.random()
-                            * (self.objs[idx].solution - self.objs[id2].solution)
-                    )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-        _, self.g_best = self.update_global_best_agent(self.objs, save=False)
-
-        pos_list = np.array([agent.solution for agent in self.objs])
-        ## Exploitation
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            if a >= self.p2:
-                g = 2 ** c
-                delta = (np.abs(np.mean(pos_list, axis=0)) ** g) ** (1.0 / g)
-                pos_new = (
-                        c * delta * (self.objs[idx].solution - self.g_best.solution)
-                        + self.objs[idx].solution
-                )
-            else:
-                if self.generator.random() >= 0.5:
-                    h = self.generator.normal(0, 1, self.problem.n_dims)
-                else:
-                    h = self.generator.normal(0, 1)
-                r1 = self.generator.random()
-                pos_new = self.g_best.solution - (2 * r1 - 1) * (
-                        self.g_best.solution - self.objs[idx].solution
-                ) * (self.beta * h)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+        z = rng.uniform(-a, a, (n, d))
+        rand_agent = X[rng.integers(0, n, size=n)]
+        pos_a = (rng.random((n, 1)) - a) * rand_agent + c * z * X
+        id1, id2 = ops.two_others(self, n, 1)
+        pos_b = X - c * (c * X - X[id1[:, 0]]) + rng.random((n, 1)) * (X - X[id2[:, 0]])
+        pos = np.where((rng.random(n) >= 0.5)[:, None], pos_a, pos_b)
+        pos = np.where((rng.random(n) < self.p1)[:, None], lb + rng.random((n, d)) * (ub - lb), pos)
+        ops.step(self, pos)
+        ## Exploitation, around the best agent found so far
+        X = pop.X
+        g = np.array(X[ops.best_row(self, self.pop)])
+        if a >= self.p2:
+            g2 = 2 ** c
+            delta = (np.abs(np.mean(np.ascontiguousarray(X), axis=0)) ** g2) ** (1.0 / g2)
+            pos = c * delta * (X - g) + X
+        else:
+            h = np.where((rng.random(n) >= 0.5)[:, None], rng.normal(0, 1, (n, d)), rng.normal(0, 1, (n, 1)))
+            pos = g - (2 * rng.random((n, 1)) - 1) * (g - X) * (self.beta * h)
+        ops.step(self, pos)

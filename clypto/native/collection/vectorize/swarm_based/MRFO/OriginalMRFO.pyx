@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 14:52, 17/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalMRFO(AgentListOptimizer):
+cdef class OriginalMRFO(LegacyNativeOptimizer):
     """
     The original version of: Manta Ray Foraging Optimization (MRFO)
 
@@ -79,96 +75,27 @@ cdef class OriginalMRFO(AgentListOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.somersault_range = cy.validator(float, somersault_range, [1.0, 5.0], "somersault_range")
 
-    def evolve_agents(self, epoch):
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            # Cyclone foraging (Eq. 5, 6, 7)
-            if self.generator.random() < 0.5:
-                r1 = self.generator.uniform()
-                beta = (
-                        2
-                        * np.exp(r1 * (self.epoch - epoch) / self.epoch)
-                        * np.sin(2 * np.pi * r1)
-                )
-
-                if (epoch + 1) / self.epoch < self.generator.random():
-                    x_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
-                    if idx == 0:
-                        x_t1 = (
-                                x_rand
-                                + self.generator.uniform()
-                                * (x_rand - self.objs[idx].solution)
-                                + beta * (x_rand - self.objs[idx].solution)
-                        )
-                    else:
-                        x_t1 = (
-                                x_rand
-                                + self.generator.uniform()
-                                * (self.objs[idx - 1].solution - self.objs[idx].solution)
-                                + beta * (x_rand - self.objs[idx].solution)
-                        )
-                else:
-                    if idx == 0:
-                        x_t1 = (
-                                self.g_best.solution
-                                + self.generator.uniform()
-                                * (self.g_best.solution - self.objs[idx].solution)
-                                + beta * (self.g_best.solution - self.objs[idx].solution)
-                        )
-                    else:
-                        x_t1 = (
-                                self.g_best.solution
-                                + self.generator.uniform()
-                                * (self.objs[idx - 1].solution - self.objs[idx].solution)
-                                + beta * (self.g_best.solution - self.objs[idx].solution)
-                        )
-            # Chain foraging (Eq. 1,2)
-            else:
-                r = self.generator.uniform()
-                alpha = 2 * r * np.sqrt(np.abs(np.log(r)))
-                if idx == 0:
-                    x_t1 = (
-                            self.objs[idx].solution
-                            + r * (self.g_best.solution - self.objs[idx].solution)
-                            + alpha * (self.g_best.solution - self.objs[idx].solution)
-                    )
-                else:
-                    x_t1 = (
-                            self.objs[idx].solution
-                            + r * (self.objs[idx - 1].solution - self.objs[idx].solution)
-                            + alpha * (self.g_best.solution - self.objs[idx].solution)
-                    )
-            pos_new = self.correct_solution(x_t1)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    self.objs[idx], agent, self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-        _, g_best = self.update_global_best_agent(self.objs, save=False)
-        pop_child = []
-        for idx in range(0, self.pop_size):
-            # Somersault foraging   (Eq. 8)
-            x_t1 = self.objs[idx].solution + self.somersault_range * (
-                    self.generator.uniform() * g_best.solution
-                    - self.generator.uniform() * self.objs[idx].solution
-            )
-            pos_new = self.correct_solution(x_t1)
-            agent = self.generate_empty_agent(pos_new)
-            pop_child.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    self.objs[idx], agent, self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_child = self.update_target_for_population(pop_child)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_child, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        prev = np.vstack([X[:1], X[:-1]])  # the previous agent (the first one uses the leader instead)
+        first = (np.arange(n) == 0)[:, None]
+        # chain foraging / cyclone foraging
+        r1 = rng.uniform(size=(n, 1))
+        beta = 2 * np.exp(r1 * (self.epoch - epoch_c) / self.epoch) * np.sin(2 * np.pi * r1)
+        x_rand = rng.uniform(lb, ub, (n, d))
+        exploring = ((epoch_c + 1) / self.epoch < rng.random((n, 1)))
+        lead = np.where(exploring, x_rand, g)  # the random point or the best
+        cyclone = lead + rng.uniform(size=(n, 1)) * (np.where(first, lead, prev) - X) + beta * (lead - X)
+        r = rng.uniform(size=(n, 1))
+        alpha = 2 * r * np.sqrt(np.abs(np.log(r)))
+        chain = X + r * (np.where(first, g, prev) - X) + alpha * (g - X)
+        ops.step(self, np.where(rng.random((n, 1)) < 0.5, cyclone, chain))
+        # somersault foraging around the best agent found so far
+        X = pop.X
+        g = np.array(X[ops.best_row(self, self.pop)])
+        ops.step(self, X + self.somersault_range * (rng.uniform(size=(n, 1)) * g - rng.uniform(size=(n, 1)) * X))

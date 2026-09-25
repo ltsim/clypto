@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.PFA.OriginalPFA import OriginalPFA
+from clypto.native.collection.vectorize.swarm_based.PFA.OriginalPFA import OriginalPFA
 
 __all__ = ["OriginalPFA"]

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.AOA.OriginalAOA import OriginalAOA
+from clypto.native.collection.vectorize.math_based.AOA.OriginalAOA import OriginalAOA
 
 __all__ = ["OriginalAOA"]

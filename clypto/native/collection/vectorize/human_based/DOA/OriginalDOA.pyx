@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 23:58, 03/09/2025 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalDOA(AgentListOptimizer):
+cdef class OriginalDOA(LegacyNativeOptimizer):
     """
     The original version of: Dream Optimization Algorithm (DOA)
 
@@ -83,121 +79,50 @@ cdef class OriginalDOA(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def evolve_agents(self, epoch):
-        # Exploration phase (90% of iterations)
-        exploration_end = int(9 * self.epoch / 10)
-        if epoch <= exploration_end:
-            # Divide into 5 groups
-            pop_new = []
-            for m in range(5):
-                # Calculate k for current group
-                aa = max(1, np.ceil(self.problem.n_dims / 8 / (m + 1)))
-                bb = np.ceil(self.problem.n_dims / 3 / (m + 1)) + 1
-                kk = self.generator.integers(aa, bb)
-                # Group indices
-                group_start = int((m / 5) * self.pop_size)
-                group_end = int(((m + 1) / 5) * self.pop_size)
-                # Update the best solution for current group
-                pbest = self.get_best_agent(
-                    self.objs[group_start:group_end], self.problem.minmax
-                )
+    def pick_dims__(self, n, d, k):
+        """Boolean mask (n, d): ``k`` (scalar or per-row) random dimensions of every row are True."""
+        ranks = self.generator.random((n, d)).argsort(axis=1).argsort(axis=1)
+        return ranks < np.reshape(k, (-1, 1))
 
-                # Memory strategy and forgetting/supplementation
-                for idx in range(group_start, group_end):
-                    pos_new = pbest.solution.copy()
-                    # Random permutation for dimensions to modify
-                    in_indices = self.generator.choice(
-                        self.problem.n_dims, size=kk, replace=False
-                    )
-                    if self.generator.random() < 0.9:
-                        # Forgetting and supplementation strategy
-                        cos_term = (
-                                           np.cos((epoch + self.epoch / 10) * np.pi / self.epoch) + 1
-                                   ) / 2
-                        for jdx in in_indices:
-                            pos_new[jdx] = (
-                                    pbest.solution[jdx]
-                                    + (
-                                            self.generator.random()
-                                            * (self.problem.ub[jdx] - self.problem.lb[jdx])
-                                            + self.problem.lb[jdx]
-                                    )
-                                    * cos_term
-                            )
-                            # Boundary handling
-                            if (
-                                    pos_new[jdx] > self.problem.ub[jdx]
-                                    or pos_new[jdx] < self.problem.lb[jdx]
-                            ):
-                                if (
-                                        self.problem.n_dims > 15
-                                ):  # For high-dimensional problems
-                                    rdx = self.generator.choice(
-                                        list(set(range(self.pop_size)) - {idx})
-                                    )
-                                    pos_new[jdx] = self.objs[rdx].solution[jdx]
-                                else:  # For low-dimensional problems
-                                    pos_new[jdx] = (
-                                            self.generator.random()
-                                            * (self.problem.ub[jdx] - self.problem.lb[jdx])
-                                            + self.problem.lb[jdx]
-                                    )
-                    else:  # Alternative update strategy
-                        for jdx in in_indices:
-                            rdx = self.generator.choice(
-                                list(set(range(self.pop_size)) - {idx})
-                            )
-                            pos_new[jdx] = self.objs[rdx].solution[jdx]
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
-                    pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                for idx in range(self.pop_size):
-                    pop_new[idx].target = self.get_target(pop_new[idx].solution)
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = pop_new
+    def other_values__(self, X, n, d):
+        """For every (agent, dimension): the value of that dimension in a random other agent."""
+        return X[ops.others(self, n, d), np.arange(d)[None, :]]
+
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        lb, ub = self.problem.lb, self.problem.ub
+        F = np.asarray(pop.F)
+        exploration_end = int(9 * self.epoch / 10)
+        if epoch_c <= exploration_end:
+            starts = np.array([int((m / 5) * n) for m in range(5)])
+            group = np.searchsorted(starts, np.arange(n), side="right") - 1
+            kk = np.empty(5, dtype=int)
+            pbest = np.empty((5, d))
+            for m in range(5):
+                aa = max(1, np.ceil(d / 8 / (m + 1)))
+                bb = np.ceil(d / 3 / (m + 1)) + 1
+                kk[m] = rng.integers(aa, bb)
+                s, e = starts[m], int(((m + 1) / 5) * n)
+                sub = F[s:e]
+                pbest[m] = X[s + (sub.argmin() if self.problem.minmax == "min" else sub.argmax())]
+            base = pbest[group]
+            cos_term = (np.cos((epoch_c + self.epoch / 10) * np.pi / self.epoch) + 1) / 2
+            move = base + (rng.random((n, d)) * (ub - lb) + lb) * cos_term
+            out = (move > ub) | (move < lb)
+            fill = self.other_values__(X, n, d) if d > 15 else rng.random((n, d)) * (ub - lb) + lb
+            move = np.where(out, fill, move)
+            val = np.where((rng.random(n) < 0.9)[:, None], move, self.other_values__(X, n, d))
+            pos = np.where(self.pick_dims__(n, d, kk[group]), val, base)
         else:  # Exploitation phase (last 10% of iterations)
-            # Update population
-            pop_new = []
-            for idx in range(self.pop_size):
-                km = max(2, int(np.ceil(self.problem.n_dims / 3)))
-                k = self.generator.integers(2, km + 1)
-                in_indices = self.generator.choice(
-                    self.problem.n_dims, size=k, replace=False
-                )
-                pos_new = self.g_best.solution.copy()
-                for jdx in in_indices:
-                    cos_term = (np.cos(epoch * np.pi / self.epoch) + 1) / 2
-                    pos_new[jdx] = (
-                            pos_new[jdx]
-                            + (
-                                    self.generator.random()
-                                    * (self.problem.ub[jdx] - self.problem.lb[jdx])
-                                    + self.problem.lb[jdx]
-                            )
-                            * cos_term
-                    )
-                    # Boundary handling
-                    if (
-                            pos_new[jdx] > self.problem.ub[jdx]
-                            or pos_new[jdx] < self.problem.lb[jdx]
-                    ):
-                        if self.problem.n_dims > 15:
-                            rdx = self.generator.choice(
-                                list(set(range(self.pop_size)) - {idx})
-                            )
-                            pos_new[jdx] = self.objs[rdx].solution[jdx]
-                        else:
-                            pos_new[jdx] = (
-                                    self.generator.random()
-                                    * (self.problem.ub[jdx] - self.problem.lb[jdx])
-                                    + self.problem.lb[jdx]
-                            )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
-                pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                for idx in range(self.pop_size):
-                    pop_new[idx].target = self.get_target(pop_new[idx].solution)
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = pop_new
+            g = np.array(self.g_best_x())
+            km = max(2, int(np.ceil(d / 3)))
+            k = rng.integers(2, km + 1, size=n)
+            cos_term = (np.cos(epoch_c * np.pi / self.epoch) + 1) / 2
+            move = g + (rng.random((n, d)) * (ub - lb) + lb) * cos_term
+            out = (move > ub) | (move < lb)
+            fill = self.other_values__(X, n, d) if d > 15 else rng.random((n, d)) * (ub - lb) + lb
+            pos = np.where(self.pick_dims__(n, d, k), np.where(out, fill, move), g)
+        ops.replace(self, pos)

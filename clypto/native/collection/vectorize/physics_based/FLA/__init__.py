@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.FLA.OriginalFLA import OriginalFLA
+from clypto.native.collection.vectorize.physics_based.FLA.OriginalFLA import OriginalFLA
 
 __all__ = ["OriginalFLA"]

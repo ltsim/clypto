@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.HGS.OriginalHGS import OriginalHGS
+from clypto.native.collection.vectorize.swarm_based.HGS.OriginalHGS import OriginalHGS
 
 __all__ = ["OriginalHGS"]

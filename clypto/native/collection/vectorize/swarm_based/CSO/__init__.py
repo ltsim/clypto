@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.CSO.OriginalCSO import OriginalCSO
+from clypto.native.collection.vectorize.swarm_based.CSO.OriginalCSO import OriginalCSO
 
 __all__ = ["OriginalCSO"]

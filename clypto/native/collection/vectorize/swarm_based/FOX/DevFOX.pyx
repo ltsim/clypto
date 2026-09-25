@@ -82,29 +82,18 @@ cdef class DevFOX(LegacyNativeOptimizer):
         self.mint = 10000000
 
     cdef void evolve(self, int epoch_c):
-        # Every agent is replaced by its candidate (nothing reads the population in the loop).
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        g = np.array(self.g_best_x())
         aa = 2 * (1 - (1.0 / self.epoch))
-        Xc = cand.X
-        for idx in range(0, self.pop_size):
-            if self.generator.random() >= 0.5:
-                t1 = self.generator.random(d)
-                sps = g_best / t1
-                dis = 0.5 * sps * t1
-                tt = np.mean(t1)
-                t = tt / 2
-                jump = 0.5 * 9.81 * t ** 2
-                if self.generator.random() > self.pp:
-                    pos_new = dis * jump * self.c1
-                else:
-                    pos_new = dis * jump * self.c2
-                if self.mint > tt:
-                    self.mint = tt
-            else:
-                pos_new = g_best + self.generator.standard_normal(d) * (self.mint * aa)
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        self.pop = cand
+        jump_mask = rng.random(n) >= 0.5
+        T1 = rng.random((n, d))
+        tt = np.mean(T1, axis=1)
+        jump = 0.5 * 9.81 * (tt / 2) ** 2
+        coef = np.where(rng.random(n) > self.pp, self.c1, self.c2)
+        pos_jump = 0.5 * (g / T1) * T1 * (jump * coef)[:, None]
+        pos_walk = g + rng.standard_normal((n, d)) * (self.mint * aa)
+        if jump_mask.any():
+            self.mint = min(self.mint, float(tt[jump_mask].min()))
+        ops.replace(self, np.where(jump_mask[:, None], pos_jump, pos_walk))

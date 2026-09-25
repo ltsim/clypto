@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.BBOA.OriginalBBOA import OriginalBBOA
+from clypto.native.collection.vectorize.bio_based.BBOA.OriginalBBOA import OriginalBBOA
 
 __all__ = ["OriginalBBOA"]

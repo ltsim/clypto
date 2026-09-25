@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 15:34, 01/03/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -10,11 +8,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class CleverBookBeesA(AgentListOptimizer):
+cdef class CleverBookBeesA(LegacyNativeOptimizer):
     """
     The original version of: Bees Algorithm (CB-BeesA)
 
@@ -114,41 +110,27 @@ cdef class CleverBookBeesA(AgentListOptimizer):
         self.n_sites = cy.validator(int, n_sites, [2, 5], "n_sites")
         self.n_elite_sites = cy.validator(int, n_elite_sites, [1, 3], "n_elite_sites")
 
-    def search_neighborhood__(self, parent=None, neigh_size=None):
-        pop_neigh = []
-        for idx in range(0, neigh_size):
-            t1 = self.generator.integers(0, len(parent.solution) - 1)
-            new_bee = parent.solution.copy()
-            new_bee[t1] = (
-                (parent.solution[t1] + self.generator.uniform() * self.patch_size)
-                if self.generator.uniform() < 0.5
-                else (parent.solution[t1] - self.generator.uniform() * self.patch_size)
-            )
-            pos_new = self.correct_solution(new_bee)
-            agent = self.generate_empty_agent(pos_new)
-            pop_neigh.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_neigh[-1].target = self.get_target(pos_new)
-        pop_neigh = self.update_target_for_population(pop_neigh)
-        return self.get_best_agent(pop_neigh, self.problem.minmax)
-
-    def evolve_agents(self, epoch):
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            if idx < self.n_sites:
-                if idx < self.n_elite_sites:
-                    neigh_size = self.n_elites
-                else:
-                    neigh_size = self.n_others
-                agent = self.search_neighborhood__(self.objs[idx], neigh_size)
-            else:
-                agent = self.generate_agent()
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand, fresh
+        cdef Py_ssize_t n = pop.n, d = pop.d, ns = self.n_sites
+        cdef object rng = self.generator
+        # sites: elite sites recruit n_elites bees, the other sites n_others; each bee changes one coordinate
+        counts = np.zeros(n, dtype=int)
+        counts[:ns] = self.n_others
+        counts[:self.n_elite_sites] = self.n_elites
+        parent = np.repeat(np.arange(n), counts)
+        m = len(parent)
+        pos = np.array(pop.X[parent])
+        shift = rng.uniform(size=m) * self.patch_size * np.where(rng.uniform(size=m) < 0.5, 1.0, -1.0)
+        pos[np.arange(m), rng.integers(0, d - 1, size=m)] += shift
+        cand = pop.take(parent)
+        cand.X[:] = self.correct_solution(pos)
+        self.evaluate(cand, 0, m)
+        ops.scatter(self, cand, parent)
+        # the other bees scout random sources, kept only if they beat the bee they replace
+        if ns < n:
+            fresh = pop.take(np.arange(ns, n))
+            fresh.X[:] = self.problem.lb + rng.random((n - ns, d)) * (self.problem.ub - self.problem.lb)
+            self.evaluate(fresh, 0, n - ns)
+            ops.scatter(self, fresh, np.arange(ns, n))

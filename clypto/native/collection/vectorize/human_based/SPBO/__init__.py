@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.SPBO.OriginalSPBO import OriginalSPBO
-from clypto.collection.human_based.SPBO.DevSPBO import DevSPBO
+from clypto.native.collection.vectorize.human_based.SPBO.OriginalSPBO import OriginalSPBO
+from clypto.native.collection.vectorize.human_based.SPBO.DevSPBO import DevSPBO
 
 __all__ = ["OriginalSPBO", "DevSPBO"]

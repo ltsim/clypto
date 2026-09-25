@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.SOO.OriginalSOO import OriginalSOO
+from clypto.native.collection.vectorize.physics_based.SOO.OriginalSOO import OriginalSOO
 
 __all__ = ["OriginalSOO"]

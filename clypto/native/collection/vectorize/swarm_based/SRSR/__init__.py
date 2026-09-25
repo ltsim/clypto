@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.SRSR.OriginalSRSR import OriginalSRSR
+from clypto.native.collection.vectorize.swarm_based.SRSR.OriginalSRSR import OriginalSRSR
 
 __all__ = ["OriginalSRSR"]

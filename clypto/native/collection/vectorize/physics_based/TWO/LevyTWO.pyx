@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from clypto.collection.physics_based.TWO.OriginalTWO cimport OriginalTWO
+from clypto.native.collection.vectorize.physics_based.TWO.OriginalTWO cimport OriginalTWO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -55,29 +55,16 @@ cdef class LevyTWO(OriginalTWO):
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        self.forces__(pop, epoch)
-        for idx in range(self.pop_size):
-            pos_new = self.bound__(pop, idx, epoch)
-            pos_c = self.correct_solution(pos_new)
-            if swarm:
-                pop.X[idx] = pos_c
-            else:
-                # the classic sequential path evaluates the *uncorrected* position
-                ops.set_row(pop, idx, pos_c, self.get_target(pos_new))
-        if swarm:
-            self.evaluate(pop, 0, pop.n)
-        ### Apply levy-flight here
-        for idx in range(self.pop_size):
-            ## Chance for each agent to update using levy is 50%
-            if self.generator.random() < 0.5:
-                levy_step = self.get_levy_flight_step(beta=1.0, multiplier=0.01, size=self.problem.n_dims, case=-1)
-                pos_new = self.correct_solution(pop.X[idx] + levy_step)
-                tar = self.get_target(pos_new)
-                if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
-                    ops.set_row(pop, idx, pos_new, tar)
+        cdef NativePopulation sub
+        pos = self.forces__(pop, epoch_c)
+        pop.X[:] = self.correct_solution(self.bound__(pos, epoch_c))
+        self.evaluate(pop, 0, pop.n)
+        # half of the teams try a Levy jump
+        jump = np.flatnonzero(self.generator.random(pop.n) < 0.5)
+        if len(jump):
+            sub = pop.take(jump)
+            sub.X[:] = self.correct_solution(pop.X[jump] + self.get_levy_flight_step(beta=1.0, multiplier=0.01, size=(len(jump), pop.d), case=-1))
+            self.evaluate(sub, 0, len(jump))
+            ops.scatter(self, sub, jump)
         self.update_weight__(pop)

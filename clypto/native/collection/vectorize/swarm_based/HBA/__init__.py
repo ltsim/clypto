@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.HBA.OriginalHBA import OriginalHBA
+from clypto.native.collection.vectorize.swarm_based.HBA.OriginalHBA import OriginalHBA
 
 __all__ = ["OriginalHBA"]

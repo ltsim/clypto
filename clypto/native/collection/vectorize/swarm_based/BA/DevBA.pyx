@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 12:00, 17/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -12,11 +10,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class DevBA(AgentListOptimizer):
+cdef class DevBA(LegacyNativeOptimizer):
     """
     The original version of: Developed Bat-inspired Algorithm (DBA)
 
@@ -88,49 +84,24 @@ cdef class DevBA(AgentListOptimizer):
     cdef void initialize_variables(self):
         self.dyn_list_velocity = np.zeros((self.pop_size, self.problem.n_dims))
 
-    def evolve_agents(self, epoch):
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            pf = (
-                self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
-            )  # Eq. 2
-            self.dyn_list_velocity[idx] = (
-                self.generator.uniform() * self.dyn_list_velocity[idx]
-                + (self.g_best.solution - self.objs[idx].solution) * pf
-            )  # Eq. 3
-            x = self.objs[idx].solution + self.dyn_list_velocity[idx]  # Eq. 4
-            pos_new = self.correct_solution(x)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
-        pop_child_idx = []
-        pop_child = []
-        for idx in range(0, self.pop_size):
-            if self.compare_target(
-                pop_new[idx].target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx].update(
-                    solution=pop_new[idx].solution.copy(), target=pop_new[idx].target
-                )
-            else:
-                if self.generator.random() > self.pulse_rate:
-                    x = self.g_best.solution + 0.01 * self.generator.uniform(
-                        self.problem.lb, self.problem.ub
-                    )
-                    pos_new = self.correct_solution(x)
-                    agent = self.generate_empty_agent(pos_new)
-                    pop_child_idx.append(idx)
-                    pop_child.append(agent)
-                    if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self.get_target(pos_new)
-        pop_child = self.update_target_for_population(pop_child)
-        for idx, idx_selected in enumerate(pop_child_idx):
-            if self.compare_target(
-                pop_child[idx].target, pop_new[idx_selected].target, self.problem.minmax
-            ):
-                pop_new[idx_selected].update(
-                    solution=pop_child[idx].solution, target=pop_child[idx].target
-                )
-        self.objs = pop_new
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand, child
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        pf = self.pf_min + (self.pf_max - self.pf_min) * rng.uniform(size=(n, 1))  # Eq. 2
+        self.dyn_list_velocity = rng.uniform(size=(n, 1)) * self.dyn_list_velocity + (g - X) * pf  # Eq. 3
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(X + self.dyn_list_velocity)  # Eq. 4
+        self.evaluate(cand, 0, n)
+        # agents whose move did not improve them try a local search around the best
+        retry = np.flatnonzero(~ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) > self.pulse_rate))
+        if len(retry):
+            child = pop.take(retry)
+            child.X[:] = self.correct_solution(g + 0.01 * rng.uniform(lb, ub, (len(retry), d)))
+            self.evaluate(child, 0, len(retry))
+            ops.scatter(self, child, retry, dst=cand)
+        self.pop = cand

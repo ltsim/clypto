@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.human_based.SSDO.OriginalSSDO import OriginalSSDO
+from clypto.native.collection.vectorize.human_based.SSDO.OriginalSSDO import OriginalSSDO
 
 __all__ = ["OriginalSSDO"]

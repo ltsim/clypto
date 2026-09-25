@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.SSpiderA.OriginalSSpiderA import OriginalSSpiderA
+from clypto.native.collection.vectorize.swarm_based.SSpiderA.OriginalSSpiderA import OriginalSSpiderA
 
 __all__ = ["OriginalSSpiderA"]

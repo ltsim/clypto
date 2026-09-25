@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.SARO.DevSARO import DevSARO
-from clypto.collection.human_based.SARO.OriginalSARO import OriginalSARO
+from clypto.native.collection.vectorize.human_based.SARO.DevSARO import DevSARO
+from clypto.native.collection.vectorize.human_based.SARO.OriginalSARO import OriginalSARO
 
 __all__ = ["DevSARO", "OriginalSARO"]

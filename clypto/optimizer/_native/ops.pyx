@@ -158,3 +158,123 @@ def build_population(LegacyNativeOptimizer opt, agents):
     for i, agent in enumerate(agents):
         set_row(pop, i, agent.solution, agent.target)
     return pop
+
+
+# -- whole-population steps for the vectorized collection (synchronous updates, strict comparisons) --
+
+def better(LegacyNativeOptimizer opt, a, b):
+    """Element-wise "a is better than b" (strict): ``a < b`` for min, ``a > b`` for max."""
+    return a < b if opt.problem.minmax == "min" else a > b
+
+
+def step(LegacyNativeOptimizer opt, pos, NativePopulation dst=None, Py_ssize_t stop=-1, Py_ssize_t start=0):
+    """One synchronous phase: bound ``pos`` (rows ``[start, stop)``, default all), evaluate the block once, keep the better rows of ``dst`` (default ``opt.pop``)."""
+    cdef NativePopulation pop = opt.pop if dst is None else dst
+    cdef NativePopulation cand = pop.empty_like()
+    if stop < 0:
+        stop = pop.n
+    cand.buf[:] = pop.buf  # the candidates carry the agents' extra fields
+    cand.X[start:stop] = opt.correct_solution(pos)
+    opt.evaluate(cand, start, stop)
+    greedy(opt, cand, start, stop, pop)
+
+
+def replace(LegacyNativeOptimizer opt, pos):
+    """Every agent moves to its (bounded, evaluated) candidate."""
+    cdef NativePopulation pop = opt.pop
+    cdef NativePopulation cand = pop.empty_like()
+    cand.X[:] = opt.correct_solution(pos)
+    opt.evaluate(cand, 0, pop.n)
+    opt.pop = cand
+
+
+def others(LegacyNativeOptimizer opt, Py_ssize_t n, Py_ssize_t k=1):
+    """``k`` random agent indices per agent, never the agent itself (n, k); with replacement among the others."""
+    return (np.arange(n)[:, None] + opt.generator.integers(1, n, size=(n, k))) % n
+
+
+def better_pick(LegacyNativeOptimizer opt, NativePopulation pop):
+    """For each agent, a random agent that is strictly better than it: ``(index, has_one)``, both shaped ``(n,)``."""
+    F = np.ascontiguousarray(pop.F)
+    B = F[None, :] < F[:, None] if opt.problem.minmax == "min" else F[None, :] > F[:, None]
+    keys = opt.generator.random(B.shape)
+    keys[~B] = -1.0
+    return keys.argmax(axis=1), B.any(axis=1)
+
+
+def roulette(LegacyNativeOptimizer opt, fitness, Py_ssize_t size):
+    """``size`` indices drawn by roulette wheel on ``fitness`` (min or max problems, negative values allowed), as ``get_index_roulette_wheel_selection``."""
+    f = np.asarray(fitness, dtype=float).ravel()
+    n = len(f)
+    if np.ptp(f) == 0:
+        return opt.generator.integers(0, n, size=size)
+    if np.any(f < 0):
+        f = f - np.min(f)
+    if opt.problem.minmax == "min":
+        f = np.max(f) - f
+    return opt.generator.choice(n, size=size, p=f / np.sum(f))
+
+
+def two_others(LegacyNativeOptimizer opt, Py_ssize_t n, Py_ssize_t k):
+    """Two random agent indices per (agent, column): ``(a, b)`` shaped ``(n, k)``, both different from the agent and from each other."""
+    rng = opt.generator
+    me = np.arange(n)[:, None]
+    a = rng.integers(0, n - 1, size=(n, k))
+    a = a + (a >= me)
+    b = rng.integers(0, n - 2, size=(n, k))
+    lo, hi = np.minimum(me, a), np.maximum(me, a)
+    b = b + (b >= lo)
+    b = b + (b >= hi)
+    return a, b
+
+
+def scatter(LegacyNativeOptimizer opt, NativePopulation cand, targets, NativePopulation dst=None):
+    """Row ``i`` of ``cand`` competes with row ``targets[i]`` of ``dst`` (default ``opt.pop``); when several candidates aim at the same row the best one wins."""
+    cdef NativePopulation pop = opt.pop if dst is None else dst
+    targets = np.asarray(targets)
+    cf = np.asarray(cand.F)
+    key = cf if opt.problem.minmax == "min" else -cf
+    order = np.argsort(key, kind="stable")
+    _, first = np.unique(targets[order], return_index=True)
+    win = order[first]
+    tgt = targets[win]
+    ok = better(opt, cf[win], np.asarray(pop.F)[tgt])
+    pop.buf[tgt[ok]] = cand.buf[win[ok]]
+
+
+def k_others(LegacyNativeOptimizer opt, Py_ssize_t n, Py_ssize_t k):
+    """``k`` distinct random agent indices per agent, none of them the agent itself: ``(n, k)`` (unordered)."""
+    keys = opt.generator.random((n, n))
+    keys[np.arange(n), np.arange(n)] = 2.0
+    return np.argpartition(keys, k - 1, axis=1)[:, :k]
+
+
+def neighbors(Py_ssize_t n):
+    """Ring-with-ends neighbours of every agent of a sorted population: ``(prev, next)`` (GSK-style, ends look two agents in)."""
+    idx = np.arange(n)
+    prev, nxt = idx - 1, idx + 1
+    prev[0], nxt[0] = 2, 1
+    prev[n - 1], nxt[n - 1] = n - 3, n - 2
+    return prev, nxt
+
+
+def exclude(r, excluded):
+    """Map values ``r`` drawn from ``[0, n - k)`` to ``[0, n)`` skipping the ``k`` (per-row) ``excluded`` values (n, k)."""
+    r = np.array(r)
+    for col in np.sort(excluded, axis=1).T:
+        r = r + (r >= col)
+    return r
+
+
+def pick_range(LegacyNativeOptimizer opt, Py_ssize_t lo, Py_ssize_t hi, idx, size=None):
+    """A random index in ``[lo, hi)`` per agent, never the agent itself (``idx``, per-row); shape ``size`` (default ``idx``'s)."""
+    idx = np.asarray(idx)
+    inside = (idx >= lo) & (idx < hi)
+    r = lo + opt.generator.integers(0, (hi - lo) - inside.astype(int), size=idx.shape if size is None else size)
+    return r + (inside & (r >= idx))
+
+
+def best_row(LegacyNativeOptimizer opt, NativePopulation pop):
+    """Index of the best agent of ``pop`` right now (the engine only refreshes ``g_best`` at the end of the epoch)."""
+    F = np.asarray(pop.F)
+    return int(F.argmin() if opt.problem.minmax == "min" else F.argmax())

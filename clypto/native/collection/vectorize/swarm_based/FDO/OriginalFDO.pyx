@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 10:01, 16/08/2025 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalFDO(AgentListOptimizer):
+cdef class OriginalFDO(LegacyNativeOptimizer):
     """
     The original version of: Fitness Dependent Optimizer (FDO)
 
@@ -81,88 +77,53 @@ cdef class OriginalFDO(AgentListOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.weight_factor = cy.validator(float, weight_factor, [0.0, 1.0], "weight_factor")
 
-    cdef void before_main_loop(self):
-        self.pop_pace = [
-                            0,
-                        ] * self.pop_size
-
     def get_fit_weight(self, best_fit, current_fit, weight_factor=0.1):
-        if best_fit == 0:
-            return 0
+        """Fitness weight of every agent (vectorized over ``current_fit``)."""
+        current_fit = np.asarray(current_fit, dtype=float)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratio = best_fit / current_fit
+        if self.problem.minmax == "min":
+            fw = np.where(best_fit < 0.05 * current_fit, 0.2, ratio - weight_factor)
         else:
-            if self.problem.minmax == "min":
-                if best_fit < (0.05 * current_fit):
-                    return 0.2
-                else:
-                    return best_fit / current_fit - weight_factor
-            else:
-                if best_fit > (0.05 * current_fit):
-                    return 0.2
-                else:
-                    return weight_factor - best_fit / current_fit
+            fw = np.where(best_fit > 0.05 * current_fit, 0.2, weight_factor - ratio)
+        return np.zeros_like(current_fit) if best_fit == 0 else fw
 
     def get_into_levy_bound(self, pos_new):
-        levy = self.get_levy_flight_step(
-            beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
-        )
-        levy_up = self.problem.ub * np.abs(levy)
-        levy_lb = self.problem.lb * np.abs(levy)
-        pos_new = np.select(
+        levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=pos_new.shape, case=-1)
+        return np.select(
             [pos_new > self.problem.ub, pos_new < self.problem.lb],
-            [levy_up, levy_lb],
+            [self.problem.ub * np.abs(levy), self.problem.lb * np.abs(levy)],
             default=pos_new,
         )
-        return pos_new
 
-    def evolve_agents(self, epoch):
-        # Update positions for each thief
-        for idx in range(self.pop_size):
-            fw = self.get_fit_weight(
-                self.g_best.target.fitness,
-                self.objs[idx].target.fitness,
-                self.weight_factor,
-            )
-            dist = self.g_best.solution - self.objs[idx].solution
-            levy = self.get_levy_flight_step(
-                beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
-            )
-            if fw == 1:
-                pace = self.objs[idx].solution * levy
-            elif fw == 0:
-                pace = dist * levy
-            else:
-                pace = dist * fw * np.sign(levy)
-            self.pop_pace[idx] = pace
-            pos_new = self.objs[idx].solution + pace
-            pos_new = self.get_into_levy_bound(pos_new)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            # Check if new position is better
-            if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
-            else:
-                # Alternative update strategy
-                dist = self.g_best.solution - pos_new
-                pos_new = pos_new + (dist * fw) + self.pop_pace[idx]
-                pos_new = self.get_into_levy_bound(pos_new)
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                        agent.target, self.objs[idx].target, self.problem.minmax
-                ):
-                    self.objs[idx] = agent
-                else:
-                    # Third update strategy
-                    levy = self.get_levy_flight_step(
-                        beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
-                    )
-                    pos_new = self.objs[idx].solution + self.objs[idx].solution * levy
-                    pos_new = self.get_into_levy_bound(pos_new)
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
-                    if self.compare_target(
-                            agent.target, self.objs[idx].target, self.problem.minmax
-                    ):
-                        self.objs[idx] = agent
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        X = np.array(pop.X)
+        g = np.array(self.g_best_x())
+        gb_fit = self.current_g_best().target.fitness
+        fw = self.get_fit_weight(gb_fit, np.asarray(pop.F), self.weight_factor)[:, None]
+        dist = g - X
+        levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
+        pace = np.where(fw == 1, X * levy, np.where(fw == 0, dist * levy, dist * fw * np.sign(levy)))
+        # three attempts per agent, each one only for the agents the previous attempt did not improve
+        pos1 = self.correct_solution(self.get_into_levy_bound(X + pace))
+        F0 = np.array(pop.F)
+        ops.step(self, pos1)
+        todo = np.flatnonzero(~ops.better(self, np.asarray(self.pop.F), F0))
+        if len(todo):
+            pos2 = pos1[todo] + (g - pos1[todo]) * fw[todo] + pace[todo]
+            cand = self.pop.take(todo)
+            cand.X[:] = self.correct_solution(self.get_into_levy_bound(pos2))
+            self.evaluate(cand, 0, len(todo))
+            F1 = np.array(self.pop.F)
+            ops.scatter(self, cand, todo)
+            todo = todo[~ops.better(self, np.asarray(self.pop.F)[todo], F1[todo])]
+        if len(todo):
+            Xt = np.array(self.pop.X[todo])
+            levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(len(todo), d), case=-1)
+            cand = self.pop.take(todo)
+            cand.X[:] = self.correct_solution(self.get_into_levy_bound(Xt + Xt * levy))
+            self.evaluate(cand, 0, len(todo))
+            ops.scatter(self, cand, todo)

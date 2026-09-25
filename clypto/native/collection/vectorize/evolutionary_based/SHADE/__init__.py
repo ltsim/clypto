@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.evolutionary_based.SHADE.OriginalSHADE import OriginalSHADE
-from clypto.collection.evolutionary_based.SHADE.L_SHADE import L_SHADE
+from clypto.native.collection.vectorize.evolutionary_based.SHADE.OriginalSHADE import OriginalSHADE
+from clypto.native.collection.vectorize.evolutionary_based.SHADE.L_SHADE import L_SHADE
 
 __all__ = ["OriginalSHADE", "L_SHADE"]

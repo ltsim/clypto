@@ -9,7 +9,7 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
 from clypto.optimizer._native.target cimport NativeTarget
-from clypto.collection.swarm_based.PSO._base cimport _PSOBase
+from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
 
 cdef class CL_PSO(_PSOBase):

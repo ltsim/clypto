@@ -70,57 +70,30 @@ cdef class OriginalAO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t i, idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
         alpha = delta = 0.1
-        g1 = 2 * self.generator.random() - 1  # Eq. 16
+        g1 = 2 * rng.random() - 1  # Eq. 16
         g2 = 2 * (1 - epoch / self.epoch)  # Eq. 17
-        dim_list = np.array(list(range(1, self.problem.n_dims + 1)))
-        miu = 0.00565
-        r0 = 10
-        r = r0 + miu * dim_list
-        w = 0.005
-        phi0 = 3 * np.pi / 2
-        phi = -w * dim_list + phi0
+        dim_list = np.arange(1, d + 1)
+        r = 10 + 0.00565 * dim_list
+        phi = -0.005 * dim_list + 3 * np.pi / 2
         x = r * np.sin(phi)  # Eq.(9)
         y = r * np.cos(phi)  # Eq.(10)
-        QF = epoch ** (
-                (2 * self.generator.random() - 1) / (1 - self.epoch) ** 2
-        )  # Eq.(15)        Quality function
-        for i in range(0, self.pop_size):
-            idx = i
-            x_mean = np.mean(Xp, axis=0)
-            levy_step = self.get_levy_flight_step(beta=1.5, multiplier=1.0, case=-1)
-            if epoch <= (2 / 3) * self.epoch:  # Eq. 3, 4
-                if self.generator.random() < 0.5:
-                    pos_new = g_best * (1 - epoch / self.epoch) + self.generator.random() * (x_mean - g_best)
-                else:
-                    # (the classic loop variable is reassigned here: the replacement below targets this agent)
-                    idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                    pos_new = g_best * levy_step + Xp[idx] + self.generator.random() * (y - x)  # Eq. 5
-            else:
-                if self.generator.random() < 0.5:
-                    pos_new = (
-                            alpha * (g_best - x_mean)
-                            - self.generator.random()
-                            * (
-                                    self.generator.random()
-                                    * (self.problem.ub - self.problem.lb)
-                                    + self.problem.lb
-                            )
-                            * delta
-                    )  # Eq. 13
-                else:
-                    pos_new = (
-                            QF * g_best
-                            - (g2 * Xp[idx] * self.generator.random())
-                            - g2 * levy_step
-                            + self.generator.random() * g1
-                    )  # Eq. 14
-            pos_new = self.correct_solution(pos_new)
-            ops.commit(self, pop, cand, i if swarm else idx, pos_new, swarm)
-        if swarm:
-            ops.finish(self, cand, 0, pop.n)
+        QF = epoch ** ((2 * rng.random() - 1) / (1 - self.epoch) ** 2)  # Eq.(15) quality function
+        x_mean = np.mean(np.array(X), axis=0)
+        levy_step = self.get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, 1), case=-1)
+        R = rng.random((n, 5, 1))
+        if epoch <= (2 / 3) * self.epoch:  # Eq. 3, 4
+            other = X[ops.others(self, n)[:, 0]]
+            pos = np.where(R[:, 0] < 0.5,
+                           g * (1 - epoch / self.epoch) + R[:, 1] * (x_mean - g),
+                           g * levy_step + other + R[:, 1] * (y - x))  # Eq. 5
+        else:
+            pos = np.where(R[:, 0] < 0.5,
+                           alpha * (g - x_mean) - R[:, 1] * (R[:, 2] * (ub - lb) + lb) * delta,  # Eq. 13
+                           QF * g - (g2 * X * R[:, 3]) - g2 * levy_step + R[:, 4] * g1)  # Eq. 14
+        ops.step(self, pos)

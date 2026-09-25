@@ -84,45 +84,42 @@ cdef class OriginalSHO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
+        cdef NativePopulation trial
+        cdef Py_ssize_t t, n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         gb_fit = self.current_g_best().target.fitness
-        for idx in range(0, self.pop_size):
-            hh = self.h_factor - epoch * (self.h_factor / self.epoch)
-            rd1 = self.generator.uniform(0, 1, self.problem.n_dims)
-            rd2 = self.generator.uniform(0, 1, self.problem.n_dims)
-            B = 2 * rd1
-            E = 2 * hh * rd2 - hh
-
-            if self.generator.random() < 0.5:
-                D_h = np.abs(np.dot(B, g_best) - Xp[idx])
-                pos_new = g_best - np.dot(E, D_h)
-            else:
-                N = 1
-                for _ in range(0, self.n_trials):
-                    pos_temp = g_best + self.generator.normal(
-                        0, 1, self.problem.n_dims
-                    ) * self.generator.uniform(self.problem.lb, self.problem.ub)
-                    pos_new = self.correct_solution(pos_temp)
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, gb_fit, self.problem.minmax):
-                        N += 1
-                        break
-                    N += 1
-                circle_list = []
-                idx_list = self.generator.choice(
-                    range(0, self.pop_size), N, replace=False
-                )
-                for j in range(0, N):
-                    D_h = np.abs(np.dot(B, g_best) - Xp[idx_list[j]])
-                    p_k = g_best - np.dot(E, D_h)
-                    circle_list.append(p_k)
-                pos_new = np.mean(np.array(circle_list), axis=0)
-            pos_new = self.correct_solution(pos_new)
-            ops.commit(self, pop, cand, idx, pos_new, swarm, True)
-        if swarm:
-            ops.finish(self, cand, 0, pop.n)
+        lb, ub = self.problem.lb, self.problem.ub
+        hh = self.h_factor - epoch * (self.h_factor / self.epoch)
+        B = 2 * rng.uniform(0, 1, (n, d))
+        E = 2 * hh * rng.uniform(0, 1, (n, d)) - hh
+        bg = B @ g  # np.dot(B, g_best) of every agent
+        # exploitation branch: encircle the best (a scalar step per agent, as np.dot(E, D_h))
+        D_h = np.abs(bg[:, None] - X)
+        pos = g - np.einsum("ij,ij->i", E, D_h)[:, None]
+        # exploration branch: try to find better positions around the best, then average a circle of hunters
+        hunt = np.flatnonzero(rng.random(n) >= 0.5)
+        m = len(hunt)
+        if m:
+            found = np.zeros(m, dtype=bool)
+            count = np.ones(m, dtype=int)  # N in the classic code
+            trial = pop.take(np.zeros(m, dtype=int))
+            for t in range(self.n_trials):
+                active = np.flatnonzero(~found)
+                if not len(active):
+                    break
+                sub = trial.take(np.arange(len(active)))
+                sub.X[:] = self.correct_solution(g + rng.normal(0, 1, (len(active), d)) * rng.uniform(lb, ub, (len(active), d)))
+                self.evaluate(sub, 0, len(active))
+                ok = ops.better(self, sub.F, gb_fit)
+                count[active] += 1
+                found[active[ok]] = True
+            # circle of N distinct agents per hunter
+            count = np.minimum(count, n)
+            Nmax = int(count.max())
+            order = rng.random((m, n)).argsort(axis=1)[:, :Nmax]
+            S = np.einsum("ij,ikj->ik", E[hunt], np.abs(bg[hunt][:, None, None] - X[order]))
+            mask = np.arange(Nmax)[None, :] < count[:, None]
+            pos[hunt] = g - ((S * mask).sum(axis=1) / count)[:, None]
+        ops.step(self, pos)

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.CDO.OriginalCDO import OriginalCDO
+from clypto.native.collection.vectorize.physics_based.CDO.OriginalCDO import OriginalCDO
 
 __all__ = ["OriginalCDO"]

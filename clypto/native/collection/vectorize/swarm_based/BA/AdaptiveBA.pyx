@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 12:00, 17/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -16,11 +14,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class AdaptiveBA(AgentListOptimizer):
+cdef class AdaptiveBA(LegacyNativeOptimizer):
     """
     The original version of: Adaptive Bat-inspired Algorithm (ABA)
 
@@ -70,6 +66,9 @@ cdef class AdaptiveBA(AgentListOptimizer):
     cdef public object alpha
     cdef public object gamma
 
+    cdef public object velocity
+    cdef public object loudness_v
+    cdef public object pulse_rate_v
     def __init__(
         self,
         epoch: int = 10000,
@@ -122,52 +121,28 @@ cdef class AdaptiveBA(AgentListOptimizer):
         self.pf_max = cy.validator(float, pf_max, [0.0, 10.0], "pf_max")
         self.alpha = self.gamma = 0.9
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
-        loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
-        pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
-        return FieldAgent(
-            solution=solution,
-            velocity=velocity,
-            loudness=loudness,
-            pulse_rate=pulse_rate,
-        )
+    cdef void initialization(self):
+        LegacyNativeOptimizer.initialization(self)
+        n, d = self.pop.n, self.pop.d
+        self.velocity = self.generator.uniform(self.problem.lb, self.problem.ub, (n, d))
+        self.loudness_v = self.generator.uniform(self.loudness_min, self.loudness_max, n)
+        self.pulse_rate_v = self.generator.uniform(self.pr_min, self.pr_max, n)
 
-    def evolve_agents(self, epoch):
-        mean_a = np.mean([agent.loudness for agent in self.objs])
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.objs[idx].copy()
-            pulse_frequency = self.generator.uniform(self.pf_min, self.pf_max)
-            agent.velocity = agent.velocity + pulse_frequency * (
-                self.objs[idx].solution - self.g_best.solution
-            )
-            x_new = self.objs[idx].solution + agent.velocity
-            ## Local Search around g_best position
-            if self.generator.random() > agent.pulse_rate:
-                x_new = self.g_best.solution + mean_a * self.generator.normal(-1, 1)
-            pos_new = self.correct_solution(x_new)
-            agent.solution = pos_new
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
-        for idx in range(0, self.pop_size):
-            ## Replace the old position by the new one when its has better fitness.
-            ##  and then update loudness and emission rate
-            if (
-                self.compare_target(
-                    pop_new[idx].target, self.objs[idx].target, self.problem.minmax
-                )
-                and self.generator.random() < pop_new[idx].loudness
-            ):
-                loudness = self.alpha * pop_new[idx].loudness
-                pulse_rate = pop_new[idx].pulse_rate * (1 - np.exp(-self.gamma * epoch))
-                self.objs[idx].update(
-                    solution=pop_new[idx].solution,
-                    target=pop_new[idx].target,
-                    loudness=loudness,
-                    pulse_rate=pulse_rate,
-                )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        mean_a = np.mean(self.loudness_v)
+        pf = rng.uniform(self.pf_min, self.pf_max, (n, 1))
+        x_new = X + self.velocity + pf * (X - g)
+        x_new = np.where((rng.random(n) > self.pulse_rate_v)[:, None], g + mean_a * rng.normal(-1, 1, (n, 1)), x_new)
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(x_new)
+        self.evaluate(cand, 0, n)
+        ok = ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) < self.loudness_v)
+        pop.buf[ok] = cand.buf[ok]
+        self.loudness_v = np.where(ok, self.alpha * self.loudness_v, self.loudness_v)
+        self.pulse_rate_v = np.where(ok, self.pulse_rate_v * (1 - np.exp(-self.gamma * epoch_c)), self.pulse_rate_v)

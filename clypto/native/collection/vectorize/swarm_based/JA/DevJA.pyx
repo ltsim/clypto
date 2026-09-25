@@ -67,23 +67,10 @@ cdef class DevJA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        _ord = self.sorted_order(pop)
-        g_best = pop.agent(_ord[0])
-        g_worst = pop.agent(_ord[pop.n - 1])
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = (
-                    Xp[idx]
-                    + self.generator.random(self.problem.n_dims)
-                    * (g_best.solution - np.abs(Xp[idx]))
-                    + self.generator.normal()
-                    * (g_worst.solution - np.abs(Xp[idx]))
-            )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm, True)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        order = self.sorted_order(pop)
+        best, worst = X[order[0]], X[order[n - 1]]
+        pos = X + rng.random((n, d)) * (best - np.abs(X)) + rng.normal(size=(n, 1)) * (worst - np.abs(X))
+        ops.step(self, pos)

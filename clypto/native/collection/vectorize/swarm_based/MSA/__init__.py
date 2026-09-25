@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.MSA.OriginalMSA import OriginalMSA
+from clypto.native.collection.vectorize.swarm_based.MSA.OriginalMSA import OriginalMSA
 
 __all__ = ["OriginalMSA"]

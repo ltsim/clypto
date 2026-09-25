@@ -4,12 +4,12 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.QSA.DevQSA import DevQSA
-from clypto.collection.human_based.QSA.OppoQSA import OppoQSA
+from clypto.native.collection.vectorize.human_based.QSA.DevQSA import DevQSA
+from clypto.native.collection.vectorize.human_based.QSA.OppoQSA import OppoQSA
 
-from clypto.collection.human_based.QSA.LevyQSA import LevyQSA
-from clypto.collection.human_based.QSA.ImprovedQSA import ImprovedQSA
+from clypto.native.collection.vectorize.human_based.QSA.LevyQSA import LevyQSA
+from clypto.native.collection.vectorize.human_based.QSA.ImprovedQSA import ImprovedQSA
 
-from clypto.collection.human_based.QSA.OriginalQSA import OriginalQSA
+from clypto.native.collection.vectorize.human_based.QSA.OriginalQSA import OriginalQSA
 
 __all__ = ["DevQSA", "OppoQSA", "LevyQSA", "ImprovedQSA", "OriginalQSA"]

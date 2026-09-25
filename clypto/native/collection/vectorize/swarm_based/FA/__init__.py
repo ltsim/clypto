@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.FA.OriginalFA import OriginalFA
+from clypto.native.collection.vectorize.swarm_based.FA.OriginalFA import OriginalFA
 
 __all__ = ["OriginalFA"]

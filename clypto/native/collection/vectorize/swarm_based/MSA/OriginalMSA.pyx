@@ -93,41 +93,33 @@ cdef class OriginalMSA(LegacyNativeOptimizer):
         self.n_moth2 = self.pop_size - self.n_moth1
         self.golden_ratio = (np.sqrt(5) - 1) / 2.0
 
-    def _levy_walk(self, iteration):
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d, m1 = self.n_moth1, m2 = n - self.n_moth1
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        elites = pop.take(np.arange(self.n_best))
         beta = 1.5  # Eq. 2.23
         sigma = (
                         gamma(1 + beta)
                         * np.sin(np.pi * (beta - 1) / 2)
                         / (gamma(beta / 2) * (beta - 1) * 2 ** ((beta - 2) / 2))
                 ) ** (1 / (beta - 1))
-        u = self.generator.uniform(self.problem.lb, self.problem.ub) * sigma
-        v = self.generator.uniform(self.problem.lb, self.problem.ub)
-        step = u / np.abs(v) ** (1.0 / (beta - 1))  # Eq. 2.21
-        scale = self.max_step_size / iteration
-        delta_x = scale * step
-        return delta_x
-
-    cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
-        cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        pop_best = pop.take(np.arange(self.n_best))
-        for idx in range(0, self.pop_size):
-            # Migration operator
-            if idx < self.n_moth1:
-                pos_new = Xp[idx] + self.generator.random(d) * self._levy_walk(epoch)
-            else:
-                # Flying in a straight line
-                temp_case1 = Xp[idx] + self.generator.random(d) * self.golden_ratio * (g_best - Xp[idx])
-                temp_case2 = Xp[idx] + self.generator.random(d) * (1.0 / self.golden_ratio) * (g_best - Xp[idx])
-                pos_new = np.where(self.generator.random(d) < 0.5, temp_case2, temp_case1)
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand, old_first=True)
-        pop = self.pop = pop.take(self.sorted_order(pop))
+        lb, ub = self.problem.lb, self.problem.ub
+        # Migration operator: Levy walk of the first moths (Eq. 2.21)
+        u = rng.uniform(lb, ub, size=(m1, d)) * sigma
+        v = rng.uniform(lb, ub, size=(m1, d))
+        delta = (self.max_step_size / epoch) * (u / np.abs(v) ** (1.0 / (beta - 1)))
+        pos = np.empty((n, d))
+        pos[:m1] = X[:m1] + rng.random((m1, d)) * delta
+        # Flying in a straight line
+        R = rng.random((m2, 3, d))
+        case1 = X[m1:] + R[:, 0] * self.golden_ratio * (g - X[m1:])
+        case2 = X[m1:] + R[:, 1] * (1.0 / self.golden_ratio) * (g - X[m1:])
+        pos[m1:] = np.where(R[:, 2] < 0.5, case2, case1)
+        ops.step(self, pos)
+        pop = self.pop = self.pop.take(self.sorted_order(self.pop))
         # Replace the worst with the previous generation's elites.
-        for idx in range(0, self.n_best):
-            pop.buf[n - 1 - idx] = pop_best.buf[idx]
+        pop.buf[n - self.n_best:] = elites.buf[:self.n_best][::-1]

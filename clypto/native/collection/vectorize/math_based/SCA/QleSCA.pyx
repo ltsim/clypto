@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from clypto.collection.math_based.SCA.DevSCA cimport DevSCA
+from clypto.native.collection.vectorize.math_based.SCA.DevSCA cimport DevSCA
 
 
 class QTable:

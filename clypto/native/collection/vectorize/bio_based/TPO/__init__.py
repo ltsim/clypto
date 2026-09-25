@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.TPO.DevTPO import DevTPO
+from clypto.native.collection.vectorize.bio_based.TPO.DevTPO import DevTPO
 
 __all__ = ["DevTPO"]

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.ZOA.OriginalZOA import OriginalZOA
+from clypto.native.collection.vectorize.swarm_based.ZOA.OriginalZOA import OriginalZOA
 
 __all__ = ["OriginalZOA"]

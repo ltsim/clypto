@@ -79,44 +79,27 @@ cdef class DevEFO(LegacyNativeOptimizer):
         self.n_field = cy.validator(float, n_field, (0, 1.0), "n_field")
         self.phi = (1 + np.sqrt(5)) / 2
 
-    cdef void evolve(self, int epoch):
-        # Agents read rows updated before them: sequential on the buffer rows (batched in swarm modes).
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        for idx in range(0, self.pop_size):
-            r_idx1 = self.generator.integers(
-                0, int(self.pop_size * self.p_field)
-            )  # top
-            r_idx2 = self.generator.integers(
-                int(self.pop_size * (1 - self.n_field)), self.pop_size
-            )  # bottom
-            r_idx3 = self.generator.integers(
-                int((self.pop_size * self.p_field) + 1),
-                int(self.pop_size * (1 - self.n_field)),
-            )  # middle
-            if self.generator.random() < self.ps_rate:
-                pos_new = (
-                        Xp[r_idx1]
-                        + self.phi
-                        * self.generator.random()
-                        * (g_best - Xp[r_idx3])
-                        + self.generator.random()
-                        * (g_best - Xp[r_idx2])
-                )
-            else:
-                pos_new = self.problem.generate_solution()
-            # replacement of one electromagnet of generated particle with a random number
-            # (only for some generated particles) to bring diversity to the population
-            if self.generator.random() < self.r_rate:
-                RI = self.generator.integers(0, d)
-                pos_new[self.generator.integers(0, d)] = (
-                    self.generator.uniform(self.problem.lb[RI], self.problem.ub[RI])
-                )
-            # checking whether the generated number is inside boundary or not
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        # random top, middle and bottom agents of the (sorted) population
+        r1 = rng.integers(0, int(n * self.p_field), size=n)
+        r2 = rng.integers(int(n * (1 - self.n_field)), n, size=n)
+        r3 = rng.integers(int((n * self.p_field) + 1), int(n * (1 - self.n_field)), size=n)
+        pos = np.where(
+            (rng.random(n) < self.ps_rate)[:, None],
+            X[r1] + self.phi * rng.random((n, 1)) * (g - X[r3]) + rng.random((n, 1)) * (g - X[r2]),
+            lb + rng.random((n, d)) * (ub - lb),
+        )
+        # random re-initialization of one coordinate
+        mutate = rng.random(n) < self.r_rate
+        ri = rng.integers(0, d, size=n)
+        col = rng.integers(0, d, size=n)
+        val = lb[ri] + rng.random(n) * (ub[ri] - lb[ri])
+        rows = np.flatnonzero(mutate)
+        pos[rows, col[rows]] = val[rows]
+        ops.step(self, pos)

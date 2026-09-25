@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.game_based.THRO.OriginalTHRO import OriginalTHRO
+from clypto.native.collection.vectorize.game_based.THRO.OriginalTHRO import OriginalTHRO
 
 __all__ = ["OriginalTHRO"]

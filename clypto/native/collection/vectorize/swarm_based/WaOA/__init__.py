@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.WaOA.OriginalWaOA import OriginalWaOA
+from clypto.native.collection.vectorize.swarm_based.WaOA.OriginalWaOA import OriginalWaOA
 
 __all__ = ["OriginalWaOA"]

@@ -5,9 +5,9 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.FOA.OriginalFOA import OriginalFOA
-from clypto.collection.swarm_based.FOA.DevFOA import DevFOA
+from clypto.native.collection.vectorize.swarm_based.FOA.OriginalFOA import OriginalFOA
+from clypto.native.collection.vectorize.swarm_based.FOA.DevFOA import DevFOA
 
-from clypto.collection.swarm_based.FOA.WhaleFOA import WhaleFOA
+from clypto.native.collection.vectorize.swarm_based.FOA.WhaleFOA import WhaleFOA
 
 __all__ = ["OriginalFOA", "DevFOA", "WhaleFOA"]

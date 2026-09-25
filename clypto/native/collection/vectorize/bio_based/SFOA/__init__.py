@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.SFOA.OriginalSFOA import OriginalSFOA
+from clypto.native.collection.vectorize.bio_based.SFOA.OriginalSFOA import OriginalSFOA
 
 __all__ = ["OriginalSFOA"]

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.EHO.OriginalEHO import OriginalEHO
+from clypto.native.collection.vectorize.swarm_based.EHO.OriginalEHO import OriginalEHO
 
 __all__ = ["OriginalEHO"]

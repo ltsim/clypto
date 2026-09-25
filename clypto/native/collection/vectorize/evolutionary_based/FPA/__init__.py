@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.evolutionary_based.FPA.OriginalFPA import OriginalFPA
+from clypto.native.collection.vectorize.evolutionary_based.FPA.OriginalFPA import OriginalFPA
 
 __all__ = ["OriginalFPA"]

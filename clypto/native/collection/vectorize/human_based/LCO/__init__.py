@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.LCO.OriginalLCO import OriginalLCO
-from clypto.collection.human_based.LCO.DevLCO import DevLCO
+from clypto.native.collection.vectorize.human_based.LCO.OriginalLCO import OriginalLCO
+from clypto.native.collection.vectorize.human_based.LCO.DevLCO import DevLCO
 
-from clypto.collection.human_based.LCO.ImprovedLCO import ImprovedLCO
+from clypto.native.collection.vectorize.human_based.LCO.ImprovedLCO import ImprovedLCO
 
 __all__ = ["OriginalLCO", "DevLCO", "ImprovedLCO"]

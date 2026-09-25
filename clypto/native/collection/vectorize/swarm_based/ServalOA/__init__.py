@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.ServalOA.OriginalServalOA import OriginalServalOA
+from clypto.native.collection.vectorize.swarm_based.ServalOA.OriginalServalOA import OriginalServalOA
 
 __all__ = ["OriginalServalOA"]

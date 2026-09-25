@@ -91,53 +91,19 @@ cdef class DevVCS(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        ## Viruses diffusion
-        for idx in range(0, self.pop_size):
-            sigma = (np.log1p(epoch + 1) / self.epoch) * (
-                    Xp[idx] - g_best
-            )
-            gauss = self.generator.normal(
-                self.generator.normal(g_best, np.abs(sigma))
-            )
-            pos_new = (
-                    gauss
-                    + self.generator.uniform() * g_best
-                    - self.generator.uniform() * Xp[idx]
-            )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
-        ## Host cells infection
-        x_mean = self.calculate_xmean__(pop)
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        sigma = (np.log1p(epoch + 1) / self.epoch) * (X - g)
+        ops.step(self, rng.normal(rng.normal(g, np.abs(sigma))) + rng.uniform(size=(n, 1)) * g - rng.uniform(size=(n, 1)) * X)
+        x_mean = self.calculate_xmean__(self.pop)
         sigma = self.sigma * (1 - epoch / self.epoch)
-        for idx in range(0, self.pop_size):
-            ## Basic / simple version, not the original version in the paper
-            pos_new = x_mean + sigma * self.generator.normal(0, 1, self.problem.n_dims)
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
-        ## Calculate the weighted mean of the λ best individuals by
-        pop = pop.take(self.sorted_order(pop))
-        self.pop = pop
-        Xp = pop.X
-        ## Immune response
-        for idx in range(0, self.pop_size):
-            pr = (self.problem.n_dims - idx + 1) / self.problem.n_dims
-            id1, id2 = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
-            )
-            temp = (
-                    Xp[id1]
-                    - (Xp[id2] - Xp[idx])
-                    * self.generator.uniform()
-            )
-            condition = self.generator.random(self.problem.n_dims) < pr
-            pos_new = np.where(condition, Xp[idx], temp)
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        ops.step(self, x_mean + sigma * rng.normal(0, 1, (n, d)))
+        pop = self.pop = self.pop.take(self.sorted_order(self.pop))
+        X = pop.X
+        pr = ((d - np.arange(n) + 1) / d)[:, None]
+        id1, id2 = ops.two_others(self, n, 1)
+        temp = X[id1[:, 0]] - (X[id2[:, 0]] - X) * rng.uniform(size=(n, 1))
+        ops.step(self, np.where(rng.random((n, d)) < pr, X, temp))

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.FFO.OriginalFFO import OriginalFFO
+from clypto.native.collection.vectorize.swarm_based.FFO.OriginalFFO import OriginalFFO
 
 __all__ = ["OriginalFFO"]

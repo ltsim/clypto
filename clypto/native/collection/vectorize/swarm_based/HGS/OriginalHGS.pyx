@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 15:37, 19/03/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -16,11 +14,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalHGS(AgentListOptimizer):
+cdef class OriginalHGS(LegacyNativeOptimizer):
     """
     The original version of: Hunger Games Search (HGS)
 
@@ -89,100 +85,41 @@ cdef class OriginalHGS(AgentListOptimizer):
         self.PUP = cy.validator(float, PUP, (0, 1.0), "PUP")
         self.LH = cy.validator(float, LH, [1, 20000], "LH")
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        hunger = 1.0
-        return FieldAgent(solution=solution, hunger=hunger)
+    cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
+        return [("HUNGER", 1)]
+
+    cdef void init_fields(self, NativePopulation pop):
+        pop.field("HUNGER")[:] = 1.0
 
     def sech__(self, x):
-        if np.abs(x) > 50:
-            return 0.5
-        return 2 / (np.exp(x) + np.exp(-x))
+        return np.where(np.abs(x) > 50, 0.5, 2 / (np.exp(np.clip(x, -50, 50)) + np.exp(-np.clip(x, -50, 50))))
 
-    def update_hunger_value__(self, pop=None, g_best=None, g_worst=None):
-        # min_index = pop.index(min(pop, key=lambda x: x.target.fitness))
-        # Eq (2.8) and (2.9)
-        for idx in range(0, self.pop_size):
-            r = self.generator.random()
-            # space: since we pass lower bound and upper bound as list. Better take the np.mean of them.
-            space = np.mean(self.problem.ub - self.problem.lb)
-            H = (
-                (pop[idx].target.fitness - g_best.target.fitness)
-                / (g_worst.target.fitness - g_best.target.fitness + self.EPSILON)
-                * r
-                * 2
-                * space
-            )
-            if H < self.LH:
-                H = self.LH * (1 + r)
-            pop[idx].hunger += H
-
-            if g_best.target.fitness == pop[idx].target.fitness:
-                pop[idx].hunger = 0
-        return pop
-
-    def evolve_agents(self, epoch):
-        ## Eq. (2.2)
-        ### Find the current best and current worst
-        _, (g_best,), (g_worst,) = self.get_special_agents(
-            self.objs, n_best=1, n_worst=1, minmax=self.problem.minmax
-        )
-        pop = self.update_hunger_value__(self.objs, g_best, g_worst)
-
-        ## Eq. (2.4)
-        shrink = 2 * (1 - epoch / self.epoch)
-        total_hunger = np.sum([pop[idx].hunger for idx in range(0, self.pop_size)])
-
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.objs[idx].copy()
-            #### Variation control
-            E = self.sech__(self.objs[idx].target.fitness - g_best.target.fitness)
-
-            # R is a ranging controller added to limit the range of activity, in which the range of R is gradually reduced to 0
-            R = 2 * shrink * self.generator.random() - shrink  # Eq. (2.3)
-
-            ## Calculate the hungry weight of each position
-            if self.generator.random() < self.PUP:
-                W1 = (
-                    self.objs[idx].hunger
-                    * self.pop_size
-                    / (total_hunger + self.EPSILON)
-                    * self.generator.random()
-                )
-            else:
-                W1 = 1
-            W2 = (
-                (1 - np.exp(-np.abs(self.objs[idx].hunger - total_hunger)))
-                * self.generator.random()
-                * 2
-            )
-
-            ### Udpate position of individual Eq. (2.1)
-            r1 = self.generator.random()
-            r2 = self.generator.random()
-            if r1 < self.PUP:
-                pos_new = self.objs[idx].solution * (1 + self.generator.normal(0, 1))
-            else:
-                if r2 > E:
-                    pos_new = W1 * g_best.solution + R * W2 * np.abs(
-                        g_best.solution - self.objs[idx].solution
-                    )
-                else:
-                    pos_new = W1 * g_best.solution - R * W2 * np.abs(
-                        g_best.solution - self.objs[idx].solution
-                    )
-            pos_new = self.correct_solution(pos_new)
-            agent.solution = pos_new
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    self.objs[idx], agent, self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        F = np.array(pop.F)
+        hunger = pop.field("HUNGER")
+        g = np.array(X[ops.best_row(self, pop)])
+        fb = F.min() if self.problem.minmax == "min" else F.max()
+        fw = F.max() if self.problem.minmax == "min" else F.min()
+        # hunger grows with the distance to the best fitness (Eqs. 2.8, 2.9)
+        r = rng.random(n)
+        space = np.mean(self.problem.ub - self.problem.lb)
+        H = (F - fb) / (fw - fb + self.EPSILON) * r * 2 * space
+        H = np.where(H < self.LH, self.LH * (1 + r), H)
+        hunger[:, 0] += H
+        hunger[F == fb, 0] = 0
+        h = np.array(hunger[:, 0])
+        total_hunger = h.sum()
+        shrink = 2 * (1 - epoch_c / self.epoch)  # Eq. (2.4)
+        E = self.sech__(F - fb)[:, None]  # variation control
+        R = 2 * shrink * rng.random((n, 1)) - shrink  # Eq. (2.3)
+        W1 = np.where((rng.random(n) < self.PUP)[:, None], (h * n / (total_hunger + self.EPSILON))[:, None] * rng.random((n, 1)), 1.0)
+        W2 = (1 - np.exp(-np.abs(h - total_hunger)))[:, None] * rng.random((n, 1)) * 2
+        r1, r2 = rng.random((n, 1)), rng.random((n, 1))
+        away = R * W2 * np.abs(g - X)
+        pos = np.where(r1 < self.PUP, X * (1 + rng.normal(0, 1, (n, 1))),
+                       np.where(r2 > E, W1 * g + away, W1 * g - away))  # Eq. (2.1)
+        ops.step(self, pos)

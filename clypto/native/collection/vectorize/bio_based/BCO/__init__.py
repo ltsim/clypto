@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.BCO.OriginalBCO import OriginalBCO
+from clypto.native.collection.vectorize.bio_based.BCO.OriginalBCO import OriginalBCO
 
 __all__ = ["OriginalBCO"]

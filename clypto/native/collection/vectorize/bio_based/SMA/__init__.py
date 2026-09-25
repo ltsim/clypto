@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.SMA.DevSMA import DevSMA
-from clypto.collection.bio_based.SMA.OriginalSMA import OriginalSMA
+from clypto.native.collection.vectorize.bio_based.SMA.DevSMA import DevSMA
+from clypto.native.collection.vectorize.bio_based.SMA.OriginalSMA import OriginalSMA
 
 __all__ = ["DevSMA", "OriginalSMA"]

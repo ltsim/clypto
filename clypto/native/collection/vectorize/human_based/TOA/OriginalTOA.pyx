@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 18:22, 11/03/2023 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalTOA(AgentListOptimizer):
+cdef class OriginalTOA(LegacyNativeOptimizer):
     """
     The original version of: Teamwork Optimization Algorithm (TOA)
 
@@ -84,52 +80,31 @@ cdef class OriginalTOA(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def get_indexes_better__(self, pop, idx):
-        fits = np.array([agent.target.fitness for agent in self.objs])
-        if self.problem.minmax == "min":
-            idxs = np.where(fits < pop[idx].target.fitness)
-        else:
-            idxs = np.where(fits > pop[idx].target.fitness)
-        return idxs[0]
-
-    def evolve_agents(self, epoch):
-        for idx in range(0, self.pop_size):
-            # Stage 1: Supervisor guidance
-            pos_new = self.objs[idx].solution + self.generator.random() * (
-                    self.g_best.solution
-                    - self.generator.integers(1, 3) * self.objs[idx].solution
-            )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
-            # Stage 2: Information sharing
-            idxs = self.get_indexes_better__(self.objs, idx)
-            if len(idxs) == 0:
-                sf = self.g_best
-            else:
-                sf_pos = np.array([self.objs[jdx].solution for jdx in idxs])
-                sf_pos = self.correct_solution(np.mean(sf_pos, axis=0))
-                sf = self.generate_agent(sf_pos)
-            pos_new = self.objs[idx].solution + self.generator.random() * (
-                    sf.solution - self.generator.integers(1, 3) * self.objs[idx].solution
-            ) * np.sign(self.objs[idx].target.fitness - sf.target.fitness)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
-            # Stage 3: Individual activity
-            pos_new = (
-                    self.objs[idx].solution
-                    + (-0.01 + self.generator.random() * 0.02) * self.objs[idx].solution
-            )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation sf
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        gb_fit = self.current_g_best().target.fitness
+        # phase 1: towards the best
+        ops.step(self, X + rng.random((n, 1)) * (g - rng.integers(1, 3, size=(n, 1)) * X))
+        # phase 2: towards the mean of the agents that are better than the agent
+        X = pop.X
+        F = np.asarray(pop.F)
+        B = (F[None, :] < F[:, None]) if self.problem.minmax == "min" else (F[None, :] > F[:, None])
+        count = B.sum(axis=1)
+        has = count > 0
+        sf_pos = np.tile(g, (n, 1))
+        sf_fit = np.full(n, gb_fit, dtype=float)
+        if has.any():
+            rows = np.flatnonzero(has)
+            sf = pop.take(rows)
+            sf.X[:] = self.correct_solution((B[rows].astype(float) @ X) / count[rows][:, None])
+            self.evaluate(sf, 0, len(rows))
+            sf_pos[rows], sf_fit[rows] = sf.X, sf.F
+        ops.step(self, X + rng.random((n, 1)) * (sf_pos - rng.integers(1, 3, size=(n, 1)) * X) * np.sign(F - sf_fit)[:, None])
+        # phase 3: local search
+        X = pop.X
+        ops.step(self, X + (-0.01 + rng.random((n, 1)) * 0.02) * X)

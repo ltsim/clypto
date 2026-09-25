@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.swarm_based.GWO.OriginalGWO cimport OriginalGWO
+from clypto.native.collection.vectorize.swarm_based.GWO.OriginalGWO cimport OriginalGWO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.population cimport NativePopulation
@@ -63,31 +63,21 @@ cdef class GWO_WOA(OriginalGWO):
         self.bb = 1.0
         self.sort_flag = False
 
-    cdef void evolve(self, int epoch):
-        # The number of draws per agent depends on the branch taken, so candidates
-        # are built agent by agent (same draw order); evaluation and selection are batched.
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        # linearly decreased from 2 to 0
-        a = 2.0 - epoch / self.epoch
-        best = pop.X[self.sorted_order(pop)[:3]]
-        X, Xc = pop.X, cand.X
-        for idx in range(n):
-            A1 = a * (2 * self.generator.random(d) - 1)
-            A2 = a * (2 * self.generator.random(d) - 1)
-            A3 = a * (2 * self.generator.random(d) - 1)
-            C1 = 2 * self.generator.random(d)
-            C2 = 2 * self.generator.random(d)
-            C3 = 2 * self.generator.random(d)
-            if self.generator.random() < 0.5:
-                da = self.generator.random() * np.abs(C1 * best[0] - X[idx])
-            else:
-                P, L = self.generator.random(), self.generator.uniform(-1, 1)
-                da = P * np.exp(self.bb * L) * np.cos(2 * np.pi * L) * np.abs(C1 * best[0] - X[idx])
-            X1 = best[0] - A1 * da
-            X2 = best[1] - A2 * np.abs(C2 * best[1] - X[idx])
-            X3 = best[2] - A3 * np.abs(C3 * best[2] - X[idx])
-            Xc[idx] = self.correct_solution((X1 + X2 + X3) / 3.0)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        a = 2.0 - epoch_c / self.epoch  # linearly decreased from 2 to 0
+        best = X[self.sorted_order(pop)[:3]][None]
+        R = rng.random((n, 6, d))
+        A = a * (2 * R[:, :3] - 1)
+        C = 2 * R[:, 3:]
+        S = rng.random((n, 3, 1))
+        da_plain = S[:, 0] * np.abs(C[:, 0] * best[:, 0] - X)
+        da_spiral = S[:, 1] * np.exp(self.bb * (2 * S[:, 2] - 1)) * np.cos(2 * np.pi * (2 * S[:, 2] - 1)) * np.abs(C[:, 0] * best[:, 0] - X)
+        da = np.where((rng.random(n) < 0.5)[:, None], da_plain, da_spiral)
+        X1 = best[:, 0] - A[:, 0] * da
+        X2 = best[:, 1] - A[:, 1] * np.abs(C[:, 1] * best[:, 1] - X)
+        X3 = best[:, 2] - A[:, 2] * np.abs(C[:, 2] * best[:, 2] - X)
+        ops.step(self, (X1 + X2 + X3) / 3.0)

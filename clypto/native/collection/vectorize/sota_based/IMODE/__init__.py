@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.sota_based.IMODE.OriginalIMODE import OriginalIMODE
+from clypto.native.collection.vectorize.sota_based.IMODE.OriginalIMODE import OriginalIMODE
 
 __all__ = ["OriginalIMODE"]

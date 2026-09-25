@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 04:43, 02/03/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalDO(AgentListOptimizer):
+cdef class OriginalDO(LegacyNativeOptimizer):
     """
     The original version of: Dragonfly Optimization (DO)
 
@@ -76,125 +72,52 @@ cdef class OriginalDO(AgentListOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
     cdef void initialization(self):
-        AgentListOptimizer.initialization(self)
-        self.pop_delta = self.generate_agents(self.pop_size)
-        # Initial radius of dragonflies' neighborhoods
+        LegacyNativeOptimizer.initialization(self)
+        self.pop_delta = self.generate_population(self.pop_size)
         self.radius = (self.problem.ub - self.problem.lb) / 10
         self.delta_max = (self.problem.ub - self.problem.lb) / 10
-        self.pop = self.mirror__()
 
-    def evolve_agents(self, epoch):
-        _, (self.g_best,), (self.g_worst,) = self.get_special_agents(
-            self.objs, n_best=1, n_worst=1, minmax=self.problem.minmax
-        )
-
-        r = (self.problem.ub - self.problem.lb) / 4 + (
-                (self.problem.ub - self.problem.lb) * (2 * epoch / self.epoch)
-        )
-        w = 0.9 - epoch * ((0.9 - 0.4) / self.epoch)
-        my_c = 0.1 - epoch * ((0.1 - 0) / (self.epoch / 2))
-        my_c = 0 if my_c < 0 else my_c
-
-        s = 2 * self.generator.random() * my_c  # Seperation weight
-        a = 2 * self.generator.random() * my_c  # Alignment weight
-        c = 2 * self.generator.random() * my_c  # Cohesion weight
-        f = 2 * self.generator.random()  # Food attraction weight
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        D = np.array(self.pop_delta.X)
+        lb, ub = self.problem.lb, self.problem.ub
+        F = np.asarray(pop.F)
+        g = X[ops.best_row(self, pop)]
+        gw = X[int(F.argmax() if self.problem.minmax == "min" else F.argmin())]
+        r = (ub - lb) / 4 + ((ub - lb) * (2 * epoch_c / self.epoch))
+        w = 0.9 - epoch_c * ((0.9 - 0.4) / self.epoch)
+        my_c = max(0.1 - epoch_c * ((0.1 - 0) / (self.epoch / 2)), 0)
+        s = 2 * rng.random() * my_c  # Seperation weight
+        a = 2 * rng.random() * my_c  # Alignment weight
+        c = 2 * rng.random() * my_c  # Cohesion weight
+        f = 2 * rng.random()  # Food attraction weight
         e = my_c  # Enemy distraction weight
-
-        pop_new = []
-        pop_delta_new = []
-        for idx in range(0, self.pop_size):
-            pos_neighbours = []
-            pos_neighbours_delta = []
-            neighbours_num = 0
-            # Find the neighbouring solutions
-            for j in range(0, self.pop_size):
-                dist = np.abs(self.objs[idx].solution - self.objs[j].solution)
-                if np.all(dist <= r) and np.all(dist != 0):
-                    neighbours_num += 1
-                    pos_neighbours.append(self.objs[j].solution)
-                    pos_neighbours_delta.append(self.pop_delta[j].solution)
-            pos_neighbours = np.array(pos_neighbours)
-            pos_neighbours_delta = np.array(pos_neighbours_delta)
-
-            # Separation: Eq 3.1, Alignment: Eq 3.2, Cohesion: Eq 3.3
-            if neighbours_num > 1:
-                S = (
-                        np.sum(pos_neighbours, axis=0)
-                        - neighbours_num * self.objs[idx].solution
-                )
-                A = np.sum(pos_neighbours_delta, axis=0) / neighbours_num
-                C_temp = np.sum(pos_neighbours, axis=0) / neighbours_num
-            else:
-                S = np.zeros(self.problem.n_dims)
-                A = self.pop_delta[idx].solution.copy()
-                C_temp = self.objs[idx].solution.copy()
-            C = C_temp - self.objs[idx].solution
-
-            # Attraction to food: Eq 3.4
-            dist_to_food = np.abs(self.objs[idx].solution - self.g_best.solution)
-            if np.all(dist_to_food <= r):
-                F = self.g_best.solution - self.objs[idx].solution
-            else:
-                F = np.zeros(self.problem.n_dims)
-
-            # Distraction from enemy: Eq 3.5
-            dist_to_enemy = np.abs(self.objs[idx].solution - self.g_worst.solution)
-            if np.all(dist_to_enemy <= r):
-                enemy = self.g_worst.solution + self.objs[idx].solution
-            else:
-                enemy = np.zeros(self.problem.n_dims)
-
-            pos_new = self.objs[idx].solution.copy().astype(float)
-            pos_delta_new = self.pop_delta[idx].solution.copy().astype(float)
-            if np.any(dist_to_food > r):
-                if neighbours_num > 1:
-                    temp = (
-                            w * self.pop_delta[idx].solution
-                            + self.generator.uniform(0, 1, self.problem.n_dims) * A
-                            + self.generator.uniform(0, 1, self.problem.n_dims) * C
-                            + self.generator.uniform(0, 1, self.problem.n_dims) * S
-                    )
-                    temp = np.clip(temp, -1 * self.delta_max, self.delta_max)
-                    pos_delta_new = temp.copy()
-                    pos_new += temp
-                else:  # Eq. 3.8
-                    pos_new += (
-                            self.get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
-                            * self.objs[idx].solution
-                    )
-                    pos_delta_new = np.zeros(self.problem.n_dims)
-            else:
-                # Eq. 3.6
-                temp = (a * A + c * C + s * S + f * F + e * enemy) + w * self.pop_delta[
-                    idx
-                ].solution
-                temp = np.clip(temp, -1 * self.delta_max, self.delta_max)
-                pos_delta_new = temp
-                pos_new += temp
-
-            # Amend solution
-            pos_new = self.correct_solution(pos_new)
-            pos_delta_new = self.correct_solution(pos_delta_new)
-            agent = self.generate_empty_agent(pos_new)
-            agent_delta = self.generate_empty_agent(pos_delta_new)
-            pop_new.append(agent)
-            pop_delta_new.append(agent_delta)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                agent_delta.target = self.get_target(pos_delta_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-                self.pop_delta[idx] = self.get_better_agent(
-                    agent_delta, self.pop_delta[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            pop_delta_new = self.update_target_for_population(pop_delta_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-            self.pop_delta = self.greedy_selection_population(
-                self.pop_delta, pop_delta_new, self.problem.minmax
-            )
+        # neighbours: all dimensions within the radius (and not the same point)
+        diff = np.abs(X[:, None, :] - X[None, :, :])
+        M = (np.all(diff <= r, axis=2) & np.all(diff != 0, axis=2)).astype(float)
+        count = M.sum(axis=1)
+        many = (count > 1)[:, None]
+        cnt = np.maximum(count, 1)[:, None]
+        sum_pos = M @ X
+        S = np.where(many, sum_pos - count[:, None] * X, 0.0)
+        A = np.where(many, (M @ D) / cnt, D)
+        C = np.where(many, sum_pos / cnt, X) - X
+        near_food = np.all(np.abs(X - g) <= r, axis=1)[:, None]
+        Fd = np.where(near_food, g - X, 0.0)
+        enemy = np.where(np.all(np.abs(X - gw) <= r, axis=1)[:, None], gw + X, 0.0)
+        temp = w * D + rng.uniform(0, 1, (n, d)) * A + rng.uniform(0, 1, (n, d)) * C + rng.uniform(0, 1, (n, d)) * S
+        temp = np.clip(temp, -1 * self.delta_max, self.delta_max)
+        levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, 1), case=-1)
+        near = (a * A + c * C + s * S + f * Fd + e * enemy) + w * D
+        far = ~near_food  # any dimension beyond the radius
+        delta_new = np.where(far, np.where(many, temp, 0.0), near)
+        pos = X + np.where(far, np.where(many, temp, levy * X), near)
+        ops.step(self, pos)
+        cand = self.pop_delta.empty_like()
+        cand.X[:] = self.correct_solution(delta_new)
+        self.evaluate(cand, 0, n)
+        ops.greedy(self, cand, dst=self.pop_delta)

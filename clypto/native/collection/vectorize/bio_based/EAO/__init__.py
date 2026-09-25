@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.EAO.OriginalEAO import OriginalEAO
+from clypto.native.collection.vectorize.bio_based.EAO.OriginalEAO import OriginalEAO
 
 __all__ = ["OriginalEAO"]

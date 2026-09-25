@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.CHIO.OriginalCHIO import OriginalCHIO
-from clypto.collection.human_based.CHIO.DevCHIO import DevCHIO
+from clypto.native.collection.vectorize.human_based.CHIO.OriginalCHIO import OriginalCHIO
+from clypto.native.collection.vectorize.human_based.CHIO.DevCHIO import DevCHIO
 
 __all__ = ["OriginalCHIO", "DevCHIO"]

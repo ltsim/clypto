@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 18:14, 10/04/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,12 +9,10 @@ import numpy as np
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 from clypto.optimizer._native.population cimport NativePopulation
 
 
-cdef class Simple_CMA_ES(AgentListOptimizer):
+cdef class Simple_CMA_ES(LegacyNativeOptimizer):
     """
     The simple version of: Covariance Matrix Adaptation Evolution Strategy (Simple-CMA-ES)
 
@@ -77,34 +73,15 @@ cdef class Simple_CMA_ES(AgentListOptimizer):
     cdef void before_main_loop(self):
         self.mu = int(np.round(self.pop_size / 2))
 
-    def evolve_agents(self, epoch):
-        pos_list = np.array([agent.solution for agent in self.objs]).T
-        pop_sorted = self.get_sorted_population(self.objs, self.problem.minmax)
-        pos_topk = np.array([agent.solution for agent in pop_sorted[: self.mu]]).T
-        # Covariance of top k but using mean of entire population
-        centered = pos_list - pos_topk.mean(1, keepdims=True)
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        X = np.array(pop.X)
+        topk = X[self.sorted_order(pop)[:self.mu]]
+        mean = topk.mean(axis=0)
+        centered = (X - mean).T
         C = (centered @ centered.T) / (self.mu - 1)
-        # Eigenvalue decomposition
         w, E = np.linalg.eigh(C)
-        if np.any(np.diag(w) < 0):
-            w[w < 0] = 0
-        # Generate new population
-        # Sample from multivariate gaussian with mean of topk
-        N = self.generator.normal(size=(self.problem.n_dims, self.pop_size))
-        X = pos_topk.mean(1, keepdims=True) + (E @ np.diag(np.sqrt(w)) @ N)
-        X = X.T
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.correct_solution(X[idx])
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    pop_new[-1], self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+        w[w < 0] = 0
+        N = self.generator.normal(size=(d, n))
+        ops.step(self, (mean[:, None] + E @ (np.sqrt(w)[:, None] * N)).T)

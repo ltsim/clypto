@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.swarm_based.ALO.OriginalALO cimport OriginalALO
+from clypto.native.collection.vectorize.swarm_based.ALO.OriginalALO cimport OriginalALO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -55,7 +55,9 @@ cdef class DevALO(OriginalALO):
         """
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
-    def random_walk_antlion__(self, solution, current_epoch):
+    def random_walk_antlion__(self, solution, current_epoch, steps, column):
+        """Bounded random walks of every agent around ``solution`` (n, d): the value of step ``column`` of a walk with ``steps`` steps."""
+        n, d = solution.shape
         I = 1  # I is the ratio in Equations (2.10) and (2.11)
         if current_epoch > self.epoch / 10:
             I = 1 + 100 * (current_epoch / self.epoch)
@@ -67,53 +69,47 @@ cdef class DevALO(OriginalALO):
             I = 1 + 100000 * (current_epoch / self.epoch)
         if current_epoch > self.epoch * 0.95:
             I = 1 + 1000000 * (current_epoch / self.epoch)
-
-        # Decrease boundaries to converge towards antlion
-        lb = self.problem.lb / I  # Equation (2.10) in the paper
-        ub = self.problem.ub / I  # Equation (2.10) in the paper
-
-        # Move the interval of [lb ub] around the antlion [lb+anlion ub+antlion]
-        if self.generator.random() < 0.5:
-            lb = lb + solution  # Equation(2.8) in the paper
-        else:
-            lb = -lb + solution
-        if self.generator.random() < 0.5:
-            ub = ub + solution  # Equation(2.9) in the paper
-        else:
-            ub = -ub + solution
-
-        # This function creates n random walks and normalize according to lb and ub vectors,
-        ## Using matrix and vector for better performance
-        X = np.cumsum(2 * (self.generator.random((self.problem.n_dims, self.pop_size)) > 0.5) - 1, axis=1)
-        a = np.min(X, axis=1)
-        b = np.max(X, axis=1)
-        temp1 = np.reshape((ub - lb) / (b - a), (self.problem.n_dims, 1))
-        temp0 = X - np.reshape(a, (self.problem.n_dims, 1))
-        return temp0 * temp1 + np.reshape(lb, (self.problem.n_dims, 1))
+        rng = self.generator
+        # Decrease boundaries to converge towards antlion (Eq. 2.10), move the interval around it (Eqs. 2.8, 2.9)
+        sign = np.where(rng.random((n, 2, 1)) < 0.5, 1.0, -1.0)
+        lb = sign[:, 0] * (self.problem.lb / I) + solution
+        ub = sign[:, 1] * (self.problem.ub / I) + solution
+        out = np.empty((n, d))
+        block = max(1, 4000000 // max(1, d * steps))  # agents per block: bounded (block, d, steps) walks
+        for i0 in range(0, n, block):
+            i1 = min(n, i0 + block)
+            X = np.cumsum(2 * (rng.random((i1 - i0, d, steps)) > 0.5) - 1, axis=2, dtype=np.int32)
+            a = X.min(axis=2)
+            b = X.max(axis=2)
+            col = column[i0:i1] if isinstance(column, np.ndarray) else column
+            last = X[np.arange(i1 - i0), :, col] if isinstance(column, np.ndarray) else X[:, :, col]
+            out[i0:i1] = ((last - a) * (ub[i0:i1] - lb[i0:i1])) / (b - a) + lb[i0:i1]  # Eq. (2.7)
+        return out
 
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n
-        Xp, Xc = pop.X, cand.X
-        list_fitness = np.array(pop.F)
-        g_best = self.current_g_best()
-        elite_x = np.array(g_best.solution)
-        for idx in range(0, self.pop_size):
-            # Select ant lions based on their fitness (the better anlion the higher chance of catching ant)
-            rolette_index = self.get_index_roulette_wheel_selection(list_fitness)
-            # RA is the random walk around the selected antlion by rolette wheel
-            RA = self.random_walk_antlion__(Xp[rolette_index], epoch)
-            # RE is the random walk around the elite (the best antlion so far)
-            RE = self.random_walk_antlion__(elite_x, epoch)
-            temp = (RA[:, idx] + RE[:, idx]) / 2  # Equation(2.13) in the paper
-            # Bound checking (bring back the antlions of ants inside search space if they go beyonds the boundaries
-            Xc[idx] = self.correct_solution(temp)
+        cdef NativePopulation cand, both
+        cdef Py_ssize_t n = pop.n
+        cdef object rng = self.generator
+        X = pop.X
+        elite = self.current_g_best()
+        elite_x = np.array(elite.solution)
+        fits = np.array(pop.F)
+        # Select ant lions based on their fitness (the better antlion the higher chance of catching an ant)
+        if np.ptp(fits) == 0:
+            selected = rng.integers(0, n, size=n)
+        else:
+            f = fits - fits.min() if np.any(fits < 0) else fits
+            f = f.max() - f if self.problem.minmax == "min" else f
+            selected = rng.choice(n, size=n, p=f / f.sum())
+        RA = self.random_walk_antlion__(X[selected], epoch, self.pop_size, np.arange(n))
+        RE = self.random_walk_antlion__(np.broadcast_to(elite_x, (n, pop.d)), epoch, self.pop_size, np.arange(n))
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution((RA + RE) / 2)  # Equation(2.13)
         self.evaluate(cand, 0, n)
-        # Update antlion positions and fitnesses based on the ants (if an ant becomes fitter than an antlion
-        # we assume it was caught by the antlion and the antlion update goes to its position to build the trap)
+        # an ant fitter than an antlion is caught by it: the antlion moves to its position
         both = pop.concat(cand)
         pop = self.pop = both.take(self.sorted_order(both)[:n])
         # Keep the elite in the population
-        ops.set_row(pop, n - 1, elite_x, g_best.target)
+        ops.set_row(pop, n - 1, elite_x, elite.target)

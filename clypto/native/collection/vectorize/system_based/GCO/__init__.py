@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.system_based.GCO.DevGCO import DevGCO
-from clypto.collection.system_based.GCO.OriginalGCO import OriginalGCO
+from clypto.native.collection.vectorize.system_based.GCO.DevGCO import DevGCO
+from clypto.native.collection.vectorize.system_based.GCO.OriginalGCO import OriginalGCO
 
 __all__ = ["DevGCO", "OriginalGCO"]

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.swarm_based.JA.DevJA cimport DevJA
+from clypto.native.collection.vectorize.swarm_based.JA.DevJA cimport DevJA
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -66,23 +66,11 @@ cdef class LevyJA(DevJA):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        _ord = self.sorted_order(pop)
-        g_best = pop.agent(_ord[0])
-        g_worst = pop.agent(_ord[pop.n - 1])
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            L1 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, case=-1)
-            L2 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, case=-1)
-            pos_new = (
-                    Xp[idx]
-                    + np.abs(L1) * (g_best.solution - np.abs(Xp[idx]))
-                    - np.abs(L2) * (g_worst.solution - np.abs(Xp[idx]))
-            )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm, True)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        order = self.sorted_order(pop)
+        best, worst = X[order[0]], X[order[n - 1]]
+        L1 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, size=(n, 1), case=-1)
+        L2 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, size=(n, 1), case=-1)
+        ops.step(self, X + np.abs(L1) * (best - np.abs(X)) - np.abs(L2) * (worst - np.abs(X)))

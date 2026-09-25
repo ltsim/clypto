@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.POA.OriginalPOA import OriginalPOA
+from clypto.native.collection.vectorize.swarm_based.POA.OriginalPOA import OriginalPOA
 
 __all__ = ["OriginalPOA"]

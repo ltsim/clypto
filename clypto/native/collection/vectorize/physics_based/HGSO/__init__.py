@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.HGSO.OriginalHGSO import OriginalHGSO
+from clypto.native.collection.vectorize.physics_based.HGSO.OriginalHGSO import OriginalHGSO
 
 __all__ = ["OriginalHGSO"]

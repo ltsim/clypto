@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 17:48, 21/05/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalDMOA(AgentListOptimizer):
+cdef class OriginalDMOA(LegacyNativeOptimizer):
     """
     The original version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 
@@ -89,70 +85,62 @@ cdef class OriginalDMOA(AgentListOptimizer):
         self.tau = -np.inf
         self.L = np.round(0.6 * self.problem.n_dims * self.n_baby_sitter)
 
-    def evolve_agents(self, epoch):
-        ## Abandonment Counter
-        CF = (1.0 - epoch / self.epoch) ** (2.0 * epoch / self.epoch)
-        fit_list = np.array([agent.target.fitness for agent in self.objs])
-        mean_cost = np.mean(fit_list)
-        fi = np.exp(-fit_list / mean_cost)
-        for idx in range(0, self.pop_size):
-            alpha = self.get_index_roulette_wheel_selection(fi)
-            k = self.generator.choice(list(set(range(0, self.pop_size)) - {idx, alpha}))
-            ## Define Vocalization Coeff.
-            phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
-            new_pos = self.objs[alpha].solution + phi * (
-                    self.objs[alpha].solution - self.objs[k].solution
-            )
-            new_pos = self.correct_solution(new_pos)
-            agent = self.generate_agent(new_pos)
-            if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
-            else:
-                self.C[idx] += 1
-        SM = np.zeros(self.pop_size)
-        for idx in range(0, self.pop_size):
-            k = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            ## Define Vocalization Coeff.
-            phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
-            new_pos = self.objs[idx].solution + phi * (
-                    self.objs[idx].solution - self.objs[k].solution
-            )
-            new_pos = self.correct_solution(new_pos)
-            agent = self.generate_agent(new_pos)
-            ## Sleeping mould
-            SM[idx] = (agent.target.fitness - self.objs[idx].target.fitness) / np.max(
-                [agent.target.fitness, self.objs[idx].target.fitness]
-            )
-            if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
-            else:
-                self.C[idx] += 1
-        ## Baby sitters
-        for idx in range(0, self.n_baby_sitter):
-            if self.C[idx] >= self.L:
-                self.objs[idx] = self.generate_agent()
-                self.C[idx] = 0
-        ## Next Mongoose position
+    def alpha_phase__(self, NativePopulation pop):
+        """Alpha group: follow a leader chosen by roulette wheel on exp(-fitness / mean)."""
+        n, d = pop.n, pop.d
+        rng = self.generator
+        fit = np.array(pop.F)
+        alpha = ops.roulette(self, np.exp(-fit / np.mean(fit)), n)
+        me = np.arange(n)
+        k = ops.exclude(rng.integers(0, n - 2, size=n), np.stack([me, alpha], axis=1))
+        phi = (self.peep / 2) * rng.uniform(-1, 1, (n, d))
+        X = pop.X
+        before = np.array(pop.F)
+        ops.step(self, X[alpha] + phi * (X[alpha] - X[k]))
+        self.C += ~ops.better(self, np.asarray(self.pop.F), before)
+
+    def scout_phase__(self, NativePopulation pop, eps):
+        """Scouts: explore around themselves; returns the sequential-move measure SM."""
+        n, d = pop.n, pop.d
+        rng = self.generator
+        k = ops.others(self, n)[:, 0]
+        phi = (self.peep / 2) * rng.uniform(-1, 1, (n, d))
+        X = pop.X
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(X + phi * (X - X[k]))
+        self.evaluate(cand, 0, n)
+        cf, of = np.asarray(cand.F), np.asarray(pop.F)
+        SM = (cf - of) / (np.maximum(cf, of) + eps)
+        ok = ops.better(self, cf, of)
+        pop.buf[ok] = cand.buf[ok]
+        self.C += ~ok
+        return SM
+
+    def respawn__(self, NativePopulation pop, rows):
+        """The sites of rows that ran out of patience are re-drawn at random."""
+        if len(rows):
+            fresh = pop.take(rows)
+            fresh.X[:] = self.problem.lb + self.generator.random((len(rows), pop.d)) * (self.problem.ub - self.problem.lb)
+            self.evaluate(fresh, 0, len(rows))
+            pop.buf[rows] = fresh.buf
+            self.C[rows] = 0
+
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        CF = (1.0 - epoch_c / self.epoch) ** (2.0 * epoch_c / self.epoch)
+        self.alpha_phase__(pop)
+        SM = self.scout_phase__(pop, 0.0)
+        pop = self.pop
+        rows = np.arange(self.n_baby_sitter)
+        self.respawn__(pop, rows[self.C[rows] >= self.L])
+        X = pop.X
         new_tau = np.mean(SM)
-        for idx in range(0, self.pop_size):
-            M = SM[idx] * self.objs[idx].solution / self.objs[idx].solution
-            phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
-            if new_tau > self.tau:
-                new_pos = self.objs[
-                              idx
-                          ].solution - CF * phi * self.generator.random() * (
-                                  self.objs[idx].solution - M
-                          )
-            else:
-                new_pos = self.objs[
-                              idx
-                          ].solution + CF * phi * self.generator.random() * (
-                                  self.objs[idx].solution - M
-                          )
-            self.tau = new_tau
-            new_pos = self.correct_solution(new_pos)
-            self.objs[idx] = self.generate_agent(new_pos)
+        phi = (self.peep / 2) * rng.uniform(-1, 1, (n, d))
+        sign = np.ones(n)
+        sign[0] = -1.0 if new_tau > self.tau else 1.0  # (the classic code updates tau inside the loop)
+        sign[1:] = 1.0
+        self.tau = new_tau
+        M = SM[:, None] * X / X
+        ops.replace(self, X + sign[:, None] * CF * phi * rng.random((n, 1)) * (X - M))

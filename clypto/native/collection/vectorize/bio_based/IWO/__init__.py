@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.IWO.OriginalIWO import OriginalIWO
+from clypto.native.collection.vectorize.bio_based.IWO.OriginalIWO import OriginalIWO
 
 __all__ = ["OriginalIWO"]

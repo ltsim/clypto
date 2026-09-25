@@ -80,34 +80,20 @@ cdef class OriginalRIME(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
         rime_factor = (
-                (self.generator.random() - 0.5)
+                (rng.random() - 0.5)
                 * 2
                 * np.cos(np.pi * epoch / (self.epoch / 10))
                 * (1 - np.round(epoch * self.sr / self.epoch) / self.sr)
         )
         ee = np.sqrt((epoch + 1) / self.epoch)
-        fits = np.array(pop.F).reshape((1, -1))
-        fits_norm = fits / np.linalg.norm(fits, axis=1, keepdims=True)
-        LB = self.problem.lb
-        UB = self.problem.ub
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = Xp[idx].copy()
-            for jdx in range(0, self.problem.n_dims):
-                # Soft-rime search strategy
-                if self.generator.random() < ee:
-                    pos_new[jdx] = g_best[jdx] + rime_factor * (
-                            LB[jdx] + self.generator.random() * (UB[jdx] - LB[jdx])
-                    )
-                # Hard-rime puncture mechanism
-                if self.generator.random() < fits_norm[0, idx]:
-                    pos_new[jdx] = g_best[jdx]
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        fits = np.array(pop.F)
+        fits_norm = (fits / np.linalg.norm(fits))[:, None]
+        pos = np.where(rng.random((n, d)) < ee, g + rime_factor * (lb + rng.random((n, d)) * (ub - lb)), X)
+        pos = np.where(rng.random((n, d)) < fits_norm, g, pos)
+        ops.step(self, pos)

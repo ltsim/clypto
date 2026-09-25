@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 22:47, 15/08/2025 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalAFT(AgentListOptimizer):
+cdef class OriginalAFT(LegacyNativeOptimizer):
     """
     The original version of: Ali baba and the Forty Thieves (AFT) optimizer
 
@@ -74,69 +70,25 @@ cdef class OriginalAFT(AgentListOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
     cdef void before_main_loop(self):
-        # Initialize best positions (Marjaneh's astute plans)
-        self.pop_best = self.objs.copy()  # It is like local best positions like in PSO
+        self.pop_best = self.pop.take(np.arange(self.pop.n))  # It is like local best positions like in PSO
 
-    def evolve_agents(self, epoch):
-        # Calculate AFT parameters
-        # Perception potential - decreases over iterations
-        Pp = 0.1 * np.log(2.75 * (epoch / self.epoch) ** 0.1)
-
-        # Tracking distance - decreases over iterations
-        Td = 2 * np.exp(-2 * (epoch / self.epoch) ** 2)
-
-        # Generate random candidate followers indices
-        random_followers = self.generator.integers(0, self.pop_size, size=self.pop_size)
-
-        # Update positions for each thief
-        for idx in range(self.pop_size):
-            if self.generator.random() >= 0.5:
-                # Thieves know where to search (TRUE case)
-                if self.generator.random() > Pp:
-                    # Case 1: Follow global best with tracking distance
-                    direction = np.sign(self.generator.random() - 0.5)
-                    movement = (
-                            Td
-                            * (self.pop_best[idx].solution - self.objs[idx].solution)
-                            * self.generator.random()
-                            + Td
-                            * (
-                                    self.objs[idx].solution
-                                    - self.pop_best[random_followers[idx]].solution
-                            )
-                            * self.generator.random()
-                    )
-                    pos_new = self.g_best.solution + movement * direction
-                else:
-                    # Case 3: Random exploration within tracking distance
-                    pos_new = self.problem.lb + Td * (
-                            self.problem.ub - self.problem.lb
-                    ) * self.generator.random(self.problem.n_dims)
-            else:
-                # Thieves don't know where to search - opposite direction (Marjaneh's tricks)
-                direction = np.sign(self.generator.random() - 0.5)
-                movement = (
-                        Td
-                        * (self.pop_best[idx].solution - self.objs[idx].solution)
-                        * self.generator.random()
-                        + Td
-                        * (
-                                self.objs[idx].solution
-                                - self.pop_best[random_followers[idx]].solution
-                        )
-                        * self.generator.random()
-                )
-                pos_new = self.g_best.solution - movement * direction
-            # Clip to bounds
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            self.objs[idx] = agent
-            # self.pop_baba[idx] = agent
-            if self.mode not in self.AVAILABLE_MODES:
-                # self.pop_baba[idx].target = self.get_target(pos_new)
-                self.objs[idx].target = self.get_target(pos_new)
-        if self.mode in self.AVAILABLE_MODES:
-            self.objs = self.update_target_for_population(self.objs)
-            self.pop_best = self.greedy_selection_population(
-                self.pop_best, self.objs, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        Pb = self.pop_best.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        Pp = 0.1 * np.log(2.75 * (epoch_c / self.epoch) ** 0.1)
+        Td = 2 * np.exp(-2 * (epoch_c / self.epoch) ** 2)
+        follower = rng.integers(0, n, size=n)
+        direction = np.sign(rng.random((n, 1)) - 0.5)
+        movement = Td * (Pb - X) * rng.random((n, 1)) + Td * (X - Pb[follower]) * rng.random((n, 1))
+        around_best = rng.random(n) >= 0.5
+        keep = rng.random(n) > Pp
+        pos = np.where(around_best[:, None],
+                       np.where(keep[:, None], g + movement * direction, lb + Td * (ub - lb) * rng.random((n, d))),
+                       g - movement * direction)
+        ops.replace(self, pos)
+        ops.greedy(self, self.pop, dst=self.pop_best)  # local best positions

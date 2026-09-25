@@ -63,41 +63,34 @@ cdef class OriginalSOS(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
     cdef void evolve(self, int epoch_c):
-        # Every organism updates its own row and its partner's, and the next ones read them; the best
-        # organism is aliased by g_best, so it is read live: sequential on the buffer rows.
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget xi_target, xj_target
-        cdef Py_ssize_t idx, n = pop.n
-        minmax = self.problem.minmax
-        Xp = pop.X
-        for idx in range(0, self.pop_size):
-            ## Mutualism Phase
-            jdx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            mutual_vector = (Xp[idx] + Xp[jdx]) / 2
-            bf1, bf2 = self.generator.integers(1, 3, 2)
-            xi_new = Xp[idx] + self.generator.random() * (self.g_best_x() - bf1 * mutual_vector)
-            xj_new = Xp[jdx] + self.generator.random() * (self.g_best_x() - bf2 * mutual_vector)
-            xi_new = self.correct_solution(xi_new)
-            xj_new = self.correct_solution(xj_new)
-            xi_target = self.get_target(xi_new)
-            xj_target = self.get_target(xj_new)
-            if self.compare_fitness(xi_target.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, xi_new, xi_target)
-            if self.compare_fitness(xj_target.fitness, pop.F[jdx], minmax):
-                ops.set_row(pop, jdx, xj_new, xj_target)
-            ## Commensalism phase
-            jdx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            xi_new = Xp[idx] + self.generator.uniform(-1, 1) * (self.g_best_x() - Xp[jdx])
-            xi_new = self.correct_solution(xi_new)
-            xi_target = self.get_target(xi_new)
-            if self.compare_fitness(xi_target.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, xi_new, xi_target)
-            ## Parasitism phase
-            jdx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            temp_idx = self.generator.integers(0, self.problem.n_dims)
-            xi_new = Xp[jdx].copy()
-            xi_new[temp_idx] = self.problem.generate_solution()[temp_idx]
-            xi_new = self.correct_solution(xi_new)
-            xi_target = self.get_target(xi_new)
-            if self.compare_fitness(xi_target.fitness, pop.F[idx], minmax):
-                ops.set_row(pop, idx, xi_new, xi_target)
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        me = np.arange(n)
+        # Mutualism phase: agent i and a random partner j both move towards the best (Eq. 3, 4)
+        j = ops.others(self, n)[:, 0]
+        mutual = (X + X[j]) / 2
+        bf = rng.integers(1, 3, size=(n, 2, 1))
+        xi_new = X + rng.random((n, 1)) * (g - bf[:, 0] * mutual)
+        xj_new = X[j] + rng.random((n, 1)) * (g - bf[:, 1] * mutual)
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(xj_new)
+        self.evaluate(cand, 0, n)
+        ops.scatter(self, cand, j)  # the partners
+        ops.step(self, xi_new)  # the agents
+        # Commensalism phase (Eq. 5)
+        X = pop.X
+        j = ops.others(self, n)[:, 0]
+        ops.step(self, X + rng.uniform(-1, 1, (n, 1)) * (g - X[j]))
+        # Parasitism phase: a copy of a random agent with one random dimension re-initialized
+        X = pop.X
+        j = ops.others(self, n)[:, 0]
+        pos = np.array(X[j])
+        dim = rng.integers(0, d, size=n)
+        pos[me, dim] = (lb + rng.random((n, d)) * (ub - lb))[me, dim]
+        ops.step(self, pos)

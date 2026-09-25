@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.INFO.OriginalINFO import OriginalINFO
+from clypto.native.collection.vectorize.math_based.INFO.OriginalINFO import OriginalINFO
 
 __all__ = ["OriginalINFO"]

@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.NMRA.OriginalNMRA import OriginalNMRA
-from clypto.collection.swarm_based.NMRA.ImprovedNMRA import ImprovedNMRA
+from clypto.native.collection.vectorize.swarm_based.NMRA.OriginalNMRA import OriginalNMRA
+from clypto.native.collection.vectorize.swarm_based.NMRA.ImprovedNMRA import ImprovedNMRA
 
 __all__ = ["OriginalNMRA", "ImprovedNMRA"]

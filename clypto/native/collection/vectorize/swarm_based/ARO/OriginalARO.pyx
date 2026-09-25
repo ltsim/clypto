@@ -68,47 +68,28 @@ cdef class OriginalARO(LegacyNativeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
+    def random_dims__(self, n, d):
+        """0/1 mask (n, d): ceil(u * d) random dimensions of every row are 1."""
+        k = np.ceil(self.generator.random(n) * d)
+        ranks = self.generator.random((n, d)).argsort(axis=1).argsort(axis=1)
+        return (ranks < k[:, None]).astype(float)
+
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
         theta = 2 * (1 - epoch / self.epoch)
-        for idx in range(0, self.pop_size):
-            L = (np.exp(1) - np.exp((epoch / self.epoch) ** 2)) * (
-                np.sin(2 * np.pi * self.generator.random())
-            )
-            temp = np.zeros(self.problem.n_dims)
-            rd_index = self.generator.choice(
-                np.arange(0, self.problem.n_dims),
-                int(np.ceil(self.generator.random() * self.problem.n_dims)),
-                replace=False,
-            )
-            temp[rd_index] = 1
-            R = L * temp  # Eq 2
-            A = 2 * np.log(1.0 / self.generator.random()) * theta  # Eq. 15
-            if A > 1:  # detour foraging strategy
-                rand_idx = self.generator.integers(0, self.pop_size)
-                pos_new = (
-                        Xp[rand_idx]
-                        + R * (Xp[idx] - Xp[rand_idx])
-                        + np.round(0.5 * (0.05 + self.generator.random()))
-                        * self.generator.normal(0, 1)
-                )  # Eq. 1
-            else:  # Random hiding stage
-                gr = np.zeros(self.problem.n_dims)
-                rd_index = self.generator.choice(
-                    np.arange(0, self.problem.n_dims),
-                    int(np.ceil(self.generator.random() * self.problem.n_dims)),
-                    replace=False,
-                )
-                gr[rd_index] = 1  # Eq. 12
-                H = self.generator.normal(0, 1) * (epoch / self.epoch)  # Eq. 8
-                b = Xp[idx] + H * gr * Xp[idx]  # Eq. 13
-                pos_new = Xp[idx] + R * (self.generator.random() * b - Xp[idx])  # Eq. 11
-            pos_new = self.correct_solution(pos_new)
-            ops.commit(self, pop, cand, idx, pos_new, swarm)
-        if swarm:
-            ops.finish(self, cand, 0, pop.n)
+        L = (np.exp(1) - np.exp((epoch / self.epoch) ** 2)) * np.sin(2 * np.pi * rng.random(n))
+        R = L[:, None] * self.random_dims__(n, d)  # Eq 2
+        A = 2 * np.log(1.0 / rng.random(n)) * theta  # Eq. 15
+        # detour foraging strategy, Eq. 1
+        rand_agent = X[rng.integers(0, n, size=n)]
+        detour = rand_agent + R * (X - rand_agent) + np.round(0.5 * (0.05 + rng.random((n, 1)))) * rng.normal(0, 1, (n, 1))
+        # random hiding stage, Eqs. 8, 11, 12, 13
+        gr = self.random_dims__(n, d)
+        H = rng.normal(0, 1, (n, 1)) * (epoch / self.epoch)
+        b = X + H * gr * X
+        hiding = X + R * (rng.random((n, 1)) * b - X)
+        ops.step(self, np.where((A > 1)[:, None], detour, hiding))

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.physics_based.EO.OriginalEO cimport OriginalEO
+from clypto.native.collection.vectorize.physics_based.EO.OriginalEO cimport OriginalEO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -65,37 +65,20 @@ cdef class AdaptiveEO(OriginalEO):
         self.sort_flag = False
         self.pop_len = int(self.pop_size / 3)
 
-    cdef void evolve(self, int epoch):
-        # The mean fitness is recomputed for every agent from the rows updated so far, so the
-        # loop is sequential on the buffer rows (batched in swarm modes).
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        # ---------------- Memory saving-------------------  make equilibrium pool
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
         c_pool = self.make_equilibrium_pool__(pop.take(self.sorted_order(pop)[:4]))
-        # Eq. 9
-        t = (<object>(1 - epoch / self.epoch)) ** (<object>(self.a2 * epoch / self.epoch))
-        ## Memory saving, Eq 20, 21
-        Xp = pop.X
-        for idx in range(0, self.pop_size):
-            lamda = self.generator.uniform(0, 1, d)
-            r = self.generator.uniform(0, 1, d)
-            c_eq = c_pool.X[self.generator.integers(0, c_pool.n)]  # random selection 1 of candidate from the pool
-            f = self.a1 * np.sign(r - 0.5) * (np.exp(-lamda * t) - 1.0)  # Eq. 14
-            r1 = self.generator.uniform()
-            r2 = self.generator.uniform()
-            gcp = 0.5 * r1 * np.ones(d) * (r2 >= self.GP)
-            g0 = gcp * (c_eq - lamda * Xp[idx])
-            g = g0 * f
-            fit_average = np.mean(np.ascontiguousarray(pop.F))  # Eq. 19
-            pos_new = (
-                    c_eq
-                    + (Xp[idx] - c_eq) * f
-                    + (g * self.V / lamda) * (1.0 - f)
-            )  # Eq. 9
-            if self.compare_fitness(pop.F[idx], fit_average, self.problem.minmax):
-                pos_new = np.multiply(pos_new, (0.5 + self.generator.uniform(0, 1, d)))
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        t = (<object>(1 - epoch_c / self.epoch)) ** (<object>(self.a2 * epoch_c / self.epoch))
+        lamda = rng.uniform(0, 1, (n, d))
+        r = rng.uniform(0, 1, (n, d))
+        c_eq = c_pool.X[rng.integers(0, c_pool.n, size=n)]  # random candidate from the pool
+        f = self.a1 * np.sign(r - 0.5) * (np.exp(-lamda * t) - 1.0)  # Eq. 14
+        gcp = 0.5 * rng.uniform(size=(n, 1)) * (rng.uniform(size=(n, 1)) >= self.GP)
+        g = gcp * (c_eq - lamda * X) * f
+        pos = c_eq + (X - c_eq) * f + (g * self.V / lamda) * (1.0 - f)  # Eq. 9
+        fit_average = np.mean(np.ascontiguousarray(pop.F))  # Eq. 19
+        pos = np.where(ops.better(self, np.asarray(pop.F), fit_average)[:, None], pos * (0.5 + rng.uniform(0, 1, (n, d))), pos)
+        ops.step(self, pos)

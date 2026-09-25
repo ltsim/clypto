@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 21:58, 16/03/2023 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalGTO(AgentListOptimizer):
+cdef class OriginalGTO(LegacyNativeOptimizer):
     """
     The original version of: Giant Trevally Optimizer (GTO)
 
@@ -86,85 +82,26 @@ cdef class OriginalGTO(AgentListOptimizer):
         self.A = cy.validator(float, A, [-10.0, 10.0], "A")
         self.H = cy.validator(float, H, [1.0, 10.0], "H")
 
-    def evolve_agents(self, epoch):
-        # Step 1: Extensive Search
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            # Eq.(4)
-            pos_new = self.g_best.solution * self.generator.random() + (
-                    (self.problem.ub - self.problem.lb) * self.generator.random()
-                    + self.problem.lb
-            ) * self.get_levy_flight_step(
-                beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
-            )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-        self.objs, self.g_best = self.update_global_best_agent(self.objs, save=False)
-
-        # Step 2: Choosing Area
-        pos_list = np.array([agent.solution for agent in self.objs])
-        pos_m = np.mean(pos_list, axis=0)
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            r3 = self.generator.random()
-            pos_new = (
-                    self.g_best.solution * self.A * r3 + pos_m - self.objs[idx].solution * r3
-            )  # Eq. 7
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-        _, self.g_best = self.update_global_best_agent(self.objs, save=False)
-
-        # Step 3: Attacking
-        H = self.generator.random() * self.H * (1 - epoch / self.epoch)  # Eq.(15)
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            # the distance between the prey and the attacker, and can be calculated using (12):
-            dist = np.sum(np.abs(self.g_best.solution - self.objs[idx].solution))
-            theta2 = (360 - 0) * self.generator.random() + 0
-            theta1 = (1.33 / 1.00029) * np.sin(
-                np.radians(theta2)
-            )  # calculate theta_1 using (10)
-            VD = np.sin(np.radians(theta1)) * dist  # Eq. 11
-            # Eq. (13)
-            pos_new = (
-                    self.objs[idx].solution
-                    * np.sin(np.radians(theta2))
-                    * self.objs[idx].target.fitness
-                    + VD
-                    + H
-            )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        lb, ub = self.problem.lb, self.problem.ub
+        # Step 1: extensive search, Eq.(4)
+        g = np.array(self.g_best_x())
+        levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
+        ops.step(self, g * rng.random((n, 1)) + ((ub - lb) * rng.random((n, 1)) + lb) * levy)
+        # Step 2: choosing area, Eq. 7 (around the current best)
+        X = pop.X
+        g = np.array(X[ops.best_row(self, self.pop)])
+        r3 = rng.random((n, 1))
+        ops.step(self, g * self.A * r3 + np.mean(np.ascontiguousarray(X), axis=0) - X * r3)
+        # Step 3: attacking, Eqs. 10-15
+        X = pop.X
+        g = np.array(X[ops.best_row(self, self.pop)])
+        H = rng.random() * self.H * (1 - epoch_c / self.epoch)
+        dist = np.sum(np.abs(g - X), axis=1, keepdims=True)
+        theta2 = 360 * rng.random((n, 1))
+        theta1 = (1.33 / 1.00029) * np.sin(np.radians(theta2))
+        VD = np.sin(np.radians(theta1)) * dist
+        ops.step(self, X * np.sin(np.radians(theta2)) * np.asarray(pop.F)[:, None] + VD + H)

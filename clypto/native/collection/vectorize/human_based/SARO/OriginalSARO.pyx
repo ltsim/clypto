@@ -6,7 +6,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.SARO.DevSARO cimport DevSARO
+from clypto.native.collection.vectorize.human_based.SARO.DevSARO cimport DevSARO
 import numpy as np
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops

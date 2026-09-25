@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.SHO.OriginalSHO import OriginalSHO
+from clypto.native.collection.vectorize.swarm_based.SHO.OriginalSHO import OriginalSHO
 
 __all__ = ["OriginalSHO"]

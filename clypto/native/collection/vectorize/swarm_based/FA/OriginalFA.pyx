@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 22:07, 07/04/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalFA(AgentListOptimizer):
+cdef class OriginalFA(LegacyNativeOptimizer):
     """
     The original version of: Fireworks Algorithm (FA)
 
@@ -99,77 +95,31 @@ cdef class OriginalFA(AgentListOptimizer):
         self.max_ea = cy.validator(int, max_ea, [2, 100], "max_ea")
         self.m_sparks = cy.validator(int, m_sparks, [2, 10000], "m_sparks")
 
-    def evolve_agents(self, epoch):
-        fit_list = np.array([agent.target.fitness for agent in self.objs])
-        fit_list = sorted(fit_list)
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            si = (
-                    self.max_sparks
-                    * (fit_list[-1] - self.objs[idx].target.fitness)
-                    / (self.pop_size * fit_list[-1] - np.sum(fit_list) + self.EPSILON)
-            )
-            Ai = (
-                    self.max_ea
-                    * (self.objs[idx].target.fitness - fit_list[0])
-                    / (np.sum(fit_list) - fit_list[0] + self.EPSILON)
-            )
-            if si < self.p_a * self.max_sparks:
-                si_ = int(round(self.p_a * self.max_sparks) + 1)
-            elif si > self.p_b * self.m_sparks:
-                si_ = int(round(self.p_b * self.max_sparks) + 1)
-            else:
-                si_ = int(round(si) + 1)
-            ## Algorithm 1
-            pop_new = []
-            for j in range(0, si_):
-                pos_new = self.objs[idx].solution.copy()
-                list_idx = self.generator.choice(
-                    range(0, self.problem.n_dims),
-                    round(self.generator.uniform() * self.problem.n_dims),
-                    replace=False,
-                )
-                displacement = Ai * self.generator.uniform(-1, 1)
-                pos_new[list_idx] = pos_new[list_idx] + displacement
-                pos_new = np.where(
-                    np.logical_or(pos_new < self.problem.lb, pos_new > self.problem.ub),
-                    self.problem.lb
-                    + np.abs(pos_new) % (self.problem.ub - self.problem.lb),
-                    pos_new,
-                )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
-                pop_new.append(agent)
-                if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
-            pop_new = self.update_target_for_population(pop_new)
-
-        for _ in range(0, self.m_sparks):
-            idx = self.generator.integers(0, self.pop_size)
-            pos_new = self.objs[idx].solution.copy()
-            list_idx = self.generator.choice(
-                range(0, self.problem.n_dims),
-                round(self.generator.uniform() * self.problem.n_dims),
-                replace=False,
-            )
-            pos_new[list_idx] = pos_new[list_idx] + self.generator.normal(
-                0, 1, len(list_idx)
-            )  # Gaussian
-            condition = np.logical_or(
-                pos_new < self.problem.lb, pos_new > self.problem.ub
-            )
-            pos_true = self.problem.lb + np.abs(pos_new) % (
-                    self.problem.ub - self.problem.lb
-            )
-            pos_new = np.where(condition, pos_true, pos_new)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
-
-        ## Update the global best
-        self.objs = self.get_sorted_and_trimmed_population(
-            pop_new + self.objs, self.pop_size, self.problem.minmax
-        )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation sparks, both
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        lb, ub = self.problem.lb, self.problem.ub
+        fit = np.array(pop.F)
+        fl = np.sort(fit)
+        si = self.max_sparks * (fl[-1] - fit) / (n * fl[-1] - np.sum(fl) + self.EPSILON)
+        Ai = self.max_ea * (fit - fl[0]) / (np.sum(fl) - fl[0] + self.EPSILON)
+        n_sparks = np.where(si < self.p_a * self.max_sparks, int(round(self.p_a * self.max_sparks) + 1),
+                            np.where(si > self.p_b * self.m_sparks, int(round(self.p_b * self.max_sparks) + 1),
+                                     np.round(si).astype(int) + 1))
+        parent = np.concatenate([np.repeat(np.arange(n), n_sparks), rng.integers(0, n, size=self.m_sparks)])
+        total, k = len(parent), len(parent) - self.m_sparks
+        # every spark shifts a random subset of the dimensions of its firework
+        subset = self.generator.random((total, d)).argsort(axis=1).argsort(axis=1) < np.round(rng.uniform(size=total) * d)[:, None]
+        shift = np.empty((total, d))
+        shift[:k] = (Ai[parent[:k]] * rng.uniform(-1, 1, size=k))[:, None]  # explosion sparks
+        shift[k:] = rng.normal(0, 1, (self.m_sparks, d))  # gaussian sparks
+        pos = X[parent] + np.where(subset, shift, 0.0)
+        pos = np.where((pos < lb) | (pos > ub), lb + np.abs(pos) % (ub - lb), pos)
+        sparks = pop.take(np.zeros(total, dtype=int))
+        sparks.X[:] = self.correct_solution(pos)
+        self.evaluate(sparks, 0, total)
+        both = sparks.concat(pop)
+        self.pop = both.take(self.sorted_order(both)[:self.pop_size])

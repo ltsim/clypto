@@ -80,31 +80,22 @@ cdef class OriginalEO(LegacyNativeOptimizer):
         return best4.concat(self.new_population(pos_mean[None]))
 
     def candidates__(self, NativePopulation pop, NativePopulation c_pool, int epoch):
-        """EO moves of every agent (the draws are made agent by agent, in the classic order)."""
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        # Eq. 9
+        """EO moves of every agent."""
+        rng = self.generator
+        n, d = pop.n, pop.d
         t = (<object>(1 - epoch / self.epoch)) ** (<object>(self.a2 * epoch / self.epoch))
-        lamda, r = np.empty((n, d)), np.empty((n, d))
-        ci, r1, r2 = np.empty(n, dtype=int), np.empty(n), np.empty(n)
-        for idx in range(n):
-            lamda[idx] = self.generator.uniform(0, 1, d)  # lambda in Eq. 11
-            r[idx] = self.generator.uniform(0, 1, d)  # r in Eq. 11
-            ci[idx] = self.generator.integers(0, c_pool.n)  # random candidate from the pool
-            r1[idx] = self.generator.uniform()
-            r2[idx] = self.generator.uniform()  # r1, r2 in Eq. 15
-        c_eq = c_pool.X[ci]
+        lamda = rng.uniform(0, 1, (n, d))  # lambda in Eq. 11
+        r = rng.uniform(0, 1, (n, d))  # r in Eq. 11
+        c_eq = c_pool.X[rng.integers(0, c_pool.n, size=n)]  # random candidate from the pool
+        r1 = rng.uniform(size=(n, 1))
+        r2 = rng.uniform(size=(n, 1))  # r1, r2 in Eq. 15
         X = pop.X
         f = self.a1 * np.sign(r - 0.5) * (np.exp(-lamda * t) - 1.0)  # Eq. 11
-        gcp = 0.5 * r1[:, None] * np.ones((1, d)) * (r2 >= self.GP)[:, None]  # Eq. 15
-        g0 = gcp * (c_eq - lamda * X)  # Eq. 14
-        g = g0 * f  # Eq. 13
+        gcp = 0.5 * r1 * (r2 >= self.GP)  # Eq. 15
+        g = gcp * (c_eq - lamda * X) * f  # Eqs. 13, 14
         return c_eq + (X - c_eq) * f + (g * self.V / lamda) * (1.0 - f)  # Eq. 16
 
-    cdef void evolve(self, int epoch):
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        # ---------------- Memory saving-------------------  make equilibrium pool
         c_pool = self.make_equilibrium_pool__(pop.take(self.sorted_order(pop)[:4]))
-        cand.X[:] = self.correct_solution(self.candidates__(pop, c_pool, epoch))
-        self.evaluate(cand, 0, pop.n)
-        ops.accept(self, cand)
+        ops.step(self, self.candidates__(pop, c_pool, epoch_c))

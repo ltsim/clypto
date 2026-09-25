@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.MPA.OriginalMPA import OriginalMPA
+from clypto.native.collection.vectorize.swarm_based.MPA.OriginalMPA import OriginalMPA
 
 __all__ = ["OriginalMPA"]

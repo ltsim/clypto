@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.physics_based.ASO.OriginalASO import OriginalASO
+from clypto.native.collection.vectorize.physics_based.ASO.OriginalASO import OriginalASO
 
 __all__ = ["OriginalASO"]

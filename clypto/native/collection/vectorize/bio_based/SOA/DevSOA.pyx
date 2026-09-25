@@ -72,27 +72,13 @@ cdef class DevSOA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         A = self.fc - epoch * self.fc / self.epoch  # Eq. 6
-        uu = vv = 1
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            B = 2 * A ** 2 * self.generator.random()  # Eq. 8
-            M = B * (g_best - Xp[idx])  # Eq. 7
-            C = A * Xp[idx]  # Eq. 5
-            D = np.abs(C + M)  # Eq. 9
-            k = self.generator.uniform(0, 2 * np.pi)
-            r = uu * np.exp(k * vv)
-            xx = r * np.cos(k)
-            yy = r * np.sin(k)
-            zz = r * k
-            pos_new = (
-                    xx * yy * zz * D + self.generator.normal(0, 1) * g_best
-            )  # Eq. 14
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        B = 2 * A ** 2 * rng.random((n, 1))  # Eq. 8
+        D = np.abs(A * X + B * (g - X))  # Eqs. 5, 7, 9
+        k = rng.uniform(0, 2 * np.pi, (n, 1))
+        r = np.exp(k)
+        ops.step(self, r * np.cos(k) * r * np.sin(k) * r * k * D + rng.normal(0, 1, (n, 1)) * g)  # Eq. 14

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.DO.OriginalDO import OriginalDO
+from clypto.native.collection.vectorize.swarm_based.DO.OriginalDO import OriginalDO
 
 __all__ = ["OriginalDO"]

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.OOA.OriginalOOA import OriginalOOA
+from clypto.native.collection.vectorize.swarm_based.OOA.OriginalOOA import OriginalOOA
 
 __all__ = ["OriginalOOA"]

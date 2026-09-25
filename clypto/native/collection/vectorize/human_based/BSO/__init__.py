@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.BSO.ImprovedBSO import ImprovedBSO
-from clypto.collection.human_based.BSO.OriginalBSO import OriginalBSO
+from clypto.native.collection.vectorize.human_based.BSO.ImprovedBSO import ImprovedBSO
+from clypto.native.collection.vectorize.human_based.BSO.OriginalBSO import OriginalBSO
 
 __all__ = ["ImprovedBSO", "OriginalBSO"]

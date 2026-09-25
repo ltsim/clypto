@@ -75,49 +75,22 @@ cdef class OriginalHBA(LegacyNativeOptimizer):
         self.beta = 6  # the ability of HB to get the food  Eq.(4)
         self.C = 2  # constant in Eq. (3)
 
-    def get_intensity__(self, best, NativePopulation pop):
-        size = pop.n
-        Xp = pop.X
-        di = np.zeros(size)
-        si = np.zeros(size)
-        for idx in range(0, size):
-            di[idx] = (np.linalg.norm(Xp[idx] - best) + self.EPSILON) ** 2
-            if idx == size - 1:
-                si[idx] = (np.linalg.norm(Xp[idx] - Xp[0]) + self.EPSILON) ** 2
-            else:
-                si[idx] = (np.linalg.norm(Xp[idx] - Xp[idx + 1]) + self.EPSILON) ** 2
-        r2 = self.generator.random(size)
-        return r2 * si / (4 * np.pi * di)
-
     cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         tt = self.epoch
         alpha = self.C * np.exp(-tt / self.epoch)  # density factor in Eq. (3)
-        I = self.get_intensity__(g_best, pop)  # intensity in Eq. (2)
-        for idx in range(0, self.pop_size):
-            r = self.generator.random()
-            F = self.generator.choice([1, -1])
-            di = g_best - Xp[idx]
-            r3 = self.generator.random(d)
-            r4 = self.generator.random(d)
-            r5 = self.generator.random(d)
-            r6 = self.generator.random(d)
-            r7 = self.generator.random(d)
-            temp1 = (
-                    g_best
-                    + F * self.beta * I[idx] * g_best
-                    + F
-                    * r3
-                    * alpha
-                    * di
-                    * np.abs(np.cos(2 * np.pi * r4) * (1 - np.cos(2 * np.pi * r5)))
-            )
-            temp2 = g_best + F * r7 * alpha * di
-            pos_new = np.where(r6 < 0.5, temp1, temp2)
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
+        # intensity in Eq. (2): distance to the best and to the next agent
+        di = (np.linalg.norm(X - g, axis=1) + self.EPSILON) ** 2
+        si = (np.linalg.norm(X - np.roll(X, -1, axis=0), axis=1) + self.EPSILON) ** 2
+        I = (rng.random(n) * si / (4 * np.pi * di))[:, None]
+        F = rng.choice([1, -1], size=(n, 1))
+        R = rng.random((5, n, d))
+        dif = g - X
+        temp1 = g + F * self.beta * I * g + F * R[0] * alpha * dif * np.abs(np.cos(2 * np.pi * R[1]) * (1 - np.cos(2 * np.pi * R[2])))
+        temp2 = g + F * R[4] * alpha * dif
+        ops.step(self, np.where(R[3] < 0.5, temp1, temp2))

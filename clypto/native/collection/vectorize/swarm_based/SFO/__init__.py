@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.SFO.OriginalSFO import OriginalSFO
-from clypto.collection.swarm_based.SFO.ImprovedSFO import ImprovedSFO
+from clypto.native.collection.vectorize.swarm_based.SFO.OriginalSFO import OriginalSFO
+from clypto.native.collection.vectorize.swarm_based.SFO.ImprovedSFO import ImprovedSFO
 
 __all__ = ["OriginalSFO", "ImprovedSFO"]

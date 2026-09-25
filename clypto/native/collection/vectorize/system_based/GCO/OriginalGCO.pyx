@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.system_based.GCO.DevGCO cimport DevGCO
+from clypto.native.collection.vectorize.system_based.GCO.DevGCO cimport DevGCO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -71,37 +71,27 @@ cdef class OriginalGCO(DevGCO):
         super().__init__(epoch, pop_size, cr, wf, name=name, mode=mode)
         self.is_parallelizable = False
 
-    cdef void evolve(self, int epoch):
-        # Every agent draws its parents from the population updated so far, with the
-        # cell counters as weights: sequential on the buffer rows.
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        Xp = pop.X
-        ## Dark-zone process (can't be parallelization)
-        for idx in range(0, self.pop_size):
-            if self.generator.uniform(0, 100) < self.dyn_list_life_signal[idx]:
-                self.dyn_list_cell_counter[idx] += 1
-            elif self.dyn_list_cell_counter[idx] > 1:
-                self.dyn_list_cell_counter[idx] -= 1
-            # Mutate process
-            p = self.dyn_list_cell_counter / np.sum(self.dyn_list_cell_counter)
-            r1, r2, r3 = self.generator.choice(list(set(range(0, self.pop_size))), 3, replace=False, p=p)
-            pos_new = Xp[r1] + self.wf * (Xp[r2] - Xp[r3])
-            condition = self.generator.random(d) < self.cr
-            pos_new = np.where(condition, pos_new, Xp[idx])
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            # for each pos_new, generate the fitness
-            if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
-                ops.set_row(pop, idx, pos_new, tar)
-                self.dyn_list_life_signal[idx] += 10
-        ## Light-zone process   (no needs parallelization)
-        self.dyn_list_life_signal -= 10
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        cnt, life = self.dyn_list_cell_counter, self.dyn_list_life_signal
+        up = rng.uniform(0, 100, n) < life
+        cnt[:] = np.where(up, cnt + 1, np.where(cnt > 1, cnt - 1, cnt))
+        p = cnt / np.sum(cnt)
+        # three distinct agents per agent, drawn with probabilities p (weighted sampling without replacement)
+        keys = rng.random((n, n)) ** (1.0 / p[None, :])
+        r = np.argpartition(-keys, 2, axis=1)[:, :3]
+        pos = np.where(rng.random((n, d)) < self.cr, X[r[:, 0]] + self.wf * (X[r[:, 1]] - X[r[:, 2]]), X)
+        before = np.array(pop.F)
+        ops.step(self, pos)
+        life[ops.better(self, np.asarray(pop.F), before)] += 10
+        life -= 10
         fit_list = np.array(pop.F)
         fit_max = np.max(fit_list)
         fit_min = np.min(fit_list)
         fit = (fit_list - fit_max) / (fit_min - fit_max + self.EPSILON)
         if self.problem.minmax != "min":
             fit = 1 - fit
-        self.dyn_list_life_signal += 10 * fit
+        life += 10 * fit

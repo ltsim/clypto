@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 18:14, 10/04/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -9,12 +7,10 @@
 
 import numpy as np
 
-from clypto.collection.evolutionary_based.ES.OriginalES cimport OriginalES
+from clypto.native.collection.vectorize.evolutionary_based.ES.OriginalES cimport OriginalES
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 from clypto.optimizer._native.population cimport NativePopulation
 
 
@@ -70,48 +66,12 @@ cdef class LevyES(OriginalES):
         """
         super().__init__(epoch, pop_size, lamda, name=name, mode=mode)
 
-    def evolve_agents(self, epoch):
-        child = []
-        for idx in range(0, self.n_child):
-            pos_new = self.objs[idx].solution + self.objs[
-                idx
-            ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
-            pos_new = self.correct_solution(pos_new)
-            tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
-            tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
-            strategy = np.exp(
-                tau_p * self.generator.normal(0, 1.0, self.problem.n_dims)
-                + tau * self.generator.normal(0, 1.0, self.problem.n_dims)
-            )
-            agent = self.generate_empty_agent(pos_new)
-            agent.update(solution=pos_new, strategy=strategy)
-            child.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                child[-1].target = self.get_target(pos_new)
-        child = self.update_target_for_population(child)
-        child_levy = []
-        for idx in range(0, self.n_child):
-            pos_new = self.objs[idx].solution + self.get_levy_flight_step(
-                multiplier=0.001, size=self.problem.n_dims, case=-1
-            )
-            pos_new = self.correct_solution(pos_new)
-            tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
-            tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
-            stdevs = np.array(
-                [
-                    np.exp(
-                        tau_p * self.generator.normal(0, 1.0)
-                        + tau * self.generator.normal(0, 1.0)
-                    )
-                    for _ in range(self.problem.n_dims)
-                ]
-            )
-            agent = self.generate_empty_agent(pos_new)
-            agent.update(solution=pos_new, strategy=stdevs)
-            child_levy.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                child_levy[-1].target = self.get_target(pos_new)
-        child_levy = self.update_target_for_population(child_levy)
-        self.objs = self.get_sorted_and_trimmed_population(
-            child + child_levy + self.objs, self.pop_size, self.problem.minmax
-        )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation kids, kids_levy, both
+        nc = self.n_child
+        X, S = np.asarray(pop.X), np.asarray(pop.field("S"))
+        kids = self.children__(pop, X[:nc] + S[:nc] * self.generator.normal(0, 1.0, (nc, pop.d)))
+        kids_levy = self.children__(pop, X[:nc] + self.get_levy_flight_step(multiplier=0.001, size=(nc, pop.d), case=-1))
+        both = kids.concat(kids_levy).concat(pop)
+        self.pop = both.take(self.sorted_order(both)[:self.pop_size])

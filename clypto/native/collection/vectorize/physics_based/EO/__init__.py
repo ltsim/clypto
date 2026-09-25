@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.EO.OriginalEO import OriginalEO
-from clypto.collection.physics_based.EO.ModifiedEO import ModifiedEO
+from clypto.native.collection.vectorize.physics_based.EO.OriginalEO import OriginalEO
+from clypto.native.collection.vectorize.physics_based.EO.ModifiedEO import ModifiedEO
 
-from clypto.collection.physics_based.EO.AdaptiveEO import AdaptiveEO
+from clypto.native.collection.vectorize.physics_based.EO.AdaptiveEO import AdaptiveEO
 
 __all__ = ["OriginalEO", "ModifiedEO", "AdaptiveEO"]

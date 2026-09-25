@@ -10,7 +10,7 @@ from clypto.optimizer._native.agent cimport LegacyNativeAgent
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
 from clypto.optimizer._native.target cimport NativeTarget
-from clypto.collection.swarm_based.PSO.P_PSO cimport P_PSO
+from clypto.native.collection.vectorize.swarm_based.PSO.P_PSO cimport P_PSO
 
 
 cdef class C_PSO(P_PSO):

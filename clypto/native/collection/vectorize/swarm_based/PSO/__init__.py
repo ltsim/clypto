@@ -18,12 +18,12 @@ velocity ``V``, personal best position ``P`` and its objectives/fitness
   same epoch or draw a data-dependent number of random values, so they keep the
   agent-by-agent loop over buffer rows.
 """
-from clypto.collection.swarm_based.PSO.OriginalPSO import OriginalPSO
-from clypto.collection.swarm_based.PSO.AIW_PSO import AIW_PSO
-from clypto.collection.swarm_based.PSO.LDW_PSO import LDW_PSO
-from clypto.collection.swarm_based.PSO.P_PSO import P_PSO
-from clypto.collection.swarm_based.PSO.HPSO_TVAC import HPSO_TVAC
-from clypto.collection.swarm_based.PSO.C_PSO import C_PSO
-from clypto.collection.swarm_based.PSO.CL_PSO import CL_PSO
+from clypto.native.collection.vectorize.swarm_based.PSO.OriginalPSO import OriginalPSO
+from clypto.native.collection.vectorize.swarm_based.PSO.AIW_PSO import AIW_PSO
+from clypto.native.collection.vectorize.swarm_based.PSO.LDW_PSO import LDW_PSO
+from clypto.native.collection.vectorize.swarm_based.PSO.P_PSO import P_PSO
+from clypto.native.collection.vectorize.swarm_based.PSO.HPSO_TVAC import HPSO_TVAC
+from clypto.native.collection.vectorize.swarm_based.PSO.C_PSO import C_PSO
+from clypto.native.collection.vectorize.swarm_based.PSO.CL_PSO import CL_PSO
 
 __all__ = ["OriginalPSO", "AIW_PSO", "LDW_PSO", "P_PSO", "HPSO_TVAC", "C_PSO", "CL_PSO"]

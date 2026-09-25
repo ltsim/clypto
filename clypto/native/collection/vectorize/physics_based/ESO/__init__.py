@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.ESO.OriginalESO import OriginalESO
+from clypto.native.collection.vectorize.physics_based.ESO.OriginalESO import OriginalESO
 
 __all__ = ["OriginalESO"]

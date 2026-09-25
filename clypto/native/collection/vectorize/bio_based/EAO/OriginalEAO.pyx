@@ -78,43 +78,29 @@ cdef class OriginalEAO(LegacyNativeOptimizer):
         self.ec = cy.validator(float, ec, [0.0, 100], "ec")
 
     cdef void evolve(self, int epoch_c):
-        # Each enzyme reads the enzymes updated before it (two random ones), so the loop is
-        # sequential on the buffer rows; the three candidates of an enzyme are evaluated together.
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cands
-        cdef Py_ssize_t idx, n = pop.n
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        # Adaptation Factor - tăng dần theo thời gian
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         AF = np.sqrt(epoch_c / self.epoch)
-        d = self.problem.n_dims
-
-        # Handle each enzyme
-        for idx in range(self.pop_size):
-            # 1. Update FirstSubstratePosition
-            r1 = self.generator.random(size=d)
-            pos1 = (g_best - Xp[idx]) + r1 * np.sin(AF * Xp[idx])
-            pos1 = self.correct_solution(pos1)
-
-            # 2. Select 2 randoms
-            j1, j2 = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), size=2, replace=False)
-
-            ## Candidate A: vector-valued random factors
-            scA1 = self.ec + (1 - self.ec) * self.generator.random(size=d)
-            exA = AF * (self.ec + (1 - self.ec) * self.generator.random(size=d))
-            posA = Xp[idx] + scA1 * (Xp[j1] - Xp[j2]) + exA * (g_best - Xp[idx])
-            posA = self.correct_solution(posA)
-
-            ## Candidate B: scalar random factors
-            scB1 = self.ec + (1 - self.ec) * self.generator.random()
-            exB = AF * (self.ec + (1 - self.ec) * self.generator.random())
-            posB = Xp[idx] + scB1 * (Xp[j1] - Xp[j2]) + exB * (g_best - Xp[idx])
-            posB = self.correct_solution(posB)
-
-            # the best of [current, agent1, agentA, agentB] (the classic argsort tie rule)
-            cands = self.new_population(np.array([pos1, posA, posB]))
-            order = np.argsort(np.concatenate([[pop.F[idx]], cands.F]))
-            if self.problem.minmax == "max":
-                order = order[::-1]
-            if order[0] > 0:
-                pop.buf[idx] = cands.buf[order[0] - 1]
+        ec = self.ec
+        j1, j2 = ops.two_others(self, n, 1)
+        j1, j2 = j1[:, 0], j2[:, 0]
+        pos1 = (g - X) + rng.random((n, d)) * np.sin(AF * X)
+        scA = ec + (1 - ec) * rng.random((n, d))
+        exA = AF * (ec + (1 - ec) * rng.random((n, d)))
+        posA = X + scA * (X[j1] - X[j2]) + exA * (g - X)
+        scB = ec + (1 - ec) * rng.random((n, 1))
+        exB = AF * (ec + (1 - ec) * rng.random((n, 1)))
+        posB = X + scB * (X[j1] - X[j2]) + exB * (g - X)
+        # three candidates per agent, one batch; the best of them replaces the agent when it is better
+        cand = pop.take(np.repeat(np.arange(n), 3))
+        cand.X[:] = self.correct_solution(np.stack([pos1, posA, posB], axis=1).reshape(3 * n, d))
+        self.evaluate(cand, 0, 3 * n)
+        F = np.asarray(cand.F).reshape(n, 3)
+        best = F.argmin(axis=1) if self.problem.minmax == "min" else F.argmax(axis=1)
+        rows = 3 * np.arange(n) + best
+        win = np.flatnonzero(ops.better(self, F[np.arange(n), best], np.asarray(pop.F)))
+        pop.buf[win] = cand.buf[rows[win]]

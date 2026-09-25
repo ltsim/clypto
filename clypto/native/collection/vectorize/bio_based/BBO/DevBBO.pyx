@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.bio_based.BBO.OriginalBBO cimport OriginalBBO
+from clypto.native.collection.vectorize.bio_based.BBO.OriginalBBO cimport OriginalBBO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -63,32 +63,16 @@ cdef class DevBBO(OriginalBBO):
         super().__init__(epoch, pop_size, p_m, n_elites, name=name, mode=mode)
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        lb, ub = self.problem.lb, self.problem.ub
         pop_elites = pop.take(self.sorted_order(pop)[:self.n_elites])
-        list_fitness = list(pop.F)
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            # Probabilistic migration to the i-th position
-            # Pick a position from which to emigrate (roulette wheel selection)
-            idx_selected = self.get_index_roulette_wheel_selection(list_fitness)
-            # this is the migration step
-            condition = self.generator.random(self.problem.n_dims) < self.mr[idx]
-            pos_new = np.where(
-                condition, Xp[idx_selected], Xp[idx]
-            )
-            # Mutation
-            mutated = self.generator.uniform(self.problem.lb, self.problem.ub)
-            pos_new = np.where(
-                self.generator.random(self.problem.n_dims) < self.p_m, mutated, pos_new
-            )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm, True)
-        if swarm:
-            ops.finish(self, cand, 0, n)
-        # replace the solutions with their new migrated and mutated versions then Merge Populations
-        merged = pop.concat(pop_elites)
+        # migration from an agent chosen by roulette wheel on the fitness, then mutation
+        selected = ops.roulette(self, pop.F, n)
+        pos = np.where(rng.random((n, d)) < self.mr[:n, None], X[selected], X)
+        pos = np.where(rng.random((n, d)) < self.p_m, rng.uniform(lb, ub, (n, d)), pos)
+        ops.step(self, pos)
+        merged = self.pop.concat(pop_elites)
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

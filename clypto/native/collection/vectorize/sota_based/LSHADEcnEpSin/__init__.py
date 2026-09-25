@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.sota_based.LSHADEcnEpSin.OriginalLSHADEcnEpSin import OriginalLSHADEcnEpSin
+from clypto.native.collection.vectorize.sota_based.LSHADEcnEpSin.OriginalLSHADEcnEpSin import OriginalLSHADEcnEpSin
 
 __all__ = ["OriginalLSHADEcnEpSin"]

@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.SOA.DevSOA import DevSOA
-from clypto.collection.bio_based.SOA.OriginalSOA import OriginalSOA
+from clypto.native.collection.vectorize.bio_based.SOA.DevSOA import DevSOA
+from clypto.native.collection.vectorize.bio_based.SOA.OriginalSOA import OriginalSOA
 
 __all__ = ["DevSOA", "OriginalSOA"]

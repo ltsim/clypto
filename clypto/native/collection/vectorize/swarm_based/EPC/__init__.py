@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.EPC.DevEPC import DevEPC
+from clypto.native.collection.vectorize.swarm_based.EPC.DevEPC import DevEPC
 
 __all__ = ["DevEPC"]

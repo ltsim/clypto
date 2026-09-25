@@ -70,31 +70,17 @@ cdef class OriginalSSO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         lb, ub = self.problem.lb, self.problem.ub
         ## Eq. (3.2) in the paper
         c1 = 2 * np.exp(-((4 * epoch / self.epoch) ** 2))
-        half = [idx for idx in range(n) if idx < self.pop_size / 2]
-        h = len(half)
-        # first half: c2 and c3 per agent, drawn agent by agent
-        R = self.generator.random((h, 2, d))
-        for idx in range(h):
-            c2_list, c3_list = R[idx, 0], R[idx, 1]
-            pos_new_1 = g_best + c1 * ((ub - lb) * c2_list + lb)
-            pos_new_2 = g_best - c1 * ((ub - lb) * c2_list + lb)
-            Xc[idx] = self.correct_solution(np.where(c3_list < 0.5, pos_new_1, pos_new_2))
-        if swarm:
-            for idx in range(h, n):
-                Xc[idx] = self.correct_solution((Xp[idx] + Xp[idx - 1]) / 2)  # Eq. (3.4) in the paper
-            ops.finish(self, cand, 0, n)
-        else:
-            self.evaluate(cand, 0, h)
-            ops.accept(self, cand, 0, h)
-            for idx in range(h, n):
-                # Eq. (3.4): reads the agent before it, already replaced in this epoch
-                pos_new = self.correct_solution((Xp[idx] + Xp[idx - 1]) / 2)
-                ops.commit(self, pop, cand, idx, pos_new, False)
+        h = int(np.ceil(n / 2.0))  # leaders: the first half; followers: Eq. (3.4)
+        R = rng.random((h, 2, d))
+        base = (ub - lb) * R[:, 0] + lb
+        pos = np.empty((n, d))
+        pos[:h] = np.where(R[:, 1] < 0.5, g + c1 * base, g - c1 * base)
+        pos[h:] = (X[h:] + X[h - 1:n - 1]) / 2
+        ops.step(self, pos)

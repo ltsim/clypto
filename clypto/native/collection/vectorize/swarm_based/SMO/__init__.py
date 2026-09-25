@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.SMO.DevSMO import DevSMO
+from clypto.native.collection.vectorize.swarm_based.SMO.DevSMO import DevSMO
 
 __all__ = ["DevSMO"]

@@ -82,28 +82,22 @@ cdef class DevHS(LegacyNativeOptimizer):
         self.fw_damp = 0.9995  # Fret Width Damp Ratio
         self.dyn_fw = self.fw
 
-    cdef void evolve(self, int epoch):
-        # Several draws of different kinds per agent: candidates are built agent by
-        # agent (same draw order); evaluation and the merge are batched.
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = self.pop_size, d = pop.d
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
         lb, ub = self.problem.lb, self.problem.ub
-        g_best = np.array(self.g_best_x())
-        Xc = cand.X
-        for idx in range(n):
-            # Create New Harmony Position
-            pos_new = self.generator.uniform(lb, ub)
-            delta = self.dyn_fw * self.generator.normal(lb, ub)
-            # Use Harmony Memory
-            pos_new = np.where(self.generator.random(d) < self.c_r, g_best, pos_new)
-            # Pitch Adjustment
-            x_new = pos_new + delta
-            pos_new = np.where(self.generator.random(d) < self.pa_r, x_new, pos_new)
-            Xc[idx] = self.correct_solution(pos_new)
+        g = np.array(self.g_best_x())
+        pos = rng.uniform(lb, ub, (n, d))
+        delta = self.dyn_fw * rng.normal(lb, ub, (n, d))
+        pos = np.where(rng.random((n, d)) < self.c_r, g, pos)
+        pos = np.where(rng.random((n, d)) < self.pa_r, pos + delta, pos)
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
-        # Update Damp Fret Width
         self.dyn_fw = self.dyn_fw * self.fw_damp
-        # Merge Harmony Memory and New Harmonies, Then sort them, Then truncate extra harmonies
         merged = pop.concat(cand)
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

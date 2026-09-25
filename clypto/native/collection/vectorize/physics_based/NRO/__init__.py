@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.NRO.OriginalNRO import OriginalNRO
+from clypto.native.collection.vectorize.physics_based.NRO.OriginalNRO import OriginalNRO
 
 __all__ = ["OriginalNRO"]

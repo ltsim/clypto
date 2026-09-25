@@ -8,4 +8,4 @@ cdef class DevEFO(LegacyNativeOptimizer):
     cdef public double n_field
     cdef public object phi
 
-    cdef void evolve(self, int epoch)
+    cdef void evolve(self, int epoch_c)

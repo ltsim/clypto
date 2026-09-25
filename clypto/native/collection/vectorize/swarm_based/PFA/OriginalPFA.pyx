@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 14:51, 17/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalPFA(AgentListOptimizer):
+cdef class OriginalPFA(LegacyNativeOptimizer):
     """
     The original version of: Pathfinder Algorithm (PFA)
 
@@ -71,58 +67,26 @@ cdef class OriginalPFA(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def evolve_agents(self, epoch):
-        alpha, beta = self.generator.uniform(1, 2, 2)
-        A = self.generator.uniform(self.problem.lb, self.problem.ub) * np.exp(
-            -2 * epoch / self.epoch
-        )
-        t = 1.0 - epoch * 1.0 / self.epoch
-        space = self.problem.ub - self.problem.lb
-        ## Update the position of pathfinder and check the bound
-        pos_new = (
-                self.objs[0].solution
-                + 2
-                * self.generator.uniform()
-                * (self.g_best.solution - self.objs[0].solution)
-                + A
-        )
-        pos_new = self.correct_solution(pos_new)
-        agent = self.generate_agent(pos_new)
-        pop_new = [
-            agent,
-        ]
-        ## Update positions of members, check the bound and calculate new fitness
-        for idx in range(1, self.pop_size):
-            pos_new = self.objs[idx].solution.copy().astype(float)
-            for k in range(1, self.pop_size):
-                dist = (
-                        np.sqrt(
-                            np.sum((self.objs[k].solution - self.objs[idx].solution) ** 2)
-                        )
-                        / self.problem.n_dims
-                )
-                t2 = (
-                        alpha
-                        * self.generator.uniform()
-                        * (self.objs[k].solution - self.objs[idx].solution)
-                )
-                ## First stabilize the distance
-                t3 = self.generator.uniform() * t * (dist / space)
-                pos_new += t2 + t3
-            ## Second stabilize the population size
-            t1 = (
-                    beta
-                    * self.generator.uniform()
-                    * (self.g_best.solution - self.objs[idx].solution)
-            )
-            pos_new = (pos_new + t1) / self.pop_size
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-        self.objs = self.greedy_selection_population(
-            self.objs, pop_new, self.problem.minmax
-        )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
+        alpha, beta = rng.uniform(1, 2, 2)
+        A = rng.uniform(lb, ub) * np.exp(-2 * epoch_c / self.epoch)
+        t = 1.0 - epoch_c * 1.0 / self.epoch
+        space = ub - lb
+        pos = np.empty((n, d))
+        pos[0] = X[0] + 2 * rng.uniform() * (g - X[0]) + A  # the pathfinder
+        # followers: attracted by all the others (k = 1..n-1), plus a distance-keeping term and a pull to the best
+        Xk = X[1:]
+        U = rng.uniform(size=(n, n - 1))
+        sq = np.sum(X ** 2, axis=1)[:, None] + np.sum(Xk ** 2, axis=1)[None, :] - 2 * X @ Xk.T
+        dist = np.sqrt(np.maximum(sq, 0.0)) / d  # (n, n - 1)
+        t2 = alpha * (U @ Xk - U.sum(axis=1)[:, None] * X)
+        t3 = t * (rng.uniform(size=(n, n - 1)) * dist).sum(axis=1)[:, None] / space
+        t1 = beta * rng.uniform(size=(n, 1)) * (g - X)
+        pos[1:] = ((X + t2 + t3 + t1) / n)[1:]
+        ops.step(self, pos)

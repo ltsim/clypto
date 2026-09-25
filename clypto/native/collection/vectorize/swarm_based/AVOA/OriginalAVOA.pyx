@@ -94,102 +94,30 @@ cdef class OriginalAVOA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n
-        Xp, Xc = pop.X, cand.X
-        a = self.generator.uniform(-2, 2) * (
-                (np.sin((np.pi / 2) * (epoch / self.epoch)) ** self.gama)
-                + np.cos((np.pi / 2) * (epoch / self.epoch))
-                - 1
-        )
-        ppp = (2 * self.generator.random() + 1) * (1 - epoch / self.epoch) + a
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        lb, ub = self.problem.lb, self.problem.ub
+        a = rng.uniform(-2, 2) * ((np.sin((np.pi / 2) * (epoch / self.epoch)) ** self.gama) + np.cos((np.pi / 2) * (epoch / self.epoch)) - 1)
+        ppp = (2 * rng.random() + 1) * (1 - epoch / self.epoch) + a
         order = self.sorted_order(pop)
-        best_list = [np.array(Xp[order[0]]), np.array(Xp[order[1]])]
-        for idx in range(0, self.pop_size):
-            F = ppp * (2 * self.generator.random() - 1)
-            rand_idx = self.generator.choice([0, 1], p=[self.alpha, 1 - self.alpha])
-            rand_pos = best_list[rand_idx]
-            if np.abs(F) >= 1:  # Exploration
-                if self.generator.random() < self.p1:
-                    pos_new = (
-                            rand_pos
-                            - (
-                                np.abs(
-                                    (2 * self.generator.random()) * rand_pos
-                                    - Xp[idx]
-                                )
-                            )
-                            * F
-                    )
-                else:
-                    pos_new = (
-                            rand_pos
-                            - F
-                            + self.generator.random()
-                            * (
-                                    (self.problem.ub - self.problem.lb)
-                                    * self.generator.random()
-                                    + self.problem.lb
-                            )
-                    )
-            else:  # Exploitation
-                if np.abs(F) < 0.5:  # Phase 1
-                    best_x1 = best_list[0]
-                    best_x2 = best_list[1]
-                    if self.generator.random() < self.p2:
-                        A = (
-                                best_x1
-                                - (
-                                        (best_x1 * Xp[idx])
-                                        / (best_x1 - Xp[idx] ** 2 + self.EPSILON)
-                                )
-                                * F
-                        )
-                        B = (
-                                best_x2
-                                - (
-                                        (best_x2 * Xp[idx])
-                                        / (best_x2 - Xp[idx] ** 2 + self.EPSILON)
-                                )
-                                * F
-                        )
-                        pos_new = (A + B) / 2
-                    else:
-                        pos_new = rand_pos - np.abs(
-                            rand_pos - Xp[idx]
-                        ) * F * self.get_levy_flight_step(
-                            beta=1.5, multiplier=1.0, size=self.problem.n_dims, case=-1
-                        )
-                else:  # Phase 2
-                    if self.generator.random() < self.p3:
-                        pos_new = (
-                                      np.abs(
-                                          (2 * self.generator.random()) * rand_pos
-                                          - Xp[idx]
-                                      )
-                                  ) * (F + self.generator.random()) - (
-                                          rand_pos - Xp[idx]
-                                  )
-                    else:
-                        s1 = (
-                                rand_pos
-                                * (
-                                        self.generator.random()
-                                        * Xp[idx]
-                                        / (2 * np.pi)
-                                )
-                                * np.cos(Xp[idx])
-                        )
-                        s2 = (
-                                rand_pos
-                                * (
-                                        self.generator.random()
-                                        * Xp[idx]
-                                        / (2 * np.pi)
-                                )
-                                * np.sin(Xp[idx])
-                        )
-                        pos_new = rand_pos - (s1 + s2)
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        self.pop = cand
+        best = np.array(X[order[:2]])
+        F = ppp * (2 * rng.random((n, 1)) - 1)
+        rand_pos = best[rng.choice([0, 1], p=[self.alpha, 1 - self.alpha], size=n)]
+        R = rng.random((n, 9, 1))
+        # exploration (|F| >= 1)
+        p_a = rand_pos - np.abs((2 * R[:, 0]) * rand_pos - X) * F
+        p_b = rand_pos - F + R[:, 1] * ((ub - lb) * R[:, 2] + lb)
+        explore = np.where(R[:, 3] < self.p1, p_a, p_b)
+        # exploitation, phase 1 (|F| < 0.5)
+        A = best[0] - ((best[0] * X) / (best[0] - X ** 2 + self.EPSILON)) * F
+        B = best[1] - ((best[1] * X) / (best[1] - X ** 2 + self.EPSILON)) * F
+        levy = self.get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, X.shape[1]), case=-1)
+        phase1 = np.where(R[:, 4] < self.p2, (A + B) / 2, rand_pos - np.abs(rand_pos - X) * F * levy)
+        # exploitation, phase 2 (0.5 <= |F| < 1)
+        s = rand_pos * (R[:, 6] * X / (2 * np.pi))
+        phase2 = np.where(R[:, 5] < self.p3,
+                          np.abs((2 * R[:, 7]) * rand_pos - X) * (F + R[:, 8]) - (rand_pos - X),
+                          rand_pos - (s * np.cos(X) + s * np.sin(X)))
+        absF = np.abs(F)
+        ops.replace(self, np.where(absF >= 1, explore, np.where(absF < 0.5, phase1, phase2)))

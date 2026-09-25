@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.WarSO.OriginalWarSO import OriginalWarSO
+from clypto.native.collection.vectorize.human_based.WarSO.OriginalWarSO import OriginalWarSO
 
 __all__ = ["OriginalWarSO"]

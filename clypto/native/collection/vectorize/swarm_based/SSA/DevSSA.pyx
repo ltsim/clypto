@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 17:22, 29/05/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class DevSSA(AgentListOptimizer):
+cdef class DevSSA(LegacyNativeOptimizer):
     """
     The developed version: Sparrow Search Algorithm (SSA)
 
@@ -93,78 +89,37 @@ cdef class DevSSA(AgentListOptimizer):
         condition = np.logical_and(
             self.problem.lb <= solution, solution <= self.problem.ub
         )
-        pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
+        pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub, size=np.shape(solution))
         return np.where(condition, solution, pos_rand)
 
-    def evolve_agents(self, epoch):
-        r2 = self.generator.uniform()  # R2 in [0, 1], the alarm value, random value
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            # Using equation (3) update the sparrow’s location;
-            if idx < self.n1:
-                if r2 < self.ST:
-                    des = epoch / (self.generator.uniform() * self.epoch + self.EPSILON)
-                    if des > 5:
-                        des = self.generator.normal()
-                    x_new = self.objs[idx].solution * np.exp(des)
-                else:
-                    x_new = self.objs[idx].solution + self.generator.normal() * np.ones(
-                        self.problem.n_dims
-                    )
-            else:
-                # Using equation (4) update the sparrow’s location;
-                _, (g_best,), (g_worst,) = self.get_special_agents(
-                    self.objs, n_best=1, n_worst=1, minmax=self.problem.minmax
-                )
-                if idx > int(self.pop_size / 2):
-                    x_new = self.generator.normal() * np.exp(
-                        (g_worst.solution - self.objs[idx].solution) / (idx + 1) ** 2
-                    )
-                else:
-                    x_new = (
-                            g_best.solution
-                            + np.abs(self.objs[idx].solution - g_best.solution)
-                            * self.generator.normal()
-                    )
-            pos_new = self.correct_solution(x_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    self.objs[idx], agent, self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-        self.objs, best, worst = self.get_special_agents(
-            self.objs, n_best=1, n_worst=1, minmax=self.problem.minmax
-        )
-        g_best, g_worst = best[0], worst[0]
-        pop2 = [agent.copy() for agent in self.objs[self.n2:]]
-        child = []
-        for idx in range(0, len(pop2)):
-            #  Using equation (5) update the sparrow’s location;
-            if self.compare_target(
-                    self.objs[idx].target, g_best.target, self.problem.minmax
-            ):
-                x_new = pop2[idx].solution + self.generator.uniform(-1, 1) * (
-                        np.abs(pop2[idx].solution - g_worst.solution)
-                        / (pop2[idx].target.fitness - g_worst.target.fitness + self.EPSILON)
-                )
-            else:
-                x_new = g_best.solution + self.generator.normal() * np.abs(
-                    pop2[idx].solution - g_best.solution
-                )
-            pos_new = self.correct_solution(x_new)
-            agent = self.generate_empty_agent(pos_new)
-            child.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                pop2[idx] = self.get_better_agent(pop2[idx], agent, self.problem.minmax)
-        if self.mode in self.AVAILABLE_MODES:
-            child = self.update_target_for_population(child)
-            pop2 = self.greedy_selection_population(pop2, child, self.problem.minmax)
-        self.objs = self.objs[: self.n2] + pop2
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        me = np.arange(n)
+        r2 = rng.uniform()  # R2 in [0, 1], the alarm value
+        best_x = np.array(X[ops.best_row(self, self.pop)])
+        F = np.asarray(pop.F)
+        worst_x = np.array(X[int(F.argmax() if self.problem.minmax == "min" else F.argmin())])
+        # producers (the first n1 sparrows) and scroungers
+        des = epoch_c / (rng.uniform(size=(n, 1)) * self.epoch + self.EPSILON)
+        des = np.where(des > 5, rng.normal(size=(n, 1)), des)
+        prod = np.where(r2 < self.ST, X * np.exp(des), X + rng.normal(size=(n, 1)))
+        scr_far = np.broadcast_to(np.where((me > int(n / 2))[:, None], rng.normal(size=(n, 1)) * np.exp((worst_x - X) / ((me + 1) ** 2)[:, None]), 0.0), (n, d))
+        scr_near = best_x + np.abs(X - best_x) * rng.normal(size=(n, 1))
+        pos = np.where((me < self.n1)[:, None], prod, np.where((me > int(n / 2))[:, None], scr_far, scr_near))
+        ops.step(self, pos)
+        # the population is sorted, the last sparrows move around the best (or away from the worst)
+        pop = self.pop = self.pop.take(self.sorted_order(self.pop))
+        X = pop.X
+        F = np.asarray(pop.F)
+        best_x = np.array(X[0])
+        n2, m2 = self.n2, n - self.n2
+        worst_x = np.array(X[n - 1])
+        gb_fit, gw_fit = F[0], F[n - 1]
+        X2, F2 = X[n2:], F[n2:]
+        risky = ops.better(self, F[:m2], gb_fit)[:, None]
+        pos2 = np.where(risky, X2 + rng.uniform(-1, 1, (m2, 1)) * (np.abs(X2 - worst_x) / (F2 - gw_fit + self.EPSILON)[:, None]),
+                        best_x + rng.normal(size=(m2, 1)) * np.abs(X2 - best_x))
+        ops.step(self, pos2, start=n2, stop=n)

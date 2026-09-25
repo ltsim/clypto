@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 18:14, 10/04/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -15,12 +13,10 @@ from clypto.optimizer._native.agent cimport _LegacyAgent
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 from clypto.optimizer._native.population cimport NativePopulation
 
 
-cdef class OriginalES(AgentListOptimizer):
+cdef class OriginalES(LegacyNativeOptimizer):
     """
     The original version of: Evolution Strategies (ES)
 
@@ -83,34 +79,33 @@ cdef class OriginalES(AgentListOptimizer):
         self.lamda = cy.validator(float, lamda, (0, 1.0), "lamda")
         self.n_child = int(self.lamda * self.pop_size)
 
+    cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
+        return [("S", d)]  # strategy (step size) of every agent
+
     cdef void initialize_variables(self):
         self.distance = 0.05 * (self.problem.ub - self.problem.lb)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        strategy = self.generator.uniform(0, self.distance)
-        return FieldAgent(solution=solution, strategy=strategy)
+    cdef void init_fields(self, NativePopulation pop):
+        pop.field("S")[:] = self.generator.uniform(0, self.distance, (pop.n, pop.d))
 
-    def evolve_agents(self, epoch):
-        child = []
-        for idx in range(0, self.n_child):
-            pos_new = self.objs[idx].solution + self.objs[
-                idx
-            ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
-            pos_new = self.correct_solution(pos_new)
-            tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
-            tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
-            strategy = np.exp(
-                tau_p * self.generator.normal(0, 1.0, self.problem.n_dims)
-                + tau * self.generator.normal(0, 1.0, self.problem.n_dims)
-            )
-            agent = self.generate_empty_agent(pos_new)
-            agent.update(solution=pos_new, strategy=strategy)
-            child.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                child[-1].target = self.get_target(pos_new)
-        child = self.update_target_for_population(child)
-        self.objs = self.get_sorted_and_trimmed_population(
-            child + self.objs, self.pop_size, self.problem.minmax
-        )
+    def children__(self, NativePopulation pop, pos):
+        """Children of the first ``n_child`` parents: their positions are ``pos``, their strategies are inherited with log-normal noise."""
+        rng = self.generator
+        d = pop.d
+        nc = len(pos)
+        tau = np.sqrt(2.0 * d) ** (-1.0)
+        tau_p = np.sqrt(2.0 * np.sqrt(d)) ** (-1.0)
+        kids = pop.take(np.arange(nc))
+        kids.X[:] = self.correct_solution(pos)
+        kids.field("S")[:] = np.exp(tau_p * rng.normal(0, 1.0, (nc, d)) + tau * rng.normal(0, 1.0, (nc, d)))
+        self.evaluate(kids, 0, nc)
+        return kids
+
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation kids, both
+        nc = self.n_child
+        X, S = np.asarray(pop.X), np.asarray(pop.field("S"))
+        kids = self.children__(pop, X[:nc] + S[:nc] * self.generator.normal(0, 1.0, (nc, pop.d)))
+        both = kids.concat(pop)
+        self.pop = both.take(self.sorted_order(both)[:self.pop_size])

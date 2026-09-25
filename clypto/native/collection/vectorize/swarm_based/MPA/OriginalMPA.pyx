@@ -83,54 +83,29 @@ cdef class OriginalMPA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
         CF = (1 - epoch / self.epoch) ** (2 * epoch / self.epoch)
-        RL = self.get_levy_flight_step(
-            beta=1.5,
-            multiplier=0.05,
-            size=(self.pop_size, self.problem.n_dims),
-            case=-1,
-        )
-        RB = self.generator.standard_normal((self.pop_size, self.problem.n_dims))
-        per1 = self.generator.permutation(self.pop_size)
-        per2 = self.generator.permutation(self.pop_size)
-        for idx in range(0, self.pop_size):
-            R = self.generator.random(self.problem.n_dims)
-            if epoch < self.epoch / 3:  # Phase 1 (Eq.12)
-                step_size = RB[idx] * (g_best - RB[idx] * Xp[idx])
-                pos_new = Xp[idx] + self.P * R * step_size
-            elif self.epoch / 3 < epoch < 2 * self.epoch / 3:  # Phase 2 (Eqs. 13 & 14)
-                if idx > self.pop_size / 2:
-                    step_size = RB[idx] * (RB[idx] * g_best - Xp[idx])
-                    pos_new = g_best + self.P * CF * step_size
-                else:
-                    step_size = RL[idx] * (g_best - RL[idx] * Xp[idx])
-                    pos_new = Xp[idx] + self.P * R * step_size
-            else:  # Phase 3 (Eq. 15)
-                step_size = RL[idx] * (RL[idx] * g_best - Xp[idx])
-                pos_new = g_best + self.P * CF * step_size
-            pos_new = self.correct_solution(pos_new)
-            if self.generator.random() < self.FADS:
-                u = np.where(self.generator.random(self.problem.n_dims) < self.FADS, 1, 0)
-                pos_new = (
-                        pos_new
-                        + CF
-                        * (
-                                self.problem.lb
-                                + self.generator.random(self.problem.n_dims)
-                                * (self.problem.ub - self.problem.lb)
-                        )
-                        * u
-                )
-            else:
-                r = self.generator.random()
-                step_size = (self.FADS * (1 - r) + r) * (Xp[per1[idx]] - Xp[per2[idx]])
-                pos_new = pos_new + step_size
-            pos_new = self.correct_solution(pos_new)
-            ops.commit(self, pop, cand, idx, pos_new, swarm, True)
-        if swarm:
-            ops.finish(self, cand, 0, pop.n)
+        RL = self.get_levy_flight_step(beta=1.5, multiplier=0.05, size=(n, d), case=-1)
+        RB = rng.standard_normal((n, d))
+        per1 = rng.permutation(n)
+        per2 = rng.permutation(n)
+        R = rng.random((n, d))
+        if epoch < self.epoch / 3:  # Phase 1 (Eq.12)
+            pos = X + self.P * R * (RB * (g - RB * X))
+        elif self.epoch / 3 < epoch < 2 * self.epoch / 3:  # Phase 2 (Eqs. 13 & 14)
+            second = (np.arange(n) > n / 2)[:, None]
+            pos = np.where(second, g + self.P * CF * (RB * (RB * g - X)), X + self.P * R * (RL * (g - RL * X)))
+        else:  # Phase 3 (Eq. 15)
+            pos = g + self.P * CF * (RL * (RL * g - X))
+        pos = self.correct_solution(pos)
+        # eddy formation and FADs effect
+        fads = (rng.random(n) < self.FADS)[:, None]
+        u = np.where(rng.random((n, d)) < self.FADS, 1, 0)
+        r = rng.random((n, 1))
+        pos_fads = pos + CF * (lb + rng.random((n, d)) * (ub - lb)) * u
+        pos_shift = pos + (self.FADS * (1 - r) + r) * (X[per1] - X[per2])
+        ops.step(self, np.where(fads, pos_fads, pos_shift))

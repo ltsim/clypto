@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.HHO.OriginalHHO import OriginalHHO
+from clypto.native.collection.vectorize.swarm_based.HHO.OriginalHHO import OriginalHHO
 
 __all__ = ["OriginalHHO"]

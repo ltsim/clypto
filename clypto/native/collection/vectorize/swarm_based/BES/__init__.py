@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.BES.OriginalBES import OriginalBES
+from clypto.native.collection.vectorize.swarm_based.BES.OriginalBES import OriginalBES
 
 __all__ = ["OriginalBES"]

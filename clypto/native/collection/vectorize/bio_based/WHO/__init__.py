@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.bio_based.WHO.OriginalWHO import OriginalWHO
+from clypto.native.collection.vectorize.bio_based.WHO.OriginalWHO import OriginalWHO
 
 __all__ = ["OriginalWHO"]

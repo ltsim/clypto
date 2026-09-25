@@ -68,91 +68,43 @@ cdef class EnhancedAEO(LegacyNativeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
-        # Agents read the population updated so far (worst agent, random members): in sequential
-        # mode the loops run on the buffer rows; swarm/parallel modes batch the evaluation.
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        ## Production - Update the worst agent
-        # Eq. 13
+        cdef Py_ssize_t n = pop.n, d = pop.d, m = pop.n - 1
+        cdef object rng = self.generator
+        X = pop.X
+        lb, ub = self.problem.lb, self.problem.ub
+        g = np.array(self.g_best_x())
+        ## Production: the worst agent (last row) is replaced by a new random-mixed agent
         a = 2 * (1.0 - epoch / self.epoch)
-        x1 = (1 - a) * Xp[n - 1] + a * self.generator.uniform(
-            self.problem.lb, self.problem.ub
-        )
-        pos_new = self.correct_solution(x1)
-        ops.set_row(pop, n - 1, pos_new, self.get_target(pos_new))
-        ## Consumption - Update the whole population left
-        for idx in range(0, n - 1):
-            rand = self.generator.random()
-            # Eq. 4, 5, 6
-            v1 = self.generator.normal(0, 1)
-            v2 = self.generator.normal(0, 1)
-            c = 0.5 * v1 / abs(v2)  # Consumption factor
-            r3 = 2 * np.pi * self.generator.random()
-            r4 = self.generator.random()
-            j = 1 if idx == 0 else self.generator.integers(0, idx)
-            ### Herbivore
-            if rand <= 1.0 / 3:  # Eq. 15
-                if r4 <= 0.5:
-                    x_t1 = Xp[idx] + np.sin(r3) * c * (
-                            Xp[idx] - Xp[0]
-                    )
-                else:
-                    x_t1 = Xp[idx] + np.cos(r3) * c * (
-                            Xp[idx] - Xp[0]
-                    )
-            ### Carnivore
-            elif 1.0 / 3 <= rand and rand <= 2.0 / 3:  # Eq. 16
-                if r4 <= 0.5:
-                    x_t1 = Xp[idx] + np.sin(r3) * c * (
-                            Xp[idx] - Xp[j]
-                    )
-                else:
-                    x_t1 = Xp[idx] + np.cos(r3) * c * (
-                            Xp[idx] - Xp[j]
-                    )
-            ### Omnivore
-            else:  # Eq. 17
-                r5 = self.generator.random()
-                if r4 <= 0.5:
-                    x_t1 = Xp[idx] + np.sin(r5) * c * (
-                            r5 * (Xp[idx] - Xp[0])
-                            + (1 - r5) * (Xp[idx] - Xp[j])
-                    )
-                else:
-                    x_t1 = Xp[idx] + np.cos(r5) * c * (
-                            r5 * (Xp[idx] - Xp[0])
-                            + (1 - r5) * (Xp[idx] - Xp[j])
-                    )
-            ops.commit(self, pop, cand, idx, self.correct_solution(x_t1), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n - 1)
-        ## find current best used in decomposition
-        best = Xp[self.sorted_order(pop)[0]].copy()
-        cand = pop.empty_like()
-        for idx in range(0, n):
-            r3 = self.generator.uniform()
-            d = 3 * self.generator.normal(0, 1)
-            e = r3 * self.generator.integers(1, 3) - 1
-            h = 2 * r3 - 1
-            if self.generator.random() < 0.5:
-                beta = 1 - (1 - 0) * (epoch / self.epoch)  # Eq. 21
-                r_idx = self.generator.choice(
-                    list(set(range(0, self.pop_size)) - {idx})
-                )
-                x_r = Xp[r_idx]
-                if self.generator.random() < 0.5:
-                    x_new = beta * x_r + (1 - beta) * Xp[idx]
-                else:
-                    x_new = (1 - beta) * x_r + beta * Xp[idx]
-            else:
-                x_new = best + d * (
-                        e * best - h * Xp[idx]
-                )
-            ops.commit(self, pop, cand, idx, self.correct_solution(x_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        pos = self.correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
+        ops.set_row(pop, n - 1, pos, self.get_target(pos))
+        X = pop.X
+        ## Consumption
+        rand = rng.random(m)
+        v = rng.normal(0, 1, (m, 2))
+        c = (0.5 * v[:, 0] / np.abs(v[:, 1]))[:, None]  # consumption factor
+        r3 = (2 * np.pi * rng.random(m))[:, None]
+        r4 = (rng.random(m) <= 0.5)[:, None]
+        r5 = rng.random((m, 1))
+        jdx = np.where(np.arange(m) == 0, 1, (rng.random(m) * np.arange(m)).astype(int))
+        Xm, x0, xj = X[:m], X[0], X[jdx]
+        trig = np.where(r4, np.sin(r3), np.cos(r3))  # Eq. 15, 16
+        trig5 = np.where(r4, np.sin(r5), np.cos(r5))  # Eq. 17
+        her = Xm + trig * c * (Xm - x0)
+        car = Xm + trig * c * (Xm - xj)
+        omn = Xm + trig5 * c * (r5 * (Xm - x0) + (1 - r5) * (Xm - xj))
+        pos = np.where((rand <= 1.0 / 3)[:, None], her, np.where((rand <= 2.0 / 3)[:, None], car, omn))
+        ops.step(self, pos, stop=m)
+        ## Decomposition around the best agent, or a mix with a random agent (Eq. 21)
+        best = np.array(X[self.sorted_order(pop)[0]])
+        X = pop.X
+        r3 = rng.uniform(size=(n, 1))
+        dd = 3 * rng.normal(size=(n, 1))
+        e = r3 * rng.integers(1, 3, size=(n, 1)) - 1
+        h = 2 * r3 - 1
+        beta = 1 - (1 - 0) * (epoch / self.epoch)
+        x_r = X[ops.others(self, n)[:, 0]]
+        mixed = np.where((rng.random(n) < 0.5)[:, None], beta * x_r + (1 - beta) * X, (1 - beta) * x_r + beta * X)
+        ops.step(self, np.where((rng.random(n) < 0.5)[:, None], mixed, best + dd * (e * best - h * X)))

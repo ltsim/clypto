@@ -75,7 +75,6 @@ cdef class CG_GWO(LegacyNativeOptimizer):
         # Calculate dynamic parameters (equations 11 and 12)
         eps2 = (epoch / self.epoch) ** 2
         eps1 = 1 - eps2
-
         # Calculate sigma (equation 9)
         if abs(best_fit) > 1e-10:
             sigma = np.exp((leader_fit - best_fit) / abs(best_fit))
@@ -84,63 +83,44 @@ cdef class CG_GWO(LegacyNativeOptimizer):
         # Generate Cauchy and Gaussian random variables
         c_rand = self.generator.standard_cauchy(size=self.problem.n_dims) * sigma**2 + 0
         g_rand = self.generator.normal(loc=0, scale=sigma**2, size=self.problem.n_dims)
-
         # Apply mutation (equation 8)
         return leader_pos * (1 + eps1 * c_rand + eps2 * g_rand)
 
-    cdef void evolve(self, int epoch):
-        # Agents read the population they just updated (random wolf, mean position),
-        # so the loop stays sequential on the buffer rows.
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
-        cdef Py_ssize_t idx, k, n = pop.n
-        minmax = self.problem.minmax
-        lb, ub = self.problem.lb, self.problem.ub
-        # linearly decreased from 2 to 0
-        a = 2 - 2.0 * epoch / self.epoch
+        cdef NativePopulation cand, sub
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
         X = pop.X
+        lb, ub = self.problem.lb, self.problem.ub
+        a = 2 - 2.0 * epoch_c / self.epoch  # linearly decreased from 2 to 0
         order = self.sorted_order(pop)[:3]
-        best_pos = [X[i].copy() for i in order]
-        best_fit = [float(pop.F[i]) for i in order]
-
-        # Apply Cauchy-Gaussian mutation to leaders, then greedy selection
-        leaders = []
-        for k in range(3):
-            pos = self.correct_solution(self.cauchy_gaussian_mutation(best_fit[0], best_fit[k], best_pos[k], epoch))
-            leaders.append((pos, self.get_target(pos)))
-        for k in range(3):
-            pos, tar = leaders[k]
-            if (tar.fitness < best_fit[k]) if minmax == "min" else (tar.fitness > best_fit[k]):
-                best_pos[k], best_fit[k] = pos, tar.fitness
-
-        for idx in range(n):
-            # Apply improved search strategy (equation 13)
-            r1, r2, r3, r4, r5 = self.generator.random(5)
-            if r5 >= 0.5:  # Exploration around random wolf
-                jdx = self.generator.choice(list(set(range(self.pop_size)) - {idx}))
-                x_rand = X[jdx]
-                pos_new = x_rand - r1 * np.abs(x_rand - 2 * r2 * X[idx])
-            else:  # Exploration around alpha wolf
-                x_avg = np.mean(np.ascontiguousarray(X), axis=0)
-                pos_new = (best_pos[0] - x_avg) - r3 * (lb + r4 * (ub - lb))
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-
-            if self.compare_fitness(pop.F[idx], tar.fitness, minmax):
-                # If new position is not better, use original GWO update
-                A1 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
-                A2 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
-                A3 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
-                C1 = 2 * self.generator.random(self.problem.n_dims)
-                C2 = 2 * self.generator.random(self.problem.n_dims)
-                C3 = 2 * self.generator.random(self.problem.n_dims)
-                X1 = best_pos[0] - A1 * np.abs(C1 * best_pos[0] - X[idx])
-                X2 = best_pos[1] - A2 * np.abs(C2 * best_pos[1] - X[idx])
-                X3 = best_pos[2] - A3 * np.abs(C3 * best_pos[2] - X[idx])
-                pos_new = (X1 + X2 + X3) / 3.0
-                pos_new = self.correct_solution(pos_new)
-                tar = self.get_target(pos_new)
-
-            if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
-                # If new position is better, update the agent
-                ops.set_row(pop, idx, pos_new, tar)
+        best_pos = np.array(X[order])
+        best_fit = np.array(pop.F[order])
+        # Cauchy-Gaussian mutation of the three leaders, then greedy selection
+        lead = pop.take(order)
+        lead.X[:] = self.correct_solution(np.array([self.cauchy_gaussian_mutation(best_fit[0], best_fit[k], best_pos[k], epoch_c) for k in range(3)]))
+        self.evaluate(lead, 0, 3)
+        win = ops.better(self, lead.F, best_fit)
+        best_pos[win] = lead.X[win]
+        # improved search strategy (equation 13): around a random wolf or the alpha wolf
+        R = rng.random((n, 5, 1))
+        x_rand = X[ops.others(self, n)[:, 0]]
+        x_avg = np.mean(np.ascontiguousarray(X), axis=0)
+        pos_e = np.where(R[:, 4] >= 0.5, x_rand - R[:, 0] * np.abs(x_rand - 2 * R[:, 1] * X),
+                         (best_pos[0] - x_avg) - R[:, 2] * (lb + R[:, 3] * (ub - lb)))
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(pos_e)
+        self.evaluate(cand, 0, n)
+        # where it is not an improvement: the original GWO update
+        fail = np.flatnonzero(ops.better(self, pop.F, cand.F))
+        if len(fail):
+            m = len(fail)
+            G = rng.random((m, 6, d))
+            Xf = X[fail][:, None, :]
+            Xs = best_pos[None] - (a * (2 * G[:, :3] - 1)) * np.abs(2 * G[:, 3:] * best_pos[None] - Xf)
+            sub = pop.take(fail)
+            sub.X[:] = self.correct_solution(Xs.sum(axis=1) / 3.0)
+            self.evaluate(sub, 0, m)
+            cand.buf[fail] = sub.buf
+        ops.greedy(self, cand)

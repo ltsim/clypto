@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.GTO.OriginalGTO import OriginalGTO
-from clypto.collection.swarm_based.GTO.Matlab102GTO import Matlab102GTO
+from clypto.native.collection.vectorize.swarm_based.GTO.OriginalGTO import OriginalGTO
+from clypto.native.collection.vectorize.swarm_based.GTO.Matlab102GTO import Matlab102GTO
 
-from clypto.collection.swarm_based.GTO.Matlab101GTO import Matlab101GTO
+from clypto.native.collection.vectorize.swarm_based.GTO.Matlab101GTO import Matlab101GTO
 
 __all__ = ["OriginalGTO", "Matlab102GTO", "Matlab101GTO"]

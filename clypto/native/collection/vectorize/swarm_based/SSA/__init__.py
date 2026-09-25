@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.SSA.DevSSA import DevSSA
-from clypto.collection.swarm_based.SSA.OriginalSSA import OriginalSSA
+from clypto.native.collection.vectorize.swarm_based.SSA.DevSSA import DevSSA
+from clypto.native.collection.vectorize.swarm_based.SSA.OriginalSSA import OriginalSSA
 
 __all__ = ["DevSSA", "OriginalSSA"]

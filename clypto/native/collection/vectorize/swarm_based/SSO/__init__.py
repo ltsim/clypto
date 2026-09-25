@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.SSO.OriginalSSO import OriginalSSO
+from clypto.native.collection.vectorize.swarm_based.SSO.OriginalSSO import OriginalSSO
 
 __all__ = ["OriginalSSO"]

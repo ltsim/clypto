@@ -72,39 +72,38 @@ cdef class OriginalCGO(LegacyNativeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
-        # Agents read the population they just updated (three random members), so the
-        # loop stays sequential on the buffer rows.
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation seeds
-        cdef Py_ssize_t idx
-        minmax = self.problem.minmax
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        for idx in range(self.pop_size):
-            s1, s2, s3 = self.generator.choice(range(0, self.pop_size), 3, replace=False)
-            MG = (Xp[s1] + Xp[s2] + Xp[s3]) / 3
-            ## Calculating alpha based on Eq. 7
-            alpha1 = self.generator.random()
-            alpha2 = 2 * self.generator.random()
-            alpha3 = 1 + self.generator.random() * self.generator.random()
-            esp = self.generator.random()
-            # There is no usage of this variable in the paper
-            alpha4 = esp + esp * self.generator.random()
-            beta = self.generator.integers(0, 2, 3)
-            gama = self.generator.integers(0, 2, 3)
-            ## The seed4 is mutation process, but not sure k is multiple variables or 1 variable.
-            ## In the text said, multiple variables, but the defination of k is 1 variable. So confused
-            k = self.generator.integers(0, self.problem.n_dims)
-            k_idx = self.generator.choice(range(0, self.problem.n_dims), k, replace=False)
-            seed1 = Xp[idx] + alpha1 * (beta[0] * g_best - gama[0] * MG)  # Eq. 3
-            seed2 = g_best + alpha2 * (beta[1] * Xp[idx] - gama[1] * MG)  # Eq. 4
-            seed3 = MG + alpha3 * (beta[2] * Xp[idx] - gama[2] * g_best)  # Eq. 5
-            seed4 = Xp[idx].copy().astype(float)
-            seed4[k_idx] += self.generator.uniform(0, 1, k)
-            # Check if solutions go outside the search space and bring them back
-            seeds = self.new_population(self.correct_solution(np.array([seed1, seed2, seed3, seed4])))
-            ## Lots of grammar errors in this section, so confused to understand which strategy they are using
-            best = self.sorted_order(seeds)[0]
-            if self.compare_fitness(seeds.F[best], pop.F[idx], minmax):
-                pop.buf[idx] = seeds.buf[best]
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        me = np.arange(n)
+        # three distinct random agents per agent -> their mean group MG
+        s = np.argpartition(rng.random((n, n)), 2, axis=1)[:, :3]
+        MG = X[s].mean(axis=1)
+        alpha = np.empty((n, 4, 1))
+        alpha[:, 0] = rng.random((n, 1))
+        alpha[:, 1] = 2 * rng.random((n, 1))
+        alpha[:, 2] = 1 + rng.random((n, 1)) * rng.random((n, 1))
+        esp = rng.random((n, 1))
+        alpha[:, 3] = esp + esp * rng.random((n, 1))
+        beta = rng.integers(0, 2, size=(n, 3, 1))
+        gama = rng.integers(0, 2, size=(n, 3, 1))
+        # seed4: k random dimensions receive a uniform(0, 1) kick
+        k = rng.integers(0, d, size=n)
+        picked = rng.random((n, d)).argsort(axis=1).argsort(axis=1) < k[:, None]
+        cand_pos = np.empty((n, 4, d))
+        cand_pos[:, 0] = X + alpha[:, 0] * (beta[:, 0] * g - gama[:, 0] * MG)  # Eq. 3
+        cand_pos[:, 1] = g + alpha[:, 1] * (beta[:, 1] * X - gama[:, 1] * MG)  # Eq. 4
+        cand_pos[:, 2] = MG + alpha[:, 2] * (beta[:, 2] * X - gama[:, 2] * g)  # Eq. 5
+        cand_pos[:, 3] = X + picked * rng.uniform(0, 1, (n, d))
+        seeds = pop.take(np.repeat(me, 4))
+        seeds.X[:] = self.correct_solution(cand_pos.reshape(4 * n, d))
+        self.evaluate(seeds, 0, 4 * n)
+        F = np.asarray(seeds.F).reshape(n, 4)
+        best = (F.argmin(axis=1) if self.problem.minmax == "min" else F.argmax(axis=1))
+        rows = 4 * me + best
+        win = np.flatnonzero(ops.better(self, F[me, best], np.asarray(pop.F)))
+        pop.buf[win] = seeds.buf[rows[win]]

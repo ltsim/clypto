@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.CDDO.OriginalCDDO import OriginalCDDO
+from clypto.native.collection.vectorize.human_based.CDDO.OriginalCDDO import OriginalCDDO
 
 __all__ = ["OriginalCDDO"]

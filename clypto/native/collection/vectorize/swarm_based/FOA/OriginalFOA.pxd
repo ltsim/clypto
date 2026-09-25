@@ -1,5 +1,6 @@
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
+from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 
 
-cdef class OriginalFOA(AgentListOptimizer):
-    pass
+cdef class OriginalFOA(LegacyNativeOptimizer):
+    cdef void initialization(self)
+    cdef void evolve(self, int epoch_c)

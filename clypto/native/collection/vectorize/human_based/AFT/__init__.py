@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.AFT.OriginalAFT import OriginalAFT
+from clypto.native.collection.vectorize.human_based.AFT.OriginalAFT import OriginalAFT
 
 __all__ = ["OriginalAFT"]

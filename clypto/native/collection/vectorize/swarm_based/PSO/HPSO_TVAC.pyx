@@ -8,7 +8,7 @@ import numpy as np
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.collection.swarm_based.PSO.P_PSO cimport P_PSO
+from clypto.native.collection.vectorize.swarm_based.PSO.P_PSO cimport P_PSO
 
 
 cdef class HPSO_TVAC(P_PSO):

@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.BSA.OriginalBSA import OriginalBSA
+from clypto.native.collection.vectorize.swarm_based.BSA.OriginalBSA import OriginalBSA
 
 __all__ = ["OriginalBSA"]

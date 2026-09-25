@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 00:08, 27/10/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class MGTO(AgentListOptimizer):
+cdef class MGTO(LegacyNativeOptimizer):
     """
     The original version of: Modified Gorilla Troops Optimization (mGTO)
 
@@ -80,99 +76,36 @@ cdef class MGTO(AgentListOptimizer):
         condition = np.logical_and(
             self.problem.lb <= solution, solution <= self.problem.ub
         )
-        random_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+        random_pos = self.generator.uniform(self.problem.lb, self.problem.ub, size=np.shape(solution))
         return np.where(condition, solution, random_pos)
 
-    def evolve_agents(self, epoch):
-        F = 1 + np.cos(2 * self.generator.random())
-        C = F * (1 - epoch / self.epoch)
-        L = C * self.generator.choice([-1, 1])
-
-        ## Elite opposition-based learning
-        pos_list = np.array([agent.solution for agent in self.objs])
-        d_lb, d_ub = np.min(pos_list, axis=0), np.max(pos_list, axis=0)
-        pos_list = d_lb + d_ub - pos_list
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.correct_solution(pos_list[idx])
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-        self.objs = pop_new
-        _, self.g_best = self.update_global_best_agent(self.objs, save=False)
-
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        lb, ub = self.problem.lb, self.problem.ub
+        F = 1 + np.cos(2 * rng.random())
+        C = F * (1 - epoch_c / self.epoch)
+        L = C * rng.choice([-1, 1])
+        # opposition-based population (replaces the population)
+        ops.replace(self, X.min(axis=0) + X.max(axis=0) - X)
         ## Exploration
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            if self.generator.random() < self.pp:
-                pos_new = self.problem.generate_solution()
-            else:
-                if self.generator.random() >= 0.5:
-                    rand_idx = self.generator.integers(0, self.pop_size)
-                    pos_new = (self.generator.random() - C) * self.objs[
-                        rand_idx
-                    ].solution + L * self.generator.uniform(-C, C) * self.objs[
-                                  idx
-                              ].solution
-                else:
-                    id1, id2 = self.generator.choice(
-                        list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
-                    )
-                    pos_new = (
-                            self.objs[idx].solution
-                            - L * (L * self.objs[idx].solution - self.objs[id1].solution)
-                            + self.generator.random()
-                            * (self.objs[idx].solution - self.objs[id2].solution)
-                    )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
-        _, self.g_best = self.update_global_best_agent(self.objs, save=False)
-
-        pos_list = np.array([agent.solution for agent in self.objs])
-        ## Exploitation
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            if np.abs(C) >= 1:
-                g = self.generator.choice([-0.5, 2.0])
-                M = (np.abs(np.mean(pos_list, axis=0)) ** g) ** (1.0 / g)
-                # print(M)
-                p = self.generator.uniform(0, 1, self.problem.n_dims)
-                pos_new = (
-                        L
-                        * M
-                        * (self.objs[idx].solution - self.g_best.solution)
-                        * (0.01 * np.tan(np.pi * (p - 0.5)))
-                )
-            else:
-                Q = 2 * self.generator.random() - 1
-                v = self.generator.uniform(0, 1)
-                pos_new = self.g_best.solution - Q * (
-                        self.g_best.solution - self.objs[idx].solution
-                ) * np.tan(v * np.pi / 2)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+        X = pop.X
+        rand_agent = X[rng.integers(0, n, size=n)]
+        pos_a = (rng.random((n, 1)) - C) * rand_agent + L * rng.uniform(-C, C, (n, 1)) * X
+        id1, id2 = ops.two_others(self, n, 1)
+        pos_b = X - L * (L * X - X[id1[:, 0]]) + rng.random((n, 1)) * (X - X[id2[:, 0]])
+        pos = np.where((rng.random(n) >= 0.5)[:, None], pos_a, pos_b)
+        pos = np.where((rng.random(n) < self.pp)[:, None], lb + rng.random((n, d)) * (ub - lb), pos)
+        ops.step(self, pos)
+        ## Exploitation, around the best agent found so far
+        X = pop.X
+        g = np.array(X[ops.best_row(self, self.pop)])
+        if np.abs(C) >= 1:
+            gg = rng.choice([-0.5, 2.0], size=(n, 1))
+            M = (np.abs(np.mean(np.ascontiguousarray(X), axis=0)) ** gg) ** (1.0 / gg)
+            pos = L * M * (X - g) * (0.01 * np.tan(np.pi * (rng.uniform(0, 1, (n, d)) - 0.5)))
+        else:
+            pos = g - (2 * rng.random((n, 1)) - 1) * (g - X) * np.tan(rng.uniform(0, 1, (n, 1)) * np.pi / 2)
+        ops.step(self, pos)

@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 08:37, 17/06/2023 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -12,11 +10,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalSHADE(AgentListOptimizer):
+cdef class OriginalSHADE(LegacyNativeOptimizer):
     """
     The original version of: Success-History Adaptation Differential Evolution (OriginalSHADE)
 
@@ -90,9 +86,9 @@ cdef class OriginalSHADE(AgentListOptimizer):
         self.miu_cr = cy.validator(float, miu_cr, (0, 1.0), "miu_cr")
 
     cdef void initialize_variables(self):
-        self.dyn_miu_f = self.miu_f * np.ones(self.pop_size)  # list the initial f,
-        self.dyn_miu_cr = self.miu_cr * np.ones(self.pop_size)  # list the initial cr,
-        self.dyn_pop_archive = list()
+        self.dyn_miu_f = self.miu_f * np.ones(self.pop_size)  # memory of the successful f,
+        self.dyn_miu_cr = self.miu_cr * np.ones(self.pop_size)  # memory of the successful cr,
+        self.dyn_pop_archive = np.empty((0, self.problem.n_dims))
         self.k_counter = 0
 
     def weighted_lehmer_mean(self, list_objects, list_weights):
@@ -100,97 +96,45 @@ cdef class OriginalSHADE(AgentListOptimizer):
         down = list_weights * list_objects
         return np.sum(up) / np.sum(down)
 
-    def evolve_agents(self, epoch):
-        list_f = list()
-        list_cr = list()
-        list_f_index = list()
-        list_cr_index = list()
-        list_f_new = np.ones(self.pop_size)
-        list_cr_new = np.ones(self.pop_size)
-        pop_old = [agent.copy() for agent in self.objs]
-        pop_sorted = self.get_sorted_population(self.objs, self.problem.minmax)
-        pop = []
-        for idx in range(0, self.pop_size):
-            ## Calculate adaptive parameter cr and f
-            idx_rand = self.generator.integers(0, self.pop_size)
-            cr = self.generator.normal(self.dyn_miu_cr[idx_rand], 0.1)
-            cr = np.clip(cr, 0, 1)
-            while True:
-                f = cauchy.rvs(self.dyn_miu_f[idx_rand], 0.1)
-                if f < 0:
-                    continue
-                elif f > 1:
-                    f = 1
-                break
-            list_cr_new[idx] = cr
-            list_f_new[idx] = f
-            p = self.generator.uniform(2 / self.pop_size, 0.2)
-            top = int(self.pop_size * p)
-            x_best = pop_sorted[self.generator.integers(0, top)]
-            r1_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            new_pop = self.objs + self.dyn_pop_archive
-            r2_idx = self.generator.choice(
-                list(set(range(0, len(new_pop))) - {idx, r1_idx})
-            )
-            x_r1 = self.objs[r1_idx].solution
-            x_r2 = new_pop[r2_idx].solution
-            x_new = (
-                    self.objs[idx].solution
-                    + f * (x_best.solution - self.objs[idx].solution)
-                    + f * (x_r1 - x_r2)
-            )
-            condition = self.generator.random(self.problem.n_dims) < cr
-            pos_new = np.where(condition, x_new, self.objs[idx].solution)
-            j_rand = self.generator.integers(0, self.problem.n_dims)
-            pos_new[j_rand] = x_new[j_rand]
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self.get_target(pos_new)
-        pop = self.update_target_for_population(pop)
-        for idx in range(0, self.pop_size):
-            if self.compare_target(
-                    pop[idx].target, self.objs[idx].target, self.problem.minmax
-            ):
-                list_cr.append(list_cr_new[idx])
-                list_f.append(list_f_new[idx])
-                list_f_index.append(idx)
-                list_cr_index.append(idx)
-                self.objs[idx] = pop[idx].copy()
-                self.dyn_pop_archive.append(pop[idx].copy())
-        # Randomly remove solution
-        temp = len(self.dyn_pop_archive) - self.pop_size
-        if temp > 0:
-            idx_list = self.generator.choice(
-                range(0, len(self.dyn_pop_archive)), temp, replace=False
-            )
-            archive_pop_new = []
-            for idx, agent in enumerate(self.dyn_pop_archive):
-                if idx not in idx_list:
-                    archive_pop_new.append(agent.copy())
-            self.dyn_pop_archive = archive_pop_new
-
-        # Update miu_cr and miu_f
-        if len(list_f) != 0 and len(list_cr) != 0:
-            # Eq.13, 14, 10
-            list_fit_old = np.ones(len(list_cr_index))
-            list_fit_new = np.ones(len(list_cr_index))
-            idx_increase = 0
-            for idx in range(0, self.pop_size):
-                if idx in list_cr_index:
-                    list_fit_old[idx_increase] = pop_old[idx].target.fitness
-                    list_fit_new[idx_increase] = self.objs[idx].target.fitness
-                    idx_increase += 1
-            temp = np.sum(np.abs(list_fit_new - list_fit_old))
-            if temp == 0:
-                list_weights = 1.0 / len(list_fit_new) * np.ones(len(list_fit_new))
-            else:
-                list_weights = np.abs(list_fit_new - list_fit_old) / temp
-            self.dyn_miu_cr[self.k_counter] = np.sum(list_weights * np.array(list_cr))
-            self.dyn_miu_f[self.k_counter] = self.weighted_lehmer_mean(
-                np.array(list_f), list_weights
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        me = np.arange(n)
+        mem = rng.integers(0, n, size=n)
+        cr = np.clip(rng.normal(self.dyn_miu_cr[mem], 0.1), 0, 1)
+        f = self.dyn_miu_f[mem] + 0.1 * rng.standard_cauchy(n)
+        while np.any(f < 0):
+            bad = f < 0
+            f[bad] = self.dyn_miu_f[mem][bad] + 0.1 * rng.standard_cauchy(int(bad.sum()))
+        f = np.minimum(f, 1.0)
+        top = (n * rng.uniform(2 / n, 0.2, n)).astype(int)
+        x_best = X[self.sorted_order(pop)][(rng.random(n) * top).astype(int)]
+        r1 = ops.others(self, n)[:, 0]
+        union = np.vstack([X, self.dyn_pop_archive])
+        r2 = ops.exclude(rng.integers(0, len(union) - 2, size=n), np.stack([me, r1], axis=1))
+        f_ = f[:, None]
+        x_new = X + f_ * (x_best - X) + f_ * (X[r1] - union[r2])
+        pos = np.where(rng.random((n, d)) < cr[:, None], x_new, X)
+        j_rand = rng.integers(0, d, size=n)
+        pos[me, j_rand] = x_new[me, j_rand]
+        before = np.array(pop.F)
+        ops.step(self, pos)
+        pop = self.pop
+        after = np.asarray(pop.F)
+        improved = ops.better(self, after, before)
+        archive = np.vstack([self.dyn_pop_archive, np.asarray(pop.X)[improved]])
+        extra = len(archive) - n
+        if extra > 0:
+            archive = np.delete(archive, rng.choice(len(archive), extra, replace=False), axis=0)
+        self.dyn_pop_archive = archive
+        if improved.any():
+            delta = np.abs(after[improved] - before[improved])
+            total = delta.sum()
+            w = np.full(len(delta), 1.0 / len(delta)) if total == 0 else delta / total
+            self.dyn_miu_cr[self.k_counter] = np.sum(w * cr[improved])
+            self.dyn_miu_f[self.k_counter] = self.weighted_lehmer_mean(f[improved], w)
             self.k_counter += 1
-            if self.k_counter >= self.pop_size:
+            if self.k_counter >= n:
                 self.k_counter = 0

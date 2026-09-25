@@ -15,6 +15,6 @@
 # CRITICAL: LPA is calculated from intra-iteration change (X_i(t) vs X'_i(t)),
 # not inter-iteration change. PTI update happens AFTER strategy application.
 
-from clypto.collection.swarm_based.MShOA.OriginalMShOA import OriginalMShOA
+from clypto.native.collection.vectorize.swarm_based.MShOA.OriginalMShOA import OriginalMShOA
 
 __all__ = ["OriginalMShOA"]

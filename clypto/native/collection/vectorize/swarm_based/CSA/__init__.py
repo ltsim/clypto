@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.CSA.OriginalCSA import OriginalCSA
+from clypto.native.collection.vectorize.swarm_based.CSA.OriginalCSA import OriginalCSA
 
 __all__ = ["OriginalCSA"]

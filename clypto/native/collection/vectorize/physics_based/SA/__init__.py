@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.SA.OriginalSA import OriginalSA
-from clypto.collection.physics_based.SA.GaussianSA import GaussianSA
+from clypto.native.collection.vectorize.physics_based.SA.OriginalSA import OriginalSA
+from clypto.native.collection.vectorize.physics_based.SA.GaussianSA import GaussianSA
 
-from clypto.collection.physics_based.SA.SwarmSA import SwarmSA
+from clypto.native.collection.vectorize.physics_based.SA.SwarmSA import SwarmSA
 
 __all__ = ["OriginalSA", "GaussianSA", "SwarmSA"]

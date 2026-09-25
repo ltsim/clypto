@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.CGO.OriginalCGO import OriginalCGO
+from clypto.native.collection.vectorize.math_based.CGO.OriginalCGO import OriginalCGO
 
 __all__ = ["OriginalCGO"]

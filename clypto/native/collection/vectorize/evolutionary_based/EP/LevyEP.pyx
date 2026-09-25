@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from clypto.collection.evolutionary_based.EP.OriginalEP cimport OriginalEP
+from clypto.native.collection.vectorize.evolutionary_based.EP.OriginalEP cimport OriginalEP
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -64,34 +64,19 @@ cdef class LevyEP(OriginalEP):
 
     cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation child = pop.empty_like()
-        cdef NativePopulation both, pop_new, pop_left, comeback
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        Xp, S = pop.X, pop.field("S")
-        for idx in range(0, self.pop_size):
-            pos_new = Xp[idx] + S[idx] * self.generator.normal(0, 1.0, d)
-            child.X[idx] = self.correct_solution(pos_new)
-            child.field("S")[idx] = S[idx] + self.generator.normal(0, 1.0, d) * np.abs(S[idx]) ** 0.5
-            self.generator.uniform(0, self.distance, d)  # generate_empty_agent draws a strategy
-        child.field("WIN")[:] = 0
-        self.evaluate(child, 0, n)
-        # Update the global best
+        cdef NativePopulation child = self.offspring__(pop)
+        cdef NativePopulation comeback
         both = child.take(self.sorted_order(child)).concat(pop)
         self.tournament__(both)
-        ## Keep the top population, but 50% of left population will make a comeback an take the good position
-        order = sorted(range(both.n), key=lambda i: both.field("WIN")[i, 0], reverse=True)
+        order = np.argsort(-both.field("WIN")[:, 0], kind="stable")
         pop_new = both.take(order[:self.pop_size])
         pop_left = both.take(order[self.pop_size:])
-        ## Choice random 50% of population left
-        idx_list = self.generator.choice(range(0, pop_left.n), int(0.5 * pop_left.n), replace=False)
+        idx_list = self.generator.choice(pop_left.n, int(0.5 * pop_left.n), replace=False)
+        k = len(idx_list)
         comeback = pop_left.take(idx_list)
-        for k in range(len(idx_list)):
-            pos_new = pop_left.X[idx_list[k]] + self.get_levy_flight_step(multiplier=0.01, size=d, case=0)
-            comeback.X[k] = self.correct_solution(pos_new)
-            strategy = self.distance = 0.05 * (self.problem.ub - self.problem.lb)
-            self.generator.uniform(0, self.distance, d)  # generate_empty_agent draws a strategy
-            comeback.field("S")[k] = strategy
+        comeback.X[:] = self.correct_solution(pop_left.X[idx_list] + self.get_levy_flight_step(multiplier=0.01, size=(k, pop.d), case=-1) * self.generator.random((k, 1)))
+        comeback.field("S")[:] = self.generator.uniform(0, self.distance, (k, pop.d))
         comeback.field("WIN")[:] = 0
-        self.evaluate(comeback, 0, comeback.n)
+        self.evaluate(comeback, 0, k)
         merged = pop_new.concat(comeback)
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

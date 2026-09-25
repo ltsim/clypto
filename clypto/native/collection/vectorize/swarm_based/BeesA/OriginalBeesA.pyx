@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 15:34, 01/03/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -10,11 +8,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalBeesA(AgentListOptimizer):
+cdef class OriginalBeesA(LegacyNativeOptimizer):
     """
     The original version of: Bees Algorithm (BeesA)
 
@@ -128,51 +124,26 @@ cdef class OriginalBeesA(AgentListOptimizer):
                     round(self.elite_site_bee_ratio * self.n_selected_bees_local)
                 )
 
-    def perform_dance__(self, position, r):
-        jdx = self.generator.choice(range(0, self.problem.n_dims))
-        position[jdx] = position[jdx] + r * self.generator.uniform(-1, 1)
-        return self.correct_solution(position)
-
-    def evolve_agents(self, epoch):
-        pop_new = self.objs.copy()
-        for idx in range(0, self.pop_size):
-            # Elite Sites
-            if idx < self.n_elite_bees:
-                pop_child = []
-                for j in range(0, self.n_elite_bees_local):
-                    pos_new = self.perform_dance__(
-                        self.objs[idx].solution, self.dyn_radius
-                    )
-                    agent = self.generate_empty_agent(pos_new)
-                    pop_child.append(agent)
-                    if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self.get_target(pos_new)
-                pop_child = self.update_target_for_population(pop_child)
-                local_best = self.get_best_agent(pop_child, self.problem.minmax)
-                if self.compare_target(
-                        local_best.target, self.objs[idx].target, self.problem.minmax
-                ):
-                    pop_new[idx] = local_best
-            elif self.n_elite_bees <= idx < self.n_selected_bees:
-                # Selected Non-Elite Sites
-                pop_child = []
-                for j in range(0, self.n_selected_bees_local):
-                    pos_new = self.perform_dance__(
-                        self.objs[idx].solution, self.dyn_radius
-                    )
-                    agent = self.generate_empty_agent(pos_new)
-                    pop_child.append(agent)
-                    if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self.get_target(pos_new)
-                pop_child = self.update_target_for_population(pop_child)
-                local_best = self.get_best_agent(pop_child, self.problem.minmax)
-                if self.compare_target(
-                        local_best.target, self.objs[idx].target, self.problem.minmax
-                ):
-                    pop_new[idx] = local_best
-            else:
-                # Non-Selected Sites
-                pop_new[idx] = self.generate_agent()
-        self.objs = pop_new
-        # Damp Dance Radius
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef NativePopulation cand, fresh
+        cdef Py_ssize_t n = pop.n, d = pop.d, ne = self.n_elite_bees, ns = self.n_selected_bees
+        cdef object rng = self.generator
+        # elite sites and selected sites recruit bees that dance around them (one random coordinate moves)
+        counts = np.zeros(n, dtype=int)
+        counts[:ne] = self.n_elite_bees_local
+        counts[ne:ns] = self.n_selected_bees_local
+        parent = np.repeat(np.arange(n), counts)
+        pos = np.array(pop.X[parent])
+        pos[np.arange(len(parent)), rng.integers(0, d, size=len(parent))] += self.dyn_radius * rng.uniform(-1, 1, len(parent))
+        cand = pop.take(parent)
+        cand.X[:] = self.correct_solution(pos)
+        self.evaluate(cand, 0, len(parent))
+        ops.scatter(self, cand, parent)  # each site keeps its best neighbour if it improves it
+        # the remaining bees scout new random sources
+        if ns < n:
+            fresh = pop.take(np.arange(ns, n))
+            fresh.X[:] = self.problem.lb + rng.random((n - ns, d)) * (self.problem.ub - self.problem.lb)
+            self.evaluate(fresh, 0, n - ns)
+            pop.buf[ns:] = fresh.buf
         self.dyn_radius = self.dance_reduction * self.dance_radius

@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.swarm_based.GWO.OriginalGWO cimport OriginalGWO
+from clypto.native.collection.vectorize.swarm_based.GWO.OriginalGWO cimport OriginalGWO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer

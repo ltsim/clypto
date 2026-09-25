@@ -84,35 +84,13 @@ cdef class DevSBO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        # (percent of the difference between the upper and lower limit (Eq. 7))
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         self.sigma = self.psw * (self.problem.ub - self.problem.lb)
-
-        ## Calculate the probability of bowers using my equation
-        fit_list = np.array(pop.F)
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            ### Select a bower using roulette wheel
-            rdx = self.get_index_roulette_wheel_selection(fit_list)
-            ### Calculating Step Size
-            lamda = self.alpha * self.generator.uniform()
-            pos_new = Xp[idx] + lamda * (
-                    (Xp[rdx] + g_best) / 2
-                    - Xp[idx]
-            )
-            ### Mutation
-            temp = (
-                    Xp[idx]
-                    + self.generator.normal(0, 1, self.problem.n_dims) * self.sigma
-            )
-            pos_new = np.where(
-                self.generator.random(self.problem.n_dims) < self.p_m, temp, pos_new
-            )
-            ### In-bound position
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        rdx = ops.roulette(self, pop.F, n)
+        lamda = self.alpha * rng.uniform(size=(n, 1))
+        pos = X + lamda * ((X[rdx] + g) / 2 - X)
+        pos = np.where(rng.random((n, d)) < self.p_m, X + rng.normal(0, 1, (n, d)) * self.sigma, pos)
+        ops.step(self, pos)

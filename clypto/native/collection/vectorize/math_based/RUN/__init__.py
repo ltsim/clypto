@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.RUN.OriginalRUN import OriginalRUN
+from clypto.native.collection.vectorize.math_based.RUN.OriginalRUN import OriginalRUN
 
 __all__ = ["OriginalRUN"]

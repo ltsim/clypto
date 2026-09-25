@@ -4,11 +4,12 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.music_based.HS.DevHS cimport DevHS
+from clypto.native.collection.vectorize.music_based.HS.DevHS cimport DevHS
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
+import numpy as np
 
 
 cdef class OriginalHS(DevHS):
@@ -66,29 +67,22 @@ cdef class OriginalHS(DevHS):
         """
         super().__init__(epoch, pop_size, c_r, pa_r, name=name, mode=mode)
 
-    cdef void evolve(self, int epoch):
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = self.pop_size, d = pop.d
+        cdef NativePopulation cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
         lb, ub = self.problem.lb, self.problem.ub
         mean = (lb + ub) / 2
         std_dev = abs(ub - lb) / 6  # This assumes a range of +/- 3 standard deviations
-        X, Xc = pop.X, cand.X
-        for idx in range(n):
-            pos_new = self.generator.uniform(lb, ub)
-            for jdx in range(d):
-                # Use Harmony Memory
-                if self.generator.uniform() <= self.c_r:
-                    random_index = self.generator.integers(0, self.pop_size)
-                    pos_new[jdx] = X[random_index, jdx]
-                # Pitch Adjustment
-                if self.generator.uniform() <= self.pa_r:
-                    delta = self.dyn_fw * self.generator.normal(mean, std_dev)  # Gaussian(Normal)
-                    pos_new[jdx] = pos_new[jdx] + delta[jdx]
-            Xc[idx] = self.correct_solution(pos_new)
+        pos = rng.uniform(lb, ub, (n, d))
+        pos = np.where(rng.uniform(size=(n, d)) <= self.c_r, X[rng.integers(0, n, size=(n, d)), np.arange(d)[None, :]], pos)
+        pos = np.where(rng.uniform(size=(n, d)) <= self.pa_r, pos + self.dyn_fw * rng.normal(mean, std_dev, (n, d)), pos)
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
-        # Update Damp Fret Width
         self.dyn_fw = self.dyn_fw * self.fw_damp
-        # Merge Harmony Memory and New Harmonies, Then sort them, Then truncate extra harmonies
         merged = pop.concat(cand)
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

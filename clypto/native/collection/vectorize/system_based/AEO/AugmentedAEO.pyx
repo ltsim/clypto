@@ -69,74 +69,37 @@ cdef class AugmentedAEO(LegacyNativeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
-        # Agents read the population updated so far (worst agent, random members): in sequential
-        # mode the loops run on the buffer rows; swarm/parallel modes batch the evaluation.
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        ## Production - Update the worst agent
-        # Eq. 2, 3, 1
-        wf = 2 * (1 - epoch / self.epoch)  # Weight factor
-        a = (1.0 - epoch / self.epoch) * self.generator.random()
-        x1 = (1 - a) * Xp[n - 1] + a * self.generator.uniform(
-            self.problem.lb, self.problem.ub
-        )
-        pos_new = self.correct_solution(x1)
-        ops.set_row(pop, n - 1, pos_new, self.get_target(pos_new))
-        ## Consumption - Update the whole population left
-        for idx in range(0, n - 1):
-            if self.generator.random() < 0.5:
-                rand = self.generator.random()
-                # Eq. 4, 5, 6
-                c = (
-                        0.5
-                        * self.generator.normal(0, 1)
-                        / np.abs(self.generator.normal(0, 1))
-                )  # Consumption factor
-                j = 1 if idx == 0 else self.generator.integers(0, idx)
-                ### Herbivore
-                if rand < 1.0 / 3:
-                    pos_new = Xp[idx] + wf * c * (
-                            Xp[idx] - Xp[0]
-                    )  # Eq. 6
-                ### Omnivore
-                elif 1.0 / 3 <= rand <= 2.0 / 3:
-                    pos_new = Xp[idx] + wf * c * (
-                            Xp[idx] - Xp[j]
-                    )  # Eq. 7
-                ### Carnivore
-                else:
-                    r2 = self.generator.uniform()
-                    pos_new = Xp[idx] + wf * c * (
-                            r2 * (Xp[idx] - Xp[0])
-                            + (1 - r2) * (Xp[idx] - Xp[j])
-                    )
-            else:
-                pos_new = Xp[idx] + self.get_levy_flight_step(
-                    1.0, 0.001, case=-1
-                ) * (1.0 / np.sqrt(epoch)) * np.sign(self.generator.random() - 0.5) * (
-                                  Xp[idx] - g_best
-                          )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n - 1)
-        ## find current best used in decomposition
-        best = Xp[self.sorted_order(pop)[0]].copy()
-        cand = pop.empty_like()
-        for idx in range(0, n):
-            if self.generator.random() < 0.5:
-                pos_new = best + self.generator.normal(
-                    0, 1, self.problem.n_dims
-                ) * (best - Xp[idx])
-            else:
-                beta = self.generator.uniform(0.01, 1.0)
-                pos_new = best + self.get_levy_flight_step(
-                    beta=beta, multiplier=0.01, size=self.problem.n_dims, case=0
-                ) * (best - Xp[idx])
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        cdef Py_ssize_t n = pop.n, d = pop.d, m = pop.n - 1
+        cdef object rng = self.generator
+        X = pop.X
+        lb, ub = self.problem.lb, self.problem.ub
+        g = np.array(self.g_best_x())
+        ## Production: the worst agent (last row) is replaced by a new random-mixed agent
+        wf = 2 * (1 - epoch / self.epoch)  # weight factor
+        a = (1.0 - epoch / self.epoch) * rng.random()
+        pos = self.correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
+        ops.set_row(pop, n - 1, pos, self.get_target(pos))
+        X = pop.X
+        ## Consumption (or a Levy move towards the best)
+        rand = rng.random(m)
+        v = rng.normal(0, 1, (m, 2))
+        c = (0.5 * v[:, 0] / np.abs(v[:, 1]))[:, None]
+        jdx = np.where(np.arange(m) == 0, 1, (rng.random(m) * np.arange(m)).astype(int))
+        r2 = rng.random((m, 1))
+        Xm, x0, xj = X[:m], X[0], X[jdx]
+        her = Xm + wf * c * (Xm - x0)
+        car = Xm + wf * c * (Xm - xj)
+        omn = Xm + wf * c * (r2 * (Xm - x0) + (1 - r2) * (Xm - xj))
+        feed = np.where((rand < 1.0 / 3)[:, None], her, np.where((rand <= 2.0 / 3)[:, None], car, omn))
+        levy = Xm + self.get_levy_flight_step(1.0, 0.001, size=(m, 1), case=-1) * (1.0 / np.sqrt(epoch)) * np.sign(rng.random((m, 1)) - 0.5) * (Xm - g)
+        ops.step(self, np.where((rng.random(m) < 0.5)[:, None], feed, levy), stop=m)
+        ## Decomposition
+        best = np.array(X[self.sorted_order(pop)[0]])
+        X = pop.X
+        gauss = best + rng.normal(0, 1, (n, d)) * (best - X)
+        beta = rng.uniform(0.01, 1.0)
+        levy2 = best + self.get_levy_flight_step(beta=beta, multiplier=0.01, size=(n, d), case=-1) * rng.random((n, 1)) * (best - X)
+        ops.step(self, np.where((rng.random(n) < 0.5)[:, None], gauss, levy2))

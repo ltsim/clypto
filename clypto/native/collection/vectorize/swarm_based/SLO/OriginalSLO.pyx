@@ -73,33 +73,27 @@ cdef class OriginalSLO(LegacyNativeOptimizer):
         condition = np.logical_and(
             self.problem.lb <= solution, solution <= self.problem.ub
         )
-        pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
+        pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub, size=np.shape(solution))
         return np.where(condition, solution, pos_rand)
 
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         c = 2 - 2 * epoch / self.epoch
-        t0 = self.generator.random()
+        t0 = rng.random()
         v1 = np.sin(2 * np.pi * t0)
         v2 = np.sin(2 * np.pi * (1 - t0))
         SP_leader = np.abs(v1 * (1 + v2) / v2)  # In the paper this is not clear how to calculate
-        for idx in range(0, self.pop_size):
-            if SP_leader < 0.25:
-                if c < 1:
-                    pos_new = g_best - c * np.abs(2 * self.generator.random() * g_best - Xp[idx])
-                else:
-                    ri = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))  # random index
-                    pos_new = Xp[ri] - c * np.abs(2 * self.generator.random() * Xp[ri] - Xp[idx])
+        if SP_leader < 0.25:
+            if c < 1:
+                pos = g - c * np.abs(2 * rng.random((n, 1)) * g - X)
             else:
-                pos_new = np.abs(g_best - Xp[idx]) * np.cos(2 * np.pi * self.generator.uniform(-1, 1)) + g_best
-            # In the paper doesn't check also doesn't update old solution at this point
-            pos_new = self.correct_solution(pos_new)
-            ops.commit(self, pop, cand, idx, pos_new, swarm, True)
-        if swarm:
-            ops.finish(self, cand, 0, pop.n)
+                ri = X[ops.others(self, n)[:, 0]]  # random other agent
+                pos = ri - c * np.abs(2 * rng.random((n, 1)) * ri - X)
+        else:
+            pos = np.abs(g - X) * np.cos(2 * np.pi * rng.uniform(-1, 1, (n, 1))) + g
+        ops.step(self, pos)

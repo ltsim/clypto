@@ -9,7 +9,6 @@
 from functools import reduce
 import numpy as np
 
-from clypto.collection.human_based.TLO.DevTLO cimport DevTLO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
@@ -18,7 +17,7 @@ from clypto.optimizer._native.agent_list cimport AgentListOptimizer
 from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class ImprovedTLO(DevTLO):
+cdef class ImprovedTLO(AgentListOptimizer):
     """
     The original version of: Improved Teaching-Learning-based Optimization (ImprovedTLO)
 
@@ -74,7 +73,16 @@ cdef class ImprovedTLO(DevTLO):
             pop_size (int): number of population size, default = 100
             n_teachers (int): number of teachers in class
         """
-        super().__init__(epoch, pop_size, name=name, mode=mode)
+        LegacyNativeOptimizer.__init__(
+            self,
+            parameters=["epoch", "pop_size", "n_teachers"],
+            sort_flag=False,
+            parallelizable=True,
+            name=name,
+            mode=mode,
+        )
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self._params_name_ordered = tuple(["epoch", "pop_size", "n_teachers"])
         self.sort_flag = False
         self.n_teachers = cy.validator(int, n_teachers, [2, int(np.sqrt(self.pop_size) - 1)], "n_teachers")

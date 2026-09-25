@@ -80,49 +80,36 @@ cdef class OriginalSeaHO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d, half = int(self.pop_size / 2)
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
+        cdef NativePopulation child, offspring, both
+        cdef Py_ssize_t n = pop.n, d = pop.d, half = int(self.pop_size / 2)
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         # The motor behavior of sea horses
-        step_length = self.get_levy_flight_step(
-            beta=1.5,
-            multiplier=0.01,
-            size=(self.pop_size, self.problem.n_dims),
-            case=-1,
-        )
-        moved = np.empty((n, d))
-        for idx in range(0, self.pop_size):
-            beta = self.generator.normal(0, 1, self.problem.n_dims)
-            theta = 2 * np.pi * self.generator.random(self.problem.n_dims)
-            row = self.uu * np.exp(theta * self.vv)
-            xx, yy, zz = row * np.cos(theta), row * np.sin(theta), row * theta
-            if self.generator.normal(0, 1) > 0:  # Eq. 4
-                pos_new = Xp[idx] + step_length[idx] * ((g_best - Xp[idx]) * xx * yy * zz + g_best)
-            else:  # Eq. 7
-                pos_new = Xp[idx] + self.generator.random(self.problem.n_dims) * self.ll * beta * (g_best - beta * g_best)
-            moved[idx] = self.correct_solution(pos_new)
-
+        step_length = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
+        beta = rng.normal(0, 1, (n, d))
+        theta = 2 * np.pi * rng.random((n, d))
+        row = self.uu * np.exp(theta * self.vv)
+        xx, yy, zz = row * np.cos(theta), row * np.sin(theta), row * theta
+        eq4 = X + step_length * ((g - X) * xx * yy * zz + g)  # Eq. 4
+        eq7 = X + rng.random((n, d)) * self.ll * beta * (g - beta * g)  # Eq. 7
+        moved = self.correct_solution(np.where((rng.normal(0, 1, (n, 1)) > 0), eq4, eq7))
         # The predation behavior of sea horses
         alpha = (1 - epoch / self.epoch) ** (2 * epoch / self.epoch)
-        Xc = cand.X
-        for idx in range(0, self.pop_size):
-            r1 = self.generator.random(self.problem.n_dims)
-            if self.generator.random() >= 0.1:
-                pos_new = alpha * (g_best - r1 * moved[idx]) + (1 - alpha) * g_best  # Eq. 10
-            else:
-                pos_new = (1 - alpha) * (moved[idx] - r1 * g_best) + alpha * moved[idx]  # Eq. 11
-            Xc[idx] = self.correct_solution(pos_new)
-        self.evaluate(cand, 0, n)
-        child = cand.take(self.sorted_order(cand))  # Sorted population
-
+        r1 = rng.random((n, d))
+        pos = np.where(
+            (rng.random((n, 1)) >= 0.1),
+            alpha * (g - r1 * moved) + (1 - alpha) * g,  # Eq. 10
+            (1 - alpha) * (moved - r1 * g) + alpha * moved,  # Eq. 11
+        )
+        child = pop.empty_like()
+        child.X[:] = self.correct_solution(pos)
+        self.evaluate(child, 0, n)
+        child = child.take(self.sorted_order(child))  # Sorted population
         # The reproductive behavior of sea horses
-        offspring = cand.take(np.zeros(half, dtype=int))
-        Xd, Xo = child.X, offspring.X
-        for kdx in range(0, half):
-            r3 = self.generator.random()
-            pos_new = r3 * Xd[kdx] + (1 - r3) * Xd[half + kdx]  # Eq. 13
-            Xo[kdx] = self.correct_solution(pos_new)
+        offspring = child.take(np.arange(half))
+        r3 = rng.random((half, 1))
+        offspring.X[:] = self.correct_solution(r3 * child.X[:half] + (1 - r3) * child.X[half:2 * half])  # Eq. 13
         self.evaluate(offspring, 0, half)
         # Sea horses selection
         both = child.concat(offspring)

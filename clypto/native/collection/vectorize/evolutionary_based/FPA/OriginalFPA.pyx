@@ -82,32 +82,17 @@ cdef class OriginalFPA(LegacyNativeOptimizer):
 
     cdef object amend_solution(self, object solution):
         condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
-        random_pos = self.problem.generate_solution()
+        random_pos = self.problem.lb + self.generator.random(np.shape(solution)) * (self.problem.ub - self.problem.lb)
         return np.where(condition, solution, random_pos)
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
-        for idx in range(0, self.pop_size):
-            if self.generator.uniform() < self.p_s:
-                levy = self.get_levy_flight_step(
-                    multiplier=self.levy_multiplier, size=self.problem.n_dims, case=-1
-                )
-                pos_new = Xp[idx] + 1.0 / np.sqrt(epoch) * levy * (
-                        Xp[idx] - g_best
-                )
-            else:
-                id1, id2 = self.generator.choice(
-                    list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
-                )
-                pos_new = Xp[idx] + self.generator.uniform() * (
-                        Xp[id1] - Xp[id2]
-                )
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        levy = self.get_levy_flight_step(multiplier=self.levy_multiplier, size=(n, d), case=-1)
+        pos_levy = X + 1.0 / np.sqrt(epoch_c) * levy * (X - g)  # global pollination
+        i1, i2 = ops.two_others(self, n, 1)
+        pos_local = X + rng.uniform(size=(n, 1)) * (X[i1[:, 0]] - X[i2[:, 0]])  # local pollination
+        ops.step(self, np.where((rng.uniform(size=n) < self.p_s)[:, None], pos_levy, pos_local))

@@ -76,22 +76,21 @@ cdef class OriginalNMRA(LegacyNativeOptimizer):
         self.size_b = int(self.pop_size / 5)
 
     cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        for idx in range(0, self.pop_size):
-            pos_new = np.array(Xp[idx])
-            if idx < self.size_b:  # breeding operators
-                if self.generator.uniform() < self.pb:
-                    alpha = self.generator.uniform()
-                    pos_new = (1 - alpha) * Xp[idx] + alpha * (g_best - Xp[idx])
-            else:  # working operators
-                t1, t2 = self.generator.choice(range(self.size_b, self.pop_size), 2, replace=False)
-                pos_new = Xp[idx] + self.generator.uniform() * (Xp[t1] - Xp[t2])
-            pos_new = self.correct_solution(pos_new)
-            ops.commit(self, pop, cand, idx, pos_new, swarm, True)
-        if swarm:
-            ops.finish(self, cand, 0, pop.n)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        b = self.size_b
+        m = n - b
+        pos = np.array(X)
+        # breeding operators
+        alpha = rng.uniform(size=(b, 1))
+        breed = (rng.uniform(size=(b, 1)) < self.pb)
+        pos[:b] = np.where(breed, (1 - alpha) * X[:b] + alpha * (g - X[:b]), X[:b])
+        # working operators: two distinct workers per agent
+        t1 = b + rng.integers(0, m, size=m)
+        t2 = b + (t1 - b + rng.integers(1, m, size=m)) % m
+        pos[b:] = X[b:] + rng.uniform(size=(m, 1)) * (X[t1] - X[t2])
+        ops.step(self, pos)

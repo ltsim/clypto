@@ -8,4 +8,4 @@ cdef class DevGCO(LegacyNativeOptimizer):
     cdef public object dyn_list_life_signal
 
     cdef void initialize_variables(self)
-    cdef void evolve(self, int epoch)
+    cdef void evolve(self, int epoch_c)

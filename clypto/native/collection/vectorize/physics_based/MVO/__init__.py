@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.MVO.DevMVO import DevMVO
-from clypto.collection.physics_based.MVO.OriginalMVO import OriginalMVO
+from clypto.native.collection.vectorize.physics_based.MVO.DevMVO import DevMVO
+from clypto.native.collection.vectorize.physics_based.MVO.OriginalMVO import OriginalMVO
 
 __all__ = ["DevMVO", "OriginalMVO"]

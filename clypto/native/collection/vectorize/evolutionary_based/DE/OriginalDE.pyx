@@ -92,56 +92,36 @@ cdef class OriginalDE(LegacyNativeOptimizer):
         self.cr = cy.validator(float, cr, (0, 1.0), "cr")
         self.strategy = cy.validator(int, strategy, [0, 5], "strategy")
 
-    def mutation__(self, current_pos, new_pos):
-        condition = self.generator.random(self.problem.n_dims) < self.cr
-        pos_new = np.where(condition, new_pos, current_pos)
-        return self.correct_solution(pos_new)
+    def distinct_others__(self, n, k):
+        """``k`` distinct random agent indices per agent, none of them the agent itself (n, k)."""
+        keys = self.generator.random((n, n))
+        keys[np.arange(n), np.arange(n)] = 2.0
+        return np.argpartition(keys, k - 1, axis=1)[:, :k]
 
     cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        # the agents read the rows replaced before them (sequential mode)
-        for idx in range(0, self.pop_size):
-            if self.strategy == 0:
-                # Choose 3 random element and different to i
-                idx_list = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 3, replace=False)
-                pos_new = Xp[idx_list[0]] + self.wf * (Xp[idx_list[1]] - Xp[idx_list[2]])
-            elif self.strategy == 1:
-                idx_list = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 2, replace=False)
-                pos_new = g_best + self.wf * (Xp[idx_list[0]] - Xp[idx_list[1]])
-            elif self.strategy == 2:
-                idx_list = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 4, replace=False)
-                pos_new = (
-                    g_best
-                    + self.wf * (Xp[idx_list[0]] - Xp[idx_list[1]])
-                    + self.wf * (Xp[idx_list[2]] - Xp[idx_list[3]])
-                )
-            elif self.strategy == 3:
-                idx_list = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 5, replace=False)
-                pos_new = (
-                    Xp[idx_list[0]]
-                    + self.wf * (Xp[idx_list[1]] - Xp[idx_list[2]])
-                    + self.wf * (Xp[idx_list[3]] - Xp[idx_list[4]])
-                )
-            elif self.strategy == 4:
-                idx_list = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 2, replace=False)
-                pos_new = (
-                    Xp[idx]
-                    + self.wf * (g_best - Xp[idx])
-                    + self.wf * (Xp[idx_list[0]] - Xp[idx_list[1]])
-                )
-            else:
-                idx_list = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}), 3, replace=False)
-                pos_new = (
-                    Xp[idx]
-                    + self.wf * (Xp[idx_list[0]] - Xp[idx])
-                    + self.wf * (Xp[idx_list[1]] - Xp[idx_list[2]])
-                )
-            pos_new = self.mutation__(Xp[idx], pos_new)
-            ops.commit(self, pop, cand, idx, pos_new, swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        wf = self.wf
+        if self.strategy == 0:
+            i = self.distinct_others__(n, 3)
+            pos = X[i[:, 0]] + wf * (X[i[:, 1]] - X[i[:, 2]])
+        elif self.strategy == 1:
+            i = self.distinct_others__(n, 2)
+            pos = g + wf * (X[i[:, 0]] - X[i[:, 1]])
+        elif self.strategy == 2:
+            i = self.distinct_others__(n, 4)
+            pos = g + wf * (X[i[:, 0]] - X[i[:, 1]]) + wf * (X[i[:, 2]] - X[i[:, 3]])
+        elif self.strategy == 3:
+            i = self.distinct_others__(n, 5)
+            pos = X[i[:, 0]] + wf * (X[i[:, 1]] - X[i[:, 2]]) + wf * (X[i[:, 3]] - X[i[:, 4]])
+        elif self.strategy == 4:
+            i = self.distinct_others__(n, 2)
+            pos = X + wf * (g - X) + wf * (X[i[:, 0]] - X[i[:, 1]])
+        else:
+            i = self.distinct_others__(n, 3)
+            pos = X + wf * (X[i[:, 0]] - X) + wf * (X[i[:, 1]] - X[i[:, 2]])
+        # binomial crossover
+        ops.step(self, np.where(rng.random((n, d)) < self.cr, pos, X))

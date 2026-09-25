@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.music_based.HS.DevHS import DevHS
-from clypto.collection.music_based.HS.OriginalHS import OriginalHS
+from clypto.native.collection.vectorize.music_based.HS.DevHS import DevHS
+from clypto.native.collection.vectorize.music_based.HS.OriginalHS import OriginalHS
 
 __all__ = ["DevHS", "OriginalHS"]

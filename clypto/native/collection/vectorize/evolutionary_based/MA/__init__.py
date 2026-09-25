@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.evolutionary_based.MA.OriginalMA import OriginalMA
+from clypto.native.collection.vectorize.evolutionary_based.MA.OriginalMA import OriginalMA
 
 __all__ = ["OriginalMA"]

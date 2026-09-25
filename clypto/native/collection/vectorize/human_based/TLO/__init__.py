@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.TLO.DevTLO import DevTLO
-from clypto.collection.human_based.TLO.OriginalTLO import OriginalTLO
+from clypto.native.collection.vectorize.human_based.TLO.DevTLO import DevTLO
+from clypto.native.collection.vectorize.human_based.TLO.OriginalTLO import OriginalTLO
 
-from clypto.collection.human_based.TLO.ImprovedTLO import ImprovedTLO
+from clypto.native.collection.vectorize.human_based.TLO.ImprovedTLO import ImprovedTLO
 
 __all__ = ["DevTLO", "OriginalTLO", "ImprovedTLO"]

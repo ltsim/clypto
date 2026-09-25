@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.CEM.OriginalCEM import OriginalCEM
+from clypto.native.collection.vectorize.math_based.CEM.OriginalCEM import OriginalCEM
 
 __all__ = ["OriginalCEM"]

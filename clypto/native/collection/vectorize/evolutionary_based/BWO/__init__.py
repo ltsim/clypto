@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.evolutionary_based.BWO.OriginalBWO import OriginalBWO
+from clypto.native.collection.vectorize.evolutionary_based.BWO.OriginalBWO import OriginalBWO
 
 __all__ = ["OriginalBWO"]

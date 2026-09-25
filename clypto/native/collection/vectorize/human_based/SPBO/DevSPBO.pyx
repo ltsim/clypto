@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 17:19, 21/05/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -8,13 +6,11 @@
 
 import numpy as np
 
-from clypto.collection.human_based.SPBO.OriginalSPBO cimport OriginalSPBO
+from clypto.native.collection.vectorize.human_based.SPBO.OriginalSPBO cimport OriginalSPBO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
 cdef class DevSPBO(OriginalSPBO):
@@ -56,45 +52,22 @@ cdef class DevSPBO(OriginalSPBO):
         super().__init__(epoch, pop_size, name=name, mode=mode)
         self.sort_flag = True
 
-    def evolve_agents(self, epoch):
-        good = int(self.pop_size / 3)
-        average = 2 * int(self.pop_size / 3)
-        x_mean = np.mean([agent.solution for agent in self.objs], axis=0)
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            if idx == 0:
-                j = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-                new_pos = self.g_best.solution + self.generator.normal(
-                    0, 1, self.problem.n_dims
-                ) * (self.g_best.solution - self.objs[j].solution)
-            elif idx < good:  ## Good Student
-                if self.generator.random() > self.generator.random():
-                    new_pos = self.g_best.solution + self.generator.normal(
-                        0, 1, self.problem.n_dims
-                    ) * (self.g_best.solution - self.objs[idx].solution)
-                else:
-                    ra = self.generator.random(self.problem.n_dims)
-                    new_pos = (
-                            self.objs[idx].solution
-                            + ra * (self.g_best.solution - self.objs[idx].solution)
-                            + (1 - ra) * (self.objs[idx].solution - x_mean)
-                    )
-            elif idx < average:  ## Average Student
-                new_pos = self.objs[idx].solution + self.generator.normal(
-                    0, 1, self.problem.n_dims
-                ) * (x_mean - self.objs[idx].solution)
-            else:
-                new_pos = self.problem.generate_solution()
-            new_pos = self.correct_solution(new_pos)
-            agent = self.generate_empty_agent(new_pos)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(new_pos)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        me = np.arange(n)
+        lb, ub = self.problem.lb, self.problem.ub
+        good, average = int(n / 3), 2 * int(n / 3)
+        x_mean = np.mean(np.ascontiguousarray(X), axis=0)
+        j = ops.others(self, n)[:, 0]
+        first = g + rng.normal(0, 1, (n, d)) * (g - X[j])
+        flip = rng.random(n) > rng.random(n)
+        ra = rng.random((n, d))
+        good_student = np.where(flip[:, None], g + rng.normal(0, 1, (n, d)) * (g - X), X + ra * (g - X) + (1 - ra) * (X - x_mean))
+        average_student = X + rng.normal(0, 1, (n, d)) * (x_mean - X)
+        pos = np.where((me < good)[:, None], good_student, np.where((me < average)[:, None], average_student, lb + rng.random((n, d)) * (ub - lb)))
+        pos[0] = first[0]
+        ops.step(self, pos)

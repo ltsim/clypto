@@ -71,65 +71,39 @@ cdef class OriginalHHO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef NativeTarget tar_y, tar_z
-        cdef Py_ssize_t idx, n = pop.n
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
+        cdef NativePopulation sub
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
         minmax = self.problem.minmax
-        X_m = None
-        for idx in range(0, self.pop_size):
-            # -1 < E0 < 1
-            E0 = 2 * self.generator.uniform() - 1
-            # factor to show the decreasing energy of rabbit
-            E = 2 * E0 * (1.0 - epoch * 1.0 / self.epoch)
-            J = 2 * (1 - self.generator.uniform())
-
-            # -------- Exploration phase Eq. (1) in paper -------------------
-            if np.abs(E) >= 1:
-                # Harris' hawks perch randomly based on 2 strategy:
-                if self.generator.random() >= 0.5:  # perch based on other family members
-                    X_rand = np.array(Xp[self.generator.integers(0, self.pop_size)])
-                    pos_new = X_rand - self.generator.uniform() * np.abs(
-                        X_rand - 2 * self.generator.uniform() * Xp[idx]
-                    )
-                else:  # perch on a random tall tree (random site inside group's home range)
-                    if X_m is None:
-                        X_m = np.mean(np.array(Xp))
-                    pos_new = (g_best - X_m) - self.generator.uniform() * (
-                        self.problem.lb + self.generator.uniform() * (self.problem.ub - self.problem.lb)
-                    )
-                Xc[idx] = self.correct_solution(pos_new)
-            # -------- Exploitation phase -------------------
-            else:
-                # Attacking the rabbit using 4 strategies regarding the behavior of the rabbit
-                # phase 1: ----- surprise pounce (seven kills) ----------
-                if self.generator.random() >= 0.5:
-                    delta_X = g_best - Xp[idx]
-                    if np.abs(E) >= 0.5:  # Hard besiege Eq. (6) in paper
-                        pos_new = delta_X - E * np.abs(J * g_best - Xp[idx])
-                    else:  # Soft besiege Eq. (4) in paper
-                        pos_new = g_best - E * np.abs(delta_X)
-                    Xc[idx] = self.correct_solution(pos_new)
-                else:
-                    LF_D = self.get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
-                    if np.abs(E) >= 0.5:  # Soft besiege Eq. (10) in paper
-                        Y = g_best - E * np.abs(J * g_best - Xp[idx])
-                    else:  # Hard besiege Eq. (11) in paper
-                        if X_m is None:
-                            X_m = np.mean(np.array(Xp))
-                        Y = g_best - E * np.abs(J * g_best - X_m)
-                    pos_Y = self.correct_solution(Y)
-                    tar_y = self.get_target(pos_Y)
-                    Z = Y + self.generator.uniform(self.problem.lb, self.problem.ub) * LF_D
-                    pos_Z = self.correct_solution(Z)
-                    tar_z = self.get_target(pos_Z)
-                    if self.compare_fitness(tar_y.fitness, pop.F[idx], minmax):
-                        Xc[idx] = pos_Y
-                    elif self.compare_fitness(tar_z.fitness, pop.F[idx], minmax):
-                        Xc[idx] = pos_Z
-                    else:
-                        Xc[idx] = Xp[idx]
-        # (the classic code re-evaluates every candidate here, including the Y/Z ones)
-        self.evaluate(cand, 0, n)
-        ops.greedy(self, cand)
+        E0 = 2 * rng.uniform(size=(n, 1)) - 1
+        E = 2 * E0 * (1.0 - epoch * 1.0 / self.epoch)  # decreasing energy of the rabbit
+        J = 2 * (1 - rng.uniform(size=(n, 1)))
+        X_m = np.mean(np.array(X))
+        R = rng.uniform(size=(n, 6))
+        absE = np.abs(E)
+        # -------- Exploration phase, Eq. (1) --------
+        X_rand = X[rng.integers(0, n, size=n)]
+        pos_family = X_rand - R[:, 0:1] * np.abs(X_rand - 2 * R[:, 1:2] * X)
+        pos_tree = (g - X_m) - R[:, 2:3] * (lb + R[:, 3:4] * (ub - lb))
+        explore = np.where((rng.random(n) >= 0.5)[:, None], pos_family, pos_tree)
+        # -------- Exploitation phase --------
+        delta_X = g - X
+        pounce = np.where(absE >= 0.5, delta_X - E * np.abs(J * g - X), g - E * np.abs(delta_X))  # Eqs. (6), (4)
+        Y = np.where(absE >= 0.5, g - E * np.abs(J * g - X), g - E * np.abs(J * g - X_m))  # Eqs. (10), (11)
+        LF_D = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, 1), case=-1)
+        Z = Y + rng.uniform(lb, ub, size=(n, d)) * LF_D
+        pos = np.where(absE >= 1, explore, pounce)
+        levy = np.flatnonzero((absE[:, 0] < 1) & (rng.random(n) < 0.5))
+        if len(levy):  # rapid dives: keep Y or Z only if better than the agent, else stay
+            sub = pop.take(levy)
+            sub.X[:] = self.correct_solution(Y[levy])
+            self.evaluate(sub, 0, len(levy))
+            better_y = ops.better(self, sub.F, pop.F[levy])
+            sub.X[:] = self.correct_solution(Z[levy])
+            self.evaluate(sub, 0, len(levy))
+            better_z = ops.better(self, sub.F, pop.F[levy])
+            pos[levy] = np.where(better_y[:, None], Y[levy], np.where(better_z[:, None], Z[levy], X[levy]))
+        ops.step(self, pos)

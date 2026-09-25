@@ -76,105 +76,35 @@ cdef class OriginalTSO(LegacyNativeOptimizer):
         self.aa = 0.7
         self.zz = 0.05
 
-    def get_new_local_pos__(self, C, a1, a2, t, epoch, g_best, Xp):
-        if self.generator.random() < self.zz:
-            local_pos = self.problem.generate_solution()
-        else:
-            if self.generator.random() < 0.5:
-                r1 = self.generator.random()
-                beta = np.exp(
-                    r1 * np.exp(3 * np.cos(np.pi * ((self.epoch - epoch) / self.epoch)))
-                ) * np.cos(2 * np.pi * r1)
-                if self.generator.random() < C:
-                    local_pos = (
-                            a1
-                            * (
-                                    g_best
-                                    + beta * np.abs(g_best - Xp[0])
-                            )
-                            + a2 * Xp[0]
-                    )  # Eq (8.3)
-                else:
-                    rand_pos = self.problem.generate_solution()
-                    local_pos = (
-                            a1 * (rand_pos + beta * np.abs(rand_pos - Xp[0]))
-                            + a2 * Xp[0]
-                    )  # Eq (8.1)
-            else:
-                tf = self.generator.choice([-1, 1])
-                if self.generator.random() < 0.5:
-                    local_pos = tf * t ** 2 * Xp[0]  # Eq 9.2
-                else:
-                    local_pos = (
-                            g_best
-                            + self.generator.random(self.problem.n_dims)
-                            * (g_best - Xp[0])
-                            + tf * t ** 2 * (g_best - Xp[0])
-                    )
-        return local_pos
-
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
         C = epoch / self.epoch
         a1 = self.aa + (1 - self.aa) * C
         a2 = (1 - self.aa) - (1 - self.aa) * C
         tt = (1 - epoch / self.epoch) ** (epoch / self.epoch)
-        for idx in range(0, self.pop_size):
-            if idx == 0:
-                pos_new = self.get_new_local_pos__(C, a1, a2, tt, epoch, g_best, Xp)
-            else:
-                if self.generator.random() < self.zz:
-                    pos_new = self.problem.generate_solution()
-                else:
-                    if self.generator.random() > 0.5:
-                        r1 = self.generator.random()
-                        beta = np.exp(
-                            r1
-                            * np.exp(
-                                3 * np.cos(np.pi * (self.epoch - epoch) / self.epoch)
-                            )
-                        ) * np.cos(2 * np.pi * r1)
-                        if self.generator.random() < C:
-                            pos_new = (
-                                    a1
-                                    * (
-                                            g_best
-                                            + beta
-                                            * np.abs(
-                                        g_best - Xp[idx]
-                                    )
-                                    )
-                                    + a2 * Xp[idx - 1]
-                            )  # Eq. 8.4
-                        else:
-                            rand_pos = self.problem.generate_solution()
-                            pos_new = (
-                                    a1
-                                    * (
-                                            rand_pos
-                                            + beta * np.abs(rand_pos - Xp[idx])
-                                    )
-                                    + a2 * Xp[idx - 1]
-                            )  # Eq 8.2
-                    else:
-                        tf = self.generator.choice([-1, 1])
-                        if self.generator.random() < 0.5:
-                            pos_new = (
-                                    g_best
-                                    + self.generator.random(self.problem.n_dims)
-                                    * (g_best - Xp[idx])
-                                    + tf
-                                    * tt ** 2
-                                    * (g_best - Xp[idx])
-                            )  # Eq 9.1
-                        else:
-                            pos_new = tf * tt ** 2 * Xp[idx]  # Eq 9.2
-            Xc[idx] = self.correct_solution(pos_new)
-        # every agent is replaced by its candidate
-        self.evaluate(cand, 0, n)
-        self.pop = cand
+        prev = np.roll(X, 1, axis=0)
+        prev[0] = X[0]
+        rand_pos = lb + rng.random((n, d)) * (ub - lb)
+        r1 = rng.random((n, 1))
+        beta = np.exp(r1 * np.exp(3 * np.cos(np.pi * (self.epoch - epoch) / self.epoch))) * np.cos(2 * np.pi * r1)
+        toward_best = (rng.random(n) < C)[:, None]
+        spiral = np.where(
+            toward_best,
+            a1 * (g + beta * np.abs(g - X)) + a2 * prev,  # Eq. 8.4
+            a1 * (rand_pos + beta * np.abs(rand_pos - X)) + a2 * prev,  # Eq. 8.2
+        )
+        tf = rng.choice([-1, 1], size=(n, 1))
+        parabolic = np.where(
+            (rng.random(n) < 0.5)[:, None],
+            g + rng.random((n, d)) * (g - X) + tf * tt ** 2 * (g - X),  # Eq. 9.1
+            tf * tt ** 2 * X,  # Eq. 9.2
+        )
+        pos = np.where((rng.random(n) > 0.5)[:, None], spiral, parabolic)
+        pos = np.where((rng.random(n) < self.zz)[:, None], lb + rng.random((n, d)) * (ub - lb), pos)
+        ops.replace(self, pos)

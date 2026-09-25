@@ -72,19 +72,14 @@ cdef class OriginalSHIO(LegacyNativeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        b = pop.X[self.sorted_order(pop)[:3]]  # b1, b2, b3
-        a_list, a = np.empty(n), 1.5
-        for idx in range(n):  # a decreases by 0.04 per agent
-            a = a - 0.04
-            a_list[idx] = a
-        a = a_list[:, None]
-        # per agent and leader: one draw for the coefficient, one inside the abs
-        R = self.generator.random((n, 3, 2, d))
-        Xs = b[None] + (a[:, None] * 2 * R[:, :, 0] - a[:, None]) * np.abs(R[:, :, 1] * b[None] - pop.X[:, None, :])
-        cand.X[:] = self.correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3)
-        self.evaluate(cand, 0, n)
-        self.pop = cand
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        b = np.array(X[self.sorted_order(pop)[:3]])  # b1, b2, b3
+        a = (1.5 - 0.04 * np.arange(1, n + 1))[:, None, None]  # a decreases by 0.04 per agent
+        R = rng.random((n, 3, 2, d))
+        Xs = b[None] + (a * 2 * R[:, :, 0] - a) * np.abs(R[:, :, 1] * b[None] - X[:, None, :])
+        ops.replace(self, Xs.sum(axis=1) / 3)

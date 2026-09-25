@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.BFO.OriginalBFO import OriginalBFO
-from clypto.collection.swarm_based.BFO.ABFO import ABFO
+from clypto.native.collection.vectorize.swarm_based.BFO.OriginalBFO import OriginalBFO
+from clypto.native.collection.vectorize.swarm_based.BFO.ABFO import ABFO
 
 __all__ = ["OriginalBFO", "ABFO"]

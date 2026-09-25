@@ -6,7 +6,7 @@
 
 import numpy as np
 
-from clypto.collection.physics_based.EO.OriginalEO cimport OriginalEO
+from clypto.native.collection.vectorize.physics_based.EO.OriginalEO cimport OriginalEO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer

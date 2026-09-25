@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.FBIO.DevFBIO import DevFBIO
-from clypto.collection.human_based.FBIO.OriginalFBIO import OriginalFBIO
+from clypto.native.collection.vectorize.human_based.FBIO.DevFBIO import DevFBIO
+from clypto.native.collection.vectorize.human_based.FBIO.OriginalFBIO import OriginalFBIO
 
 __all__ = ["DevFBIO", "OriginalFBIO"]

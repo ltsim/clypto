@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.TOA.OriginalTOA import OriginalTOA
+from clypto.native.collection.vectorize.human_based.TOA.OriginalTOA import OriginalTOA
 
 __all__ = ["OriginalTOA"]

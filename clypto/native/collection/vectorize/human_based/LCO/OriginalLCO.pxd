@@ -1,6 +1,8 @@
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
+from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 
 
-cdef class OriginalLCO(AgentListOptimizer):
+cdef class OriginalLCO(LegacyNativeOptimizer):
     cdef public object r1
     cdef public object n_agents
+
+    cdef void evolve(self, int epoch_c)

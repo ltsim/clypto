@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.physics_based.EVO.OriginalEVO import OriginalEVO
+from clypto.native.collection.vectorize.physics_based.EVO.OriginalEVO import OriginalEVO
 
 __all__ = ["OriginalEVO"]

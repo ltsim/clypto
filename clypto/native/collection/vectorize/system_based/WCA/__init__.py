@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.system_based.WCA.OriginalWCA import OriginalWCA
+from clypto.native.collection.vectorize.system_based.WCA.OriginalWCA import OriginalWCA
 
 __all__ = ["OriginalWCA"]

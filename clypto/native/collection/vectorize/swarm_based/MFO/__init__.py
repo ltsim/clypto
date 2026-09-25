@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.MFO.OriginalMFO import OriginalMFO
+from clypto.native.collection.vectorize.swarm_based.MFO.OriginalMFO import OriginalMFO
 
 __all__ = ["OriginalMFO"]

@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 10:14, 18/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -8,13 +6,11 @@
 
 import numpy as np
 
-from clypto.collection.human_based.TLO.DevTLO cimport DevTLO
+from clypto.native.collection.vectorize.human_based.TLO.DevTLO cimport DevTLO
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
 cdef class OriginalTLO(DevTLO):
@@ -68,39 +64,18 @@ cdef class OriginalTLO(DevTLO):
         self.sort_flag = False
         self.is_parallelizable = False
 
-    def evolve_agents(self, epoch):
-        for idx in range(0, self.pop_size):
-            ## Teaching Phrase
-            TF = self.generator.integers(1, 3)  # 1 or 2 (never 3)
-            #### Remove third loop here
-            list_pos = np.array([agent.solution for agent in self.objs])
-            pos_new = self.objs[idx].solution + self.generator.uniform(
-                0, 1, self.problem.n_dims
-            ) * (self.g_best.solution - TF * np.mean(list_pos, axis=0))
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
-            ## Learning Phrase
-            id_partner = self.generator.choice(
-                np.setxor1d(np.array(range(self.pop_size)), np.array([idx]))
-            )
-            #### Remove third loop here
-            if self.compare_target(
-                    self.objs[idx].target, self.objs[id_partner].target, self.problem.minmax
-            ):
-                diff = self.objs[idx].solution - self.objs[id_partner].solution
-            else:
-                diff = self.objs[id_partner].solution - self.objs[idx].solution
-            pos_new = (
-                    self.objs[idx].solution
-                    + self.generator.uniform(0, 1, self.problem.n_dims) * diff
-            )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
-            ):
-                self.objs[idx] = agent
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        # teacher phase
+        TF = rng.integers(1, 3, size=(n, 1))  # 1 or 2 (never 3)
+        ops.step(self, X + rng.uniform(0, 1, (n, d)) * (g - TF * np.mean(np.ascontiguousarray(X), axis=0)))
+        # learner phase: learn from a random partner
+        X = pop.X
+        j = ops.others(self, n)[:, 0]
+        ahead = ops.better(self, np.asarray(pop.F), np.asarray(pop.F)[j])[:, None]
+        r = rng.random((n, d))
+        ops.step(self, np.where(ahead, X + r * (X - X[j]), X + r * (X[j] - X)))

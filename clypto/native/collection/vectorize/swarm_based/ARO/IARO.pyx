@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 22:46, 26/10/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class IARO(AgentListOptimizer):
+cdef class IARO(LegacyNativeOptimizer):
     """
     The improved version of: Improved Artificial Rabbits Optimization (IARO)
 
@@ -72,53 +68,28 @@ cdef class IARO(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def evolve_agents(self, epoch):
+    def random_dims__(self, n, d):
+        """0/1 mask (n, d): ceil(u * d) random dimensions of every row are 1."""
+        k = np.ceil(self.generator.random(n) * d)
+        ranks = self.generator.random((n, d)).argsort(axis=1).argsort(axis=1)
+        return (ranks < k[:, None]).astype(float)
+
+    cdef void evolve(self, int epoch_c):
+        cdef object epoch = epoch_c
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
         theta = 2 * (1 - (epoch + 1) / self.epoch)
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            L = (np.exp(1) - np.exp((epoch / self.epoch) ** 2)) * (
-                np.sin(2 * np.pi * self.generator.random())
-            )
-            temp = np.zeros(self.problem.n_dims)
-            rd_index = self.generator.choice(
-                np.arange(0, self.problem.n_dims),
-                int(np.ceil(self.generator.random() * self.problem.n_dims)),
-                replace=False,
-            )
-            temp[rd_index] = 1
-            R = L * temp  # Eq 2
-            A = 2 * np.log(1.0 / self.generator.random()) * theta  # Eq. 15
-            if A > 1:  # # detour foraging strategy
-                rand_idx = self.generator.integers(0, self.pop_size)
-                pos_new = (
-                        self.objs[rand_idx].solution
-                        + R * (self.objs[idx].solution - self.objs[rand_idx].solution)
-                        + np.round(0.5 * (0.05 + self.generator.random()))
-                        * self.generator.normal(0, 1)
-                )  # Eq. 1
-            else:  # Random hiding stage
-                gr = np.zeros(self.problem.n_dims)
-                rd_index = self.generator.choice(
-                    np.arange(0, self.problem.n_dims),
-                    int(np.ceil(self.generator.random() * self.problem.n_dims)),
-                    replace=False,
-                )
-                gr[rd_index] = 1  # Eq. 12
-                H = self.generator.normal(0, 1) * (epoch / self.epoch)  # Eq. 8
-                b = self.objs[idx].solution + H * gr * self.objs[idx].solution  # Eq. 13
-                pos_new = self.objs[idx].solution + R * (
-                        self.generator.random() * b - self.objs[idx].solution
-                )  # Eq. 11
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, minmax=self.problem.minmax
-            )
+        L = (np.exp(1) - np.exp((epoch / self.epoch) ** 2)) * np.sin(2 * np.pi * rng.random(n))
+        R = L[:, None] * self.random_dims__(n, d)  # Eq 2
+        A = 2 * np.log(1.0 / rng.random(n)) * theta  # Eq. 15
+        # detour foraging strategy, Eq. 1
+        rand_agent = X[rng.integers(0, n, size=n)]
+        detour = rand_agent + R * (X - rand_agent) + np.round(0.5 * (0.05 + rng.random((n, 1)))) * rng.normal(0, 1, (n, 1))
+        # random hiding stage, Eqs. 8, 11, 12, 13
+        gr = self.random_dims__(n, d)
+        H = rng.normal(0, 1, (n, 1)) * (epoch / self.epoch)
+        b = X + H * gr * X
+        hiding = X + R * (rng.random((n, 1)) * b - X)
+        ops.step(self, np.where((A > 1)[:, None], detour, hiding))

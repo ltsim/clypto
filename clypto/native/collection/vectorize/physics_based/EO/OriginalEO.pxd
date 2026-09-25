@@ -7,4 +7,4 @@ cdef class OriginalEO(LegacyNativeOptimizer):
     cdef public object a2
     cdef public object GP
 
-    cdef void evolve(self, int epoch)
+    cdef void evolve(self, int epoch_c)

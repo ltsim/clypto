@@ -10,7 +10,7 @@ from cython.parallel cimport prange
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation, np_clip
-from clypto.collection.swarm_based.PSO._base cimport _PSOBase
+from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
 # Rows x dims below which OpenMP threads cost more than they save.
 cdef Py_ssize_t PARALLEL_MIN_WORK = 20000

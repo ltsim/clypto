@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.TDO.OriginalTDO import OriginalTDO
+from clypto.native.collection.vectorize.swarm_based.TDO.OriginalTDO import OriginalTDO
 
 __all__ = ["OriginalTDO"]

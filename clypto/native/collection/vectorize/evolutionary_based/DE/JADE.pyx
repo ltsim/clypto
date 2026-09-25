@@ -101,89 +101,48 @@ cdef class JADE(LegacyNativeOptimizer):
     cdef void initialize_variables(self):
         self.dyn_miu_cr = self.miu_cr
         self.dyn_miu_f = self.miu_f
-        self.dyn_pop_archive = list()
+        self.dyn_pop_archive = np.empty((0, self.problem.n_dims))
 
     def lehmer_mean(self, list_objects):
         temp = np.sum(list_objects)
         return 0 if temp == 0 else np.sum(list_objects**2) / temp
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
-        self.objs = ops.agents_of(self.pop)
-        list_f = list()
-        list_cr = list()
-        temp_f = list()
-        temp_cr = list()
-        pop_sorted = ops.sorted_agents(self, self.objs)
-        pop = []
-        for idx in range(0, self.pop_size):
-            ## Calculate adaptive parameter cr and f
-            cr = self.generator.normal(self.dyn_miu_cr, 0.1)
-            cr = np.clip(cr, 0, 1)
-            while True:
-                f = cauchy.rvs(self.dyn_miu_f, 0.1)
-                if f < 0:
-                    continue
-                elif f > 1:
-                    f = 1
-                break
-            temp_f.append(f)
-            temp_cr.append(cr)
-            top = int(self.pop_size * self.pt)
-            x_best = pop_sorted[self.generator.integers(0, top)]
-            r1_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            new_pop = self.objs + self.dyn_pop_archive
-            r2_idx = self.generator.choice(
-                list(set(range(0, len(new_pop))) - {idx, r1_idx})
-            )
-            x_r1 = self.objs[r1_idx].solution
-            x_r2 = new_pop[r2_idx].solution
-            x_new = (
-                self.objs[idx].solution
-                + f * (x_best.solution - self.objs[idx].solution)
-                + f * (x_r1 - x_r2)
-            )
-            pos_new = np.where(
-                self.generator.random(self.problem.n_dims) < cr,
-                x_new,
-                self.objs[idx].solution,
-            )
-            j_rand = self.generator.integers(0, self.problem.n_dims)
-            pos_new[j_rand] = x_new[j_rand]
-            pos_new = self.correct_solution(pos_new)
-            agent = LegacyNativeAgent(pos_new, None)
-            pop.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self.get_target(pos_new)
-        pop = ops.update_targets(self, pop)
-        for idx in range(0, self.pop_size):
-            if self.compare_fitness(pop[idx].target.fitness, self.objs[idx].target.fitness, self.problem.minmax):
-                self.dyn_pop_archive.append(self.objs[idx].copy())
-                list_cr.append(temp_cr[idx])
-                list_f.append(temp_f[idx])
-                self.objs[idx] = pop[idx].copy()
-        # Randomly remove solution
-        temp = len(self.dyn_pop_archive) - self.pop_size
-        if temp > 0:
-            idx_list = self.generator.choice(
-                range(0, len(self.dyn_pop_archive)), temp, replace=False
-            )
-            archive_pop_new = []
-            for idx, solution in enumerate(self.dyn_pop_archive):
-                if idx not in idx_list:
-                    archive_pop_new.append(solution)
-            self.dyn_pop_archive = archive_pop_new
-        # Update miu_cr and miu_f
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        me = np.arange(n)
+        # adaptive parameters: cr ~ N(miu_cr, 0.1), f ~ Cauchy(miu_f, 0.1) re-drawn while negative, capped at 1
+        cr = np.clip(rng.normal(self.dyn_miu_cr, 0.1, n), 0, 1)
+        f = self.dyn_miu_f + 0.1 * rng.standard_cauchy(n)
+        while np.any(f < 0):
+            bad = f < 0
+            f[bad] = self.dyn_miu_f + 0.1 * rng.standard_cauchy(int(bad.sum()))
+        f = np.minimum(f, 1.0)
+        top = int(n * self.pt)
+        x_best = X[self.sorted_order(pop)[:top]][rng.integers(0, top, size=n)]
+        r1 = ops.others(self, n)[:, 0]
+        union = np.vstack([X, self.dyn_pop_archive])
+        r2 = ops.exclude(rng.integers(0, len(union) - 2, size=n), np.stack([me, r1], axis=1))
+        f_ = f[:, None]
+        x_new = X + f_ * (x_best - X) + f_ * (X[r1] - union[r2])
+        pos = np.where(rng.random((n, d)) < cr[:, None], x_new, X)
+        j_rand = rng.integers(0, d, size=n)
+        pos[me, j_rand] = x_new[me, j_rand]
+        before = np.array(pop.F)
+        ops.step(self, pos)
+        improved = ops.better(self, np.asarray(self.pop.F), before)
+        # the replaced parents go to the archive (kept at most pop_size long), the parameters that worked adapt the means
+        archive = np.vstack([self.dyn_pop_archive, X[improved]])
+        extra = len(archive) - n
+        if extra > 0:
+            archive = np.delete(archive, rng.choice(len(archive), extra, replace=False), axis=0)
+        self.dyn_pop_archive = archive
+        list_cr, list_f = cr[improved], f[improved]
         if len(list_cr) == 0:
             self.dyn_miu_cr = (1 - self.ap) * self.dyn_miu_cr + self.ap * 0.5
-        else:
-            self.dyn_miu_cr = (1 - self.ap) * self.dyn_miu_cr + self.ap * np.mean(
-                np.array(list_cr)
-            )
-        if len(list_f) == 0:
             self.dyn_miu_f = (1 - self.ap) * self.dyn_miu_f + self.ap * 0.5
         else:
-            self.dyn_miu_f = (
-                1 - self.ap
-            ) * self.dyn_miu_f + self.ap * self.lehmer_mean(np.array(list_f))
-        self.pop = ops.population_of(self.pop, self.objs)
+            self.dyn_miu_cr = (1 - self.ap) * self.dyn_miu_cr + self.ap * np.mean(list_cr)
+            self.dyn_miu_f = (1 - self.ap) * self.dyn_miu_f + self.ap * self.lehmer_mean(list_f)

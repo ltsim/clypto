@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Furkan Gunbaz (gunbaz) ---------------%
 #       Email: furkan.gunbaz@gmail.com              %
 #       Github: https://github.com/gunbaz           %
@@ -22,11 +20,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class OriginalMShOA(AgentListOptimizer):
+cdef class OriginalMShOA(LegacyNativeOptimizer):
     """
     The original version of: Mantis Shrimp Optimization Algorithm (MShOA)
 
@@ -131,25 +127,16 @@ cdef class OriginalMShOA(AgentListOptimizer):
         self.pti = np.round(pti_raw).astype(int)  # round to nearest integer
         self.pti = np.clip(self.pti, 1, 3)  # ensure values are in {1, 2, 3}
 
-    def evolve_agents(self, epoch):
-        # Step 1: Extract current positions X_i(t) before strategy application
-        pop_pos = np.array([agent.solution for agent in self.objs])  # X_i(t)
-        g_best_pos = self.g_best.solution  # Shape: (n_dims,)
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        pop_pos = np.array(pop.X)  # X_i(t)
+        g_best_pos = np.array(self.g_best_x())  # Shape: (n_dims,)
 
         # Initialize position update matrix (will become X'_i(t) after strategies)
         pos_new = pop_pos.copy()
 
         # Generate random indices for Strategy 1 (Foraging) - ensure r ≠ i
-        random_indices = self.generator.integers(0, self.pop_size, self.pop_size)
-        # Ensure r ≠ i: if random_indices[i] == i, replace with another random index (excluding i)
-        for idx in range(self.pop_size):
-            if random_indices[idx] == idx:
-                # Generate random index from [0, pop_size) excluding idx
-                candidates = list(range(0, idx)) + list(range(idx + 1, self.pop_size))
-                if len(candidates) > 0:
-                    random_indices[idx] = self.generator.choice(candidates)
-
-        # Create masks for each strategy based on current PTI values
+        random_indices = ops.others(self, pop.n)[:, 0]
         mask_strategy1 = self.pti == 1  # Foraging/Navigation
         mask_strategy2 = self.pti == 2  # Attack/Strike
         mask_strategy3 = self.pti == 3  # Defense/Burrow
@@ -169,7 +156,7 @@ cdef class OriginalMShOA(AgentListOptimizer):
         v = pop_pos - g_best_pos  # velocity term: (x_i(t) - x_best)
         R_t = random_pop_pos - pop_pos  # random force: (x_r(t) - x_i(t))
         D = self.generator.uniform(
-            -1.0, 1.0, size=(self.pop_size, 1)
+            -1.0, 1.0, size=(pop.n, 1)
         )  # scalar diffusion coefficient per agent
         foraging_pos = g_best_pos - v + D * R_t  # D broadcasts to all dimensions
         pos_new = np.where(mask_s1_expanded, foraging_pos, pos_new)
@@ -177,7 +164,7 @@ cdef class OriginalMShOA(AgentListOptimizer):
         # Strategy 2: Attack/Strike (PTI = 2) - Equation 14 (circular motion)
         # x_i(t+1) = x_best * cos(θ)
         # where θ ~ U(π, 2π)
-        theta = self.generator.uniform(np.pi, 2 * np.pi, size=self.pop_size)[
+        theta = self.generator.uniform(np.pi, 2 * np.pi, size=pop.n)[
             :, np.newaxis
         ]
         strike_pos = g_best_pos * np.cos(theta)  # element-wise multiplication
@@ -191,10 +178,10 @@ cdef class OriginalMShOA(AgentListOptimizer):
         # between Defense and Shelter behaviors. This implementation uses uniform (50-50) selection,
         # which is consistent with the paper's description but clarifies an unspecified aspect.
         k = self.generator.uniform(
-            0.0, self.k_value, size=(self.pop_size, 1)
+            0.0, self.k_value, size=(pop.n, 1)
         )  # k ~ U(0, k_value)
         defense_or_shelter = (
-                self.generator.random(self.pop_size) < 0.5
+                self.generator.random(pop.n) < 0.5
         )  # 50% defense, 50% shelter
         defense_or_shelter_expanded = defense_or_shelter[:, np.newaxis]
         # Defense: x_i(t+1) = x_best + k * x_best
@@ -222,7 +209,7 @@ cdef class OriginalMShOA(AgentListOptimizer):
         # Step 4: Calculate RPA, LPT, RPT, LAD, RAD (Algorithm 1)
 
         # Calculate Right Polarization Angle (RPA): RPA_i = rand * π (Eq. 4)
-        rpa = self.generator.random(self.pop_size) * np.pi  # RPA ∈ [0, π]
+        rpa = self.generator.random(pop.n) * np.pi  # RPA ∈ [0, π]
 
         # Determine Left Polarization Type (LPT) and Right Polarization Type (RPT) based on Eq. 5
         # Eq. 5 defines three types with π/8 intervals:
@@ -314,20 +301,4 @@ cdef class OriginalMShOA(AgentListOptimizer):
         self.pti = np.where(lad < rad, lpt, rpt)
 
         # Create new agents efficiently
-        pop_new = []
-        for idx in range(self.pop_size):
-            pos_corrected = self.correct_solution(pos_new[idx])
-            agent = self.generate_empty_agent(pos_corrected)
-            pop_new.append(agent)
-        # Use standard Mealpy helper to update all targets
-        pop_new = self.update_target_for_population(pop_new)
-
-        # Safety check: ensure no agent has None target
-        for agent in pop_new:
-            if agent.target is None:
-                agent.target = self.get_target(agent.solution)
-
-        # Perform greedy selection using standard Mealpy helper
-        self.objs = self.greedy_selection_population(
-            self.objs, pop_new, self.problem.minmax
-        )
+        ops.step(self, pos_new)

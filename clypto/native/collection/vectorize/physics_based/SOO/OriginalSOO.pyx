@@ -90,51 +90,21 @@ cdef class OriginalSOO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        g_best = np.array(self.g_best_x())
-        # Update period and angular frequency
-        caf = 2 * np.pi / (self.initial_period + 0.001 * epoch)
-
-        # Update scaling factor
-        scaler = 2 * (1.0 - epoch / self.epoch)
-
-        # Update positions of star oscillators (own row only: fully batched)
-        R = self.generator.random((n, 3, d))
-        r1, r2, r3 = R[:, 0], R[:, 1], R[:, 2]
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
         X = pop.X
-        # Calculate oscillation positions
-        osc1 = scaler * (caf * r1 - 1) * (X - np.abs(r1 * np.sin(r2) * np.abs(r3 * g_best)))
-        osc1_pos = g_best - r1 * r3 * osc1
-        osc2 = scaler * (caf * r1 - 1) * (X - np.abs(r1 * np.cos(r2) * np.abs(r3 * g_best)))
-        osc2_pos = g_best - r2 * r3 * osc2
-        cand.X[:] = self.correct_solution(r3 * (osc1_pos + osc2_pos) / 2)
-        self.evaluate(cand, 0, n)
-        ops.accept(self, cand)
-
-        # Get top 3 stars
-        best3 = pop.X[self.sorted_order(pop)[:3]]
-        cand = pop.empty_like()
-
-        # Perform oscillatory movement update (reads the rows updated before it)
-        Xp = pop.X
-        for idx in range(self.pop_size):
-            # Average of top star positions
-            avg3 = np.mean(best3, axis=0)
-
-            # Select 3 random indices different from current
-            i1, i2, i3 = self.generator.choice(list(set(range(self.pop_size)) - {idx}), size=3, replace=False)
-
-            # Generate new position based on oscillatory movement
-            rf = self.generator.random()
-            pos_new = avg3 + 0.5 * (
-                    np.sin(rf * np.pi) * (Xp[i1] - Xp[i2])
-                    + np.cos((1 - rf) * np.pi) * (Xp[i1] - Xp[i3])
-            )
-            ## Probabilistic update
-            pos_new = np.where(self.generator.random(size=d) <= 0.5, pos_new, Xp[idx])
-            # Apply boundary constraints
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        g = np.array(self.g_best_x())
+        caf = 2 * np.pi / (self.initial_period + 0.001 * epoch)
+        scaler = 2 * (1.0 - epoch / self.epoch)
+        R = rng.random((n, 3, d))
+        r1, r2, r3 = R[:, 0], R[:, 1], R[:, 2]
+        osc1 = scaler * (caf * r1 - 1) * (X - np.abs(r1 * np.sin(r2) * np.abs(r3 * g)))
+        osc2 = scaler * (caf * r1 - 1) * (X - np.abs(r1 * np.cos(r2) * np.abs(r3 * g)))
+        ops.step(self, r3 * ((g - r1 * r3 * osc1) + (g - r2 * r3 * osc2)) / 2)
+        # second phase: around the mean of the three best agents
+        X = pop.X
+        avg3 = np.mean(X[self.sorted_order(pop)[:3]], axis=0)
+        i = ops.k_others(self, n, 3)
+        rf = rng.random((n, 1))
+        pos = avg3 + 0.5 * (np.sin(rf * np.pi) * (X[i[:, 0]] - X[i[:, 1]]) + np.cos((1 - rf) * np.pi) * (X[i[:, 0]] - X[i[:, 2]]))
+        ops.step(self, np.where(rng.random((n, d)) <= 0.5, pos, X))

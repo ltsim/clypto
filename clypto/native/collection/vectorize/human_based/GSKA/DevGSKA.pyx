@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 16:58, 08/04/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
@@ -11,11 +9,9 @@ from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
-cdef class DevGSKA(AgentListOptimizer):
+cdef class DevGSKA(LegacyNativeOptimizer):
     """
     The developed version: Gaining Sharing Knowledge-based Algorithm (GSKA)
 
@@ -83,81 +79,25 @@ cdef class DevGSKA(AgentListOptimizer):
         self.pb = cy.validator(float, pb, (0, 1.0), "pb")
         self.kr = cy.validator(float, kr, (0, 1.0), "kr")
 
-    def evolve_agents(self, epoch):
-        dd = int(np.ceil(self.pop_size * (1.0 - epoch / self.epoch)))
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            # If it is the best it chooses best+2, best+1
-            if idx == 0:
-                previ, nexti = idx + 2, idx + 1
-            # If it is the worse it chooses worst-2, worst-1
-            elif idx == self.pop_size - 1:
-                previ, nexti = idx - 2, idx - 1
-            # Other case it chooses i-1, i+1
-            else:
-                previ, nexti = idx - 1, idx + 1
-            if idx < dd:  # senior gaining and sharing
-                if self.generator.uniform() <= self.kr:
-                    rand_idx = self.generator.choice(
-                        list(set(range(0, self.pop_size)) - {previ, idx, nexti})
-                    )
-                    if self.compare_target(
-                            self.objs[rand_idx].target,
-                            self.objs[idx].target,
-                            self.problem.minmax,
-                    ):
-                        pos_new = self.objs[idx].solution + self.generator.uniform(
-                            0, 1, self.problem.n_dims
-                        ) * (
-                                          self.objs[previ].solution
-                                          - self.objs[nexti].solution
-                                          + self.objs[rand_idx].solution
-                                          - self.objs[idx].solution
-                                  )
-                    else:
-                        pos_new = self.g_best.solution + self.generator.uniform(
-                            0, 1, self.problem.n_dims
-                        ) * (self.objs[rand_idx].solution - self.objs[idx].solution)
-                else:
-                    pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
-            else:  # junior gaining and sharing
-                if self.generator.uniform() <= self.kr:
-                    id1 = int(self.pb * self.pop_size)
-                    id2 = int(id1 + self.pop_size * (1 - 2 * self.pb))
-                    rand_best = self.generator.choice(list(set(range(0, id1)) - {idx}))
-                    rand_worst = self.generator.choice(
-                        list(set(range(id2, self.pop_size)) - {idx})
-                    )
-                    rand_mid = self.generator.choice(list(set(range(id1, id2)) - {idx}))
-                    if self.compare_target(
-                            self.objs[rand_mid].target,
-                            self.objs[idx].target,
-                            self.problem.minmax,
-                    ):
-                        pos_new = self.objs[idx].solution + self.generator.uniform(
-                            0, 1, self.problem.n_dims
-                        ) * (
-                                          self.objs[rand_best].solution
-                                          - self.objs[rand_worst].solution
-                                          + self.objs[rand_mid].solution
-                                          - self.objs[idx].solution
-                                  )
-                    else:
-                        pos_new = self.g_best.solution + self.generator.uniform(
-                            0, 1, self.problem.n_dims
-                        ) * (self.objs[rand_mid].solution - self.objs[idx].solution)
-                else:
-                    pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        F = np.asarray(pop.F)
+        g = np.array(self.g_best_x())
+        me = np.arange(n)
+        dd = int(np.ceil(n * (1.0 - epoch_c / self.epoch)))
+        prev, nxt = ops.neighbors(n)
+        rand_idx = ops.exclude(rng.integers(0, n - 3, size=n), np.stack([prev, me, nxt], axis=1))
+        id1 = int(self.pb * n)
+        id2 = int(id1 + n * (1 - 2 * self.pb))
+        best, worst, mid = (ops.pick_range(self, lo, hi, me) for lo, hi in ((0, id1), (id2, n), (id1, id2)))
+        U = rng.uniform(0, 1, (n, d))
+        rb = ops.better(self, F[rand_idx], F)[:, None]
+        mb = ops.better(self, F[mid], F)[:, None]
+        senior = np.where(rb, X + U * (X[prev] - X[nxt] + X[rand_idx] - X), g + U * (X[rand_idx] - X))
+        junior = np.where(mb, X + U * (X[best] - X[worst] + X[mid] - X), g + U * (X[mid] - X))
+        pos = np.where((me < dd)[:, None], senior, junior)
+        pos = np.where((rng.uniform(size=n) <= self.kr)[:, None], pos, rng.uniform(self.problem.lb, self.problem.ub, (n, d)))
+        ops.step(self, pos)

@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.ABC.OriginalABC import OriginalABC
+from clypto.native.collection.vectorize.swarm_based.ABC.OriginalABC import OriginalABC
 
 __all__ = ["OriginalABC"]

@@ -77,33 +77,16 @@ cdef class DevMVO(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp = pop.X
-        g_best = np.array(self.g_best_x())
-        # Eq. (3.3) in the paper
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
+        lb, ub = self.problem.lb, self.problem.ub
         wep = self.wep_max - epoch * ((self.wep_max - self.wep_min) / self.epoch)
-        # Travelling Distance Rate (Formula): Eq. (3.4) in the paper
         tdr = 1 - epoch ** (1.0 / 6) / (<object>self.epoch) ** (<object>(1.0 / 6))
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            if self.generator.uniform() < wep:
-                list_fitness = np.array(pop.F)
-                white_hole_id = self.get_index_roulette_wheel_selection(list_fitness)
-                black_hole_pos_1 = Xp[idx] + tdr * self.generator.normal(
-                    0, 1
-                ) * (Xp[white_hole_id] - Xp[idx])
-                black_hole_pos_2 = g_best + tdr * self.generator.normal(
-                    0, 1
-                ) * (g_best - Xp[idx])
-                black_hole_pos = np.where(
-                    self.generator.random(self.problem.n_dims) < 0.5,
-                    black_hole_pos_1,
-                    black_hole_pos_2,
-                )
-            else:
-                black_hole_pos = self.problem.generate_solution()
-            ops.commit(self, pop, cand, idx, self.correct_solution(black_hole_pos), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        white = ops.roulette(self, pop.F, n)
+        pos1 = X + tdr * rng.normal(0, 1, (n, 1)) * (X[white] - X)
+        pos2 = g + tdr * rng.normal(0, 1, (n, 1)) * (g - X)
+        pos = np.where(rng.random((n, d)) < 0.5, pos1, pos2)
+        pos = np.where((rng.uniform(size=n) < wep)[:, None], pos, lb + rng.random((n, d)) * (ub - lb))
+        ops.step(self, pos)

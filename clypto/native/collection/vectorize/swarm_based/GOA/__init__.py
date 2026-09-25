@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.GOA.OriginalGOA import OriginalGOA
+from clypto.native.collection.vectorize.swarm_based.GOA.OriginalGOA import OriginalGOA
 
 __all__ = ["OriginalGOA"]

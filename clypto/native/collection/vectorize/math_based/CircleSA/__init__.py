@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.math_based.CircleSA.OriginalCircleSA import OriginalCircleSA
+from clypto.native.collection.vectorize.math_based.CircleSA.OriginalCircleSA import OriginalCircleSA
 
 __all__ = ["OriginalCircleSA"]

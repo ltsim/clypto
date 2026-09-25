@@ -72,60 +72,41 @@ cdef class IOBL_GWO(LegacyNativeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
-        # Every agent is compared and replaced before the next one moves (it reads the
-        # population it just updated), so the loop stays sequential on the buffer rows.
+    cdef void evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar_new
-        cdef Py_ssize_t idx, k, n = pop.n
-        minmax = self.problem.minmax
-        lb, ub = self.problem.lb, self.problem.ub
-        # linearly decreased from 2 to 0
-        a = 2 - 2.0 * epoch / self.epoch
-        best = pop.X[self.sorted_order(pop)[:3]]
+        cdef NativePopulation cand, sub, obl
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
         X = pop.X
-        for idx in range(n):
-            # Try explorative equation first
-            r1, r2, r3, r4, r5 = self.generator.random(5)
-            if r5 >= 0.5:  # Exploration around random wolf
-                # Select random wolf from population
-                jdx = self.generator.choice(list(set(range(self.pop_size)) - {idx}))
-                x_rand = X[jdx]
-                pos_new = x_rand - r1 * np.abs(x_rand - 2 * r2 * X[idx])
-            else:  # Exploration around alpha wolf
-                # Calculate average position of all wolves
-                x_avg = np.mean(np.ascontiguousarray(X), axis=0)
-                pos_new = (best[0] - x_avg) - r3 * (lb + r4 * (ub - lb))
-            # Apply boundary constraints
-            pos_new = self.correct_solution(pos_new)
-            tar_new = self.get_target(pos_new)
-            if self.compare_fitness(tar_new.fitness, pop.F[idx], minmax):
-                # If new position is better, update the agent
-                ops.set_row(pop, idx, pos_new, tar_new)
-            else:
-                # If not better, use original GWO update
-                A1 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
-                A2 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
-                A3 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
-                C1 = 2 * self.generator.random(self.problem.n_dims)
-                C2 = 2 * self.generator.random(self.problem.n_dims)
-                C3 = 2 * self.generator.random(self.problem.n_dims)
-                X1 = best[0] - A1 * np.abs(C1 * best[0] - X[idx])
-                X2 = best[1] - A2 * np.abs(C2 * best[1] - X[idx])
-                X3 = best[2] - A3 * np.abs(C3 * best[2] - X[idx])
-                pos_new = (X1 + X2 + X3) / 3.0
-                pos_new = self.correct_solution(pos_new)
-                tar_new = self.get_target(pos_new)
-                if self.compare_fitness(tar_new.fitness, pop.F[idx], minmax):
-                    ops.set_row(pop, idx, pos_new, tar_new)
-
-        # Apply Opposition-Based Learning (OBL) for leading wolves
+        lb, ub = self.problem.lb, self.problem.ub
+        a = 2 - 2.0 * epoch_c / self.epoch  # linearly decreased from 2 to 0
         order = self.sorted_order(pop)
-        obl = []
-        for k in range(3):
-            pos_obl = lb + ub - X[order[k]]
-            obl.append((pos_obl, self.get_target(pos_obl)))
-        # Replace worst 3 wolves with opposite solutions if they are better
-        for k in range(3):
-            if self.compare_fitness(obl[k][1].fitness, pop.F[order[-3 + k]], minmax):
-                ops.set_row(pop, k, obl[k][0], obl[k][1])
+        best = np.array(X[order[:3]])
+        # explorative equation first: around a random wolf or the alpha wolf
+        R = rng.random((n, 5, 1))
+        x_rand = X[ops.others(self, n)[:, 0]]
+        x_avg = np.mean(np.ascontiguousarray(X), axis=0)
+        pos_e = np.where(R[:, 4] >= 0.5, x_rand - R[:, 0] * np.abs(x_rand - 2 * R[:, 1] * X),
+                         (best[0] - x_avg) - R[:, 2] * (lb + R[:, 3] * (ub - lb)))
+        cand = pop.empty_like()
+        cand.X[:] = self.correct_solution(pos_e)
+        self.evaluate(cand, 0, n)
+        # where it is not an improvement: the original GWO update
+        fail = np.flatnonzero(~ops.better(self, cand.F, pop.F))
+        if len(fail):
+            m = len(fail)
+            G = rng.random((m, 6, d))
+            Xs = best[None] - (a * (2 * G[:, :3] - 1)) * np.abs(2 * G[:, 3:] * best[None] - X[fail][:, None, :])
+            sub = pop.take(fail)
+            sub.X[:] = self.correct_solution(Xs.sum(axis=1) / 3.0)
+            self.evaluate(sub, 0, m)
+            cand.buf[fail] = sub.buf
+        ops.greedy(self, cand)
+        # opposition-based learning of the three leaders replaces the three worst wolves when it is better
+        order = self.sorted_order(pop)
+        obl = pop.take(order[:3])
+        obl.X[:] = self.correct_solution(lb + ub - pop.X[order[:3]])
+        self.evaluate(obl, 0, 3)
+        worst = order[-3:][::-1]
+        win = ops.better(self, obl.F, pop.F[worst])
+        pop.buf[worst[win]] = obl.buf[win]

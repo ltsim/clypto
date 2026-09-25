@@ -5,6 +5,6 @@
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.COA.OriginalCOA import OriginalCOA
+from clypto.native.collection.vectorize.swarm_based.COA.OriginalCOA import OriginalCOA
 
 __all__ = ["OriginalCOA"]

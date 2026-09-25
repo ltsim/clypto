@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.FOX.OriginalFOX import OriginalFOX
-from clypto.collection.swarm_based.FOX.DevFOX import DevFOX
+from clypto.native.collection.vectorize.swarm_based.FOX.OriginalFOX import OriginalFOX
+from clypto.native.collection.vectorize.swarm_based.FOX.DevFOX import DevFOX
 
 __all__ = ["OriginalFOX", "DevFOX"]

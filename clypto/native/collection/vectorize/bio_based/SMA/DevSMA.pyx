@@ -76,54 +76,24 @@ cdef class DevSMA(LegacyNativeOptimizer):
     cdef void evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation cand = pop.empty_like()
-        cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
-        cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        Xp, Xc = pop.X, cand.X
-        g_best = np.array(self.g_best_x())
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        g = np.array(self.g_best_x())
         gb_fit = self.current_g_best().target.fitness
-        # plus eps to avoid denominator zero
         ss = gb_fit - pop.F[-1] + self.EPSILON
-        # calculate the fitness weight of each slime mold
-        for idx in range(0, self.pop_size):
-            # Eq.(2.5)
-            if idx <= int(self.pop_size / 2):
-                self.weights[idx] = 1 + self.generator.uniform(
-                    0, 1, self.problem.n_dims
-                ) * np.log10(
-                    (gb_fit - pop.F[idx]) / ss + 1
-                )
-            else:
-                self.weights[idx] = 1 - self.generator.uniform(
-                    0, 1, self.problem.n_dims
-                ) * np.log10(
-                    (gb_fit - pop.F[idx]) / ss + 1
-                )
+        lb, ub = self.problem.lb, self.problem.ub
+        # weights (Eq. 2.5): the better half is amplified, the worse half is damped
+        sign = np.where(np.arange(n) <= int(self.pop_size / 2), 1.0, -1.0)[:, None]
+        self.weights = 1 + sign * rng.uniform(0, 1, (n, d)) * np.log10((gb_fit - np.asarray(pop.F)) / ss + 1)[:, None]
         a = np.arctanh(1 - epoch / self.epoch)  # Eq.(2.4)
         b = 1 - epoch / self.epoch
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            # Update the Position of search agent
-            if self.generator.uniform() < self.p_t:  # Eq.(2.7)
-                pos_new = self.problem.generate_solution()
-            else:
-                p = np.tanh(
-                    np.abs(pop.F[idx] - gb_fit)
-                )  # Eq.(2.2)
-                vb = self.generator.uniform(-a, a, self.problem.n_dims)  # Eq.(2.3)
-                vc = self.generator.uniform(-b, b, self.problem.n_dims)
-                # two positions randomly selected from population, apply for the whole problem size instead of 1 variable
-                id_a, id_b = self.generator.choice(
-                    list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
-                )
-                pos_1 = g_best + vb * (
-                        self.weights[idx] * Xp[id_a]
-                        - Xp[id_b]
-                )
-                pos_2 = vc * Xp[idx]
-                condition = self.generator.random(self.problem.n_dims) < p
-                pos_new = np.where(condition, pos_1, pos_2)
-            # Check bound and re-calculate fitness after each individual move
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
-        if swarm:
-            ops.finish(self, cand, 0, n)
+        p = np.tanh(np.abs(np.asarray(pop.F) - gb_fit))[:, None]  # Eq.(2.2)
+        vb = rng.uniform(-a, a, (n, d))  # Eq.(2.3)
+        vc = rng.uniform(-b, b, (n, d))
+        ia, ib = ops.two_others(self, n, 1)
+        pos_1 = g + vb * (self.weights * X[ia[:, 0]] - X[ib[:, 0]])
+        pos_2 = vc * X
+        pos = np.where(rng.random((n, d)) < p, pos_1, pos_2)
+        pos = np.where((rng.random(n) < self.p_t)[:, None], lb + rng.random((n, d)) * (ub - lb), pos)  # Eq.(2.7)
+        ops.step(self, pos)

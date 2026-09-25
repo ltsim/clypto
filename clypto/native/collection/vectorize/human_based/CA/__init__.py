@@ -4,6 +4,6 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.human_based.CA.OriginalCA import OriginalCA
+from clypto.native.collection.vectorize.human_based.CA.OriginalCA import OriginalCA
 
 __all__ = ["OriginalCA"]

@@ -90,82 +90,40 @@ cdef class SADE(LegacyNativeOptimizer):
         self.dyn_list_cr = list()
 
     cdef void evolve(self, int epoch_c):
-        cdef object epoch = epoch_c
-        self.objs = ops.agents_of(self.pop)
-        pop = []
-        list_probability = []
-        list_cr = []
-        for idx in range(0, self.pop_size):
-            ## Calculate adaptive parameter cr and f
-            cr = self.generator.normal(self.crm, 0.1)
-            cr = np.clip(cr, 0, 1)
-            list_cr.append(cr)
-            while True:
-                f = self.generator.normal(0.5, 0.3)
-                if f < 0:
-                    continue
-                elif f > 1:
-                    f = 1
-                break
-            id1, id2, id3 = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), 3, replace=False
-            )
-            if self.generator.random() < self.p1:
-                x_new = self.objs[id1].solution + f * (
-                    self.objs[id2].solution - self.objs[id3].solution
-                )
-                pos_new = np.where(
-                    self.generator.random(self.problem.n_dims) < cr,
-                    x_new,
-                    self.objs[idx].solution,
-                )
-                j_rand = self.generator.integers(0, self.problem.n_dims)
-                pos_new[j_rand] = x_new[j_rand]
-                pos_new = self.correct_solution(pos_new)
-                list_probability.append(True)
-            else:
-                x_new = (
-                    self.objs[idx].solution
-                    + f * (self.g_best.solution - self.objs[idx].solution)
-                    + f * (self.objs[id1].solution - self.objs[id2].solution)
-                )
-                pos_new = np.where(
-                    self.generator.random(self.problem.n_dims) < cr,
-                    x_new,
-                    self.objs[idx].solution,
-                )
-                j_rand = self.generator.integers(0, self.problem.n_dims)
-                pos_new[j_rand] = x_new[j_rand]
-                pos_new = self.correct_solution(pos_new)
-                list_probability.append(False)
-            agent = LegacyNativeAgent(pos_new, None)
-            pop.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self.get_target(pos_new)
-        pop = ops.update_targets(self, pop)
-        for idx in range(0, self.pop_size):
-            if list_probability[idx]:
-                if self.compare_fitness(pop[idx].target.fitness, self.objs[idx].target.fitness, self.problem.minmax):
-                    self.ns1 += 1
-                    self.objs[idx] = pop[idx].copy()
-                else:
-                    self.nf1 += 1
-            else:
-                if self.compare_fitness(pop[idx].target.fitness, self.objs[idx].target.fitness, self.problem.minmax):
-                    self.ns2 += 1
-                    self.dyn_list_cr.append(list_cr[idx])
-                    self.objs[idx] = pop[idx].copy()
-                else:
-                    self.nf2 += 1
-        # Update cr and p1
-        if epoch / self.loop_cr == 0:
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = np.array(pop.X)
+        me = np.arange(n)
+        g = np.array(self.g_best_x())
+        # adaptive parameters: cr ~ N(crm, 0.1), f ~ N(0.5, 0.3) re-drawn while negative, capped at 1
+        cr = np.clip(rng.normal(self.crm, 0.1, n), 0, 1)
+        f = rng.normal(0.5, 0.3, n)
+        while np.any(f < 0):
+            bad = f < 0
+            f[bad] = rng.normal(0.5, 0.3, int(bad.sum()))
+        f = np.minimum(f, 1.0)[:, None]
+        i = ops.k_others(self, n, 3)
+        strategy1 = rng.random(n) < self.p1
+        x_new = np.where(strategy1[:, None], X[i[:, 0]] + f * (X[i[:, 1]] - X[i[:, 2]]),
+                         X + f * (g - X) + f * (X[i[:, 0]] - X[i[:, 1]]))
+        pos = np.where(rng.random((n, d)) < cr[:, None], x_new, X)
+        j_rand = rng.integers(0, d, size=n)
+        pos[me, j_rand] = x_new[me, j_rand]
+        before = np.array(pop.F)
+        ops.step(self, pos)
+        ok = ops.better(self, np.asarray(self.pop.F), before)
+        self.ns1 += int((ok & strategy1).sum())
+        self.nf1 += int((~ok & strategy1).sum())
+        self.ns2 += int((ok & ~strategy1).sum())
+        self.nf2 += int((~ok & ~strategy1).sum())
+        self.dyn_list_cr.extend(cr[ok & ~strategy1].tolist())
+        # update cr and p1 periodically
+        if epoch_c % self.loop_cr == 0 and len(self.dyn_list_cr):
             self.crm = np.mean(self.dyn_list_cr)
             self.dyn_list_cr = list()
-        if epoch / self.loop_probability == 0:
-            self.p1 = (
-                self.ns1
-                * (self.ns2 + self.nf2)
-                / (self.ns2 * (self.ns1 + self.nf1) + self.ns1 * (self.ns2 + self.nf2))
-            )
+        if epoch_c % self.loop_probability == 0:
+            den = self.ns2 * (self.ns1 + self.nf1) + self.ns1 * (self.ns2 + self.nf2)
+            if den > 0:
+                self.p1 = self.ns1 * (self.ns2 + self.nf2) / den
             self.ns1 = self.ns2 = self.nf1 = self.nf2 = 0
-        self.pop = ops.population_of(self.pop, self.objs)

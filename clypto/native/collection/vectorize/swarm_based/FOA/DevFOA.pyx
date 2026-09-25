@@ -1,20 +1,16 @@
 #!/usr/bin/env python
-# cython: boundscheck=True
-# (classic list code: out-of-range indexing raises IndexError instead of crashing)
 # Created by "Thieu" at 14:01, 16/11/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 # --- dedicated agents (private to this module) ---
 
-from clypto.collection.swarm_based.FOA.OriginalFOA cimport OriginalFOA
+from clypto.native.collection.vectorize.swarm_based.FOA.OriginalFOA cimport OriginalFOA
 import numpy as np
 from clypto.optimizer._native cimport utils as cy
 from clypto.optimizer._native import ops
 from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
 from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
-from clypto.optimizer._native.agent_list import FieldAgent
 
 
 cdef class DevFOA(OriginalFOA):
@@ -61,26 +57,11 @@ cdef class DevFOA(OriginalFOA):
         """
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
-    def evolve_agents(self, epoch):
-        c = 1 - epoch / self.epoch
-        pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.objs[idx].solution + self.generator.normal(
-                self.problem.lb, self.problem.ub
-            )
-            pos_new = (
-                c * self.generator.random() * self.norm_consecutive_adjacent__(pos_new)
-            )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
-            pop_new.append(agent)
-            if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    agent, self.objs[idx], self.problem.minmax
-                )
-        if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                pop_new, self.objs, self.problem.minmax
-            )
+    cdef void evolve(self, int epoch_c):
+        cdef NativePopulation pop = self.pop
+        cdef Py_ssize_t n = pop.n, d = pop.d
+        cdef object rng = self.generator
+        X = pop.X
+        c = 1 - epoch_c / self.epoch
+        pos = X + rng.normal(self.problem.lb, self.problem.ub, (n, d))
+        ops.step(self, c * rng.random((n, 1)) * self.norm_consecutive_adjacent__(pos))

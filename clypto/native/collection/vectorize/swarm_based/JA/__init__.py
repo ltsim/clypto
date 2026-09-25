@@ -4,9 +4,9 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.collection.swarm_based.JA.DevJA import DevJA
-from clypto.collection.swarm_based.JA.OriginalJA import OriginalJA
+from clypto.native.collection.vectorize.swarm_based.JA.DevJA import DevJA
+from clypto.native.collection.vectorize.swarm_based.JA.OriginalJA import OriginalJA
 
-from clypto.collection.swarm_based.JA.LevyJA import LevyJA
+from clypto.native.collection.vectorize.swarm_based.JA.LevyJA import LevyJA
 
 __all__ = ["DevJA", "OriginalJA", "LevyJA"]
