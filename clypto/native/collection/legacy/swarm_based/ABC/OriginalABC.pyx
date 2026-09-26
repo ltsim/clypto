@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalABC(_LegacyOptimizer):
+cdef class OriginalABC(LegacyOptimizer):
     """
     The original version of: Artificial Bee Colony (ABC)
 
@@ -22,14 +22,14 @@ cdef class OriginalABC(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import ABC    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,20 +57,19 @@ cdef class OriginalABC(_LegacyOptimizer):
             pop_size: number of population size = onlooker bees = employed bees, default = 100
             n_limits: Limit of trials before abandoning a food source, default=25
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.n_limits = self.validator.check_int("n_limits", n_limits, [1, 1000])
-        self.is_parallelizable = False
-        self.set_parameters(["epoch", "pop_size", "n_limits"])
+        self._set_parameters(["epoch", "pop_size", "n_limits"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.trials = np.zeros(self.pop_size)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -83,10 +82,10 @@ cdef class OriginalABC(_LegacyOptimizer):
             pos_new = self.pop[idx].solution + phi * (
                     self.pop[rdx].solution - self.pop[idx].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
                 self.trials[idx] = 0
@@ -98,7 +97,7 @@ cdef class OriginalABC(_LegacyOptimizer):
         # probabilities = employed_fits / np.sum(employed_fits)
         for idx in range(0, self.pop_size):
             # Select an employed bee using roulette wheel selection
-            selected_bee = self.get_index_roulette_wheel_selection(employed_fits)
+            selected_bee = self._get_index_roulette_wheel_selection(employed_fits)
             # Choose a random employed bee to generate a new solution
             rdx = self.generator.choice(
                 list(set(range(0, self.pop_size)) - {idx, selected_bee})
@@ -108,10 +107,10 @@ cdef class OriginalABC(_LegacyOptimizer):
             pos_new = self.pop[selected_bee].solution + phi * (
                     self.pop[rdx].solution - self.pop[selected_bee].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[selected_bee].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[selected_bee].target, self.problem.sense
             ):
                 self.pop[selected_bee] = agent
                 self.trials[selected_bee] = 0
@@ -121,5 +120,5 @@ cdef class OriginalABC(_LegacyOptimizer):
         # Check the number of trials for each employed bee and abandon the food source if the limit is exceeded
         abandoned = np.where(self.trials >= self.n_limits)[0]
         for idx in abandoned:
-            self.pop[idx] = self.generate_agent()
+            self.pop[idx] = self._generate_agent()
             self.trials[idx] = 0

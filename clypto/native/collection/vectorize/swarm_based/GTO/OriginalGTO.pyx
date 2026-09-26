@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalGTO(LegacyNativeOptimizer):
+cdef class OriginalGTO(VectorizeOptimizer):
     """
     The original version of: Giant Trevally Optimizer (GTO)
 
@@ -27,14 +27,14 @@ cdef class OriginalGTO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GTO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -69,11 +69,10 @@ cdef class OriginalGTO(LegacyNativeOptimizer):
             A (float): a position-change-controlling parameter with a range from 0.3 to 0.4, default=0.4
             H (float): initial value for specifies the jumping slope function, default=2.0
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "A", "H"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -82,14 +81,14 @@ cdef class OriginalGTO(LegacyNativeOptimizer):
         self.A = cy.validator(float, A, [-10.0, 10.0], "A")
         self.H = cy.validator(float, H, [1.0, 10.0], "H")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         # Step 1: extensive search, Eq.(4)
         g = np.array(self.g_best_x())
-        levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
+        levy = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
         ops.step(self, g * rng.random((n, 1)) + ((ub - lb) * rng.random((n, 1)) + lb) * levy)
         # Step 2: choosing area, Eq. 7 (around the current best)
         X = pop.X

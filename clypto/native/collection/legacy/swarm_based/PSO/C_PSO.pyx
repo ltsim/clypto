@@ -23,15 +23,15 @@ cdef class C_PSO(P_PSO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.C_PSO(epoch=1000, pop_size=50, c1=2.05, c2=2.05, w_min=0.4, w_max=0.9)
@@ -71,22 +71,21 @@ cdef class C_PSO(P_PSO):
         self.c2 = self.validator.check_float("c2", c2, (0, 5.0))
         self.w_min = self.validator.check_float("w_min", w_min, (0, 0.5))
         self.w_max = self.validator.check_float("w_max", w_max, [0.5, 2.0])
-        self.set_parameters(["epoch", "pop_size", "c1", "c2", "w_min", "w_max"])
+        self._set_parameters(["epoch", "pop_size", "c1", "c2", "w_min", "w_max"])
         self.sort_flag = False
-        self.is_parallelizable = False
 
-    def initialize_variables(self):
-        self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
+    def _initialize_variables(self):
+        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.v_min = -self.v_max
         self.N_CLS = int(self.pop_size / 5)  # Number of chaotic local searches
-        self.dyn_lb = self.problem.lb.copy()
-        self.dyn_ub = self.problem.ub.copy()
+        self.dyn_lb = self.problem.bounds.low.copy()
+        self.dyn_ub = self.problem.bounds.up.copy()
 
     def get_weights__(self, fit, fit_avg, fit_min):
         temp1 = self.w_min + (self.w_max - self.w_min) * (fit - fit_min) / (
             fit_avg - fit_min
         )
-        if self.problem.minmax == "min":
+        if self.problem.sense == "min":
             output = temp1 if fit <= fit_avg else self.w_max
         else:
             output = self.w_max if fit <= fit_avg else temp1
@@ -95,9 +94,9 @@ cdef class C_PSO(P_PSO):
     def bounded_solution(self, solution: np.ndarray) -> np.ndarray:
         return np.clip(solution, self.dyn_lb, self.dyn_ub)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -120,12 +119,12 @@ cdef class C_PSO(P_PSO):
             x_new = self.pop[idx].solution + v_new
             self.pop[idx].velocity = v_new
             pos_new = self.bounded_solution(x_new)
-            pos_new = self.correct_solution(pos_new)
-            target = self.get_target(pos_new)
-            if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
+            pos_new = self._correct_solution(pos_new)
+            target = self._get_target(pos_new)
+            if self._compare_target(target, self.pop[idx].target, self.problem.sense):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(
-                target, self.pop[idx].local_target, self.problem.minmax
+            if self._compare_target(
+                target, self.pop[idx].local_target, self.problem.sense
             ):
                 self.pop[idx].update(
                     local_solution=pos_new.copy(), local_target=target.copy()
@@ -133,16 +132,16 @@ cdef class C_PSO(P_PSO):
 
         ## Implement chaostic local search for the best solution
         g_best = self.g_best.copy()
-        cx_best_0 = (self.g_best.solution - self.problem.lb) / (
-            self.problem.ub - self.problem.lb
+        cx_best_0 = (self.g_best.solution - self.problem.bounds.low) / (
+            self.problem.bounds.up - self.problem.bounds.low
         )  # Eq. 7
         cx_best_1 = 4 * cx_best_0 * (1 - cx_best_0)  # Eq. 6
-        x_best = self.problem.lb + cx_best_1 * (
-            self.problem.ub - self.problem.lb
+        x_best = self.problem.bounds.low + cx_best_1 * (
+            self.problem.bounds.up - self.problem.bounds.low
         )  # Eq. 8
-        x_best = self.correct_solution(x_best)
-        target_best = self.get_target(x_best)
-        if self.compare_target(target_best, self.g_best.target):
+        x_best = self._correct_solution(x_best)
+        target_best = self._get_target(x_best)
+        if self._compare_target(target_best, self.g_best.target):
             g_best.update(solution=x_best, target=target_best)
 
         r = self.generator.random()
@@ -155,7 +154,7 @@ cdef class C_PSO(P_PSO):
         )
         self.dyn_ub = np.min(bound_max, axis=0)
 
-        pop_new_child = self.generate_population(self.pop_size - self.N_CLS)
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_new_child, self.pop_size, self.problem.minmax
+        pop_new_child = self._generate_population(self.pop_size - self.N_CLS)
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_new_child, self.pop_size, self.problem.sense
         )

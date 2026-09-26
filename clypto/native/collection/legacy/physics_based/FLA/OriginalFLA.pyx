@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalFLA(_LegacyOptimizer):
+cdef class OriginalFLA(LegacyOptimizer):
     """
     The original version of: Fick's Law Algorithm (FLA)
 
@@ -30,14 +30,14 @@ cdef class OriginalFLA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import FLA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -75,7 +75,7 @@ cdef class OriginalFLA(_LegacyOptimizer):
             C5 (float): factor C5, default=2.0
             DD (float): factor D in the paper, default=0.01
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
         self.C1 = self.validator.check_float("C1", C1, (-100.0, 100.0))
@@ -84,28 +84,28 @@ cdef class OriginalFLA(_LegacyOptimizer):
         self.C4 = self.validator.check_float("C4", C4, (-100.0, 100.0))
         self.C5 = self.validator.check_float("C5", C5, (-100.0, 100.0))
         self.DD = self.validator.check_float("DD", DD, (-100.0, 100.0))
-        self.set_parameters(["epoch", "pop_size", "C1", "C2", "C3", "C4", "C5", "DD"])
+        self._set_parameters(["epoch", "pop_size", "C1", "C2", "C3", "C4", "C5", "DD"])
         self.sort_flag = False
 
-    def before_main_loop(self):
-        self.xss = self.get_sorted_population(self.pop, self.problem.minmax)
+    def _before_main_loop(self):
+        self.xss = self._get_sorted_population(self.pop, self.problem.sense)
         self.g_best = self.xss[0].copy()
         self.n1 = int(np.round(self.pop_size / 2))
         self.n2 = self.pop_size - self.n1
         self.pop1 = self.pop[: self.n1].copy()
         self.pop2 = self.pop[self.n1:].copy()
-        self.best1 = self.get_best_agent(self.pop1, self.problem.minmax)
-        self.best2 = self.get_best_agent(self.pop2, self.problem.minmax)
-        if self.compare_target(
-                self.best1.target, self.best2.target, self.problem.minmax
+        self.best1 = self._get_best_agent(self.pop1, self.problem.sense)
+        self.best2 = self._get_best_agent(self.pop2, self.problem.sense)
+        if self._compare_target(
+                self.best1.target, self.best2.target, self.problem.sense
         ):
             self.fsss = self.best1.target.fitness
         else:
             self.fsss = self.best2.target.fitness
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -139,14 +139,14 @@ cdef class OriginalFLA(_LegacyOptimizer):
                     pos_new = self.best2.solution + dfg * dof * self.generator.random(
                         self.problem.n_dims
                     ) * (jj * self.best2.solution - self.pop1[idx].solution)
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
                 for idx in range(nt12, self.n1):
                     tt = self.pop1[idx].solution + dof * (
                             self.generator.random(self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
+                            * (self.problem.bounds.up - self.problem.bounds.low)
+                            + self.problem.bounds.low
                     )
                     pp = self.generator.random(self.problem.n_dims)
                     pos_new = np.where(
@@ -154,17 +154,17 @@ cdef class OriginalFLA(_LegacyOptimizer):
                         self.best1.solution,
                         np.where(pp >= 0.9, self.pop1[idx].solution, tt),
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
                 for idx in range(0, self.n2):
                     pos_new = self.best2.solution + dof * (
                             self.generator.random(self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
+                            * (self.problem.bounds.up - self.problem.bounds.low)
+                            + self.problem.bounds.low
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
             else:
                 m1n, m2n = 0.1 * self.n2, 0.2 * self.n2
@@ -184,14 +184,14 @@ cdef class OriginalFLA(_LegacyOptimizer):
                     pos_new = self.best1.solution + dfg * dof * self.generator.random(
                         self.problem.n_dims
                     ) * (jj * self.best1.solution - self.pop2[idx].solution)
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
                 for idx in range(nt12, self.n2):
                     tt = self.pop2[idx].solution + dof * (
                             self.generator.random(self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
+                            * (self.problem.bounds.up - self.problem.bounds.low)
+                            + self.problem.bounds.low
                     )
                     pp = self.generator.random(self.problem.n_dims)
                     pos_new = np.where(
@@ -199,17 +199,17 @@ cdef class OriginalFLA(_LegacyOptimizer):
                         self.best2.solution,
                         np.where(pp >= 0.9, self.pop2[idx].solution, tt),
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
                 for idx in range(0, self.n1):
                     pos_new = self.best1.solution + dof * (
                             self.generator.random(self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
+                            * (self.problem.bounds.up - self.problem.bounds.low)
+                            + self.problem.bounds.low
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
         else:  # Equilibrium operator (EO)
             if tf <= 1:
@@ -231,8 +231,8 @@ cdef class OriginalFLA(_LegacyOptimizer):
                             + qeo * self.pop1[idx].solution
                             + qeo * (ms * self.best1.solution - self.pop1[idx].solution)
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
                 for idx in range(0, self.n2):
                     dfg = self.generator.integers(1, 3)
@@ -252,8 +252,8 @@ cdef class OriginalFLA(_LegacyOptimizer):
                             + qeo * self.pop2[idx].solution
                             + qeo * (ms * self.best2.solution - self.pop2[idx].solution)
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
             else:  # Steady state operator (SSO)
                 for idx in range(0, self.n1):
@@ -275,8 +275,8 @@ cdef class OriginalFLA(_LegacyOptimizer):
                             + qg * self.pop1[idx].solution
                             + qg * (ms * self.best1.solution - self.pop1[idx].solution)
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
                 for idx in range(0, self.n2):
                     dfg = self.generator.integers(1, 3)
@@ -297,25 +297,25 @@ cdef class OriginalFLA(_LegacyOptimizer):
                             + qg * self.pop2[idx].solution
                             + qg * (ms * self.g_best.solution - self.pop2[idx].solution)
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
         if self.mode not in self.AVAILABLE_MODES:
             for idx in range(0, self.pop_size):
-                pop_new[idx].target = self.get_target(pop_new[idx].solution)
+                pop_new[idx].target = self._get_target(pop_new[idx].solution)
         else:
-            pop_new = self.update_target_for_population(pop_new)
+            pop_new = self._update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = pop_new[idx]
         self.pop1 = self.pop[: self.n1].copy()
         self.pop2 = self.pop[self.n1:].copy()
-        self.best1 = self.get_best_agent(self.pop1, self.problem.minmax)
-        self.best2 = self.get_best_agent(self.pop2, self.problem.minmax)
-        if self.compare_target(
-                self.best1.target, self.best2.target, self.problem.minmax
+        self.best1 = self._get_best_agent(self.pop1, self.problem.sense)
+        self.best2 = self._get_best_agent(self.pop2, self.problem.sense)
+        if self._compare_target(
+                self.best1.target, self.best2.target, self.problem.sense
         ):
             self.fsss = self.best1.target.fitness
         else:

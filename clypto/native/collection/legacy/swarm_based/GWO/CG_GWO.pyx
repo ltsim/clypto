@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class CG_GWO(_LegacyOptimizer):
+cdef class CG_GWO(LegacyOptimizer):
     """
     The original version of: Cauchy‑Gaussian mutation and improved search strategy GWO (CG‑GWO)
 
@@ -23,14 +23,14 @@ cdef class CG_GWO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -52,11 +52,10 @@ cdef class CG_GWO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
     def cauchy_gaussian_mutation(self, best, leader, epoch):
@@ -82,36 +81,36 @@ cdef class CG_GWO(_LegacyOptimizer):
         mutated_pos = leader.solution * (1 + eps1 * c_rand + eps2 * g_rand)
         return mutated_pos
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         # linearly decreased from 2 to 0
         a = 2 - 2.0 * epoch / self.epoch
-        _, list_best, _ = self.get_special_agents(
-            self.pop, n_best=3, minmax=self.problem.minmax
+        _, list_best, _ = self._get_special_agents(
+            self.pop, n_best=3, sense=self.problem.sense
         )
 
         # Apply Cauchy-Gaussian mutation to leaders
         alpha_pos = self.cauchy_gaussian_mutation(list_best[0], list_best[0], epoch)
-        alpha_pos = self.correct_solution(alpha_pos)
-        alpha = self.generate_agent(solution=alpha_pos)
+        alpha_pos = self._correct_solution(alpha_pos)
+        alpha = self._generate_agent(solution=alpha_pos)
 
         beta_pos = self.cauchy_gaussian_mutation(list_best[0], list_best[1], epoch)
-        beta_pos = self.correct_solution(beta_pos)
-        beta = self.generate_agent(solution=beta_pos)
+        beta_pos = self._correct_solution(beta_pos)
+        beta = self._generate_agent(solution=beta_pos)
 
         delta_pos = self.cauchy_gaussian_mutation(list_best[0], list_best[2], epoch)
-        delta_pos = self.correct_solution(delta_pos)
-        delta = self.generate_agent(solution=delta_pos)
+        delta_pos = self._correct_solution(delta_pos)
+        delta = self._generate_agent(solution=delta_pos)
 
         leaders = [alpha, beta, delta]
         # Greedy selection mechanism
-        list_best = self.greedy_selection_population(
-            list_best, leaders, self.problem.minmax
+        list_best = self._greedy_selection_population(
+            list_best, leaders, self.problem.sense
         )
 
         pop_new = []
@@ -129,13 +128,13 @@ cdef class CG_GWO(_LegacyOptimizer):
                 # Calculate average position of all wolves
                 x_avg = np.mean([agent.solution for agent in self.pop], axis=0)
                 pos_new = (list_best[0].solution - x_avg) - r3 * (
-                    self.problem.lb + r4 * (self.problem.ub - self.problem.lb)
+                    self.problem.bounds.low + r4 * (self.problem.bounds.up - self.problem.bounds.low)
                 )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
 
-            if self.compare_target(
-                self.pop[idx].target, agent.target, self.problem.minmax
+            if self._compare_target(
+                self.pop[idx].target, agent.target, self.problem.sense
             ):
                 # If new position is not better, use original GWO update
                 A1 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
@@ -154,11 +153,11 @@ cdef class CG_GWO(_LegacyOptimizer):
                     C3 * list_best[2].solution - self.pop[idx].solution
                 )
                 pos_new = (X1 + X2 + X3) / 3.0
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
 
-            if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                agent.target, self.pop[idx].target, self.problem.sense
             ):
                 # If new position is better, update the agent
                 self.pop[idx] = agent

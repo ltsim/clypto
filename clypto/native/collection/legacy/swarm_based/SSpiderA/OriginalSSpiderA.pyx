@@ -8,42 +8,18 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalSSpiderAAgent(_LegacyAgent):
+cdef class _OriginalSSpiderAAgent(LegacyAgent):
     cdef public object target_solution
     cdef public object local_vector
     cdef public object mask
     cdef public object intensity
-    def __init__(self, solution=None, target=None, target_solution=None, local_vector=None, mask=None, intensity=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.target_solution = target_solution
-        self.local_vector = local_vector
-        self.mask = mask
-        self.intensity = intensity
-    cpdef object copy(self):
-        return _OriginalSSpiderAAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.target_solution,
-            self.local_vector,
-            self.mask,
-            self.intensity,
-        )
-    def update(self, **kwargs):
-        if "target_solution" in kwargs:
-            self.target_solution = kwargs.pop("target_solution")
-        if "local_vector" in kwargs:
-            self.local_vector = kwargs.pop("local_vector")
-        if "mask" in kwargs:
-            self.mask = kwargs.pop("mask")
-        if "intensity" in kwargs:
-            self.intensity = kwargs.pop("intensity")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalSSpiderA(_LegacyOptimizer):
+cdef class OriginalSSpiderA(LegacyOptimizer):
     """
     The developed version of: Social Spider Algorithm (OriginalSSpiderA)
 
@@ -61,14 +37,14 @@ cdef class OriginalSSpiderA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import SSpiderA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -99,18 +75,18 @@ cdef class OriginalSSpiderA(_LegacyOptimizer):
             p_c (float): controls the probability of the spiders changing their dimension mask in the random walk step, default=0.7
             p_m (float): the probability of each value in a dimension mask to be one, default=0.1
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.r_a = self.validator.check_float("r_a", r_a, (0, 5.0))
         self.p_c = self.validator.check_float("p_c", p_c, (0, 1.0))
         self.p_m = self.validator.check_float("p_m", p_m, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "r_a", "p_c", "p_m"])
+        self._set_parameters(["epoch", "pop_size", "r_a", "p_c", "p_m"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         """
-        Overriding method in _LegacyOptimizer class
+        Overriding method in LegacyOptimizer class
             + x: The position of s on the web.
             + train: The fitness of the current position of s
             + target_vibration: The target vibration of s in the previous iteration.
@@ -132,23 +108,23 @@ cdef class OriginalSSpiderA(_LegacyOptimizer):
             mask=mask,
         )
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         """
         Generate new agent with full information
 
         Args:
             solution (np.ndarray): The solution
         """
-        agent = self.generate_empty_agent(solution)
-        agent.target = self.get_target(agent.solution)
+        agent = self._generate_empty_agent(solution)
+        agent.target = self._get_target(agent.solution)
         agent.intensity = np.log(
             1.0 / (np.abs(agent.target.fitness) + self.EPSILON) + 1
         )
         return agent
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -187,18 +163,18 @@ cdef class OriginalSSpiderA(_LegacyOptimizer):
                 * (self.pop[idx].solution - self.pop[idx].local_vector)
                 + (pos_new - self.pop[idx].solution) * self.generator.normal()
             )
-            agent.solution = self.correct_solution(pos_new)
+            agent.solution = self._correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(agent.solution)
+                agent.target = self._get_target(agent.solution)
                 agent.intensity = np.log(
                     1.0 / (np.abs(agent.target.fitness) + self.EPSILON) + 1
                 )
                 pop_new.append(agent)
-        pop_new = self.update_target_for_population(pop_new)
+        pop_new = self._update_target_for_population(pop_new)
 
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                pop_new[idx].target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx].local_vector = (
                     pop_new[idx].solution - self.pop[idx].solution

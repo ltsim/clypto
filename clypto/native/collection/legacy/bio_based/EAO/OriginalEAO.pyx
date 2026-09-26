@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalEAO(_LegacyOptimizer):
+cdef class OriginalEAO(LegacyOptimizer):
     """
     The original version of: Enzyme Action Optimizer (EAO)
 
@@ -22,14 +22,14 @@ cdef class OriginalEAO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.bio_based import EAO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -55,17 +55,16 @@ cdef class OriginalEAO(_LegacyOptimizer):
             pop_size: Number of population size, default = 100
             ec: Enzyme Concentration, default=0.1
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.ec = self.validator.check_float("ec", ec, [0.0, 100])
-        self.set_parameters(["epoch", "pop_size", "ec"])
+        self._set_parameters(["epoch", "pop_size", "ec"])
         self.sort_flag = False
-        self.is_parallelizable = False
 
-    def evolve(self, epoch: int) -> None:
+    def _evolve(self, epoch: int) -> None:
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch: The current iteration
@@ -80,8 +79,8 @@ cdef class OriginalEAO(_LegacyOptimizer):
             pos1 = (self.g_best.solution - self.pop[idx].solution) + r1 * np.sin(
                 AF * self.pop[idx].solution
             )
-            pos1 = self.correct_solution(pos1)
-            agent1 = self.generate_agent(pos1)
+            pos1 = self._correct_solution(pos1)
+            agent1 = self._generate_agent(pos1)
 
             # 2. Select 2 randoms
             j1, j2 = self.generator.choice(
@@ -101,8 +100,8 @@ cdef class OriginalEAO(_LegacyOptimizer):
                     + scA1 * (self.pop[j1].solution - self.pop[j2].solution)
                     + exA * (self.g_best.solution - self.pop[idx].solution)
             )
-            posA = self.correct_solution(posA)
-            agentA = self.generate_agent(posA)
+            posA = self._correct_solution(posA)
+            agentA = self._generate_agent(posA)
 
             ## Candidate B: scalar random factors
             scB1 = self.ec + (1 - self.ec) * self.generator.random()
@@ -112,8 +111,8 @@ cdef class OriginalEAO(_LegacyOptimizer):
                     + scB1 * (self.pop[j1].solution - self.pop[j2].solution)
                     + exB * (self.g_best.solution - self.pop[idx].solution)
             )
-            posB = self.correct_solution(posB)
-            agentB = self.generate_agent(posB)
+            posB = self._correct_solution(posB)
+            agentB = self._generate_agent(posB)
 
             pop_new = [self.pop[idx], agent1, agentA, agentB]
-            self.pop[idx] = self.get_best_agent(pop_new, minmax=self.problem.minmax)
+            self.pop[idx] = self._get_best_agent(pop_new, sense=self.problem.sense)

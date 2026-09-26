@@ -7,32 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalCSOAgent(_LegacyAgent):
+cdef class _OriginalCSOAgent(LegacyAgent):
     cdef public object velocity
     cdef public object flag
-    def __init__(self, solution=None, target=None, velocity=None, flag=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.velocity = velocity
-        self.flag = flag
-    cpdef object copy(self):
-        return _OriginalCSOAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.velocity,
-            self.flag,
-        )
-    def update(self, **kwargs):
-        if "velocity" in kwargs:
-            self.velocity = kwargs.pop("velocity")
-        if "flag" in kwargs:
-            self.flag = kwargs.pop("flag")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalCSO(_LegacyOptimizer):
+cdef class OriginalCSO(LegacyOptimizer):
     """
     The original version of: Cat Swarm Optimization (CSO)
 
@@ -54,14 +38,14 @@ cdef class OriginalCSO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import CSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -105,7 +89,7 @@ cdef class OriginalCSO(_LegacyOptimizer):
             w_max (float): same in PSO
             selected_strategy (int):  0: best fitness, 1: tournament, 2: roulette wheel, else: random (decrease by quality)
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.mixture_ratio = self.validator.check_float(
@@ -121,7 +105,7 @@ cdef class OriginalCSO(_LegacyOptimizer):
         self.selected_strategy = self.validator.check_int(
             "selected_strategy", selected_strategy, [0, 4]
         )
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -138,7 +122,7 @@ cdef class OriginalCSO(_LegacyOptimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         """
         + x: current position of cat
         + v: vector v of cat (same amount of dimension as x)
@@ -146,13 +130,13 @@ cdef class OriginalCSO(_LegacyOptimizer):
         """
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         flag = True if self.generator.uniform() < self.mixture_ratio else False
         return _OriginalCSOAgent(solution=solution, velocity=velocity, flag=flag)
 
     def seeking_mode__(self, cat):
         candidate_cats = []
-        clone_cats = self.generate_population(self.smp)
+        clone_cats = self._generate_population(self.smp)
         if self.spc:
             candidate_cats.append(cat.copy())
             clone_cats = [cat.copy() for _ in range(self.smp - 1)]
@@ -168,35 +152,35 @@ cdef class OriginalCSO(_LegacyOptimizer):
                 self.generator.random(self.problem.n_dims) < 0.5, pos_new1, pos_new2
             )
             pos_new[idx] = clone.solution[idx]
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.update(velocity=clone.velocity, flag=clone.flag)
             candidate_cats.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                candidate_cats[-1].target = self.get_target(pos_new)
-        candidate_cats = self.update_target_for_population(candidate_cats)
+                candidate_cats[-1].target = self._get_target(pos_new)
+        candidate_cats = self._update_target_for_population(candidate_cats)
 
         if self.selected_strategy == 0:  # Best fitness-self
-            cat = self.get_best_agent(candidate_cats, self.problem.minmax)
+            cat = self._get_best_agent(candidate_cats, self.problem.sense)
         elif self.selected_strategy == 1:  # Tournament
             k_way = 4
             idx = self.generator.choice(range(0, self.smp), k_way, replace=False)
             cats_k_way = [candidate_cats[_] for _ in idx]
-            cat = self.get_best_agent(cats_k_way, self.problem.minmax)
+            cat = self._get_best_agent(cats_k_way, self.problem.sense)
         elif self.selected_strategy == 2:  ### Roul-wheel selection
             list_fitness = [
                 candidate_cats[u].target.fitness for u in range(0, len(candidate_cats))
             ]
-            idx = self.get_index_roulette_wheel_selection(list_fitness)
+            idx = self._get_index_roulette_wheel_selection(list_fitness)
             cat = candidate_cats[idx]
         else:
             idx = self.generator.choice(range(0, len(candidate_cats)))
             cat = candidate_cats[idx]  # Random
         return cat.solution
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -214,7 +198,7 @@ cdef class OriginalCSO(_LegacyOptimizer):
                     * self.c1
                     * (self.g_best.solution - self.pop[idx].solution)
                 )
-                pos_new = self.correct_solution(pos_new)
+                pos_new = self._correct_solution(pos_new)
             else:
                 pos_new = self.seeking_mode__(self.pop[idx])
             agent.solution = pos_new
@@ -223,5 +207,5 @@ cdef class OriginalCSO(_LegacyOptimizer):
             )
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        self.pop = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        self.pop = self._update_target_for_population(pop_new)

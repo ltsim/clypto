@@ -10,7 +10,7 @@ import numpy as np
 from clypto.native.collection.vectorize.evolutionary_based.EP.OriginalEP cimport OriginalEP
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -27,14 +27,14 @@ cdef class LevyEP(OriginalEP):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import EP    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -62,7 +62,7 @@ cdef class LevyEP(OriginalEP):
         super().__init__(epoch, pop_size, bout_size, name=name, mode=mode)
         self.sort_flag = True
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation child = self.offspring__(pop)
         cdef NativePopulation comeback
@@ -74,7 +74,7 @@ cdef class LevyEP(OriginalEP):
         idx_list = self.generator.choice(pop_left.n, int(0.5 * pop_left.n), replace=False)
         k = len(idx_list)
         comeback = pop_left.take(idx_list)
-        comeback.X[:] = self.correct_solution(pop_left.X[idx_list] + self.get_levy_flight_step(multiplier=0.01, size=(k, pop.d), case=-1) * self.generator.random((k, 1)))
+        comeback.X[:] = self._correct_solution(pop_left.X[idx_list] + self._get_levy_flight_step(multiplier=0.01, size=(k, pop.d), case=-1) * self.generator.random((k, 1)))
         comeback.field("S")[:] = self.generator.uniform(0, self.distance, (k, pop.d))
         comeback.field("WIN")[:] = 0
         self.evaluate(comeback, 0, k)

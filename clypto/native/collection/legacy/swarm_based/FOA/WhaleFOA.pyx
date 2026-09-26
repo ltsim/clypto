@@ -20,14 +20,14 @@ cdef class WhaleFOA(OriginalFOA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import FOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -52,9 +52,9 @@ cdef class WhaleFOA(OriginalFOA):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -83,16 +83,16 @@ cdef class WhaleFOA(OriginalFOA):
                     D1 * np.exp(b * l) * np.cos(2 * np.pi * l) + self.g_best.solution
                 )
             smell = self.norm_consecutive_adjacent__(pos_new)
-            pos_new = self.correct_solution(smell)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(smell)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                pop_new, self.pop, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                pop_new, self.pop, self.problem.sense
             )

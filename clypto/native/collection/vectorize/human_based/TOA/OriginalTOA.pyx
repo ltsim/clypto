@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalTOA(LegacyNativeOptimizer):
+cdef class OriginalTOA(VectorizeOptimizer):
     """
     The original version of: Teamwork Optimization Algorithm (TOA)
 
@@ -34,14 +34,14 @@ cdef class OriginalTOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import TOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -69,18 +69,17 @@ cdef class OriginalTOA(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sf
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -93,7 +92,7 @@ cdef class OriginalTOA(LegacyNativeOptimizer):
         # phase 2: towards the mean of the agents that are better than the agent
         X = pop.X
         F = np.asarray(pop.F)
-        B = (F[None, :] < F[:, None]) if self.problem.minmax == "min" else (F[None, :] > F[:, None])
+        B = (F[None, :] < F[:, None]) if self.problem.sense == "min" else (F[None, :] > F[:, None])
         count = B.sum(axis=1)
         has = count > 0
         sf_pos = np.tile(g, (n, 1))
@@ -101,7 +100,7 @@ cdef class OriginalTOA(LegacyNativeOptimizer):
         if has.any():
             rows = np.flatnonzero(has)
             sf = pop.take(rows)
-            sf.X[:] = self.correct_solution((B[rows].astype(float) @ X) / count[rows][:, None])
+            sf.X[:] = self._correct_solution((B[rows].astype(float) @ X) / count[rows][:, None])
             self.evaluate(sf, 0, len(rows))
             sf_pos[rows], sf_fit[rows] = sf.X, sf.F
         ops.step(self, X + rng.random((n, 1)) * (sf_pos - rng.integers(1, 3, size=(n, 1)) * X) * np.sign(F - sf_fit)[:, None])

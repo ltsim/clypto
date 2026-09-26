@@ -6,11 +6,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalCDDO(LegacyNativeOptimizer):
+cdef class OriginalCDDO(VectorizeOptimizer):
     """
     The original version of: Child Drawing Development Optimization (CCDO)
 
@@ -30,14 +30,14 @@ cdef class OriginalCDDO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import CDDO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -76,11 +76,10 @@ cdef class OriginalCDDO(LegacyNativeOptimizer):
             pattern_size (int): size of the pattern matrix, default = 10
             creativity_rate (float): creativity rate, default = 0.1
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "pattern_size", "creativity_rate"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -89,7 +88,7 @@ cdef class OriginalCDDO(LegacyNativeOptimizer):
         self.pattern_size = cy.validator(int, pattern_size, [1, 1000], "pattern_size")
         self.creativity_rate = cy.validator(float, creativity_rate, [0.0, 1.0], "creativity_rate")
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
@@ -101,7 +100,7 @@ cdef class OriginalCDDO(LegacyNativeOptimizer):
         x1, x2 = pop.X[np.arange(n), p1], pop.X[np.arange(n), p2]
         self.list_gr = np.where(x1 == 0, x2, x1 + x2 / np.where(x1 == 0, 1, x1))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
@@ -109,7 +108,7 @@ cdef class OriginalCDDO(LegacyNativeOptimizer):
         Pl = self.pop_local.X
         g = np.array(self.g_best_x())
         pattern = np.array(X[self.sorted_order(pop)[:self.pattern_size]])
-        hand_pressure = rng.integers(self.problem.lb[0], self.problem.ub[0] + 1, size=n)
+        hand_pressure = rng.integers(self.problem.bounds.low[0], self.problem.bounds.up[0] + 1, size=n)
         pp = rng.integers(0, d, size=n)
         cond1 = X[np.arange(n), pp] <= hand_pressure
         cond2 = ~cond1 & (1.5 < self.list_gr) & (self.list_gr < 2)

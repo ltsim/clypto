@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalAFT(LegacyNativeOptimizer):
+cdef class OriginalAFT(VectorizeOptimizer):
     """
     The original version of: Ali baba and the Forty Thieves (AFT) optimizer
 
@@ -21,14 +21,14 @@ cdef class OriginalAFT(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import AFT    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -58,28 +58,27 @@ cdef class OriginalAFT(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         self.pop_best = self.pop.take(np.arange(self.pop.n))  # It is like local best positions like in PSO
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         Pb = self.pop_best.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         Pp = 0.1 * np.log(2.75 * (epoch_c / self.epoch) ** 0.1)
         Td = 2 * np.exp(-2 * (epoch_c / self.epoch) ** 2)
         follower = rng.integers(0, n, size=n)

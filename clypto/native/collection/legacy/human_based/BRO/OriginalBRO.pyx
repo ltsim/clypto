@@ -23,14 +23,14 @@ cdef class OriginalBRO(DevBRO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import BRO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -58,12 +58,11 @@ cdef class OriginalBRO(DevBRO):
             threshold (int): dead threshold, default=3
         """
         super().__init__(epoch, pop_size, threshold, **kwargs)
-        self.is_parallelizable = False
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -75,8 +74,8 @@ cdef class OriginalBRO(DevBRO):
                 idx,
                 jdx,
             )  ## This error in the algorithm's flow in the paper, But in the matlab code, he changed.
-            if self.compare_target(
-                self.pop[idx].target, self.pop[jdx].target, self.problem.minmax
+            if self._compare_target(
+                self.pop[idx].target, self.pop[jdx].target, self.problem.sense
             ):
                 dam, vic = jdx, idx  ## The mistake also here in the paper.
             if self.pop[dam].damage < self.threshold:
@@ -84,16 +83,16 @@ cdef class OriginalBRO(DevBRO):
                     np.maximum(self.pop[dam].solution, self.g_best.solution)
                     - np.minimum(self.pop[dam].solution, self.g_best.solution)
                 ) + np.maximum(self.pop[dam].solution, self.g_best.solution)
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
                 agent.damage = self.pop[dam].damage + 1
                 self.pop[dam] = agent
                 self.pop[vic].damage = 0
             else:
                 pos_new = self.generator.uniform(
-                    self.problem.lb_updated, self.problem.ub_updated
+                    self.lb_updated, self.ub_updated
                 )
-                agent = self.generate_agent(pos_new)
+                agent = self._generate_agent(pos_new)
                 self.pop[dam] = agent
         if epoch >= self.dyn_delta:
             pos_list = np.array(
@@ -102,10 +101,10 @@ cdef class OriginalBRO(DevBRO):
             pos_std = np.std(pos_list, axis=0)
             lb = self.g_best.solution - pos_std
             ub = self.g_best.solution + pos_std
-            self.problem.lb_updated = np.clip(
-                lb, self.problem.lb_updated, self.problem.ub_updated
+            self.lb_updated = np.clip(
+                lb, self.lb_updated, self.ub_updated
             )
-            self.problem.ub_updated = np.clip(
-                ub, self.problem.lb_updated, self.problem.ub_updated
+            self.ub_updated = np.clip(
+                ub, self.lb_updated, self.ub_updated
             )
             self.dyn_delta += round(self.dyn_delta / 2)

@@ -7,32 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalBAAgent(_LegacyAgent):
+cdef class _OriginalBAAgent(LegacyAgent):
     cdef public object velocity
     cdef public object pulse_frequency
-    def __init__(self, solution=None, target=None, velocity=None, pulse_frequency=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.velocity = velocity
-        self.pulse_frequency = pulse_frequency
-    cpdef object copy(self):
-        return _OriginalBAAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.velocity,
-            self.pulse_frequency,
-        )
-    def update(self, **kwargs):
-        if "velocity" in kwargs:
-            self.velocity = kwargs.pop("velocity")
-        if "pulse_frequency" in kwargs:
-            self.pulse_frequency = kwargs.pop("pulse_frequency")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalBA(_LegacyOptimizer):
+cdef class OriginalBA(LegacyOptimizer):
     """
     The original version of: Bat-inspired Algorithm (BA)
 
@@ -48,15 +32,15 @@ cdef class OriginalBA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import BA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BA.OriginalBA(epoch=1000, pop_size=50, loudness=0.8, pulse_rate=0.95, pf_min=0.1, pf_max=10.0)
@@ -89,23 +73,23 @@ cdef class OriginalBA(_LegacyOptimizer):
             pf_min (float): pulse frequency min, default = 0
             pf_max (float): pulse frequency max, default = 10
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.loudness = self.validator.check_float("loudness", loudness, (0, 1.0))
         self.pulse_rate = self.validator.check_float("pulse_rate", pulse_rate, (0, 1.0))
         self.pf_min = self.validator.check_float("pf_min", pf_min, [0.0, 3.0])
         self.pf_max = self.validator.check_float("pf_max", pf_max, [5.0, 20.0])
-        self.set_parameters(
+        self._set_parameters(
             ["epoch", "pop_size", "loudness", "pulse_rate", "pf_min", "pf_max"]
         )
         self.alpha = self.gamma = 0.9
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         pulse_frequency = (
             self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
         )
@@ -113,9 +97,9 @@ cdef class OriginalBA(_LegacyOptimizer):
             solution=solution, velocity=velocity, pulse_frequency=pulse_frequency
         )
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -132,18 +116,18 @@ cdef class OriginalBA(_LegacyOptimizer):
                 x_new = self.g_best.solution + 0.001 * self.generator.normal(
                     self.problem.n_dims
                 )
-            pos_new = self.correct_solution(x_new)
+            pos_new = self._correct_solution(x_new)
             agent.update(solution=pos_new, velocity=vec)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         for idx in range(self.pop_size):
             ## Replace the old position by the new one when its has better fitness.
             ##  and then update loudness and emission rate
             if (
-                self.compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                self._compare_target(
+                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
                 )
                 and self.generator.random() < self.loudness
             ):

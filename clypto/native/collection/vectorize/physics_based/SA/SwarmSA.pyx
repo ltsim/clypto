@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class SwarmSA(LegacyNativeOptimizer):
+cdef class SwarmSA(VectorizeOptimizer):
     """
     The swarm version of: Simulated Annealing (SwarmSA)
 
@@ -27,14 +27,14 @@ cdef class SwarmSA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import SA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -88,7 +88,7 @@ cdef class SwarmSA(LegacyNativeOptimizer):
             mutation_step_size (float): Mutation Step Size, default=0.1
             mutation_step_size_damp (float): Mutation Step Size Damp, default=0.99
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -102,7 +102,6 @@ cdef class SwarmSA(LegacyNativeOptimizer):
                 "mutation_step_size_damp",
             ],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -119,7 +118,7 @@ cdef class SwarmSA(LegacyNativeOptimizer):
 
     def mutate__(self, position, sigma):
         # Select Mutating Variables
-        pos_new = position + sigma * self.generator.uniform(self.problem.lb, self.problem.ub)
+        pos_new = position + sigma * self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         pos_new = np.where(
             self.generator.random(self.problem.n_dims) < self.mutation_rate,
             position,
@@ -127,16 +126,16 @@ cdef class SwarmSA(LegacyNativeOptimizer):
         )
         if np.all(pos_new == position):  # Select at least one variable to mutate
             pos_new[self.generator.integers(0, self.problem.n_dims)] = self.generator.uniform()
-        return self.correct_solution(pos_new)
+        return self._correct_solution(pos_new)
 
-    cdef void initialization(self):
+    def _initialization(self):
         # Initial Temperature
         self.dyn_t = self.t0  # Initial Temperature
         self.t_damp = (self.t1 / self.t0) ** (1.0 / self.epoch)  # Calculate Temperature Damp Rate
         self.dyn_sigma = self.mutation_step_size  # Initial Value of Step Size
-        LegacyNativeOptimizer.initialization(self)
+        VectorizeOptimizer._initialization(self)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, best
         cdef Py_ssize_t g, idx, j, k, n = pop.n, d = pop.d
@@ -147,14 +146,14 @@ cdef class SwarmSA(LegacyNativeOptimizer):
             for idx in range(0, self.pop_size):
                 for j in range(0, self.move_count):
                     # Perform Mutation (Move)
-                    moves.append(self.correct_solution(self.mutate__(X[idx], self.dyn_sigma)))
+                    moves.append(self._correct_solution(self.mutate__(X[idx], self.dyn_sigma)))
             cand = self.new_population(np.array(moves))
             # Columnize and Sort Newly Created Population
             best = cand.take(self.sorted_order(cand)[:self.pop_size])
             # Randomized Selection
             for idx in range(0, self.pop_size):
                 # Check if new solution is better than current
-                if self.compare_fitness(best.F[idx], pop.F[idx], self.problem.minmax):
+                if self._compare_fitness(best.F[idx], pop.F[idx], self.problem.sense):
                     pop.buf[idx] = best.buf[idx]
                 else:
                     # Compute difference according to problem type

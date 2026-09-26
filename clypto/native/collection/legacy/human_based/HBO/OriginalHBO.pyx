@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHBO(_LegacyOptimizer):
+cdef class OriginalHBO(LegacyOptimizer):
     """
     The original version of: Heap-based optimizer (HBO)
 
@@ -23,14 +23,14 @@ cdef class OriginalHBO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import HBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -54,15 +54,14 @@ cdef class OriginalHBO(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             degree (int): the degree level in Corporate Rank Hierarchy (CRH), default=2
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.degree = self.validator.check_int("degree", degree, [2, 10])
-        self.set_parameters(["epoch", "pop_size", "degree"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size", "degree"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.cycles = np.floor(self.epoch / 25)
         self.it_per_cycle = self.epoch / self.cycles
         self.qtr_cycle = self.it_per_cycle / 4
@@ -86,8 +85,8 @@ cdef class OriginalHBO(_LegacyOptimizer):
             t = c
             while t > 0:
                 parent_id = int(np.floor((t + 1) / degree) - 1)
-                if self.compare_target(
-                        pop[parent_id].target, pop[t].target, self.problem.minmax
+                if self._compare_target(
+                        pop[parent_id].target, pop[t].target, self.problem.sense
                 ):
                     break
                 else:
@@ -95,15 +94,15 @@ cdef class OriginalHBO(_LegacyOptimizer):
                 t = parent_id
         return heap
 
-    def before_main_loop(self):
+    def _before_main_loop(self):
         self.heap = self.heapifying__(self.pop, self.degree)
         self.friend_limits = self.colleagues_limits_generator__(
             self.pop_size, self.degree
         )
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -149,10 +148,10 @@ cdef class OriginalHBO(_LegacyOptimizer):
                             par_agent.solution[jdx] - cur_agent.solution[jdx]
                         )
                     else:
-                        if self.compare_target(
+                        if self._compare_target(
                                 self.heap[friend_idx][0],
                                 self.heap[c][0],
-                                self.problem.minmax,
+                                self.problem.sense,
                         ):
                             cur_agent.solution[jdx] = fri_agent.solution[jdx] + rn[
                                 jdx
@@ -167,10 +166,10 @@ cdef class OriginalHBO(_LegacyOptimizer):
                                 fri_agent.solution[jdx] - cur_agent.solution[jdx]
                             )
                             )
-                pos_new = self.correct_solution(cur_agent.solution)
-                cur_agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                        cur_agent.target, self.heap[c][0], self.problem.minmax
+                pos_new = self._correct_solution(cur_agent.solution)
+                cur_agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                        cur_agent.target, self.heap[c][0], self.problem.sense
                 ):
                     self.pop[self.heap[c][1]] = cur_agent
                     self.heap[c][0] = cur_agent.target.copy()
@@ -178,8 +177,8 @@ cdef class OriginalHBO(_LegacyOptimizer):
             t = c
             while t > 1:
                 parent_id = int((t + 1) / self.degree)
-                if self.compare_target(
-                        self.heap[parent_id][0], self.heap[t][0], self.problem.minmax
+                if self._compare_target(
+                        self.heap[parent_id][0], self.heap[t][0], self.problem.sense
                 ):
                     break
                 else:

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalBWO(_LegacyOptimizer):
+cdef class OriginalBWO(LegacyOptimizer):
     """
     The original version of: Black Widow Optimization (BWO)
 
@@ -24,14 +24,14 @@ cdef class OriginalBWO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import BWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function,
     >>> }
     >>>
@@ -63,16 +63,16 @@ cdef class OriginalBWO(_LegacyOptimizer):
             cr (float): cannibalism rate, default = 0.44
             pm (float): mutation rate, default = 0.4
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pp = self.validator.check_float("pp", pp, (0.0, 1.0))
         self.cr = self.validator.check_float("cr", cr, (0.0, 1.0))
         self.pm = self.validator.check_float("pm", pm, (0.0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "pp", "cr", "pm"])
+        self._set_parameters(["epoch", "pop_size", "pp", "cr", "pm"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.n_parents = max(2, int(self.pp * self.pop_size))
         if self.n_parents > self.pop_size:
             self.n_parents = self.pop_size
@@ -90,7 +90,7 @@ cdef class OriginalBWO(_LegacyOptimizer):
         child2 = parent2.copy()
         child1[idxs] = alpha * parent1[idxs] + (1 - alpha) * parent2[idxs]
         child2[idxs] = alpha * parent2[idxs] + (1 - alpha) * parent1[idxs]
-        return self.correct_solution(child1), self.correct_solution(child2)
+        return self._correct_solution(child1), self._correct_solution(child2)
 
     def _mutate(self, position: np.ndarray) -> np.ndarray:
         """
@@ -101,38 +101,38 @@ cdef class OriginalBWO(_LegacyOptimizer):
         pos_new = position.copy()
         idx = self.generator.integers(0, self.problem.n_dims)
         pos_new[idx] = self.generator.uniform(
-            self.problem.lb[idx], self.problem.ub[idx]
+            self.problem.bounds.low[idx], self.problem.bounds.up[idx]
         )
-        return self.correct_solution(pos_new)
+        return self._correct_solution(pos_new)
 
-    def evolve(self, epoch: int) -> None:
+    def _evolve(self, epoch: int) -> None:
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop_sorted = self.get_sorted_population(self.pop, self.problem.minmax)
+        pop_sorted = self._get_sorted_population(self.pop, self.problem.sense)
         pop1 = [agent.copy() for agent in pop_sorted[: self.n_parents]]
 
         pop2 = []
         for _ in range(self.n_parents):
             parent_idx = self.generator.choice(len(pop1), 2, replace=False)
             parent1, parent2 = pop1[parent_idx[0]], pop1[parent_idx[1]]
-            female = self.get_better_agent(parent1, parent2, self.problem.minmax).copy()
+            female = self._get_better_agent(parent1, parent2, self.problem.sense).copy()
             child1_pos, child2_pos = self._procreate(parent1.solution, parent2.solution)
-            child1 = self.generate_empty_agent(child1_pos)
-            child2 = self.generate_empty_agent(child2_pos)
+            child1 = self._generate_empty_agent(child1_pos)
+            child2 = self._generate_empty_agent(child2_pos)
             children = [child1, child2]
             if self.mode in self.AVAILABLE_MODES:
-                self.update_target_for_population(children)
+                self._update_target_for_population(children)
             else:
                 for child in children:
-                    child.target = self.get_target(child.solution)
+                    child.target = self._get_target(child.solution)
             n_keep = self.generator.binomial(len(children), 1 - self.cr)
             if n_keep < 1:
                 n_keep = 1
-            children = self.get_sorted_population(children, self.problem.minmax)
+            children = self._get_sorted_population(children, self.problem.sense)
             pop2.append(female)
             pop2.extend(children[:n_keep])
 
@@ -141,17 +141,17 @@ cdef class OriginalBWO(_LegacyOptimizer):
             for _ in range(self.n_mutate):
                 parent = pop1[self.generator.integers(0, len(pop1))]
                 pos_new = self._mutate(parent.solution)
-                pop3.append(self.generate_empty_agent(pos_new))
+                pop3.append(self._generate_empty_agent(pos_new))
             if self.mode in self.AVAILABLE_MODES:
-                self.update_target_for_population(pop3)
+                self._update_target_for_population(pop3)
             else:
                 for agent in pop3:
-                    agent.target = self.get_target(agent.solution)
+                    agent.target = self._get_target(agent.solution)
 
         pop_new = pop2 + pop3
         if len(pop_new) < self.pop_size:
             needed = self.pop_size - len(pop_new)
             pop_new.extend([agent.copy() for agent in pop_sorted[:needed]])
-        self.pop = self.get_sorted_and_trimmed_population(
-            pop_new, self.pop_size, self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            pop_new, self.pop_size, self.problem.sense
         )

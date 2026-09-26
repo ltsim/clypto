@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-class OriginalGA(_LegacyOptimizer):
+class OriginalGA(LegacyOptimizer):
     """
     The fully tuned version of: Genetic Algorithm (GA)
 
@@ -28,15 +28,15 @@ class OriginalGA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import GA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = GA.OriginalGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05)
@@ -86,7 +86,7 @@ class OriginalGA(_LegacyOptimizer):
             k_way (float): Optional, set it when use "tournament" selection, default = 0.2
             mutation_multipoints (bool): Optional, True or False, effect on mutation process, default = False
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pc = self.validator.check_float("pc", pc, (0, 1.0))
@@ -111,7 +111,7 @@ class OriginalGA(_LegacyOptimizer):
                 "mutation", mutation, ["flip", "swap", "scramble", "inversion"]
             )
         self.k_way = self.validator.check_float("k_way", k_way, (0, 1.0))
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",

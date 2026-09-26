@@ -7,27 +7,15 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalMAAgent(_LegacyAgent):
+cdef class _OriginalMAAgent(LegacyAgent):
     cdef public object bitstring
-    def __init__(self, solution=None, target=None, bitstring=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.bitstring = bitstring
-    cpdef object copy(self):
-        return _OriginalMAAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.bitstring,
-        )
-    def update(self, **kwargs):
-        if "bitstring" in kwargs:
-            self.bitstring = kwargs.pop("bitstring")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalMA(_LegacyOptimizer):
+cdef class OriginalMA(LegacyOptimizer):
     """
     The original version of: Memetic Algorithm (MA)
 
@@ -45,15 +33,15 @@ cdef class OriginalMA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import MA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = MA.OriginalMA(epoch=1000, pop_size=50, pc = 0.85, pm = 0.15, p_local = 0.5, max_local_gens = 10, bits_per_param = 4)
@@ -88,7 +76,7 @@ cdef class OriginalMA(_LegacyOptimizer):
             max_local_gens (int): Number of local search agent will be created during local search mechanism, default=10
             bits_per_param (int): Number of bits to decode a real number to 0-1 bitstring, default=4
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pc = self.validator.check_float("pc", pc, (0, 1.0))
@@ -100,7 +88,7 @@ cdef class OriginalMA(_LegacyOptimizer):
         self.bits_per_param = self.validator.check_int(
             "bits_per_param", bits_per_param, [2, 32]
         )
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -113,10 +101,10 @@ cdef class OriginalMA(_LegacyOptimizer):
         )
         self.sort_flag = True
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = "".join(
@@ -142,8 +130,8 @@ cdef class OriginalMA(_LegacyOptimizer):
             param = bitstring[
                 idx * self.bits_per_param : (idx + 1) * self.bits_per_param
             ]  # Select 16 bit every time
-            vector[idx] = self.problem.lb[idx] + (
-                (self.problem.ub[idx] - self.problem.lb[idx])
+            vector[idx] = self.problem.bounds.low[idx] + (
+                (self.problem.bounds.up[idx] - self.problem.bounds.low[idx])
                 / ((2.0**self.bits_per_param) - 1)
             ) * int(param, 2)
         return vector
@@ -176,15 +164,15 @@ cdef class OriginalMA(_LegacyOptimizer):
             child = current
             bitstring_new = self.point_mutation__(child.bitstring)
             pos_new = self.decode__(bitstring_new)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.update(solution=pos_new, bitstring=bitstring_new)
             list_local.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                list_local[-1].target = self.get_target(pos_new)
-        list_local = self.update_target_for_population(list_local)
+                list_local[-1].target = self._get_target(pos_new)
+        list_local = self._update_target_for_population(list_local)
         list_local.append(child)
-        best = self.get_best_agent(list_local, self.problem.minmax)
+        best = self._get_best_agent(list_local, self.problem.sense)
         return best
 
     def create_child__(self, idx, pop_copy):
@@ -194,14 +182,14 @@ cdef class OriginalMA(_LegacyOptimizer):
         bitstring_new = self.crossover__(pop_copy[idx].bitstring, ancient.bitstring)
         bitstring_new = self.point_mutation__(bitstring_new)
         pos_new = self.decode__(bitstring_new)
-        pos_new = self.correct_solution(pos_new)
-        agent = self.generate_agent(pos_new)
+        pos_new = self._correct_solution(pos_new)
+        agent = self._generate_agent(pos_new)
         agent.bitstring = bitstring_new
         return agent
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -209,7 +197,7 @@ cdef class OriginalMA(_LegacyOptimizer):
         ## Binary tournament
         children = []
         for idx in range(0, self.pop_size):
-            idx_offspring = self.get_index_kway_tournament_selection(
+            idx_offspring = self._get_index_kway_tournament_selection(
                 self.pop, k_way=2, output=1
             )[0]
             children.append(self.pop[idx_offspring].copy())
@@ -222,13 +210,13 @@ cdef class OriginalMA(_LegacyOptimizer):
             bitstring_new = self.crossover__(children[idx].bitstring, ancient.bitstring)
             bitstring_new = self.point_mutation__(bitstring_new)
             pos_new = self.decode__(bitstring_new)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.update(bitstring=bitstring_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self.get_target(pos_new)
-        self.pop = self.update_target_for_population(pop)
+                pop[-1].target = self._get_target(pos_new)
+        self.pop = self._update_target_for_population(pop)
         # Searching in local
         for idx in range(0, self.pop_size):
             if self.generator.random() < self.p_local:

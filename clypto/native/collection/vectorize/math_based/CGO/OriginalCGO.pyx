@@ -6,11 +6,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalCGO(LegacyNativeOptimizer):
+cdef class OriginalCGO(VectorizeOptimizer):
     """
     The original version of: Chaos Game Optimization (CGO)
 
@@ -26,14 +26,14 @@ cdef class OriginalCGO(LegacyNativeOptimizer):
     ~~~~~~~~
 
     >>> from clypto.native.collection.vectorize.math_based import CGO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -61,18 +61,17 @@ cdef class OriginalCGO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation seeds
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -100,10 +99,10 @@ cdef class OriginalCGO(LegacyNativeOptimizer):
         cand_pos[:, 2] = MG + alpha[:, 2] * (beta[:, 2] * X - gama[:, 2] * g)  # Eq. 5
         cand_pos[:, 3] = X + picked * rng.uniform(0, 1, (n, d))
         seeds = pop.take(np.repeat(me, 4))
-        seeds.X[:] = self.correct_solution(cand_pos.reshape(4 * n, d))
+        seeds.X[:] = self._correct_solution(cand_pos.reshape(4 * n, d))
         self.evaluate(seeds, 0, 4 * n)
         F = np.asarray(seeds.F).reshape(n, 4)
-        best = (F.argmin(axis=1) if self.problem.minmax == "min" else F.argmax(axis=1))
+        best = (F.argmin(axis=1) if self.problem.sense == "min" else F.argmax(axis=1))
         rows = 4 * me + best
         win = np.flatnonzero(ops.better(self, F[me, best], np.asarray(pop.F)))
         pop.buf[win] = seeds.buf[rows[win]]

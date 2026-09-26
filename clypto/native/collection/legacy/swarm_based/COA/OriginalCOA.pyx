@@ -7,27 +7,15 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalCOAAgent(_LegacyAgent):
+cdef class _OriginalCOAAgent(LegacyAgent):
     cdef public object age
-    def __init__(self, solution=None, target=None, age=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.age = age
-    cpdef object copy(self):
-        return _OriginalCOAAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.age,
-        )
-    def update(self, **kwargs):
-        if "age" in kwargs:
-            self.age = kwargs.pop("age")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalCOA(_LegacyOptimizer):
+cdef class OriginalCOA(LegacyOptimizer):
     """
     The original version of: Coyote Optimization Algorithm (COA)
 
@@ -41,15 +29,15 @@ cdef class OriginalCOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import COA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = COA.OriginalCOA(epoch=1000, pop_size=50, n_coyotes = 5)
@@ -76,34 +64,34 @@ cdef class OriginalCOA(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             n_coyotes (int): number of coyotes per group, default=5
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.n_coyotes = self.validator.check_int(
             "n_coyotes", n_coyotes, [2, int(self.pop_size / 2)]
         )
-        self.set_parameters(["epoch", "pop_size", "n_coyotes"])
+        self._set_parameters(["epoch", "pop_size", "n_coyotes"])
         self.n_packs = int(pop_size / self.n_coyotes)
         self.sort_flag = False
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
-        self.pop_group = self.generate_group_population(
+            self.pop = self._generate_population(self.pop_size)
+        self.pop_group = self._generate_group_population(
             self.pop, self.n_packs, self.n_coyotes
         )
         self.ps = 1.0 / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         age = 1
         return _OriginalCOAAgent(solution=solution, age=age)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -111,8 +99,8 @@ cdef class OriginalCOA(_LegacyOptimizer):
         # Execute the operations inside each pack
         for p in range(self.n_packs):
             # Get the coyotes that belong to each pack
-            self.pop_group[p] = self.get_sorted_population(
-                self.pop_group[p], self.problem.minmax
+            self.pop_group[p] = self._get_sorted_population(
+                self.pop_group[p], self.problem.sense
             )
             # Detect alphas according to the costs (Eq. 5)
             # Compute the social tendency of the pack (Eq. 6)
@@ -133,17 +121,17 @@ cdef class OriginalCOA(_LegacyOptimizer):
                     * (tendency - self.pop_group[p][rc2].solution)
                 )
                 # Keep the coyotes in the search space (optimization problem constraint)
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 agent.age = self.pop_group[p][i].age
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
+                    pop_new[-1].target = self._get_target(pos_new)
             # Evaluate the new social condition (Eq. 13)
-            pop_new = self.update_target_for_population(pop_new)
+            pop_new = self._update_target_for_population(pop_new)
             # Adaptation (Eq. 14)
-            self.pop_group[p] = self.greedy_selection_population(
-                self.pop_group[p], pop_new, self.problem.minmax
+            self.pop_group[p] = self._greedy_selection_population(
+                self.pop_group[p], pop_new, self.problem.sense
             )
 
             # Birth of a new coyote from random parents (Eq. 7 and Alg. 1)
@@ -159,14 +147,14 @@ cdef class OriginalCOA(_LegacyOptimizer):
             )
             # Eventual noise
             pos_new = self.generator.normal(0, 1) * pup
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
 
             # Verify if the pup will survive
-            packs = self.get_sorted_population(self.pop_group[p], self.problem.minmax)
+            packs = self._get_sorted_population(self.pop_group[p], self.problem.sense)
             # Find index of element has fitness larger than new child. If existed an element like that, new child is good
-            if self.compare_target(agent.target, packs[-1].target, self.problem.minmax):
-                if self.problem.minmax == "min":
+            if self._compare_target(agent.target, packs[-1].target, self.problem.sense):
+                if self.problem.sense == "min":
                     packs = sorted(packs, key=lambda agent: agent.age)
                 else:
                     packs = sorted(packs, key=lambda agent: agent.age, reverse=True)

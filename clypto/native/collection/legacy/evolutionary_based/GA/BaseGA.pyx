@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-class BaseGA(_LegacyOptimizer):
+class BaseGA(LegacyOptimizer):
     """
     The original version of: Genetic Algorithm (GA)
 
@@ -30,15 +30,15 @@ class BaseGA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import GA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = GA.BaseGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05)
@@ -83,12 +83,12 @@ class BaseGA(_LegacyOptimizer):
             mutation_multipoints (bool): Optional, True or False, effect on mutation process, default = False
             mutation (str): Optional, can be ["flip", "swap"] for multipoints and can be ["flip", "swap", "scramble", "inversion"] for one-point, default="flip"
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pc = self.validator.check_float("pc", pc, (0, 1.0))
         self.pm = self.validator.check_float("pm", pm, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "pc", "pm"])
+        self._set_parameters(["epoch", "pop_size", "pc", "pm"])
         self.sort_flag = False
         self.selection = "tournament"
         self.k_way = 0.2
@@ -140,8 +140,8 @@ class BaseGA(_LegacyOptimizer):
             list: The position of dad and mom
         """
         if self.selection == "roulette":
-            id_c1 = self.get_index_roulette_wheel_selection(list_fitness)
-            id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
+            id_c1 = self._get_index_roulette_wheel_selection(list_fitness)
+            id_c2 = self._get_index_roulette_wheel_selection(list_fitness)
             if id_c2 == id_c1:
                 # Fall back to a uniform pick among the remaining indices instead of
                 # retrying roulette selection, which can loop forever once floating-point
@@ -151,7 +151,7 @@ class BaseGA(_LegacyOptimizer):
         elif self.selection == "random":
             id_c1, id_c2 = self.generator.choice(range(self.pop_size), 2, replace=False)
         else:  ## tournament
-            id_c1, id_c2 = self.get_index_kway_tournament_selection(
+            id_c1, id_c2 = self._get_index_kway_tournament_selection(
                 self.pop, k_way=self.k_way, output=2
             )
         return self.pop[id_c1].solution, self.pop[id_c2].solution
@@ -172,8 +172,8 @@ class BaseGA(_LegacyOptimizer):
         """
         if self.selection == "roulette":
             list_fitness = np.array([agent.target.fitness for agent in pop_selected])
-            id_c1 = self.get_index_roulette_wheel_selection(list_fitness)
-            id_c2 = self.get_index_roulette_wheel_selection(list_fitness)
+            id_c1 = self._get_index_roulette_wheel_selection(list_fitness)
+            id_c2 = self._get_index_roulette_wheel_selection(list_fitness)
             if id_c2 == id_c1:
                 # Fall back to a uniform pick among the remaining indices instead of
                 # retrying roulette selection, which can loop forever once floating-point
@@ -185,7 +185,7 @@ class BaseGA(_LegacyOptimizer):
                 range(len(pop_selected)), 2, replace=False
             )
         else:  ## tournament
-            id_c1, id_c2 = self.get_index_kway_tournament_selection(
+            id_c1, id_c2 = self._get_index_kway_tournament_selection(
                 pop_selected, k_way=self.k_way, output=2
             )
         return pop_selected[id_c1].solution, pop_selected[id_c2].solution
@@ -204,16 +204,16 @@ class BaseGA(_LegacyOptimizer):
         if self.selection == "roulette":
             list_fit_dad = np.array([agent.target.fitness for agent in pop_dad])
             list_fit_mom = np.array([agent.target.fitness for agent in pop_mom])
-            id_c1 = self.get_index_roulette_wheel_selection(list_fit_dad)
-            id_c2 = self.get_index_roulette_wheel_selection(list_fit_mom)
+            id_c1 = self._get_index_roulette_wheel_selection(list_fit_dad)
+            id_c2 = self._get_index_roulette_wheel_selection(list_fit_mom)
         elif self.selection == "random":
             id_c1 = self.generator.choice(range(len(pop_dad)))
             id_c2 = self.generator.choice(range(len(pop_mom)))
         else:  ## tournament
-            id_c1 = self.get_index_kway_tournament_selection(
+            id_c1 = self._get_index_kway_tournament_selection(
                 pop_dad, k_way=self.k_way, output=1
             )[0]
-            id_c2 = self.get_index_kway_tournament_selection(
+            id_c2 = self._get_index_kway_tournament_selection(
                 pop_mom, k_way=self.k_way, output=1
             )[0]
         return pop_dad[id_c1].solution, pop_mom[id_c2].solution
@@ -234,7 +234,7 @@ class BaseGA(_LegacyOptimizer):
             list: The position of child 1 and child 2
         """
         if self.crossover == "arithmetic":
-            w1, w2 = self.crossover_arithmetic(dad, mom)
+            w1, w2 = self._crossover_arithmetic(dad, mom)
         elif self.crossover == "one_point":
             cut = self.generator.integers(1, self.problem.n_dims - 1)
             w1 = np.concatenate([dad[:cut], mom[cut:]])
@@ -312,7 +312,7 @@ class BaseGA(_LegacyOptimizer):
             else:  # "flip"
                 idx = self.generator.integers(0, self.problem.n_dims)
                 child[idx] = self.generator.uniform(
-                    self.problem.lb[idx], self.problem.ub[idx]
+                    self.problem.bounds.low[idx], self.problem.bounds.up[idx]
                 )
                 return child
 
@@ -330,17 +330,17 @@ class BaseGA(_LegacyOptimizer):
         """
         pop_new = []
         for idx in range(0, self.pop_size):
-            id_child = self.get_index_kway_tournament_selection(
+            id_child = self._get_index_kway_tournament_selection(
                 pop, k_way=0.1, output=1, reverse=True
             )[0]
             agent_x = pop_child[idx]
             agent_y = pop[id_child]
-            pop_new.append(self.get_better_agent(agent_x, agent_y, self.problem.minmax))
+            pop_new.append(self._get_better_agent(agent_x, agent_y, self.problem.sense))
         return pop_new
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -359,20 +359,20 @@ class BaseGA(_LegacyOptimizer):
             child1 = self.mutation_process__(child1)
             child2 = self.mutation_process__(child2)
 
-            child1 = self.correct_solution(child1)
-            child2 = self.correct_solution(child2)
+            child1 = self._correct_solution(child1)
+            child2 = self._correct_solution(child2)
 
-            agent1 = self.generate_empty_agent(child1)
-            agent2 = self.generate_empty_agent(child2)
+            agent1 = self._generate_empty_agent(child1)
+            agent2 = self._generate_empty_agent(child2)
 
             pop_new.append(agent1)
             pop_new.append(agent2)
 
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-2].target = self.get_target(child1)
-                pop_new[-1].target = self.get_target(child2)
+                pop_new[-2].target = self._get_target(child1)
+                pop_new[-1].target = self._get_target(child2)
         pop_new = pop_new[: self.pop_size]
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
+            pop_new = self._update_target_for_population(pop_new)
         ### Survivor Selection
         self.pop = self.survivor_process__(self.pop, pop_new)

@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.physics_based.TWO.OriginalTWO cimport OriginalTWO
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -38,14 +38,14 @@ cdef class EnhancedTWO(OriginalTWO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import TWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -80,12 +80,12 @@ cdef class EnhancedTWO(OriginalTWO):
     def update_target__(self, agents):
         # update_target_for_population: swarm modes evaluate every agent (counted once per agent)
         for agent in agents:
-            agent.target = self.get_target(agent.solution, counted=False)
+            agent.target = self._get_target(agent.solution, counted=False)
         self._nfe_counter += len(agents)
 
     def better_agent__(self, x, y):
         # get_better_agent(x, y)
-        if self.problem.minmax == "min":
+        if self.problem.sense == "min":
             return x.copy() if x.target.fitness < y.target.fitness else y.copy()
         return y.copy() if x.target.fitness < y.target.fitness else x.copy()
 
@@ -110,32 +110,32 @@ cdef class EnhancedTWO(OriginalTWO):
             pop.field("W")[i, 0] = agent.weight
         return pop
 
-    cdef void initialization(self):
+    def _initialization(self):
         cdef NativePopulation base
-        LegacyNativeOptimizer.initialization(self)
+        VectorizeOptimizer._initialization(self)
         base = self.pop
         pop = [_TWOAgent(base.X[i].copy(), base.agent(i).target) for i in range(base.n)]
         pop_oppo = list(pop)  # pop.copy(): the very same agents
         for idx in range(self.pop_size):
-            pos_opposite = self.problem.ub + self.problem.lb - pop[idx].solution
-            pos_new = self.correct_solution(pos_opposite)
+            pos_opposite = self.problem.bounds.up + self.problem.bounds.low - pop[idx].solution
+            pos_new = self._correct_solution(pos_opposite)
             pop_oppo[idx].solution = pos_new
             if self.mode not in self.AVAILABLE_MODES:
-                pop_oppo[idx].target = self.get_target(pos_new)
+                pop_oppo[idx].target = self._get_target(pos_new)
         if self.mode in self.AVAILABLE_MODES:
             self.update_target__(pop_oppo)
         merged = pop + pop_oppo
         order = np.argsort([agent.target.fitness for agent in merged])
-        if self.problem.minmax == "max":
+        if self.problem.sense == "max":
             order = order[::-1]
         self.objs = self.update_weight_agents__([merged[i] for i in order][:self.pop_size])
         self.pop = self.mirror__()
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        minmax = self.problem.minmax
-        lb, ub = self.problem.lb, self.problem.ub
+        sense = self.problem.sense
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         pop = list(self.objs)
         pop_new = list(pop)  # self.pop.copy()
         # g_best is one of the agents (aliased) once the first epoch is over, a copy before
@@ -168,33 +168,33 @@ cdef class EnhancedTWO(OriginalTWO):
                             pos_new[jdx] = lb[jdx]
                         if pos_new[jdx] > ub[jdx]:
                             pos_new[jdx] = ub[jdx]
-            pop_new[idx].solution = self.correct_solution(pos_new)
+            pop_new[idx].solution = self._correct_solution(pos_new)
             if not swarm:
-                pop_new[idx].target = self.get_target(pos_new)
+                pop_new[idx].target = self._get_target(pos_new)
                 pop[idx] = self.better_agent__(pop_new[idx], pop[idx])
         if swarm:
             self.update_target__(pop_new)
             # greedy_selection_population(pop, pop_new)
-            if minmax == "min":
+            if sense == "min":
                 pop = [pop_new[i] if pop_new[i].target.fitness < pop[i].target.fitness else pop[i] for i in range(len(pop))]
             else:
                 pop = [pop_new[i] if pop_new[i].target.fitness > pop[i].target.fitness else pop[i] for i in range(len(pop))]
 
         for idx in range(self.pop_size):
             # generate_opposition_solution(pop_new[idx], g_best)
-            C_op = self.correct_solution(
+            C_op = self._correct_solution(
                 lb + ub - g_best.solution + self.generator.uniform() * (g_best.solution - pop_new[idx].solution)
             )
-            pos_new = self.correct_solution(C_op)
-            agent = _TWOAgent(pos_new, self.get_target(pos_new))
-            if self.compare_fitness(agent.target.fitness, pop_new[idx].target.fitness, minmax):
+            pos_new = self._correct_solution(C_op)
+            agent = _TWOAgent(pos_new, self._get_target(pos_new))
+            if self._compare_fitness(agent.target.fitness, pop_new[idx].target.fitness, sense):
                 pop_new[idx] = agent
             else:
-                levy_step = self.get_levy_flight_step(beta=1.0, multiplier=1.0, size=self.problem.n_dims, case=-1)
+                levy_step = self._get_levy_flight_step(beta=1.0, multiplier=1.0, size=self.problem.n_dims, case=-1)
                 pos_new = pop_new[idx].solution + 1.0 / np.sqrt(epoch) * levy_step
-                pos_new = self.correct_solution(pos_new)
-                agent = _TWOAgent(pos_new, self.get_target(pos_new))
-                if self.compare_fitness(agent.target.fitness, pop_new[idx].target.fitness, minmax):
+                pos_new = self._correct_solution(pos_new)
+                agent = _TWOAgent(pos_new, self._get_target(pos_new))
+                if self._compare_fitness(agent.target.fitness, pop_new[idx].target.fitness, sense):
                     pop_new[idx] = agent
         self.objs = self.update_weight_agents__(pop_new)
         self.pop = self.mirror__()

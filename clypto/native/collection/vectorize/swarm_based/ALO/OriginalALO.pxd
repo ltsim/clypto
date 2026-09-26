@@ -1,5 +1,5 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class OriginalALO(LegacyNativeOptimizer):
-    cdef void evolve(self, int epoch_c)
+cdef class OriginalALO(VectorizeOptimizer):
+    pass

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalEVO(_LegacyOptimizer):
+cdef class OriginalEVO(LegacyOptimizer):
     """
     The original version of: Energy Valley Optimizer (EVO)
 
@@ -25,14 +25,14 @@ cdef class OriginalEVO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import EVO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -55,15 +55,15 @@ cdef class OriginalEVO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -85,8 +85,8 @@ cdef class OriginalEVO(_LegacyOptimizer):
 
             pos_new1 = self.pop[idx].solution.copy()
             pos_new2 = self.pop[idx].solution.copy()
-            if self.compare_fitness(
-                    eb, self.pop[idx].target.fitness, self.problem.minmax
+            if self._compare_fitness(
+                    eb, self.pop[idx].target.fitness, self.problem.sense
             ):
                 if self.generator.random() > sl:
                     a1_idx = self.generator.integers(self.problem.n_dims)
@@ -108,10 +108,10 @@ cdef class OriginalEVO(_LegacyOptimizer):
                     ir = self.generator.uniform(0, 1, 2)
                     jr = self.generator.uniform(0, 1, self.problem.n_dims)
                     pos_new2 += jr * (ir[0] * self.g_best.solution - ir[1] * x_avg_team)
-                pos_new1 = self.correct_solution(pos_new1)
-                pos_new2 = self.correct_solution(pos_new2)
-                agent1 = self.generate_empty_agent(pos_new1)
-                agent2 = self.generate_empty_agent(pos_new2)
+                pos_new1 = self._correct_solution(pos_new1)
+                pos_new2 = self._correct_solution(pos_new2)
+                agent1 = self._generate_empty_agent(pos_new1)
+                agent2 = self._generate_empty_agent(pos_new2)
                 pop_new.append(agent1)
                 pop_new.append(agent2)
             else:
@@ -120,16 +120,16 @@ cdef class OriginalEVO(_LegacyOptimizer):
                         + self.generator.random()
                         * sl
                         * self.generator.uniform(
-                    self.problem.lb, self.problem.ub, self.problem.n_dims
+                    self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 pop_new.append(agent)
         if self.mode not in self.AVAILABLE_MODES:
             for idx in range(0, len(pop_new)):
-                pop_new[idx].target = self.get_target(pop_new[idx].solution)
-        pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, self.problem.minmax
+                pop_new[idx].target = self._get_target(pop_new[idx].solution)
+        pop_new = self._update_target_for_population(pop_new)
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, self.problem.sense
         )

@@ -9,7 +9,7 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -29,14 +29,14 @@ cdef class OriginalHBO(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import HBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -73,11 +73,10 @@ cdef class OriginalHBO(AgentListOptimizer):
             pop_size (int): number of population size, default = 100
             degree (int): the degree level in Corporate Rank Hierarchy (CRH), default=2
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "degree"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -85,7 +84,7 @@ cdef class OriginalHBO(AgentListOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.degree = cy.validator(int, degree, [2, 10], "degree")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.cycles = np.floor(self.epoch / 25)
         self.it_per_cycle = self.epoch / self.cycles
         self.qtr_cycle = self.it_per_cycle / 4
@@ -109,8 +108,8 @@ cdef class OriginalHBO(AgentListOptimizer):
             t = c
             while t > 0:
                 parent_id = int(np.floor((t + 1) / degree) - 1)
-                if self.compare_target(
-                        pop[parent_id].target, pop[t].target, self.problem.minmax
+                if self._compare_target(
+                        pop[parent_id].target, pop[t].target, self.problem.sense
                 ):
                     break
                 else:
@@ -118,13 +117,13 @@ cdef class OriginalHBO(AgentListOptimizer):
                 t = parent_id
         return heap
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         self.heap = self.heapifying__(self.objs, self.degree)
         self.friend_limits = self.colleagues_limits_generator__(
             self.pop_size, self.degree
         )
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         gama = (np.mod(epoch, self.it_per_cycle) + 1) / self.qtr_cycle
         gama = np.abs(2 - gama)
         p1 = 1.0 - epoch / self.epoch
@@ -166,10 +165,10 @@ cdef class OriginalHBO(AgentListOptimizer):
                             par_agent.solution[jdx] - cur_agent.solution[jdx]
                         )
                     else:
-                        if self.compare_target(
+                        if self._compare_target(
                                 self.heap[friend_idx][0],
                                 self.heap[c][0],
-                                self.problem.minmax,
+                                self.problem.sense,
                         ):
                             cur_agent.solution[jdx] = fri_agent.solution[jdx] + rn[
                                 jdx
@@ -184,10 +183,10 @@ cdef class OriginalHBO(AgentListOptimizer):
                                 fri_agent.solution[jdx] - cur_agent.solution[jdx]
                             )
                             )
-                pos_new = self.correct_solution(cur_agent.solution)
-                cur_agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                        cur_agent.target, self.heap[c][0], self.problem.minmax
+                pos_new = self._correct_solution(cur_agent.solution)
+                cur_agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                        cur_agent.target, self.heap[c][0], self.problem.sense
                 ):
                     self.objs[self.heap[c][1]] = cur_agent
                     self.heap[c][0] = cur_agent.target.copy()
@@ -195,8 +194,8 @@ cdef class OriginalHBO(AgentListOptimizer):
             t = c
             while t > 1:
                 parent_id = int((t + 1) / self.degree)
-                if self.compare_target(
-                        self.heap[parent_id][0], self.heap[t][0], self.problem.minmax
+                if self._compare_target(
+                        self.heap[parent_id][0], self.heap[t][0], self.problem.sense
                 ):
                     break
                 else:

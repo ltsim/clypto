@@ -8,4 +8,3 @@ cdef class OriginalPSO(_PSOBase):
 
     cdef double weight(self, int epoch)
     cdef bint clips_velocity(self)
-    cdef void evolve(self, int epoch)

@@ -9,12 +9,12 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -36,15 +36,15 @@ cdef class ABFO(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import BFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BFO.ABFO(epoch=1000, pop_size=50, C_s=0.1, C_e=0.001, Ped = 0.01, Ns = 4, N_adapt = 2, N_split = 40)
@@ -94,11 +94,10 @@ cdef class ABFO(AgentListOptimizer):
             N_adapt (int): Dead threshold value default=2
             N_split (int): Split threshold value, default=40
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "C_s", "C_e", "Ped", "Ns", "N_adapt", "N_split"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -112,11 +111,11 @@ cdef class ABFO(AgentListOptimizer):
         self.N_split = cy.validator(int, N_split, [5, 50], "N_split")
         self.support_parallel_modes = False
 
-    cdef void initialize_variables(self):
-        self.C_s = self.C_s * (self.problem.ub - self.problem.lb)
-        self.C_e = self.C_e * (self.problem.ub - self.problem.lb)
+    def _initialize_variables(self):
+        self.C_s = self.C_s * (self.problem.bounds.up - self.problem.bounds.low)
+        self.C_e = self.C_e * (self.problem.bounds.up - self.problem.bounds.low)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         nutrients = 0  # total nutrient gained by the bacterium in its whole searching process.(int number)
@@ -125,9 +124,9 @@ cdef class ABFO(AgentListOptimizer):
             solution=solution, nutrients=nutrients, local_solution=local_solution
         )
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        agent = self.generate_empty_agent(solution)
-        agent.target = self.get_target(agent.solution)
+    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+        agent = self._generate_empty_agent(solution)
+        agent.target = self._get_target(agent.solution)
         agent.local_target = agent.target.copy()
         return agent
 
@@ -143,7 +142,7 @@ cdef class ABFO(AgentListOptimizer):
         )
         return step_size
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         for idx in range(0, self.pop_size):
             step_size = self.update_step_size__(self.objs, idx)
             for m in range(0, self.swim_length):  # Ns
@@ -152,21 +151,21 @@ cdef class ABFO(AgentListOptimizer):
                 )
                 delta = np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
                 unit_vector = (
-                    self.generator.uniform(self.problem.lb, self.problem.ub)
+                    self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                     if delta == 0
                     else (delta_i / delta)
                 )
                 pos_new = self.objs[idx].solution + step_size * unit_vector
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                    agent.target, self.objs[idx].target, self.problem.minmax
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                    agent.target, self.objs[idx].target, self.problem.sense
                 ):
                     agent.nutrients += 1
                     self.objs[idx] = agent
                     # Update personal best
-                    if self.compare_target(
-                        agent.target, self.objs[idx].local_target, self.problem.minmax
+                    if self._compare_target(
+                        agent.target, self.objs[idx].local_target, self.problem.sense
                     ):
                         self.objs[idx].update(
                             local_solution=pos_new.copy(),
@@ -182,8 +181,8 @@ cdef class ABFO(AgentListOptimizer):
                 pos_new = tt * self.objs[idx].solution + (1 - tt) * (
                     self.g_best.solution - self.objs[idx].solution
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
                 self.objs.append(agent)
             nut_min = min(
                 self.N_adapt,
@@ -193,7 +192,7 @@ cdef class ABFO(AgentListOptimizer):
                 self.objs[idx].nutrients < nut_min
                 or self.generator.random() < self.p_eliminate
             ):
-                self.objs[idx] = self.generate_agent()
+                self.objs[idx] = self._generate_agent()
         ## Make sure the population does not have duplicates.
         new_set = set()
         for idx, obj in enumerate(self.objs):
@@ -205,7 +204,7 @@ cdef class ABFO(AgentListOptimizer):
         n_agents = len(self.objs) - self.pop_size
         if n_agents < 0:
             for idx in range(0, n_agents):
-                agent = self.generate_agent()
+                agent = self._generate_agent()
                 self.objs.append(agent)
         elif n_agents > 0:
             list_idx_removed = self.generator.choice(

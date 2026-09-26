@@ -9,7 +9,7 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -30,14 +30,14 @@ cdef class OriginalFFA(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import FFA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -87,7 +87,7 @@ cdef class OriginalFFA(AgentListOptimizer):
             delta (float): Mutation Step Size, default = 0.05
             exponent (int): Exponent (m in the paper), default = 2
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -100,7 +100,6 @@ cdef class OriginalFFA(AgentListOptimizer):
                 "exponent",
             ],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -113,10 +112,10 @@ cdef class OriginalFFA(AgentListOptimizer):
         self.delta = cy.validator(float, delta, (0, 1.0), "delta")
         self.exponent = cy.validator(int, exponent, [2, 4], "exponent")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_alpha = self.alpha  # Initial Value of Mutation Coefficient
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         # Maximum Distance
         dmax = np.sqrt(self.problem.n_dims)
         for idx in range(0, self.pop_size):
@@ -124,8 +123,8 @@ cdef class OriginalFFA(AgentListOptimizer):
             pop_child = []
             for j in range(idx + 1, self.pop_size):
                 # Move Towards Better Solutions
-                if self.compare_target(
-                        self.objs[j].target, agent.target, self.problem.minmax
+                if self._compare_target(
+                        self.objs[j].target, agent.target, self.problem.sense
                 ):
                     # Calculate Radius and Attraction Level
                     rij = np.linalg.norm(agent.solution - self.objs[j].solution) / dmax
@@ -143,15 +142,15 @@ cdef class OriginalFFA(AgentListOptimizer):
                     pos_new = (
                             agent.solution + self.dyn_alpha * mutation_vector + beta * temp
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_agent(pos_new)
                     pop_child.append(agent)
             if len(pop_child) < self.pop_size:
-                pop_child += self.generate_agents(self.pop_size - len(pop_child))
-            local_best = self.get_best_agent(pop_child, self.problem.minmax)
+                pop_child += self._generate_agents(self.pop_size - len(pop_child))
+            local_best = self._get_best_agent(pop_child, self.problem.sense)
             # Compare to Previous Solution
-            if self.compare_target(
-                    local_best.target, agent.target, self.problem.minmax
+            if self._compare_target(
+                    local_best.target, agent.target, self.problem.sense
             ):
                 self.objs[idx] = local_best
         self.objs.append(self.g_best)

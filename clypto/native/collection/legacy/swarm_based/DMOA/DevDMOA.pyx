@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevDMOA(_LegacyOptimizer):
+cdef class DevDMOA(LegacyOptimizer):
     """
     The developed version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 
@@ -21,14 +21,14 @@ cdef class DevDMOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import DMOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -41,21 +41,20 @@ cdef class DevDMOA(_LegacyOptimizer):
     def __init__(
             self, epoch: int = 10000, pop_size: int = 100, peep: float = 2, **kwargs: object
     ) -> None:
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
         self.peep = self.validator.check_float("peep", peep, [1, 10.0])
-        self.set_parameters(["epoch", "pop_size", "peep"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size", "peep"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.C = np.zeros(self.pop_size)
         self.L = np.round(0.6 * self.epoch)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -68,17 +67,17 @@ cdef class DevDMOA(_LegacyOptimizer):
 
         ## Foraging led by Alpha female
         for idx in range(0, self.pop_size):
-            alpha = self.get_index_roulette_wheel_selection(fi)
+            alpha = self._get_index_roulette_wheel_selection(fi)
             k = self.generator.choice(list(set(range(0, self.pop_size)) - {idx, alpha}))
             ## Define Vocalization Coeff.
             phi = (self.peep / 2) * self.generator.uniform(-1, 1, self.problem.n_dims)
             new_pos = self.pop[alpha].solution + phi * (
                     self.pop[alpha].solution - self.pop[k].solution
             )
-            new_pos = self.correct_solution(new_pos)
-            agent = self.generate_agent(new_pos)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            new_pos = self._correct_solution(new_pos)
+            agent = self._generate_agent(new_pos)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
             else:
@@ -93,15 +92,15 @@ cdef class DevDMOA(_LegacyOptimizer):
             new_pos = self.pop[idx].solution + phi * (
                     self.pop[idx].solution - self.pop[k].solution
             )
-            new_pos = self.correct_solution(new_pos)
-            agent = self.generate_agent(new_pos)
+            new_pos = self._correct_solution(new_pos)
+            agent = self._generate_agent(new_pos)
             ## Sleeping mould
             SM[idx] = (agent.target.fitness - self.pop[idx].target.fitness) / (
                     np.max([agent.target.fitness, self.pop[idx].target.fitness])
                     + self.EPSILON
             )
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
             else:
@@ -110,7 +109,7 @@ cdef class DevDMOA(_LegacyOptimizer):
         ## Baby sitters
         for idx in range(0, self.pop_size):
             if self.C[idx] >= self.L:
-                self.pop[idx] = self.generate_agent()
+                self.pop[idx] = self._generate_agent()
                 self.C[idx] = 0
 
         ## Next Mongoose position
@@ -125,9 +124,9 @@ cdef class DevDMOA(_LegacyOptimizer):
                 new_pos = self.pop[idx].solution + CF * phi * (
                         self.g_best.solution - SM[idx] * self.pop[idx].solution
                 )
-            new_pos = self.correct_solution(new_pos)
-            agent = self.generate_agent(new_pos)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            new_pos = self._correct_solution(new_pos)
+            agent = self._generate_agent(new_pos)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent

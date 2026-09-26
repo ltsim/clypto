@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.evolutionary_based.CRO.OriginalCRO cimport OriginalCRO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent cimport LegacyNativeAgent
 from clypto.optimizer.native.target cimport NativeTarget
@@ -37,14 +37,14 @@ cdef class OCRO(OriginalCRO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import CRO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -127,23 +127,23 @@ cdef class OCRO(OriginalCRO):
         self.sort_flag = False
         self.restart_count = cy.validator(int, restart_count, [2, int(epoch / 2)], "restart_count")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.reset_count = 0
 
     def local_search__(self, pop=None):
         pop_new = []
         for idx in range(0, len(pop)):
-            random_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+            random_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             condition = self.generator.random(self.problem.n_dims) < 0.5
             pos_new = np.where(condition, self.g_best.solution, random_pos)
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             agent = LegacyNativeAgent(pos_new, None)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
+                pop_new[-1].target = self._get_target(pos_new)
         return ops.update_targets(self, pop_new)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         self.objs = ops.agents_of(self.pop)
         ## Broadcast Spawning Brooding
@@ -162,9 +162,9 @@ cdef class OCRO(OriginalCRO):
             selected_depredator = idx_list_sorted[-num__depredation__:]
             for idx in selected_depredator:
                 ### Using opposition-based leanring
-                pos_oppo = self.correct_solution(self.problem.lb + self.problem.ub - self.g_best.solution + self.generator.uniform() * (self.g_best.solution - self.objs[idx].solution))
+                pos_oppo = self._correct_solution(self.problem.bounds.low + self.problem.bounds.up - self.g_best.solution + self.generator.uniform() * (self.g_best.solution - self.objs[idx].solution))
                 agent = ops.new_agent(self, pos_oppo)
-                if self.compare_fitness(agent.target.fitness, self.objs[idx].target.fitness, self.problem.minmax):
+                if self._compare_fitness(agent.target.fitness, self.objs[idx].target.fitness, self.problem.sense):
                     self.objs[idx] = agent
                 else:
                     self.occupied_idx_list = self.occupied_idx_list[
@@ -177,7 +177,7 @@ cdef class OCRO(OriginalCRO):
             self.G1 -= self.gama
         self.reset_count += 1
         local_best = ops.sorted_agents(self, self.objs)[0].copy()
-        if self.compare_fitness(local_best.target.fitness, self.g_best.target.fitness, self.problem.minmax):
+        if self._compare_fitness(local_best.target.fitness, self.g_best.target.fitness, self.problem.sense):
             self.reset_count = 0
         if self.reset_count == self.restart_count:
             self.objs = ops.agents_of(self.generate_population(self.pop_size))

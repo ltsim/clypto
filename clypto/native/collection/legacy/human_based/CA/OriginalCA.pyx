@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCA(_LegacyOptimizer):
+cdef class OriginalCA(LegacyOptimizer):
     """
     The original version of: Culture Algorithm (CA)
 
@@ -22,14 +22,14 @@ cdef class OriginalCA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import CA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,28 +57,27 @@ cdef class OriginalCA(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             accepted_rate (float): probability of accepted rate, default: 0.15
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.accepted_rate = self.validator.check_float(
             "accepted_rate", accepted_rate, (0, 1.0)
         )
-        self.set_parameters(["epoch", "pop_size", "accepted_rate"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size", "accepted_rate"])
         self.sort_flag = True
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         ## Dynamic variables
         self.dyn_belief_space = {
-            "lb": self.problem.lb,
-            "ub": self.problem.ub,
+            "lb": self.problem.bounds.low,
+            "ub": self.problem.bounds.up,
         }
         self.dyn_accepted_num = int(self.accepted_rate * self.pop_size)
         # update situational knowledge (g_best here is an element inside belief space)
 
     def create_faithful__(self, lb, ub):
         pos = self.generator.uniform(lb, ub)
-        return self.generate_agent(pos)
+        return self._generate_agent(pos)
 
     def update_belief_space__(self, belief_space, pop_accepted):
         pos_list = np.array([agent.solution for agent in pop_accepted])
@@ -86,9 +85,9 @@ cdef class OriginalCA(_LegacyOptimizer):
         belief_space["ub"] = np.max(pos_list, axis=0)
         return belief_space
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -106,11 +105,11 @@ cdef class OriginalCA(_LegacyOptimizer):
         size_new = len(pop_full)
         for _ in range(0, self.pop_size):
             id1, id2 = self.generator.choice(list(range(0, size_new)), 2, replace=False)
-            agent = self.get_better_agent(
-                pop_full[id1], pop_full[id2], self.problem.minmax
+            agent = self._get_better_agent(
+                pop_full[id1], pop_full[id2], self.problem.sense
             )
             pop_new.append(agent)
-        self.pop = self.get_sorted_population(pop_new, self.problem.minmax)
+        self.pop = self._get_sorted_population(pop_new, self.problem.sense)
         # Get accepted faithful
         accepted = self.pop[: self.dyn_accepted_num]
         # Update belief_space

@@ -6,7 +6,7 @@
 import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.native.collection.vectorize.swarm_based.PSO.P_PSO cimport P_PSO
 
@@ -22,15 +22,15 @@ cdef class HPSO_TVAC(P_PSO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.HPSO_TVAC(epoch=1000, pop_size=50, ci=0.5, cf=0.1)
@@ -64,11 +64,10 @@ cdef class HPSO_TVAC(P_PSO):
             ci: c initial, default = 0.5
             cf: c final, default = 0.0
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "ci", "cf"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -77,7 +76,7 @@ cdef class HPSO_TVAC(P_PSO):
         self.ci = cy.validator(float, ci, [0.3, 1.0], "ci")
         self.cf = cy.validator(float, cf, [0, 0.3], "cf")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         # Sequential: reads pop[idx_k] after earlier agents updated it and draws a
         # data-dependent number of normals, so agents are processed one by one.
         cdef NativePopulation pop = self.pop
@@ -103,7 +102,7 @@ cdef class HPSO_TVAC(P_PSO):
             v_new = np.sign(v_new) * np.minimum(np.abs(v_new), self.v_max)
             #########################
             v_new = np.minimum(np.maximum(v_new, -self.v_max), self.v_max)
-            cand.X[idx] = self.correct_solution(X[idx] + v_new)
+            cand.X[idx] = self._correct_solution(X[idx] + v_new)
             V[idx] = v_new
             self.evaluate(cand, idx, idx + 1)
             self.accept(cand, idx, idx + 1)

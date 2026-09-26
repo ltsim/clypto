@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalRIME(LegacyNativeOptimizer):
+cdef class OriginalRIME(VectorizeOptimizer):
     """
     The original version of: physical phenomenon of RIME-ice  (RIME)
 
@@ -27,14 +27,14 @@ cdef class OriginalRIME(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import RIME    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,11 +65,10 @@ cdef class OriginalRIME(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             sr (float): Soft-rime parameters, default=5.0
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "sr"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -77,14 +76,14 @@ cdef class OriginalRIME(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.sr = cy.validator(float, sr, (0.0, 100.0), "sr")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         rime_factor = (
                 (rng.random() - 0.5)
                 * 2

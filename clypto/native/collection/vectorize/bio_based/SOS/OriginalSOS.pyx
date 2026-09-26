@@ -6,12 +6,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalSOS(LegacyNativeOptimizer):
+cdef class OriginalSOS(VectorizeOptimizer):
     """
     The original version: Symbiotic Organisms Search (SOS)
 
@@ -21,14 +21,14 @@ cdef class OriginalSOS(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import SOS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -51,18 +51,17 @@ cdef class OriginalSOS(LegacyNativeOptimizer):
         name: str | None = None,
         mode: str | None = None,
     ) -> None:
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
@@ -70,7 +69,7 @@ cdef class OriginalSOS(LegacyNativeOptimizer):
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         me = np.arange(n)
         # Mutualism phase: agent i and a random partner j both move towards the best (Eq. 3, 4)
         j = ops.others(self, n)[:, 0]
@@ -79,7 +78,7 @@ cdef class OriginalSOS(LegacyNativeOptimizer):
         xi_new = X + rng.random((n, 1)) * (g - bf[:, 0] * mutual)
         xj_new = X[j] + rng.random((n, 1)) * (g - bf[:, 1] * mutual)
         cand = pop.empty_like()
-        cand.X[:] = self.correct_solution(xj_new)
+        cand.X[:] = self._correct_solution(xj_new)
         self.evaluate(cand, 0, n)
         ops.scatter(self, cand, j)  # the partners
         ops.step(self, xi_new)  # the agents

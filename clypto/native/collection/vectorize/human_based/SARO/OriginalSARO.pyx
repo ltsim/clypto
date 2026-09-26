@@ -10,7 +10,7 @@ from clypto.native.collection.vectorize.human_based.SARO.DevSARO cimport DevSARO
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -30,14 +30,14 @@ cdef class OriginalSARO(DevSARO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import SARO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -71,7 +71,7 @@ cdef class OriginalSARO(DevSARO):
         """
         super().__init__(epoch, pop_size, se, mu, name=name, mode=mode)
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         pop_x = [agent.copy() for agent in self.objs[: self.pop_size]]
         pop_m = [agent.copy() for agent in self.objs[self.pop_size:]]
         pop_new = []
@@ -85,25 +85,25 @@ cdef class OriginalSARO(DevSARO):
             pos_new = pop_x[idx].solution.copy()
             for j in range(0, self.problem.n_dims):
                 if self.generator.uniform() < self.se or j == j_rand:
-                    if self.compare_target(
-                            self.objs[k].target, pop_x[idx].target, self.problem.minmax
+                    if self._compare_target(
+                            self.objs[k].target, pop_x[idx].target, self.problem.sense
                     ):
                         pos_new[j] = self.objs[k].solution[j] + r1 * sd[j]
                     else:
                         pos_new[j] = pop_x[idx].solution[j] + r1 * sd[j]
-                if pos_new[j] < self.problem.lb[j]:
-                    pos_new[j] = (pop_x[idx].solution[j] + self.problem.lb[j]) / 2
-                if pos_new[j] > self.problem.ub[j]:
-                    pos_new[j] = (pop_x[idx].solution[j] + self.problem.ub[j]) / 2
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+                if pos_new[j] < self.problem.bounds.low[j]:
+                    pos_new[j] = (pop_x[idx].solution[j] + self.problem.bounds.low[j]) / 2
+                if pos_new[j] > self.problem.bounds.up[j]:
+                    pos_new[j] = (pop_x[idx].solution[j] + self.problem.bounds.up[j]) / 2
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
             ):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
@@ -122,19 +122,19 @@ cdef class OriginalSARO(DevSARO):
                     pop[k].solution - pop[m].solution
             )
             for j in range(0, self.problem.n_dims):
-                if pos_new[j] < self.problem.lb[j]:
-                    pos_new[j] = (pop_x[idx].solution[j] + self.problem.lb[j]) / 2
-                if pos_new[j] > self.problem.ub[j]:
-                    pos_new[j] = (pop_x[idx].solution[j] + self.problem.ub[j]) / 2
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+                if pos_new[j] < self.problem.bounds.low[j]:
+                    pos_new[j] = (pop_x[idx].solution[j] + self.problem.bounds.low[j]) / 2
+                if pos_new[j] > self.problem.bounds.up[j]:
+                    pos_new[j] = (pop_x[idx].solution[j] + self.problem.bounds.up[j]) / 2
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
             ):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx]
                 pop_x[idx] = pop_new[idx].copy()
@@ -143,6 +143,6 @@ cdef class OriginalSARO(DevSARO):
                 self.dyn_USN[idx] += 1
 
             if self.dyn_USN[idx] > self.mu:
-                pop_x[idx] = self.generate_agent()
+                pop_x[idx] = self._generate_agent()
                 self.dyn_USN[idx] = 0
         self.objs = pop_x + pop_m

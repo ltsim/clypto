@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import qmc
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalPSS(_LegacyOptimizer):
+cdef class OriginalPSS(LegacyOptimizer):
     """
     The original version of: Pareto-like Sequential Sampling (PSS)
 
@@ -25,14 +25,14 @@ cdef class OriginalPSS(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.math_based import PSS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -61,7 +61,7 @@ cdef class OriginalPSS(_LegacyOptimizer):
             acceptance_rate (float): the probability of accepting a solution in the normal range, default = 0.9
             sampling_method (str): 'LHS': Latin-Hypercube or 'MC': 'MonteCarlo', default = "LHS"
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.acceptance_rate = self.validator.check_float(
@@ -70,10 +70,10 @@ cdef class OriginalPSS(_LegacyOptimizer):
         self.sampling_method = self.validator.check_str(
             "sampling_method", sampling_method, ["MC", "LHS"]
         )
-        self.set_parameters(["epoch", "pop_size", "acceptance_rate", "sampling_method"])
+        self._set_parameters(["epoch", "pop_size", "acceptance_rate", "sampling_method"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.step = 10e-10
         self.steps = np.ones(self.problem.n_dims) * self.step
         self.new_solution = True
@@ -86,9 +86,9 @@ cdef class OriginalPSS(_LegacyOptimizer):
             pop = sampler.random(n=pop_size)
         return pop
 
-    def initialization(self):
-        lb_pop = np.repeat(np.reshape(self.problem.lb, (1, -1)), self.pop_size, axis=0)
-        ub_pop = np.repeat(np.reshape(self.problem.ub, (1, -1)), self.pop_size, axis=0)
+    def _initialization(self):
+        lb_pop = np.repeat(np.reshape(self.problem.bounds.low, (1, -1)), self.pop_size, axis=0)
+        ub_pop = np.repeat(np.reshape(self.problem.bounds.up, (1, -1)), self.pop_size, axis=0)
         steps_mat = np.repeat(np.reshape(self.steps, (1, -1)), self.pop_size, axis=0)
         random_pop = self.create_population(self.pop_size)
         pop = (
@@ -96,13 +96,13 @@ cdef class OriginalPSS(_LegacyOptimizer):
         )
         self.pop = []
         for pos in pop:
-            pos_new = self.correct_solution(pos)
-            agent = self.generate_agent(pos_new)
+            pos_new = self._correct_solution(pos)
+            agent = self._generate_agent(pos_new)
             self.pop.append(agent)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -121,12 +121,12 @@ cdef class OriginalPSS(_LegacyOptimizer):
                     deviation = abs(
                         0.5
                         * (1.0 - self.acceptance_rate)
-                        * (self.problem.ub[k] - self.problem.lb[k])
+                        * (self.problem.bounds.up[k] - self.problem.bounds.low[k])
                     ) * (1 - (epoch / self.epoch))
                 reduced_lb = self.g_best.solution[k] - deviation
-                reduced_lb = np.amax([reduced_lb, self.problem.lb[k]])
+                reduced_lb = np.amax([reduced_lb, self.problem.bounds.low[k]])
                 reduced_ub = reduced_lb + deviation * 2.0
-                reduced_ub = np.amin([reduced_ub, self.problem.ub[k]])
+                reduced_ub = np.amin([reduced_ub, self.problem.bounds.up[k]])
                 # Choose new solution
                 if self.generator.random() <= self.acceptance_rate:
                     # choose a solution from the prominent domain
@@ -135,21 +135,21 @@ cdef class OriginalPSS(_LegacyOptimizer):
                     )
                 else:
                     # choose a solution from the overall domain
-                    pos_new[k] = self.problem.lb[k] + pop_rand[idx, k] * (
-                            self.problem.ub[k] - self.problem.lb[k]
+                    pos_new[k] = self.problem.bounds.low[k] + pop_rand[idx, k] * (
+                            self.problem.bounds.up[k] - self.problem.bounds.low[k]
                     )
                 # Round for the step size
                 pos_new = np.round(pos_new / self.steps) * self.steps
             # Check the bound
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        self.pop = self.update_target_for_population(pop_new)
-        current_best = self.get_best_agent(pop_new, self.problem.minmax)
-        if self.compare_target(
-                current_best.target, self.g_best.target, self.problem.minmax
+                pop_new[-1].target = self._get_target(pos_new)
+        self.pop = self._update_target_for_population(pop_new)
+        current_best = self._get_best_agent(pop_new, self.problem.sense)
+        if self._compare_target(
+                current_best.target, self.g_best.target, self.problem.sense
         ):
             self.new_solution = True
         else:

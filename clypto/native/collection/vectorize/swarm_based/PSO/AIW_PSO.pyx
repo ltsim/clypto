@@ -6,7 +6,7 @@
 import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
@@ -23,15 +23,15 @@ cdef class AIW_PSO(_PSOBase):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.AIW_PSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, alpha=0.4)
@@ -69,11 +69,10 @@ cdef class AIW_PSO(_PSOBase):
             c2: [0-2] global coefficient
             alpha: The positive constant, default = 0.4
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c1", "c2", "alpha"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -83,7 +82,7 @@ cdef class AIW_PSO(_PSOBase):
         self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
         self.alpha = cy.validator(float, alpha, [0.0, 1.0], "alpha")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t start, stop, n = pop.n, d = pop.d
@@ -102,6 +101,6 @@ cdef class AIW_PSO(_PSOBase):
             velocity = w * V[start:stop] + cognitive + social
             V[start:stop] = np.clip(velocity, self.v_min, self.v_max)
             pos = self.amend_random(Xs + V[start:stop], R[start:stop, 2])
-            cand.X[start:stop] = self.problem.correct_solutions(pos)
+            cand.X[start:stop] = self.problem.correct_solution(pos)
             self.evaluate(cand, start, stop)
             self.accept(cand, start, stop)

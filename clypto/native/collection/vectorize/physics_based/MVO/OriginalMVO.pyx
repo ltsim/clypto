@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.physics_based.MVO.DevMVO cimport DevMVO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -28,14 +28,14 @@ cdef class OriginalMVO(DevMVO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import MVO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -69,14 +69,14 @@ cdef class OriginalMVO(DevMVO):
         """
         super().__init__(epoch, pop_size, wep_min, wep_max, name=name, mode=mode)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         wep = self.wep_min + epoch * ((self.wep_max - self.wep_min) / self.epoch)
         tdr = 1 - epoch ** (1.0 / 6) / (<object>self.epoch) ** (<object>(1.0 / 6))
         raw = np.array(pop.F)

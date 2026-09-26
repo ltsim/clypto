@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalDO(_LegacyOptimizer):
+cdef class OriginalDO(LegacyOptimizer):
     """
     The original version of: Dragonfly Optimization (DO)
 
@@ -19,14 +19,14 @@ cdef class OriginalDO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import DO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -49,33 +49,33 @@ cdef class OriginalDO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
-        self.pop_delta = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
+        self.pop_delta = self._generate_population(self.pop_size)
         # Initial radius of dragonflies' neighborhoods
-        self.radius = (self.problem.ub - self.problem.lb) / 10
-        self.delta_max = (self.problem.ub - self.problem.lb) / 10
+        self.radius = (self.problem.bounds.up - self.problem.bounds.low) / 10
+        self.delta_max = (self.problem.bounds.up - self.problem.bounds.low) / 10
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        _, (self.g_best,), (self.g_worst,) = self.get_special_agents(
-            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        _, (self.g_best,), (self.g_worst,) = self._get_special_agents(
+            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
         )
 
-        r = (self.problem.ub - self.problem.lb) / 4 + (
-                (self.problem.ub - self.problem.lb) * (2 * epoch / self.epoch)
+        r = (self.problem.bounds.up - self.problem.bounds.low) / 4 + (
+                (self.problem.bounds.up - self.problem.bounds.low) * (2 * epoch / self.epoch)
         )
         w = 0.9 - epoch * ((0.9 - 0.4) / self.epoch)
         my_c = 0.1 - epoch * ((0.1 - 0) / (self.epoch / 2))
@@ -146,7 +146,7 @@ cdef class OriginalDO(_LegacyOptimizer):
                     pos_new += temp
                 else:  # Eq. 3.8
                     pos_new += (
-                            self.get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
+                            self._get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
                             * self.pop[idx].solution
                     )
                     pos_delta_new = np.zeros(self.problem.n_dims)
@@ -160,27 +160,27 @@ cdef class OriginalDO(_LegacyOptimizer):
                 pos_new += temp
 
             # Amend solution
-            pos_new = self.correct_solution(pos_new)
-            pos_delta_new = self.correct_solution(pos_delta_new)
-            agent = self.generate_empty_agent(pos_new)
-            agent_delta = self.generate_empty_agent(pos_delta_new)
+            pos_new = self._correct_solution(pos_new)
+            pos_delta_new = self._correct_solution(pos_delta_new)
+            agent = self._generate_empty_agent(pos_new)
+            agent_delta = self._generate_empty_agent(pos_delta_new)
             pop_new.append(agent)
             pop_delta_new.append(agent_delta)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                agent_delta.target = self.get_target(pos_delta_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                agent_delta.target = self._get_target(pos_delta_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
-                self.pop_delta[idx] = self.get_better_agent(
-                    agent_delta, self.pop_delta[idx], self.problem.minmax
+                self.pop_delta[idx] = self._get_better_agent(
+                    agent_delta, self.pop_delta[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            pop_delta_new = self.update_target_for_population(pop_delta_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            pop_delta_new = self._update_target_for_population(pop_delta_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
-            self.pop_delta = self.greedy_selection_population(
-                self.pop_delta, pop_delta_new, self.problem.minmax
+            self.pop_delta = self._greedy_selection_population(
+                self.pop_delta, pop_delta_new, self.problem.sense
             )

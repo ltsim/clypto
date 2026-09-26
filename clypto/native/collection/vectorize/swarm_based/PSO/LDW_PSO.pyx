@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 from clypto.optimizer.native cimport utils as cy
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.native.collection.vectorize.swarm_based.PSO.OriginalPSO cimport OriginalPSO
 
 
@@ -21,15 +21,15 @@ cdef class LDW_PSO(OriginalPSO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.LDW_PSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, w_min=0.4, w_max=0.9)
@@ -67,11 +67,10 @@ cdef class LDW_PSO(OriginalPSO):
             w_min: Weight min of bird, default = 0.4
             w_max: Weight max of bird, default = 0.9
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c1", "c2", "w_min", "w_max"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )

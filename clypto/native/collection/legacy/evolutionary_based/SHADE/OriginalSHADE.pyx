@@ -7,10 +7,10 @@
 import numpy as np
 from scipy.stats import cauchy
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSHADE(_LegacyOptimizer):
+cdef class OriginalSHADE(LegacyOptimizer):
     """
     The original version of: Success-History Adaptation Differential Evolution (OriginalSHADE)
 
@@ -24,15 +24,15 @@ cdef class OriginalSHADE(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import SHADE    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = SHADE.OriginalSHADE(epoch=1000, pop_size=50, miu_f = 0.5, miu_cr = 0.5)
@@ -61,17 +61,17 @@ cdef class OriginalSHADE(_LegacyOptimizer):
             miu_f (float): initial weighting factor, default = 0.5
             miu_cr (float): initial cross-over probability, default = 0.5
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         # the initial f, location is changed then that f is good
         self.miu_f = self.validator.check_float("miu_f", miu_f, (0, 1.0))
         # the initial cr,
         self.miu_cr = self.validator.check_float("miu_cr", miu_cr, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "miu_f", "miu_cr"])
+        self._set_parameters(["epoch", "pop_size", "miu_f", "miu_cr"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_miu_f = self.miu_f * np.ones(self.pop_size)  # list the initial f,
         self.dyn_miu_cr = self.miu_cr * np.ones(self.pop_size)  # list the initial cr,
         self.dyn_pop_archive = list()
@@ -83,9 +83,9 @@ cdef class OriginalSHADE(_LegacyOptimizer):
         down = list_weights * list_objects
         return np.sum(up) / np.sum(down)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -97,7 +97,7 @@ cdef class OriginalSHADE(_LegacyOptimizer):
         list_f_new = np.ones(self.pop_size)
         list_cr_new = np.ones(self.pop_size)
         pop_old = [agent.copy() for agent in self.pop]
-        pop_sorted = self.get_sorted_population(self.pop, self.problem.minmax)
+        pop_sorted = self._get_sorted_population(self.pop, self.problem.sense)
         pop = []
         for idx in range(0, self.pop_size):
             ## Calculate adaptive parameter cr and f
@@ -132,15 +132,15 @@ cdef class OriginalSHADE(_LegacyOptimizer):
             pos_new = np.where(condition, x_new, self.pop[idx].solution)
             j_rand = self.generator.integers(0, self.problem.n_dims)
             pos_new[j_rand] = x_new[j_rand]
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self.get_target(pos_new)
-        pop = self.update_target_for_population(pop)
+                pop[-1].target = self._get_target(pos_new)
+        pop = self._update_target_for_population(pop)
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                    pop[idx].target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop[idx].target, self.pop[idx].target, self.problem.sense
             ):
                 list_cr.append(list_cr_new[idx])
                 list_f.append(list_f_new[idx])

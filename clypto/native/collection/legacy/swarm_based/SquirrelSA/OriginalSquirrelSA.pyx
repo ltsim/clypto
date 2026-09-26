@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSquirrelSA(_LegacyOptimizer):
+cdef class OriginalSquirrelSA(LegacyOptimizer):
     """
     The original version of: Squirrel Search Algorithm (SquirrelSA)
 
@@ -19,14 +19,14 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import SquirrelSA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -63,7 +63,7 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
             scaling_factor (int): scaling factor for gliding distance, default = 18
             beta (float): beta parameter for Levy flight, default = 1.5
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.n_food_sources = self.validator.check_int(
@@ -79,7 +79,7 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
             "scaling_factor", scaling_factor, [1, 100]
         )
         self.beta = self.validator.check_float("beta", beta, [0.0, 10.0])
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -92,7 +92,7 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
         )
         self.sort_flag = True
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         # Aerodynamic parameters from the paper
         self.rho = 1.204  # Air density (kg/m³)
         self.velocity = 5.25  # Gliding velocity (m/s)
@@ -120,9 +120,9 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
         # Scale down the gliding distance
         return d_g / self.scaling_factor
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -140,11 +140,11 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
             else:
                 # Predator present: random location
                 pos_new = self.generator.uniform(
-                    self.problem.lb, self.problem.ub, self.problem.n_dims
+                    self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.target = self.pop[idx].target
             pop_new[idx] = agent
 
@@ -167,11 +167,11 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
             else:
                 # Predator present: random location
                 pos_new = self.generator.uniform(
-                    self.problem.lb, self.problem.ub, self.problem.n_dims
+                    self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.target = self.pop[idx].target
             pop_new[idx] = agent
 
@@ -186,11 +186,11 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
             else:
                 # Predator present: random location
                 pos_new = self.generator.uniform(
-                    self.problem.lb, self.problem.ub, self.problem.n_dims
+                    self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.target = self.pop[idx].target
             pop_new[idx] = agent
 
@@ -211,18 +211,18 @@ cdef class OriginalSquirrelSA(_LegacyOptimizer):
                 indices_random, n_relocate, replace=False
             )
             for idx in relocate_indices:
-                levy = self.get_levy_flight_step(
+                levy = self._get_levy_flight_step(
                     beta=self.beta, multiplier=0.01, size=self.problem.n_dims, case=-1
                 )
-                pos_new = self.problem.lb + levy * (self.problem.ub - self.problem.lb)
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self.problem.bounds.low + levy * (self.problem.bounds.up - self.problem.bounds.low)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 agent.target = self.pop[idx].target
                 pop_new[idx] = agent
         if self.mode in self.AVAILABLE_MODES:
             # Update target for the population
-            pop_new = self.update_target_for_population(pop_new)
+            pop_new = self._update_target_for_population(pop_new)
         else:
             for idx, agent in enumerate(pop_new):
-                pop_new[idx].target = self.get_target(agent.solution)
+                pop_new[idx].target = self._get_target(agent.solution)
         self.pop = pop_new

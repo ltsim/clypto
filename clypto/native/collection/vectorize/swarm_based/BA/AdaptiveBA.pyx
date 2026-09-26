@@ -7,16 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class AdaptiveBA(LegacyNativeOptimizer):
+cdef class AdaptiveBA(VectorizeOptimizer):
     """
     The original version of: Adaptive Bat-inspired Algorithm (ABA)
 
@@ -35,15 +35,15 @@ cdef class AdaptiveBA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import BA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BA.AdaptiveBA(epoch=1000, pop_size=50, loudness_min = 1.0, loudness_max = 2.0, pr_min = -2.5, pr_max = 0.85, pf_min = 0.1, pf_max = 10.)
@@ -94,7 +94,7 @@ cdef class AdaptiveBA(LegacyNativeOptimizer):
             pf_min (float): pulse frequency min, default = 0
             pf_max (float): pulse frequency max, default = 10
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -107,7 +107,6 @@ cdef class AdaptiveBA(LegacyNativeOptimizer):
                 "pf_max",
             ],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -121,14 +120,14 @@ cdef class AdaptiveBA(LegacyNativeOptimizer):
         self.pf_max = cy.validator(float, pf_max, [0.0, 10.0], "pf_max")
         self.alpha = self.gamma = 0.9
 
-    cdef void initialization(self):
-        LegacyNativeOptimizer.initialization(self)
+    def _initialization(self):
+        VectorizeOptimizer._initialization(self)
         n, d = self.pop.n, self.pop.d
-        self.velocity = self.generator.uniform(self.problem.lb, self.problem.ub, (n, d))
+        self.velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (n, d))
         self.loudness_v = self.generator.uniform(self.loudness_min, self.loudness_max, n)
         self.pulse_rate_v = self.generator.uniform(self.pr_min, self.pr_max, n)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -140,7 +139,7 @@ cdef class AdaptiveBA(LegacyNativeOptimizer):
         x_new = X + self.velocity + pf * (X - g)
         x_new = np.where((rng.random(n) > self.pulse_rate_v)[:, None], g + mean_a * rng.normal(-1, 1, (n, 1)), x_new)
         cand = pop.empty_like()
-        cand.X[:] = self.correct_solution(x_new)
+        cand.X[:] = self._correct_solution(x_new)
         self.evaluate(cand, 0, n)
         ok = ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) < self.loudness_v)
         pop.buf[ok] = cand.buf[ok]

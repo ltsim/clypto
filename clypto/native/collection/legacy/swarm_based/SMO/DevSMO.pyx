@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevSMO(_LegacyOptimizer):
+cdef class DevSMO(LegacyOptimizer):
     """
     The developed version of: Spider Monkey Optimization (SMO)
 
@@ -30,15 +30,15 @@ cdef class DevSMO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import SMO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = SMO.DevSMO(epoch=1000, pop_size=50, max_groups = 5, perturbation_rate = 0.7)
@@ -67,16 +67,15 @@ cdef class DevSMO(_LegacyOptimizer):
             max_groups (int): Maximum number of groups for spider monkeys, default = 5
             perturbation_rate (float): Perturbation rate for spider monkeys, default = 0.7
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.max_groups = self.validator.check_int("max_groups", max_groups, [2, 100])
         self.perturbation_rate = self.validator.check_float(
             "perturbation_rate", perturbation_rate, [0.0, 1.0]
         )
-        self.set_parameters(["epoch", "pop_size", "max_groups", "perturbation_rate"])
+        self._set_parameters(["epoch", "pop_size", "max_groups", "perturbation_rate"])
         self.sort_flag = False
-        self.is_parallelizable = False
 
     def split_fill_by_group(self, pop, n_groups):
         """
@@ -93,7 +92,7 @@ cdef class DevSMO(_LegacyOptimizer):
     def merge_groups(self, groups):
         return [x for g in groups for x in g]
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         # Set default parameters as per paper
         max_possible_groups = self.pop_size // 3
         self.num_groups = min(self.max_groups, max_possible_groups)
@@ -105,14 +104,14 @@ cdef class DevSMO(_LegacyOptimizer):
         self.local_limit_counts = [0] * self.num_groups
         self.global_limit_count = 0
 
-    def initialization(self) -> None:
+    def _initialization(self) -> None:
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
         # Split groups
         self.groups = self.split_fill_by_group(self.pop, self.num_groups)
         # Get local leaders
         self.local_leaders = [
-            self.get_best_agent(group, self.problem.minmax) for group in self.groups
+            self._get_best_agent(group, self.problem.sense) for group in self.groups
         ]
 
     def local_leader_phase(self):
@@ -141,10 +140,10 @@ cdef class DevSMO(_LegacyOptimizer):
                     pos_new,
                     group[idx].solution,
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                    agent.target, group[idx].target, self.problem.minmax
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                    agent.target, group[idx].target, self.problem.sense
                 ):
                     self.groups[group_idx][idx] = agent
         self.pop = self.merge_groups(self.groups)
@@ -186,25 +185,25 @@ cdef class DevSMO(_LegacyOptimizer):
                             * (group[jdx].solution[k] - pos_new[k])
                         )
                         # Apply bounds
-                        pos_new = self.correct_solution(pos_new)
-                        agent = self.generate_agent(pos_new)
+                        pos_new = self._correct_solution(pos_new)
+                        agent = self._generate_agent(pos_new)
                         # Greedy selection
-                        if self.compare_target(
-                            agent.target, self.g_best.target, self.problem.minmax
+                        if self._compare_target(
+                            agent.target, self.g_best.target, self.problem.sense
                         ):
                             self.groups[group_idx][idx] = agent
 
     def local_leader_decision_phase(self):
         """Local Leader Decision Phase - handle stagnated local leaders"""
         local_leaders_new = [
-            self.get_best_agent(group, self.problem.minmax) for group in self.groups
+            self._get_best_agent(group, self.problem.sense) for group in self.groups
         ]
         for group_idx, group in enumerate(self.groups):
             # Update local limit count
-            if self.compare_target(
+            if self._compare_target(
                 self.local_leaders[group_idx].target,
                 local_leaders_new[group_idx].target,
-                self.problem.minmax,
+                self.problem.sense,
             ):
                 self.local_limit_counts[group_idx] += 1
             else:
@@ -218,7 +217,7 @@ cdef class DevSMO(_LegacyOptimizer):
                 for idx, agent in enumerate(group):
                     # Random initialization
                     pos_new_01 = self.generator.uniform(
-                        self.problem.lb, self.problem.ub, self.problem.n_dims
+                        self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                     )
                     # Update using equation (5)
                     pos_new_02 = (
@@ -235,8 +234,8 @@ cdef class DevSMO(_LegacyOptimizer):
                         pos_new_02,
                     )
                     # Apply bounds
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_agent(pos_new)
                     # Always accept new position in this phase
                     self.groups[group_idx][idx] = agent
 
@@ -255,16 +254,16 @@ cdef class DevSMO(_LegacyOptimizer):
             # Update local leaders after fission/fusion
             self.local_limit_counts = [0] * self.num_groups
             self.local_leaders = [
-                self.get_best_agent(group, self.problem.minmax)
+                self._get_best_agent(group, self.problem.sense)
                 for group in self.groups
             ]
 
     def update_leaders(self):
         self.pop = self.merge_groups(self.groups)
         # Update global leader
-        g_best_current = self.get_best_agent(self.pop, self.problem.minmax)
-        if self.compare_target(
-            g_best_current.target, self.g_best.target, self.problem.minmax
+        g_best_current = self._get_best_agent(self.pop, self.problem.sense)
+        if self._compare_target(
+            g_best_current.target, self.g_best.target, self.problem.sense
         ):
             self.g_best = g_best_current
             # Update global limit count
@@ -272,9 +271,9 @@ cdef class DevSMO(_LegacyOptimizer):
         else:
             self.global_limit_count += 1
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration

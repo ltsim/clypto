@@ -30,15 +30,15 @@ class EliteMultiGA(MultiGA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import GA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = GA.EliteMultiGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05, selection = "roulette", crossover = "uniform", mutation = "swap")
@@ -92,7 +92,7 @@ class EliteMultiGA(MultiGA):
             self.n_elite_worst = 1
 
         self.strategy = self.validator.check_int("strategy", strategy, [0, 1])
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -109,9 +109,9 @@ class EliteMultiGA(MultiGA):
         )
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -129,12 +129,12 @@ class EliteMultiGA(MultiGA):
                 ### Mutation
                 child = self.mutation_process__(child)
                 ### Survivor Selection
-                pos_new = self.correct_solution(child)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(child)
+                agent = self._generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
-            self.pop = self.update_target_for_population(pop_new)
+                    pop_new[-1].target = self._get_target(pos_new)
+            self.pop = self._update_target_for_population(pop_new)
         else:
             pop_dad = self.pop[
                 self.n_elite_best: self.n_elite_best + self.n_elite_worst
@@ -150,9 +150,9 @@ class EliteMultiGA(MultiGA):
                 ### Mutation
                 child = self.mutation_process__(child)
                 ### Survivor Selection
-                pos_new = self.correct_solution(child)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(child)
+                agent = self._generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
-            self.pop = self.update_target_for_population(pop_new)
+                    pop_new[-1].target = self._get_target(pos_new)
+            self.pop = self._update_target_for_population(pop_new)

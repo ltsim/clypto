@@ -8,27 +8,15 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _DevBROAgent(_LegacyAgent):
+cdef class _DevBROAgent(LegacyAgent):
     cdef public object damage
-    def __init__(self, solution=None, target=None, damage=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.damage = damage
-    cpdef object copy(self):
-        return _DevBROAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.damage,
-        )
-    def update(self, **kwargs):
-        if "damage" in kwargs:
-            self.damage = kwargs.pop("damage")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class DevBRO(_LegacyOptimizer):
+cdef class DevBRO(LegacyOptimizer):
     """
     The developed version: Battle Royale Optimization (BRO)
 
@@ -41,14 +29,14 @@ cdef class DevBRO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import BRO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -71,21 +59,20 @@ cdef class DevBRO(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             threshold (int): dead threshold, default=3
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.threshold = self.validator.check_float("threshold", threshold, [1, 10])
-        self.set_parameters(["epoch", "pop_size", "threshold"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size", "threshold"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         shrink = np.ceil(np.log10(self.epoch))
         self.dyn_delta = np.round(self.epoch / shrink)
-        self.problem.lb_updated = self.problem.lb.copy()
-        self.problem.ub_updated = self.problem.ub.copy()
+        self.lb_updated = self.problem.bounds.low.copy()
+        self.ub_updated = self.problem.bounds.up.copy()
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         damage = 0
@@ -107,9 +94,9 @@ cdef class DevBRO(_LegacyOptimizer):
         dist_list = np.reshape(dist_list, (-1))
         return self.get_idx_min__(dist_list)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -117,8 +104,8 @@ cdef class DevBRO(_LegacyOptimizer):
         for idx in range(self.pop_size):
             # Compare ith soldier with nearest one (jth)
             jdx = self.find_idx_min_distance__(self.pop[idx].solution, self.pop)
-            if self.compare_target(
-                self.pop[idx].target, self.pop[jdx].target, self.problem.minmax
+            if self._compare_target(
+                self.pop[idx].target, self.pop[jdx].target, self.problem.sense
             ):
                 ## Update Winner based on global best solution
                 pos_new = self.pop[idx].solution + self.generator.normal(
@@ -126,8 +113,8 @@ cdef class DevBRO(_LegacyOptimizer):
                 ) * np.mean(
                     np.array([self.pop[idx].solution, self.g_best.solution]), axis=0
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
                 dam_new = (
                     self.pop[idx].damage - 1
                 )  ## Substract damaged hurt -1 to go next battle
@@ -142,14 +129,14 @@ cdef class DevBRO(_LegacyOptimizer):
                         - np.minimum(self.pop[jdx].solution, self.g_best.solution)
                     ) + np.maximum(self.pop[jdx].solution, self.g_best.solution)
                     dam_new = self.pop[jdx].damage + 1
-                    self.pop[jdx].target = self.get_target(self.pop[jdx].solution)
+                    self.pop[jdx].target = self._get_target(self.pop[jdx].solution)
                 else:  ## Loser dead and respawn again
                     pos_new = self.generator.uniform(
-                        self.problem.lb_updated, self.problem.ub_updated
+                        self.lb_updated, self.ub_updated
                     )
                     dam_new = 0
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
                 agent.damage = dam_new
                 self.pop[jdx] = agent
             else:
@@ -159,8 +146,8 @@ cdef class DevBRO(_LegacyOptimizer):
                 pos_new = self.pop[jdx].solution + self.generator.uniform() * (
                     self.g_best.solution - self.pop[jdx].solution
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
                 agent.damage = 0
                 self.pop[jdx] = agent
         if epoch >= self.dyn_delta:  # max_epoch = 1000 -> delta = 300, 450, >500,....
@@ -170,10 +157,10 @@ cdef class DevBRO(_LegacyOptimizer):
             pos_std = np.std(pos_list, axis=0)
             lb = self.g_best.solution - pos_std
             ub = self.g_best.solution + pos_std
-            self.problem.lb_updated = np.clip(
-                lb, self.problem.lb_updated, self.problem.ub_updated
+            self.lb_updated = np.clip(
+                lb, self.lb_updated, self.ub_updated
             )
-            self.problem.ub_updated = np.clip(
-                ub, self.problem.lb_updated, self.problem.ub_updated
+            self.ub_updated = np.clip(
+                ub, self.lb_updated, self.ub_updated
             )
             self.dyn_delta += np.round(self.dyn_delta / 2)

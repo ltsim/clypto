@@ -24,14 +24,14 @@ cdef class IGWO(OriginalGWO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -64,19 +64,19 @@ cdef class IGWO(OriginalGWO):
         super().__init__(epoch, pop_size, **kwargs)
         self.a_min = self.validator.check_float("a_min", a_min, (0.0, 1.6))
         self.a_max = self.validator.check_float("a_max", a_max, [1.0, 4.0])
-        self.set_parameters(["epoch", "pop_size", "a_min", "a_max"])
+        self._set_parameters(["epoch", "pop_size", "a_min", "a_max"])
         self.growth_alpha = 2
         self.growth_delta = 3
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
         The main operations (equations) of algorithm.
 
         Args:
             epoch (int): The current iteration
         """
-        _, list_best, _ = self.get_special_agents(
-            self.pop, n_best=3, minmax=self.problem.minmax
+        _, list_best, _ = self._get_special_agents(
+            self.pop, n_best=3, sense=self.problem.sense
         )
         pop_new = []
         for idx in range(0, self.pop_size):
@@ -106,16 +106,16 @@ cdef class IGWO(OriginalGWO):
                 C3 * list_best[2].solution - self.pop[idx].solution
             )
             pos_new = (X1 + X2 + X3) / 3.0
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

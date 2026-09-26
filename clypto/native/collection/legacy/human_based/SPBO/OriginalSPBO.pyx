@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSPBO(_LegacyOptimizer):
+cdef class OriginalSPBO(LegacyOptimizer):
     """
     The original version of: Student Psychology Based Optimization (SPBO)
 
@@ -24,14 +24,14 @@ cdef class OriginalSPBO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import SPBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -49,21 +49,21 @@ cdef class OriginalSPBO(_LegacyOptimizer):
     def __init__(
             self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         for jdx in range(0, self.problem.n_dims):
-            idx_best = self.get_index_best(self.pop, self.problem.minmax)
+            idx_best = self._get_index_best(self.pop, self.problem.sense)
             mid = self.generator.integers(1, self.pop_size - 1)
             x_mean = np.mean([agent.solution for agent in self.pop], axis=0)
             pop_new = []
@@ -98,16 +98,16 @@ cdef class OriginalSPBO(_LegacyOptimizer):
                         ) * (x_mean - self.pop[idx].solution)
                     else:
                         new_pos = self.problem.generate_solution()
-                new_pos = self.correct_solution(new_pos)
-                agent = self.generate_empty_agent(new_pos)
+                new_pos = self._correct_solution(new_pos)
+                agent = self._generate_empty_agent(new_pos)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(new_pos)
-                    self.pop[idx] = self.get_better_agent(
-                        agent, self.pop[idx], self.problem.minmax
+                    agent.target = self._get_target(new_pos)
+                    self.pop[idx] = self._get_better_agent(
+                        agent, self.pop[idx], self.problem.sense
                     )
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self.update_target_for_population(pop_new)
-                self.pop = self.greedy_selection_population(
-                    self.pop, pop_new, self.problem.minmax
+                pop_new = self._update_target_for_population(pop_new)
+                self.pop = self._greedy_selection_population(
+                    self.pop, pop_new, self.problem.sense
                 )

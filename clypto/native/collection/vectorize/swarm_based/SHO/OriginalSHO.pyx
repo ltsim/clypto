@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalSHO(LegacyNativeOptimizer):
+cdef class OriginalSHO(VectorizeOptimizer):
     """
     The original version of: Spotted Hyena Optimizer (SHO)
 
@@ -26,14 +26,14 @@ cdef class OriginalSHO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import SHO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -68,11 +68,10 @@ cdef class OriginalSHO(LegacyNativeOptimizer):
             h_factor (float): default = 5, coefficient linearly decreased from 5.0 to 0
             n_trials (int): default = 10,
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "h_factor", "n_trials"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -81,7 +80,7 @@ cdef class OriginalSHO(LegacyNativeOptimizer):
         self.h_factor = cy.validator(float, h_factor, (0.5, 10.0), "h_factor")
         self.n_trials = cy.validator(int, n_trials, (1, float("inf")), "n_trials")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation trial
@@ -90,7 +89,7 @@ cdef class OriginalSHO(LegacyNativeOptimizer):
         X = pop.X
         g = np.array(self.g_best_x())
         gb_fit = self.current_g_best().target.fitness
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         hh = self.h_factor - epoch * (self.h_factor / self.epoch)
         B = 2 * rng.uniform(0, 1, (n, d))
         E = 2 * hh * rng.uniform(0, 1, (n, d)) - hh
@@ -110,7 +109,7 @@ cdef class OriginalSHO(LegacyNativeOptimizer):
                 if not len(active):
                     break
                 sub = trial.take(np.arange(len(active)))
-                sub.X[:] = self.correct_solution(g + rng.normal(0, 1, (len(active), d)) * rng.uniform(lb, ub, (len(active), d)))
+                sub.X[:] = self._correct_solution(g + rng.normal(0, 1, (len(active), d)) * rng.uniform(lb, ub, (len(active), d)))
                 self.evaluate(sub, 0, len(active))
                 ok = ops.better(self, sub.F, gb_fit)
                 count[active] += 1

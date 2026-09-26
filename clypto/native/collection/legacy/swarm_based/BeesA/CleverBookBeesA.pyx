@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class CleverBookBeesA(_LegacyOptimizer):
+cdef class CleverBookBeesA(LegacyOptimizer):
     """
     The original version of: Bees Algorithm (CB-BeesA)
 
@@ -26,15 +26,15 @@ cdef class CleverBookBeesA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import BeesA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BeesA.CleverBookBeesA(epoch=1000, pop_size=50, n_elites = 16, n_others = 4,
@@ -72,7 +72,7 @@ cdef class CleverBookBeesA(_LegacyOptimizer):
             n_sites (int): 3 bees (employed bees, onlookers and scouts),
             n_elite_sites (int): 1 good partition
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.n_elites = self.validator.check_int("n_elites", n_elites, [4, 20])
@@ -85,7 +85,7 @@ cdef class CleverBookBeesA(_LegacyOptimizer):
         self.n_elite_sites = self.validator.check_int(
             "n_elite_sites", n_elite_sites, [1, 3]
         )
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -112,17 +112,17 @@ cdef class CleverBookBeesA(_LegacyOptimizer):
                 if self.generator.uniform() < 0.5
                 else (parent.solution[t1] - self.generator.uniform() * self.patch_size)
             )
-            pos_new = self.correct_solution(new_bee)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(new_bee)
+            agent = self._generate_empty_agent(pos_new)
             pop_neigh.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_neigh[-1].target = self.get_target(pos_new)
-        pop_neigh = self.update_target_for_population(pop_neigh)
-        return self.get_best_agent(pop_neigh, self.problem.minmax)
+                pop_neigh[-1].target = self._get_target(pos_new)
+        pop_neigh = self._update_target_for_population(pop_neigh)
+        return self._get_best_agent(pop_neigh, self.problem.sense)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -136,13 +136,13 @@ cdef class CleverBookBeesA(_LegacyOptimizer):
                     neigh_size = self.n_others
                 agent = self.search_neighborhood__(self.pop[idx], neigh_size)
             else:
-                agent = self.generate_agent()
+                agent = self._generate_agent()
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalPFA(_LegacyOptimizer):
+cdef class OriginalPFA(LegacyOptimizer):
     """
     The original version of: Pathfinder Algorithm (PFA)
 
@@ -19,14 +19,14 @@ cdef class OriginalPFA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import PFA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -49,25 +49,25 @@ cdef class OriginalPFA(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         alpha, beta = self.generator.uniform(1, 2, 2)
-        A = self.generator.uniform(self.problem.lb, self.problem.ub) * np.exp(
+        A = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up) * np.exp(
             -2 * epoch / self.epoch
         )
         t = 1.0 - epoch * 1.0 / self.epoch
-        space = self.problem.ub - self.problem.lb
+        space = self.problem.bounds.up - self.problem.bounds.low
         ## Update the position of pathfinder and check the bound
         pos_new = (
                 self.pop[0].solution
@@ -76,8 +76,8 @@ cdef class OriginalPFA(_LegacyOptimizer):
                 * (self.g_best.solution - self.pop[0].solution)
                 + A
         )
-        pos_new = self.correct_solution(pos_new)
-        agent = self.generate_agent(pos_new)
+        pos_new = self._correct_solution(pos_new)
+        agent = self._generate_agent(pos_new)
         pop_new = [
             agent,
         ]
@@ -106,13 +106,13 @@ cdef class OriginalPFA(_LegacyOptimizer):
                     * (self.g_best.solution - self.pop[idx].solution)
             )
             pos_new = (pos_new + t1) / self.pop_size
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
+                pop_new[-1].target = self._get_target(pos_new)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.greedy_selection_population(
-            self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+        self.pop = self._greedy_selection_population(
+            self.pop, pop_new, self.problem.sense
         )

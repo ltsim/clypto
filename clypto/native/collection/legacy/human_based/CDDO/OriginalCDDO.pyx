@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCDDO(_LegacyOptimizer):
+cdef class OriginalCDDO(LegacyOptimizer):
     """
     The original version of: Child Drawing Development Optimization (CCDO)
 
@@ -27,14 +27,14 @@ cdef class OriginalCDDO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import CDDO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -64,7 +64,7 @@ cdef class OriginalCDDO(_LegacyOptimizer):
             pattern_size (int): size of the pattern matrix, default = 10
             creativity_rate (float): creativity rate, default = 0.1
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pattern_size = self.validator.check_int(
@@ -73,10 +73,10 @@ cdef class OriginalCDDO(_LegacyOptimizer):
         self.creativity_rate = self.validator.check_float(
             "creativity_rate", creativity_rate, [0.0, 1.0]
         )
-        self.set_parameters(["epoch", "pop_size", "pattern_size", "creativity_rate"])
+        self._set_parameters(["epoch", "pop_size", "pattern_size", "creativity_rate"])
         self.sort_flag = False
 
-    def before_main_loop(self):
+    def _before_main_loop(self):
         self.LR = self.generator.uniform(0.1, 1.0)  # Child level rate
         self.SR = self.generator.uniform(0.1, 1.0)  # Child Skill Rate
         self.pop_local = self.pop.copy()
@@ -93,20 +93,20 @@ cdef class OriginalCDDO(_LegacyOptimizer):
                     + self.pop[idx].solution[p2] / self.pop[idx].solution[p1]
                 )
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         # Pattern matrix
-        _, pattern, _ = self.get_special_agents(
-            self.pop, n_best=self.pattern_size, minmax=self.problem.minmax
+        _, pattern, _ = self._get_special_agents(
+            self.pop, n_best=self.pattern_size, sense=self.problem.sense
         )
         for idx in range(0, self.pop_size):
             hand_pressure = self.generator.integers(
-                self.problem.lb[0], self.problem.ub[0] + 1
+                self.problem.bounds.low[0], self.problem.bounds.up[0] + 1
             )
             pp = self.generator.integers(0, self.problem.n_dims)
             pos_new = self.pop[idx].solution.copy()
@@ -131,14 +131,14 @@ cdef class OriginalCDDO(_LegacyOptimizer):
                 )
                 self.LR = self.generator.integers(0, 6) / 10
                 self.SR = self.generator.integers(0, 6) / 10
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             self.pop[idx] = agent
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop[idx].target = self.get_target(pos_new)
+                self.pop[idx].target = self._get_target(pos_new)
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self.update_target_for_population(self.pop)
+            self.pop = self._update_target_for_population(self.pop)
         # Update the local information
-        self.pop_local = self.greedy_selection_population(
-            self.pop_local, self.pop, self.problem.minmax
+        self.pop_local = self._greedy_selection_population(
+            self.pop_local, self.pop, self.problem.sense
         )

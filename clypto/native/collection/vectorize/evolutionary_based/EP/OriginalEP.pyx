@@ -11,11 +11,11 @@ import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalEP(LegacyNativeOptimizer):
+cdef class OriginalEP(VectorizeOptimizer):
     """
     The original version of: Evolutionary Programming (EP)
 
@@ -29,14 +29,14 @@ cdef class OriginalEP(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import EP    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -67,11 +67,10 @@ cdef class OriginalEP(LegacyNativeOptimizer):
             pop_size (int): number of population size (miu in the paper), default = 100
             bout_size (float): percentage of child agents implement tournament selection
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "bout_size"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -82,9 +81,9 @@ cdef class OriginalEP(LegacyNativeOptimizer):
     cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
         return [("S", d), ("WIN", 1)]  # mutation strategy and tournament wins
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.n_bout_size = int(self.bout_size * self.pop_size)
-        self.distance = 0.05 * (self.problem.ub - self.problem.lb)
+        self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
 
     cdef void init_fields(self, NativePopulation pop):
         pop.field("S")[:] = self.generator.uniform(0, self.distance, (pop.n, pop.d))
@@ -95,7 +94,7 @@ cdef class OriginalEP(LegacyNativeOptimizer):
         m = pop.n
         F, win = np.asarray(pop.F), pop.field("WIN")[:, 0]
         opp = self.generator.integers(0, m, size=(m, self.n_bout_size))
-        mine = self.problem.minmax
+        mine = self.problem.sense
         wins = (F[:, None] < F[opp]) if mine == "min" else (F[:, None] > F[opp])
         win[:] += wins.sum(axis=1)
         np.add.at(win, opp[~wins], 1)
@@ -104,13 +103,13 @@ cdef class OriginalEP(LegacyNativeOptimizer):
         """Gaussian mutation of every agent and of its strategy; the children are evaluated."""
         child = pop.empty_like()
         S = np.array(pop.field("S"))
-        child.X[:] = self.correct_solution(pop.X + S * self.generator.normal(0, 1.0, S.shape))
+        child.X[:] = self._correct_solution(pop.X + S * self.generator.normal(0, 1.0, S.shape))
         child.field("S")[:] = S + self.generator.normal(0, 1.0, S.shape) * np.abs(S) ** 0.5
         child.field("WIN")[:] = 0
         self.evaluate(child, 0, child.n)
         return child
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation child = self.offspring__(pop)
         both = child.take(self.sorted_order(child)).concat(pop)

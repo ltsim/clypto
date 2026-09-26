@@ -7,52 +7,20 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalESOAAgent(_LegacyAgent):
+cdef class _OriginalESOAAgent(LegacyAgent):
     cdef public object weights
     cdef public object local_solution
     cdef public object m
     cdef public object v
     cdef public object local_target
     cdef public object g
-    def __init__(self, solution=None, target=None, weights=None, local_solution=None, m=None, v=None, local_target=None, g=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.weights = weights
-        self.local_solution = local_solution
-        self.m = m
-        self.v = v
-        self.local_target = local_target
-        self.g = g
-    cpdef object copy(self):
-        return _OriginalESOAAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.weights,
-            self.local_solution,
-            self.m,
-            self.v,
-            self.local_target,
-            self.g,
-        )
-    def update(self, **kwargs):
-        if "weights" in kwargs:
-            self.weights = kwargs.pop("weights")
-        if "local_solution" in kwargs:
-            self.local_solution = kwargs.pop("local_solution")
-        if "m" in kwargs:
-            self.m = kwargs.pop("m")
-        if "v" in kwargs:
-            self.v = kwargs.pop("v")
-        if "local_target" in kwargs:
-            self.local_target = kwargs.pop("local_target")
-        if "g" in kwargs:
-            self.g = kwargs.pop("g")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalESOA(_LegacyOptimizer):
+cdef class OriginalESOA(LegacyOptimizer):
     """
     The original version of: Egret Swarm Optimization Algorithm (ESOA)
 
@@ -63,14 +31,14 @@ cdef class OriginalESOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import ESOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -86,14 +54,13 @@ cdef class OriginalESOA(_LegacyOptimizer):
     """
 
     def __init__(self, epoch=10000, pop_size=100, **kwargs):
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
@@ -103,7 +70,7 @@ cdef class OriginalESOA(_LegacyOptimizer):
             solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v
         )
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         """
         ID_WEI = 2
         ID_LOC_X = 3
@@ -112,26 +79,26 @@ cdef class OriginalESOA(_LegacyOptimizer):
         ID_M = 6
         ID_V = 7
         """
-        agent = self.generate_empty_agent(solution)
-        agent.target = self.get_target(agent.solution)
+        agent = self._generate_empty_agent(solution)
+        agent.target = self._get_target(agent.solution)
         agent.local_target = agent.target.copy()
         agent.g = (
             np.sum(agent.weights * agent.solution) - agent.target.fitness
         ) * agent.solution
         return agent
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.beta1 = 0.9
         self.beta2 = 0.99
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        hop = self.problem.ub - self.problem.lb
+        hop = self.problem.bounds.up - self.problem.bounds.low
         for idx in range(0, self.pop_size):
             # Individual Direction
             p_d = self.pop[idx].local_solution - self.pop[idx].solution
@@ -164,14 +131,14 @@ cdef class OriginalESOA(_LegacyOptimizer):
                 self.pop[idx].solution
                 + np.exp(-1.0 / (0.1 * self.epoch)) * 0.1 * hop * g
             )
-            x_0 = self.correct_solution(x_0)
-            y_0 = self.get_target(x_0)
+            x_0 = self._correct_solution(x_0)
+            y_0 = self._get_target(x_0)
 
             # Random Search
             r3 = self.generator.uniform(-np.pi / 2, np.pi / 2, self.problem.n_dims)
             x_n = self.pop[idx].solution + np.tan(r3) * hop / epoch * 0.5
-            x_n = self.correct_solution(x_n)
-            y_n = self.get_target(x_n)
+            x_n = self._correct_solution(x_n)
+            y_n = self._get_target(x_n)
 
             # Encircling Mechanism
             d = self.pop[idx].local_solution - self.pop[idx].solution
@@ -179,14 +146,14 @@ cdef class OriginalESOA(_LegacyOptimizer):
             r1 = self.generator.random(self.problem.n_dims)
             r2 = self.generator.random(self.problem.n_dims)
             x_m = (1 - r1 - r2) * self.pop[idx].solution + r1 * d + r2 * d_g
-            x_m = self.correct_solution(x_m)
-            y_m = self.get_target(x_m)
+            x_m = self._correct_solution(x_m)
+            y_m = self._get_target(x_m)
 
             # Discriminant Condition
             y_list_compare = [y_0.fitness, y_n.fitness, y_m.fitness]
             y_list = [y_0, y_n, y_m]
             x_list = [x_0, x_n, x_m]
-            if self.problem.minmax == "min":
+            if self.problem.sense == "min":
                 id_best = np.argmin(y_list_compare)
                 x_best = x_list[id_best]
                 y_best = y_list[id_best]
@@ -195,11 +162,11 @@ cdef class OriginalESOA(_LegacyOptimizer):
                 x_best = x_list[id_best]
                 y_best = y_list[id_best]
 
-            if self.compare_target(y_best, self.pop[idx].target, self.problem.minmax):
+            if self._compare_target(y_best, self.pop[idx].target, self.problem.sense):
                 self.pop[idx].solution = x_best
                 self.pop[idx].target = y_best
-                if self.compare_target(
-                    y_best, self.pop[idx].local_target, self.problem.minmax
+                if self._compare_target(
+                    y_best, self.pop[idx].local_target, self.problem.sense
                 ):
                     self.pop[idx].local_solution = x_best
                     self.pop[idx].local_target = y_best

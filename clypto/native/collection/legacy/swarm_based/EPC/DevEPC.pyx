@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevEPC(_LegacyOptimizer):
+cdef class DevEPC(LegacyOptimizer):
     """
     The developed version of: Emperor Penguins Colony (EPC)
 
@@ -26,15 +26,15 @@ cdef class DevEPC(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import EPC    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = EPC.DevEPC(epoch=1000, pop_size=50, heat_damping_factor=0.95, mutation_factor=0.1,
@@ -68,7 +68,7 @@ cdef class DevEPC(_LegacyOptimizer):
             spiral_a (float): Constant for logarithmic spiral movement, default = 1.0
             spiral_b (float): Constant for logarithmic spiral movement, default = 0.5
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.heat_damping_factor = self.validator.check_float(
@@ -79,7 +79,7 @@ cdef class DevEPC(_LegacyOptimizer):
         )
         self.spiral_a = self.validator.check_float("spiral_a", spiral_a, [0.0, 100.0])
         self.spiral_b = self.validator.check_float("spiral_b", spiral_b, [0.0, 100.0])
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -90,9 +90,8 @@ cdef class DevEPC(_LegacyOptimizer):
             ]
         )
         self.sort_flag = False
-        self.is_parallelizable = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         # Physical constants (from paper)
         self.surface_area = 0.56  # m^2 (total surface area of emperor penguin)
         self.emissivity = 0.98  # emissivity of bird plumage
@@ -179,9 +178,9 @@ cdef class DevEPC(_LegacyOptimizer):
         )
         return new_position
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -196,8 +195,8 @@ cdef class DevEPC(_LegacyOptimizer):
             # For each penguin j
             for jdx in range(self.pop_size):
                 # Move penguin i towards penguin j if j has better cost
-                if self.compare_target(
-                        self.pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                if self._compare_target(
+                        self.pop[jdx].target, self.pop[idx].target, self.problem.sense
                 ):
                     # Calculate distance between penguins
                     distance = np.linalg.norm(
@@ -214,9 +213,9 @@ cdef class DevEPC(_LegacyOptimizer):
                     pos_new = self.spiral_movement(
                         self.pop[idx].solution, self.pop[jdx].solution, attractiveness
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
-                    if self.compare_target(
-                            agent.target, self.pop[idx].target, self.problem.minmax
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_agent(pos_new)
+                    if self._compare_target(
+                            agent.target, self.pop[idx].target, self.problem.sense
                     ):
                         self.pop[idx] = agent

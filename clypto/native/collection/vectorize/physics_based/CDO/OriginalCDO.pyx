@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalCDO(LegacyNativeOptimizer):
+cdef class OriginalCDO(VectorizeOptimizer):
     """
     The original version of: Chernobyl Disaster Optimizer (CDO)
 
@@ -22,14 +22,14 @@ cdef class OriginalCDO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import CDO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,18 +57,17 @@ cdef class OriginalCDO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -96,6 +95,6 @@ cdef class OriginalCDO(LegacyNativeOptimizer):
         gama = np.abs(c3 * b[2] - X)
         pos_c = b[2] - pc * gama
 
-        cand.X[:] = self.correct_solution((pos_a + pos_b + pos_c) / 3)
+        cand.X[:] = self._correct_solution((pos_a + pos_b + pos_c) / 3)
         self.evaluate(cand, 0, n)
         self.pop = cand

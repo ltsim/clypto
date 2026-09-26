@@ -10,7 +10,7 @@ import numpy as np
 from clypto.native.collection.vectorize.human_based.QSA.DevQSA cimport DevQSA
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -26,14 +26,14 @@ cdef class ImprovedQSA(DevQSA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import QSA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -84,7 +84,7 @@ cdef class ImprovedQSA(DevQSA):
             if self.generator.random() < pr[idx]:
                 id1 = self.generator.choice(self.pop_size)
                 if self.generator.random() < cv:
-                    levy_step = self.get_levy_flight_step(
+                    levy_step = self._get_levy_flight_step(
                         beta=1.0, multiplier=0.001, case=-1
                     )
                     X_new = (
@@ -95,47 +95,47 @@ cdef class ImprovedQSA(DevQSA):
                     X_new = pop[idx].solution + self.generator.exponential(0.5) * (
                             A - pop[id1].solution
                     )
-                pos_new = self.correct_solution(X_new)
+                pos_new = self._correct_solution(X_new)
             else:
                 pos_new = self.problem.generate_solution()
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                pop_new[-1] = self.get_better_agent(
-                    agent, pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                pop_new[-1] = self._get_better_agent(
+                    agent, pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            pop_new = self.greedy_selection_population(
-                pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            pop_new = self._greedy_selection_population(
+                pop, pop_new, self.problem.sense
             )
-        return self.get_sorted_and_trimmed_population(
-            pop_new, self.pop_size, self.problem.minmax
+        return self._get_sorted_and_trimmed_population(
+            pop_new, self.pop_size, self.problem.sense
         )
 
     def opposition_based__(self, pop=None, g_best=None):
-        pop = self.get_sorted_population(pop, self.problem.minmax)
+        pop = self._get_sorted_population(pop, self.problem.sense)
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.generate_opposition_solution(pop[idx], g_best)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._generate_opposition_solution(pop[idx], g_best)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                pop_new[-1] = self.get_better_agent(
-                    agent, pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                pop_new[-1] = self._get_better_agent(
+                    agent, pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            pop_new = self.greedy_selection_population(
-                pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            pop_new = self._greedy_selection_population(
+                pop, pop_new, self.problem.sense
             )
         return pop_new
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         pop = self.update_business_1__(self.objs, epoch)
         pop = self.update_business_2__(pop, epoch)
         pop = self.update_business_3__(pop, self.g_best)

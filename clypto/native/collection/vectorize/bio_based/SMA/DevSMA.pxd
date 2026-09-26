@@ -1,9 +1,7 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class DevSMA(LegacyNativeOptimizer):
+cdef class DevSMA(VectorizeOptimizer):
     cdef public object p_t
     cdef public object weights
 
-    cdef void initialize_variables(self)
-    cdef void evolve(self, int epoch_c)

@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevHS(LegacyNativeOptimizer):
+cdef class DevHS(VectorizeOptimizer):
     """
     The developed version: Harmony Search (HS)
 
@@ -29,14 +29,14 @@ cdef class DevHS(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.music_based import HS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -64,11 +64,10 @@ cdef class DevHS(LegacyNativeOptimizer):
             c_r (float): Harmony Memory Consideration Rate, default = 0.15
             pa_r (float): Pitch Adjustment Rate, default=0.5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c_r", "pa_r"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -77,26 +76,26 @@ cdef class DevHS(LegacyNativeOptimizer):
         self.c_r = cy.validator(float, c_r, (0, 1.0), "c_r")
         self.pa_r = cy.validator(float, pa_r, (0, 1.0), "pa_r")
 
-    cdef void initialize_variables(self):
-        self.fw = 0.0001 * (self.problem.ub - self.problem.lb)  # Fret Width (Bandwidth)
+    def _initialize_variables(self):
+        self.fw = 0.0001 * (self.problem.bounds.up - self.problem.bounds.low)  # Fret Width (Bandwidth)
         self.fw_damp = 0.9995  # Fret Width Damp Ratio
         self.dyn_fw = self.fw
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         g = np.array(self.g_best_x())
         pos = rng.uniform(lb, ub, (n, d))
         delta = self.dyn_fw * rng.normal(lb, ub, (n, d))
         pos = np.where(rng.random((n, d)) < self.c_r, g, pos)
         pos = np.where(rng.random((n, d)) < self.pa_r, pos + delta, pos)
         cand = pop.empty_like()
-        cand.X[:] = self.correct_solution(pos)
+        cand.X[:] = self._correct_solution(pos)
         self.evaluate(cand, 0, n)
         self.dyn_fw = self.dyn_fw * self.fw_damp
         merged = pop.concat(cand)

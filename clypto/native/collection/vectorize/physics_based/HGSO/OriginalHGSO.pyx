@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalHGSO(LegacyNativeOptimizer):
+cdef class OriginalHGSO(VectorizeOptimizer):
     """
     The original version of: Henry Gas Solubility Optimization (HGSO)
 
@@ -24,14 +24,14 @@ cdef class OriginalHGSO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import HGSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -77,11 +77,10 @@ cdef class OriginalHGSO(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             n_clusters (int): number of clusters, default = 2
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "n_clusters"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -98,14 +97,14 @@ cdef class OriginalHGSO(LegacyNativeOptimizer):
         self.l2 = 100.0
         self.l3 = 1e-2
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.H_j = self.l1 * self.generator.uniform()
         self.P_ij = self.l2 * self.generator.uniform()
         self.C_j = self.l3 * self.generator.uniform()
         self.pop_group, self.p_best = None, None
 
-    cdef void initialization(self):
-        LegacyNativeOptimizer.initialization(self)
+    def _initialization(self):
+        VectorizeOptimizer._initialization(self)
         self.regroup__()
 
     def regroup__(self):
@@ -121,7 +120,7 @@ cdef class OriginalHGSO(LegacyNativeOptimizer):
             merged = merged.concat(self.pop_group[idx])
         return merged
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation grp, new, pop, out
         cdef Py_ssize_t idx, jdx
@@ -143,7 +142,7 @@ cdef class OriginalHGSO(LegacyNativeOptimizer):
                         + F * self.generator.uniform() * gama * (p_best.solution - grp.X[jdx])
                         + F * self.generator.uniform() * self.alpha * (S_ij * g_best - grp.X[jdx])
                 )
-                new.X[jdx] = self.correct_solution(pos_new)
+                new.X[jdx] = self._correct_solution(pos_new)
             self.evaluate(new, 0, new.n)
             self.pop_group[idx] = new
         pop = self.flatten_group__()
@@ -158,7 +157,7 @@ cdef class OriginalHGSO(LegacyNativeOptimizer):
         ## Update the position of the worst agents using Eq. 12
         sorted_id_pos = np.argsort(np.ascontiguousarray(pop.F))
         if N_w > 0:
-            pos_new = self.correct_solution(self.generator.uniform(self.problem.lb, self.problem.ub, (N_w, pop.d)))
+            pos_new = self._correct_solution(self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (N_w, pop.d)))
             out = self.new_population(pos_new)
             pop.buf[sorted_id_pos[:N_w]] = out.buf
         self.regroup__()

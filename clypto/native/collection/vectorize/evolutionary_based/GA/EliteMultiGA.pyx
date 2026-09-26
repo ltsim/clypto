@@ -8,7 +8,7 @@ from clypto.native.collection.vectorize.evolutionary_based.GA.MultiGA cimport Mu
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.validator import Validator
 
@@ -36,15 +36,15 @@ cdef class EliteMultiGA(MultiGA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import GA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = GA.EliteMultiGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05, selection = "roulette", crossover = "uniform", mutation = "swap")
@@ -115,5 +115,5 @@ cdef class EliteMultiGA(MultiGA):
                     self.n_elite_worst = 1
         self.strategy = cy.validator(int, strategy, [0, 1], "strategy")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         self.elite_step__()

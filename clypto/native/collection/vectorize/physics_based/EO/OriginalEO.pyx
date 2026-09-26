@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalEO(LegacyNativeOptimizer):
+cdef class OriginalEO(VectorizeOptimizer):
     """
     The original version of: Equilibrium Optimizer (EO)
 
@@ -22,14 +22,14 @@ cdef class OriginalEO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import EO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -58,11 +58,10 @@ cdef class OriginalEO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -76,7 +75,7 @@ cdef class OriginalEO(LegacyNativeOptimizer):
     def make_equilibrium_pool__(self, NativePopulation best4):
         """The four best agents plus their mean position (evaluated), as one population."""
         pos_mean = np.mean(np.ascontiguousarray(best4.X), axis=0)
-        pos_mean = self.correct_solution(pos_mean)
+        pos_mean = self._correct_solution(pos_mean)
         return best4.concat(self.new_population(pos_mean[None]))
 
     def candidates__(self, NativePopulation pop, NativePopulation c_pool, int epoch):
@@ -95,7 +94,7 @@ cdef class OriginalEO(LegacyNativeOptimizer):
         g = gcp * (c_eq - lamda * X) * f  # Eqs. 13, 14
         return c_eq + (X - c_eq) * f + (g * self.V / lamda) * (1.0 - f)  # Eq. 16
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         c_pool = self.make_equilibrium_pool__(pop.take(self.sorted_order(pop)[:4]))
         ops.step(self, self.candidates__(pop, c_pool, epoch_c))

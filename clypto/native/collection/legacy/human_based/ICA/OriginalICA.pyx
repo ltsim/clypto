@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalICA(_LegacyOptimizer):
+cdef class OriginalICA(LegacyOptimizer):
     """
     The original version of: Imperialist Competitive Algorithm (ICA)
 
@@ -27,14 +27,14 @@ cdef class OriginalICA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import ICA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -73,7 +73,7 @@ cdef class OriginalICA(_LegacyOptimizer):
             revolution_step_size (float): Revolution Step Size  (sigma)
             zeta (float): Colonies Coefficient in Total Objective Value of Empires
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
         self.empire_count = self.validator.check_int(
@@ -92,7 +92,7 @@ cdef class OriginalICA(_LegacyOptimizer):
             "revolution_step_size", revolution_step_size, (0, 1.0)
         )
         self.zeta = self.validator.check_float("zeta", zeta, (0, 1.0))
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -122,10 +122,10 @@ cdef class OriginalICA(_LegacyOptimizer):
         solution[idx_list] = pos_new[idx_list]  # Change only those selected index
         return solution
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
-        self.pop = self.get_sorted_population(self.pop, self.problem.minmax)
+            self.pop = self._generate_population(self.pop_size)
+        self.pop = self._get_sorted_population(self.pop, self.problem.sense)
         self.g_best = self.pop[0].copy()
         # Initialization
         self.n_revoluted_variables = int(
@@ -164,9 +164,9 @@ cdef class OriginalICA(_LegacyOptimizer):
         for idx in idx_last:
             self.empires[self.empire_count - 1].append(self.pop_colonies[idx].copy())
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -180,39 +180,39 @@ cdef class OriginalICA(_LegacyOptimizer):
                         * self.generator.uniform(0, 1, self.problem.n_dims)
                         * (self.pop_empires[idx].solution - colony.solution)
                 )
-                pos_new = self.correct_solution(pos_new)
+                pos_new = self._correct_solution(pos_new)
                 self.empires[idx][idx_colony].solution = pos_new
                 if self.mode not in self.AVAILABLE_MODES:
-                    self.empires[idx][idx_colony].target = self.get_target(pos_new)
-            self.empires[idx] = self.update_target_for_population(self.empires[idx])
+                    self.empires[idx][idx_colony].target = self._get_target(pos_new)
+            self.empires[idx] = self._update_target_for_population(self.empires[idx])
         # Revolution
         for idx, colonies in self.empires.items():
             # Apply revolution to Imperialist
             pos_new_em = self.revolution_country__(
                 self.pop_empires[idx].solution, self.n_revoluted_variables
             )
-            pos_new_em = self.correct_solution(pos_new_em)
+            pos_new_em = self._correct_solution(pos_new_em)
             self.pop_empires[idx].solution = pos_new_em
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop_empires[idx].target = self.get_target(pos_new_em)
+                self.pop_empires[idx].target = self._get_target(pos_new_em)
             # Apply revolution to Colonies
             for idx_colony, colony in enumerate(colonies):
                 if self.generator.random() < self.revolution_prob:
                     pos_new = self.revolution_country__(
                         colony.solution, self.n_revoluted_variables
                     )
-                    pos_new = self.correct_solution(pos_new)
+                    pos_new = self._correct_solution(pos_new)
                     self.empires[idx][idx_colony].solution = pos_new
                     if self.mode not in self.AVAILABLE_MODES:
-                        self.empires[idx][idx_colony].target = self.get_target(pos_new)
-            self.empires[idx] = self.update_target_for_population(self.empires[idx])
-        self.pop_empires = self.update_target_for_population(self.pop_empires)
-        self.update_global_best_agent(self.pop_empires, save=False)
+                        self.empires[idx][idx_colony].target = self._get_target(pos_new)
+            self.empires[idx] = self._update_target_for_population(self.empires[idx])
+        self.pop_empires = self._update_target_for_population(self.pop_empires)
+        self._update_global_best_agent(self.pop_empires)
         # Intra-Empire Competition
         for idx, colonies in self.empires.items():
             for idx_colony, colony in enumerate(colonies):
-                if self.compare_target(
-                        colony.target, self.pop_empires[idx].target, self.problem.minmax
+                if self._compare_target(
+                        colony.target, self.pop_empires[idx].target, self.problem.sense
                 ):
                     self.empires[idx][idx_colony], self.pop_empires[idx] = (
                         self.pop_empires[idx].copy(),
@@ -240,8 +240,8 @@ cdef class OriginalICA(_LegacyOptimizer):
         # Find the weakest empire and weakest colony inside it
         idx_weakest_empire = np.argmax(cost_empires_list)
         if len(self.empires[idx_weakest_empire]) > 0:
-            colonies_sorted = self.get_sorted_population(
-                self.empires[idx_weakest_empire], self.problem.minmax
+            colonies_sorted = self._get_sorted_population(
+                self.empires[idx_weakest_empire], self.problem.sense
             )
             self.empires[idx_empire].append(colonies_sorted.pop(-1))
         else:

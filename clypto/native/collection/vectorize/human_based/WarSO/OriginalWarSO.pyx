@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalWarSO(LegacyNativeOptimizer):
+cdef class OriginalWarSO(VectorizeOptimizer):
     """
     The original version of: War Strategy Optimization (WarSO) algorithm
 
@@ -24,14 +24,14 @@ cdef class OriginalWarSO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import WarSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,11 +65,10 @@ cdef class OriginalWarSO(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             rr (float): the probability of switching position updating, default=0.1
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "rr"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -77,11 +76,11 @@ cdef class OriginalWarSO(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.rr = cy.validator(float, rr, (0.0, 1.0), "rr")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.wl = 2 * np.ones(self.pop_size)
         self.wg = np.zeros(self.pop_size)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

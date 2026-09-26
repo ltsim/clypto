@@ -9,12 +9,12 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -38,15 +38,15 @@ cdef class OriginalBSA(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import BSA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BSA.OriginalBSA(epoch=1000, pop_size=50, ff = 10, pff = 0.8, c1 = 1.5, c2 = 1.5, a1 = 1.0, a2 = 1.0, fc = 0.5)
@@ -95,11 +95,10 @@ cdef class OriginalBSA(AgentListOptimizer):
             a2 (float): The direct effect on the birds' vigilance behaviours.
             fc (float): The followed coefficient - default = 0.5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "ff", "pff", "c1", "c2", "a1", "a2", "fc"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -113,19 +112,19 @@ cdef class OriginalBSA(AgentListOptimizer):
         self.a2 = cy.validator(float, a2, (0, 5.0), "a2")
         self.fc = cy.validator(float, fc, (0, 1.0), "fc")
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         local_position = solution.copy()
         return FieldAgent(solution=solution, local_solution=local_position)
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        agent = self.generate_empty_agent(solution)
-        agent.target = self.get_target(agent.solution)
+    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+        agent = self._generate_empty_agent(solution)
+        agent.target = self._get_target(agent.solution)
         agent.local_target = agent.target.copy()
         return agent
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         pos_list = np.array([agent.solution for agent in self.objs])
         fit_list = np.array([agent.local_target.fitness for agent in self.objs])
         pos_mean = np.mean(pos_list, axis=0)
@@ -172,17 +171,17 @@ cdef class OriginalBSA(AgentListOptimizer):
                         * self.generator.uniform(-1, 1)
                         * (self.g_best.solution - self.objs[idx].solution)
                     )
-                agent.solution = self.correct_solution(x_new)
+                agent.solution = self._correct_solution(x_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(agent.solution)
-                    self.objs[idx] = self.get_better_agent(
-                        agent, self.objs[idx], self.problem.minmax
+                    agent.target = self._get_target(agent.solution)
+                    self.objs[idx] = self._get_better_agent(
+                        agent, self.objs[idx], self.problem.sense
                     )
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self.update_target_for_population(pop_new)
-                self.objs = self.greedy_selection_population(
-                    self.objs, pop_new, self.problem.minmax
+                pop_new = self._update_target_for_population(pop_new)
+                self.objs = self._greedy_selection_population(
+                    self.objs, pop_new, self.problem.sense
                 )
         else:
             pop_new = self.objs.copy()
@@ -204,19 +203,19 @@ cdef class OriginalBSA(AgentListOptimizer):
                     agent = self.objs[idx].copy()
                     x_new = (
                         self.objs[idx].solution
-                        + self.generator.uniform(self.problem.lb, self.problem.ub)
+                        + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                         * self.objs[idx].solution
                     )
-                    agent.solution = self.correct_solution(x_new)
+                    agent.solution = self._correct_solution(x_new)
                     pop_new[idx] = agent
                 if choose == 1:
                     x_new = (
                         self.objs[min_idx].solution
-                        + self.generator.uniform(self.problem.lb, self.problem.ub)
+                        + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                         * self.objs[min_idx].solution
                     )
                     agent = self.objs[min_idx].copy()
-                    agent.solution = self.correct_solution(x_new)
+                    agent.solution = self._correct_solution(x_new)
                     pop_new[min_idx] = agent
                 for i in range(0, int(self.pop_size / 2)):
                     if choose == 2 or min_idx != i:
@@ -229,26 +228,26 @@ cdef class OriginalBSA(AgentListOptimizer):
                             self.objs[i].solution
                             + (self.objs[idx].solution - self.objs[i].solution) * FL
                         )
-                        agent.solution = self.correct_solution(x_new)
+                        agent.solution = self._correct_solution(x_new)
                         pop_new[i] = agent
             else:  # Scrounging (Equation 6)
                 for i in range(0, int(0.5 * self.pop_size)):
                     agent = self.objs[i].copy()
                     x_new = (
                         self.objs[i].solution
-                        + self.generator.uniform(self.problem.lb, self.problem.ub)
+                        + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                         * self.objs[i].solution
                     )
-                    agent.solution = self.correct_solution(x_new)
+                    agent.solution = self._correct_solution(x_new)
                     pop_new[i] = agent
                 if choose == 4:
                     agent = self.objs[min_idx].copy()
                     x_new = (
                         self.objs[min_idx].solution
-                        + self.generator.uniform(self.problem.lb, self.problem.ub)
+                        + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                         * self.objs[min_idx].solution
                     )
-                    agent.solution = self.correct_solution(x_new)
+                    agent.solution = self._correct_solution(x_new)
                 for i in range(int(self.pop_size / 2 + 1), self.pop_size):
                     if choose == 3 or min_idx != i:
                         agent = self.objs[i].copy()
@@ -258,13 +257,13 @@ cdef class OriginalBSA(AgentListOptimizer):
                             self.objs[i].solution
                             + (self.objs[idx].solution - self.objs[i].solution) * FL
                         )
-                        agent.solution = self.correct_solution(x_new)
+                        agent.solution = self._correct_solution(x_new)
                         pop_new[i] = agent
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self.update_target_for_population(pop_new)
+                pop_new = self._update_target_for_population(pop_new)
             else:
                 for idx in range(0, self.pop_size):
-                    pop_new[idx].target = self.get_target(pop_new[idx].solution)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
+                    pop_new[idx].target = self._get_target(pop_new[idx].solution)
+            self.objs = self._greedy_selection_population(
+                self.objs, pop_new, self.problem.sense
             )

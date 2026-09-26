@@ -7,16 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalBA(LegacyNativeOptimizer):
+cdef class OriginalBA(VectorizeOptimizer):
     """
     The original version of: Bat-inspired Algorithm (BA)
 
@@ -32,15 +32,15 @@ cdef class OriginalBA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import BA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BA.OriginalBA(epoch=1000, pop_size=50, loudness=0.8, pulse_rate=0.95, pf_min=0.1, pf_max=10.0)
@@ -84,11 +84,10 @@ cdef class OriginalBA(LegacyNativeOptimizer):
             pf_min (float): pulse frequency min, default = 0
             pf_max (float): pulse frequency max, default = 10
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "loudness", "pulse_rate", "pf_min", "pf_max"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -100,13 +99,13 @@ cdef class OriginalBA(LegacyNativeOptimizer):
         self.pf_max = cy.validator(float, pf_max, [5.0, 20.0], "pf_max")
         self.alpha = self.gamma = 0.9
 
-    cdef void initialization(self):
-        LegacyNativeOptimizer.initialization(self)
+    def _initialization(self):
+        VectorizeOptimizer._initialization(self)
         n, d = self.pop.n, self.pop.d
-        self.velocity = self.generator.uniform(self.problem.lb, self.problem.ub, (n, d))
+        self.velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (n, d))
         self.pulse_frequency = self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform(size=(n, 1))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -117,7 +116,7 @@ cdef class OriginalBA(LegacyNativeOptimizer):
         ## Local search around g_best position
         x_new = np.where((rng.random(n) > self.pulse_rate)[:, None], g + 0.001 * rng.normal(d, 1.0, (n, 1)), x_new)
         cand = pop.empty_like()
-        cand.X[:] = self.correct_solution(x_new)
+        cand.X[:] = self._correct_solution(x_new)
         self.evaluate(cand, 0, n)
         ## Replace the old position by the new one when it is better (and the sound is quiet enough)
         ok = ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) < self.loudness)

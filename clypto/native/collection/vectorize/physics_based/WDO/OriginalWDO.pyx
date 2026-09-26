@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalWDO(LegacyNativeOptimizer):
+cdef class OriginalWDO(VectorizeOptimizer):
     """
     The original version of: Wind Driven Optimization (WDO)
 
@@ -32,14 +32,14 @@ cdef class OriginalWDO(LegacyNativeOptimizer):
     ~~~~~~~~
 
     >>> from clypto.native.collection.vectorize.physics_based import WDO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -85,11 +85,10 @@ cdef class OriginalWDO(LegacyNativeOptimizer):
             c_e (float): coriolis effect, default=0.4
             max_v (float): maximum allowed speed, default=0.3
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "RT", "g_c", "alp", "c_e", "max_v"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -101,12 +100,12 @@ cdef class OriginalWDO(LegacyNativeOptimizer):
         self.c_e = cy.validator(float, c_e, (0, 1.0), "c_e")
         self.max_v = cy.validator(float, max_v, (0, 1.0), "max_v")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_list_velocity = self.max_v * self.generator.uniform(
-            self.problem.lb, self.problem.ub, (self.pop_size, self.problem.n_dims)
+            self.problem.bounds.low, self.problem.bounds.up, (self.pop_size, self.problem.n_dims)
         )
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand

@@ -5,18 +5,18 @@
 # --------------------------------------------------%
 import numpy as np
 
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation, select_better
 
 
-cdef class _PSOBase(LegacyNativeOptimizer):
+cdef class _PSOBase(VectorizeOptimizer):
     """Shared PSO state: the agent layout, velocity limits and greedy updates."""
 
     cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
         return [("V", d), ("P", d), ("PO", m), ("PF", 1)]
 
-    cdef void initialize_variables(self):
-        self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
+    def _initialize_variables(self):
+        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.v_min = -self.v_max
 
     cdef void init_fields(self, NativePopulation pop):
@@ -38,7 +38,7 @@ cdef class _PSOBase(LegacyNativeOptimizer):
     cdef void accept(self, NativePopulation cand, Py_ssize_t start, Py_ssize_t stop):
         """Classic greedy updates: the agent, then its personal best, if improved."""
         cdef NativePopulation pop = self.pop
-        cdef bint maximize = self.problem.minmax != "min"
+        cdef bint maximize = self.problem.sense != "min"
         select_better(pop, pop.cX, pop.cO, pop.cF, cand, cand.cX, cand.cO, cand.cF,
                       start, stop, maximize)
         select_better(pop, self.cP, self.cPO, self.cPF, cand, cand.cX, cand.cO, cand.cF,
@@ -46,5 +46,5 @@ cdef class _PSOBase(LegacyNativeOptimizer):
 
     cdef object amend_random(self, object pos, object U):
         """Classic PSO amend: out-of-bounds values become U(lb, ub) draws."""
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         return np.where(np.logical_and(lb <= pos, pos <= ub), pos, lb + (ub - lb) * U)

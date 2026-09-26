@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalCEM(LegacyNativeOptimizer):
+cdef class OriginalCEM(VectorizeOptimizer):
     """
     The original version of: Cross-Entropy Method (CEM)
 
@@ -26,14 +26,14 @@ cdef class OriginalCEM(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import CEM    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -70,11 +70,10 @@ cdef class OriginalCEM(LegacyNativeOptimizer):
             n_best (int): N selected solutions as a samples for next evolution
             alpha (float): weight factor for means and stdevs (normal distribution)
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "n_best", "alpha"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -83,11 +82,11 @@ cdef class OriginalCEM(LegacyNativeOptimizer):
         self.n_best = cy.validator(int, n_best, [2, int(self.pop_size / 2)], "n_best")
         self.alpha = cy.validator(float, alpha, (0, 1.0), "alpha")
 
-    cdef void initialize_variables(self):
-        self.means = self.generator.uniform(self.problem.lb, self.problem.ub)
-        self.stdevs = np.abs(self.problem.ub - self.problem.lb)
+    def _initialize_variables(self):
+        self.means = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        self.stdevs = np.abs(self.problem.bounds.up - self.problem.bounds.low)
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -99,6 +98,6 @@ cdef class OriginalCEM(LegacyNativeOptimizer):
         self.means = self.alpha * self.means + (1.0 - self.alpha) * means_new
         self.stdevs = np.abs(self.alpha * self.stdevs + (1.0 - self.alpha) * stdevs_new)
         ## Create new population for next generation
-        cand.X[:] = self.correct_solution(self.generator.normal(self.means, self.stdevs, (n, d)))
+        cand.X[:] = self._correct_solution(self.generator.normal(self.means, self.stdevs, (n, d)))
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

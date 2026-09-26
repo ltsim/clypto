@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalTHRO(LegacyNativeOptimizer):
+cdef class OriginalTHRO(VectorizeOptimizer):
     """
     The original version of: Tianji's Horse Racing Optimization (THRO)
 
@@ -27,14 +27,14 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.game_based import THRO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -67,22 +67,21 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [10, 10000], "pop_size")
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         # Split to two groups: tianji and king (50%-50%)
         self.n_pop = self.pop_size // 2
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         # Sequential: horses are compared and replaced one after another, so the loops
         # run on the buffer rows of the two sub-populations.
         cdef NativePopulation pop, tian, king
@@ -152,17 +151,17 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
             )
 
             tianji_r = (
-                    self.get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
+                    self._get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
                     * t_b[idx]
             )
             king_r = (
-                    self.get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
+                    self._get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
                     * k_b[idx]
             )
 
             fit_t = tian.F[tianji_slowest_id]
             fit_k = king.F[king_slowest_id]
-            if self.problem.minmax == "min":
+            if self.problem.sense == "min":
                 if fit_t < fit_k:
                     case = 1
                 elif fit_t > fit_k:
@@ -195,9 +194,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * tianji_alpha + t_beta
-                pos_new = self.correct_solution(pos_new)
-                tar = self.get_target(pos_new)
-                if self.compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.minmax):
+                pos_new = self._correct_solution(pos_new)
+                tar = self._get_target(pos_new)
+                if self._compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
                     ops.set_row(tian, tianji_slowest_id, pos_new, tar)
 
                 # Update King's slowest horse
@@ -213,9 +212,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * king_alpha + k_beta
-                pos_new = self.correct_solution(pos_new)
-                tar = self.get_target(pos_new)
-                if self.compare_fitness(tar.fitness, king.F[king_slowest_id], self.problem.minmax):
+                pos_new = self._correct_solution(pos_new)
+                tar = self._get_target(pos_new)
+                if self._compare_fitness(tar.fitness, king.F[king_slowest_id], self.problem.sense):
                     ops.set_row(king, king_slowest_id, pos_new, tar)
 
                 tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -239,9 +238,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * tianji_alpha + t_beta
-                pos_new = self.correct_solution(pos_new)
-                tar = self.get_target(pos_new)
-                if self.compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.minmax):
+                pos_new = self._correct_solution(pos_new)
+                tar = self._get_target(pos_new)
+                if self._compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
                     ops.set_row(tian, tianji_slowest_id, pos_new, tar)
 
                 # Update King's fastest horse
@@ -257,9 +256,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * king_alpha + k_beta
-                pos_new = self.correct_solution(pos_new)
-                tar = self.get_target(pos_new)
-                if self.compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.minmax):
+                pos_new = self._correct_solution(pos_new)
+                tar = self._get_target(pos_new)
+                if self._compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
                     ops.set_row(king, king_fastest_id, pos_new, tar)
 
                 tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -268,7 +267,7 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
             else:  # Equal slowest speeds
                 fit_t = tian.F[tianji_fastest_id]
                 fit_k = king.F[king_fastest_id]
-                if self.problem.minmax == "min":
+                if self.problem.sense == "min":
                     if fit_t < fit_k:
                         case_fast = 1
                     elif fit_t > fit_k:
@@ -298,9 +297,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self.correct_solution(pos_new)
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, tian.F[tianji_fastest_id], self.problem.minmax):
+                    pos_new = self._correct_solution(pos_new)
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, tian.F[tianji_fastest_id], self.problem.sense):
                         ops.set_row(tian, tianji_fastest_id, pos_new, tar)
 
                     # Update King's fastest horse
@@ -316,9 +315,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self.correct_solution(pos_new)
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.minmax):
+                    pos_new = self._correct_solution(pos_new)
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
                         ops.set_row(king, king_fastest_id, pos_new, tar)
 
                     tianji_fastest_id = min(self.n_pop - 1, tianji_fastest_id + 1)
@@ -343,9 +342,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self.correct_solution(pos_new)
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.minmax):
+                    pos_new = self._correct_solution(pos_new)
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
                         ops.set_row(tian, tianji_slowest_id, pos_new, tar)
 
                     # Update King's fastest horse
@@ -361,9 +360,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self.correct_solution(pos_new)
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.minmax):
+                    pos_new = self._correct_solution(pos_new)
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
                         ops.set_row(king, king_fastest_id, pos_new, tar)
 
                     tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -388,9 +387,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self.correct_solution(pos_new)
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.minmax):
+                    pos_new = self._correct_solution(pos_new)
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
                         ops.set_row(tian, tianji_slowest_id, pos_new, tar)
 
                     # Update King's fastest horse
@@ -406,9 +405,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self.correct_solution(pos_new)
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.minmax):
+                    pos_new = self._correct_solution(pos_new)
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
                         ops.set_row(king, king_fastest_id, pos_new, tar)
 
                     tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -429,7 +428,7 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                     tr4, tr5 = self.generator.choice(
                         list(set(range(self.n_pop)) - {idx}), size=2, replace=False
                     )
-                    lt = self.get_levy_flight_step(
+                    lt = self._get_levy_flight_step(
                         beta=1.5, multiplier=0.2, size=None, case=-1
                     )
                     pos_new[jdx] = pos_new[jdx] + lt * (
@@ -446,9 +445,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                     pos_new[jdx] = best_tianji[jdx] + mt * (
                             best_tianji[jdx] - pos_new[jdx]
                     )
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, tian.F[idx], self.problem.minmax):
+            pos_new = self._correct_solution(pos_new)
+            tar = self._get_target(pos_new)
+            if self._compare_fitness(tar.fitness, tian.F[idx], self.problem.sense):
                 sol_t[idx] = pos_new
                 tian.F[idx] = tar.fitness
                 tian.O[idx] = tar.objectives
@@ -460,7 +459,7 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                     kr1, kr2 = self.generator.choice(
                         list(set(range(self.n_pop)) - {idx}), size=2, replace=False
                     )
-                    lk = self.get_levy_flight_step(
+                    lk = self._get_levy_flight_step(
                         beta=1.5, multiplier=0.2, size=None, case=-1
                     )
                     pos_new[jdx] = pos_new[jdx] + lk * (
@@ -477,9 +476,9 @@ cdef class OriginalTHRO(LegacyNativeOptimizer):
                     pos_new[jdx] = best_king[jdx] + mk * (
                             best_king[jdx] - pos_new[jdx]
                     )
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, king.F[idx], self.problem.minmax):
+            pos_new = self._correct_solution(pos_new)
+            tar = self._get_target(pos_new)
+            if self._compare_fitness(tar.fitness, king.F[idx], self.problem.sense):
                 sol_k[idx] = pos_new
                 king.F[idx] = tar.fitness
                 king.O[idx] = tar.objectives

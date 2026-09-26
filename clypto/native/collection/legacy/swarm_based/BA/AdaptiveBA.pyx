@@ -7,37 +7,17 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _AdaptiveBAAgent(_LegacyAgent):
+cdef class _AdaptiveBAAgent(LegacyAgent):
     cdef public object velocity
     cdef public object loudness
     cdef public object pulse_rate
-    def __init__(self, solution=None, target=None, velocity=None, loudness=None, pulse_rate=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.velocity = velocity
-        self.loudness = loudness
-        self.pulse_rate = pulse_rate
-    cpdef object copy(self):
-        return _AdaptiveBAAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.velocity,
-            self.loudness,
-            self.pulse_rate,
-        )
-    def update(self, **kwargs):
-        if "velocity" in kwargs:
-            self.velocity = kwargs.pop("velocity")
-        if "loudness" in kwargs:
-            self.loudness = kwargs.pop("loudness")
-        if "pulse_rate" in kwargs:
-            self.pulse_rate = kwargs.pop("pulse_rate")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class AdaptiveBA(_LegacyOptimizer):
+cdef class AdaptiveBA(LegacyOptimizer):
     """
     The original version of: Adaptive Bat-inspired Algorithm (ABA)
 
@@ -56,15 +36,15 @@ cdef class AdaptiveBA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import BA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BA.AdaptiveBA(epoch=1000, pop_size=50, loudness_min = 1.0, loudness_max = 2.0, pr_min = -2.5, pr_max = 0.85, pf_min = 0.1, pf_max = 10.)
@@ -101,7 +81,7 @@ cdef class AdaptiveBA(_LegacyOptimizer):
             pf_min (float): pulse frequency min, default = 0
             pf_max (float): pulse frequency max, default = 10
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.loudness_min = self.validator.check_float(
@@ -115,7 +95,7 @@ cdef class AdaptiveBA(_LegacyOptimizer):
         self.pf_min = self.validator.check_float("pf_min", pf_min, [-10.0, 10.0])
         self.pf_max = self.validator.check_float("pf_max", pf_max, [0.0, 10.0])
         self.alpha = self.gamma = 0.9
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -129,10 +109,10 @@ cdef class AdaptiveBA(_LegacyOptimizer):
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
         pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
         return _AdaptiveBAAgent(
@@ -142,9 +122,9 @@ cdef class AdaptiveBA(_LegacyOptimizer):
             pulse_rate=pulse_rate,
         )
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -161,18 +141,18 @@ cdef class AdaptiveBA(_LegacyOptimizer):
             ## Local Search around g_best position
             if self.generator.random() > agent.pulse_rate:
                 x_new = self.g_best.solution + mean_a * self.generator.normal(-1, 1)
-            pos_new = self.correct_solution(x_new)
+            pos_new = self._correct_solution(x_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
             ## Replace the old position by the new one when its has better fitness.
             ##  and then update loudness and emission rate
             if (
-                self.compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                self._compare_target(
+                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
                 )
                 and self.generator.random() < pop_new[idx].loudness
             ):

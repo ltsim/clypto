@@ -9,12 +9,12 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -31,14 +31,14 @@ cdef class OriginalESOA(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import ESOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -64,18 +64,17 @@ cdef class OriginalESOA(AgentListOptimizer):
         name: str | None = None,
         mode: str | None = None,
     ) -> None:
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
@@ -85,21 +84,21 @@ cdef class OriginalESOA(AgentListOptimizer):
             solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v
         )
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        agent = self.generate_empty_agent(solution)
-        agent.target = self.get_target(agent.solution)
+    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+        agent = self._generate_empty_agent(solution)
+        agent.target = self._get_target(agent.solution)
         agent.local_target = agent.target.copy()
         agent.g = (
             np.sum(agent.weights * agent.solution) - agent.target.fitness
         ) * agent.solution
         return agent
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.beta1 = 0.9
         self.beta2 = 0.99
 
-    def evolve_agents(self, epoch):
-        hop = self.problem.ub - self.problem.lb
+    def _evolve_agents(self, epoch):
+        hop = self.problem.bounds.up - self.problem.bounds.low
         for idx in range(0, self.pop_size):
             # Individual Direction
             p_d = self.objs[idx].local_solution - self.objs[idx].solution
@@ -132,14 +131,14 @@ cdef class OriginalESOA(AgentListOptimizer):
                 self.objs[idx].solution
                 + np.exp(-1.0 / (0.1 * self.epoch)) * 0.1 * hop * g
             )
-            x_0 = self.correct_solution(x_0)
-            y_0 = self.get_target(x_0)
+            x_0 = self._correct_solution(x_0)
+            y_0 = self._get_target(x_0)
 
             # Random Search
             r3 = self.generator.uniform(-np.pi / 2, np.pi / 2, self.problem.n_dims)
             x_n = self.objs[idx].solution + np.tan(r3) * hop / epoch * 0.5
-            x_n = self.correct_solution(x_n)
-            y_n = self.get_target(x_n)
+            x_n = self._correct_solution(x_n)
+            y_n = self._get_target(x_n)
 
             # Encircling Mechanism
             d = self.objs[idx].local_solution - self.objs[idx].solution
@@ -147,14 +146,14 @@ cdef class OriginalESOA(AgentListOptimizer):
             r1 = self.generator.random(self.problem.n_dims)
             r2 = self.generator.random(self.problem.n_dims)
             x_m = (1 - r1 - r2) * self.objs[idx].solution + r1 * d + r2 * d_g
-            x_m = self.correct_solution(x_m)
-            y_m = self.get_target(x_m)
+            x_m = self._correct_solution(x_m)
+            y_m = self._get_target(x_m)
 
             # Discriminant Condition
             y_list_compare = [y_0.fitness, y_n.fitness, y_m.fitness]
             y_list = [y_0, y_n, y_m]
             x_list = [x_0, x_n, x_m]
-            if self.problem.minmax == "min":
+            if self.problem.sense == "min":
                 id_best = np.argmin(y_list_compare)
                 x_best = x_list[id_best]
                 y_best = y_list[id_best]
@@ -163,11 +162,11 @@ cdef class OriginalESOA(AgentListOptimizer):
                 x_best = x_list[id_best]
                 y_best = y_list[id_best]
 
-            if self.compare_target(y_best, self.objs[idx].target, self.problem.minmax):
+            if self._compare_target(y_best, self.objs[idx].target, self.problem.sense):
                 self.objs[idx].solution = x_best
                 self.objs[idx].target = y_best
-                if self.compare_target(
-                    y_best, self.objs[idx].local_target, self.problem.minmax
+                if self._compare_target(
+                    y_best, self.objs[idx].local_target, self.problem.sense
                 ):
                     self.objs[idx].local_solution = x_best
                     self.objs[idx].local_target = y_best

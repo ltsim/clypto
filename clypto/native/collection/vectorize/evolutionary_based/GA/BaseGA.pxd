@@ -1,7 +1,7 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class BaseGA(LegacyNativeOptimizer):
+cdef class BaseGA(VectorizeOptimizer):
     cdef public object pc
     cdef public object pm
     cdef public object selection
@@ -10,4 +10,3 @@ cdef class BaseGA(LegacyNativeOptimizer):
     cdef public object mutation
     cdef public object mutation_multipoints
 
-    cdef void evolve(self, int epoch_c)

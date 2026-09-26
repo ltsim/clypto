@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHGSO(_LegacyOptimizer):
+cdef class OriginalHGSO(LegacyOptimizer):
     """
     The original version of: Henry Gas Solubility Optimization (HGSO)
 
@@ -22,14 +22,14 @@ cdef class OriginalHGSO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import HGSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,13 +57,13 @@ cdef class OriginalHGSO(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             n_clusters (int): number of clusters, default = 2
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
         self.n_clusters = self.validator.check_int(
             "n_clusters", n_clusters, [2, int(self.pop_size / 5)]
         )
-        self.set_parameters(["epoch", "pop_size", "n_clusters"])
+        self._set_parameters(["epoch", "pop_size", "n_clusters"])
         self.n_elements = int(self.pop_size / self.n_clusters)
         self.sort_flag = False
         self.T0 = 298.15
@@ -75,16 +75,16 @@ cdef class OriginalHGSO(_LegacyOptimizer):
         self.l2 = 100.0
         self.l3 = 1e-2
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.H_j = self.l1 * self.generator.uniform()
         self.P_ij = self.l2 * self.generator.uniform()
         self.C_j = self.l3 * self.generator.uniform()
         self.pop_group, self.p_best = None, None
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
-        self.pop_group = self.generate_group_population(
+            self.pop = self._generate_population(self.pop_size)
+        self.pop_group = self._generate_group_population(
             self.pop, self.n_clusters, self.n_elements
         )
         self.p_best = self.get_best_solution_in_team__(
@@ -100,13 +100,13 @@ cdef class OriginalHGSO(_LegacyOptimizer):
     def get_best_solution_in_team__(self, group=None):
         list_best = []
         for idx in range(len(group)):
-            best_agent = self.get_best_agent(group[idx], self.problem.minmax)
+            best_agent = self._get_best_agent(group[idx], self.problem.sense)
             list_best.append(best_agent)
         return list_best
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -139,12 +139,12 @@ cdef class OriginalHGSO(_LegacyOptimizer):
                         * self.alpha
                         * (S_ij * self.g_best.solution - self.pop_group[idx][jdx].solution)
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
-            pop_new = self.update_target_for_population(pop_new)
+                    pop_new[-1].target = self._get_target(pos_new)
+            pop_new = self._update_target_for_population(pop_new)
             self.pop_group[idx] = pop_new
         self.pop = self.flatten_group__(self.pop_group)
 
@@ -163,17 +163,17 @@ cdef class OriginalHGSO(_LegacyOptimizer):
         pop_idx = []
         for item in range(N_w):
             id = sorted_id_pos[item]
-            pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_idx.append(id)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         for idx, id_selected in enumerate(pop_idx):
             self.pop[id_selected] = pop_new[idx].copy()
-        self.pop_group = self.generate_group_population(
+        self.pop_group = self._generate_group_population(
             self.pop, self.n_clusters, self.n_elements
         )
         self.p_best = self.get_best_solution_in_team__(self.pop_group)

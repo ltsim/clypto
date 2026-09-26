@@ -8,7 +8,7 @@ import numpy as np
 from cython.parallel cimport prange
 
 from clypto.optimizer.native cimport utils as cy
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation, np_clip
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
@@ -55,15 +55,15 @@ cdef class OriginalPSO(_PSOBase):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.OriginalPSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, w=0.4)
@@ -96,11 +96,10 @@ cdef class OriginalPSO(_PSOBase):
             c2: [0-2] global coefficient
             w: Weight of bird, default = 0.4
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c1", "c2", "w"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -116,14 +115,14 @@ cdef class OriginalPSO(_PSOBase):
     cdef bint clips_velocity(self):
         return False
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t start, stop, n = pop.n, d = pop.d
         cdef double w = self.weight(epoch)
         R = self.generator.random((n, 3, d))  # per agent: r1, r2, amend draws
-        lb = np.ascontiguousarray(self.problem.lb, dtype=float)
-        ub = np.ascontiguousarray(self.problem.ub, dtype=float)
+        lb = np.ascontiguousarray(self.problem.bounds.low, dtype=float)
+        ub = np.ascontiguousarray(self.problem.bounds.up, dtype=float)
         v_min = np.ascontiguousarray(self.v_min, dtype=float)
         v_max = np.ascontiguousarray(self.v_max, dtype=float)
         for start, stop in self.chunks(n):
@@ -131,6 +130,6 @@ cdef class OriginalPSO(_PSOBase):
             _pso_move(pop.view, cand.view, R, g, lb, ub, v_min, v_max,
                       w, self.c1, self.c2, self.clips_velocity(),
                       pop.cX, self.cV, self.cP, cand.cX, start, stop, d)
-            cand.X[start:stop] = self.problem.correct_solutions(cand.X[start:stop])
+            cand.X[start:stop] = self.problem.correct_solution(cand.X[start:stop])
             self.evaluate(cand, start, stop)
             self.accept(cand, start, stop)

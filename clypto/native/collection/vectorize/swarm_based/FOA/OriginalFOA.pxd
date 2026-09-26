@@ -1,6 +1,5 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class OriginalFOA(LegacyNativeOptimizer):
-    cdef void initialization(self)
-    cdef void evolve(self, int epoch_c)
+cdef class OriginalFOA(VectorizeOptimizer):
+    pass

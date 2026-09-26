@@ -9,7 +9,7 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -36,15 +36,15 @@ cdef class DevSMO(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import SMO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = SMO.DevSMO(epoch=1000, pop_size=50, max_groups = 5, perturbation_rate = 0.7)
@@ -86,11 +86,10 @@ cdef class DevSMO(AgentListOptimizer):
             max_groups (int): Maximum number of groups for spider monkeys, default = 5
             perturbation_rate (float): Perturbation rate for spider monkeys, default = 0.7
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "max_groups", "perturbation_rate"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -110,7 +109,7 @@ cdef class DevSMO(AgentListOptimizer):
     def merge_groups(self, groups):
         return [x for g in groups for x in g]
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         # Set default parameters as per paper
         max_possible_groups = self.pop_size // 3
         self.num_groups = min(self.max_groups, max_possible_groups)
@@ -122,13 +121,13 @@ cdef class DevSMO(AgentListOptimizer):
         self.local_limit_counts = [0] * self.num_groups
         self.global_limit_count = 0
 
-    cdef void initialization(self):
-        AgentListOptimizer.initialization(self)
+    def _initialization(self):
+        AgentListOptimizer._initialization(self)
         # Split groups
         self.groups = self.split_fill_by_group(self.objs, self.num_groups)
         # Get local leaders
         self.local_leaders = [
-            self.get_best_agent(group, self.problem.minmax) for group in self.groups
+            self._get_best_agent(group, self.problem.sense) for group in self.groups
         ]
         self.pop = self.mirror__()
 
@@ -157,10 +156,10 @@ cdef class DevSMO(AgentListOptimizer):
                     pos_new,
                     group[idx].solution,
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                    agent.target, group[idx].target, self.problem.minmax
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                    agent.target, group[idx].target, self.problem.sense
                 ):
                     self.groups[group_idx][idx] = agent
         self.objs = self.merge_groups(self.groups)
@@ -201,24 +200,24 @@ cdef class DevSMO(AgentListOptimizer):
                             * (group[jdx].solution[k] - pos_new[k])
                         )
                         # Apply bounds
-                        pos_new = self.correct_solution(pos_new)
-                        agent = self.generate_agent(pos_new)
+                        pos_new = self._correct_solution(pos_new)
+                        agent = self._generate_agent(pos_new)
                         # Greedy selection
-                        if self.compare_target(
-                            agent.target, self.g_best.target, self.problem.minmax
+                        if self._compare_target(
+                            agent.target, self.g_best.target, self.problem.sense
                         ):
                             self.groups[group_idx][idx] = agent
 
     def local_leader_decision_phase(self):
         local_leaders_new = [
-            self.get_best_agent(group, self.problem.minmax) for group in self.groups
+            self._get_best_agent(group, self.problem.sense) for group in self.groups
         ]
         for group_idx, group in enumerate(self.groups):
             # Update local limit count
-            if self.compare_target(
+            if self._compare_target(
                 self.local_leaders[group_idx].target,
                 local_leaders_new[group_idx].target,
-                self.problem.minmax,
+                self.problem.sense,
             ):
                 self.local_limit_counts[group_idx] += 1
             else:
@@ -232,7 +231,7 @@ cdef class DevSMO(AgentListOptimizer):
                 for idx, agent in enumerate(group):
                     # Random initialization
                     pos_new_01 = self.generator.uniform(
-                        self.problem.lb, self.problem.ub, self.problem.n_dims
+                        self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                     )
                     # Update using equation (5)
                     pos_new_02 = (
@@ -249,8 +248,8 @@ cdef class DevSMO(AgentListOptimizer):
                         pos_new_02,
                     )
                     # Apply bounds
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_agent(pos_new)
                     # Always accept new position in this phase
                     self.groups[group_idx][idx] = agent
 
@@ -268,16 +267,16 @@ cdef class DevSMO(AgentListOptimizer):
             # Update local leaders after fission/fusion
             self.local_limit_counts = [0] * self.num_groups
             self.local_leaders = [
-                self.get_best_agent(group, self.problem.minmax)
+                self._get_best_agent(group, self.problem.sense)
                 for group in self.groups
             ]
 
     def update_leaders(self):
         self.objs = self.merge_groups(self.groups)
         # Update global leader
-        g_best_current = self.get_best_agent(self.objs, self.problem.minmax)
-        if self.compare_target(
-            g_best_current.target, self.g_best.target, self.problem.minmax
+        g_best_current = self._get_best_agent(self.objs, self.problem.sense)
+        if self._compare_target(
+            g_best_current.target, self.g_best.target, self.problem.sense
         ):
             self.g_best = g_best_current
             # Update global limit count
@@ -285,7 +284,7 @@ cdef class DevSMO(AgentListOptimizer):
         else:
             self.global_limit_count += 1
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
 
         self.local_leader_phase()
         self.global_leader_phase()

@@ -1,8 +1,7 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class DevMVO(LegacyNativeOptimizer):
+cdef class DevMVO(VectorizeOptimizer):
     cdef public double wep_min
     cdef public double wep_max
 
-    cdef void evolve(self, int epoch_c)

@@ -9,12 +9,12 @@ import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalArchOA(LegacyNativeOptimizer):
+cdef class OriginalArchOA(VectorizeOptimizer):
     """
     The original version of: Archimedes Optimization Algorithm (ArchOA)
 
@@ -32,14 +32,14 @@ cdef class OriginalArchOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import ArchOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -86,11 +86,10 @@ cdef class OriginalArchOA(LegacyNativeOptimizer):
             acc_max (float): acceleration max, Default 0.9
             acc_min (float): acceleration min, Default 0.1
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c1", "c2", "c3", "c4", "acc_max", "acc_min"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -107,13 +106,13 @@ cdef class OriginalArchOA(LegacyNativeOptimizer):
         return [("DEN", d), ("VOL", d), ("ACC", d)]  # density, volume, acceleration
 
     cdef void init_fields(self, NativePopulation pop):
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         R = self.generator.random((pop.n, 3, pop.d))  # per agent: den, vol, acc draws
         pop.field("DEN")[:] = lb + (ub - lb) * R[:, 0]  # Density
         pop.field("VOL")[:] = lb + (ub - lb) * R[:, 1]  # Volume
         pop.field("ACC")[:] = lb + (lb + (ub - lb) * R[:, 2]) * (ub - lb)  # Acceleration
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         # Densities and volumes are updated in place and read by the agents after them, so the
         # first loop runs on the buffer rows; in sequential mode so does the position loop.
         cdef NativePopulation pop = self.pop
@@ -171,13 +170,13 @@ cdef class OriginalArchOA(LegacyNativeOptimizer):
                 f = 1 if p <= 0.5 else -1
                 t = self.c3 * tf
                 pos_new = g_best + f * self.c2 * self.generator.random() * ACC[idx] * ddf * (t * g_best - Xp[idx])
-            pos_c = self.correct_solution(pos_new)
+            pos_c = self._correct_solution(pos_new)
             if swarm:
                 cand.X[idx] = pos_c
             else:
                 # the classic sequential path evaluates the *uncorrected* position
-                tar = self.get_target(pos_new)
-                if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
+                tar = self._get_target(pos_new)
+                if self._compare_fitness(tar.fitness, pop.F[idx], self.problem.sense):
                     ops.set_row(pop, idx, pos_c, tar)
         if swarm:
             ops.finish(self, cand, 0, n)

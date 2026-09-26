@@ -20,14 +20,14 @@ cdef class OriginalFBIO(DevFBIO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import FBIO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -51,16 +51,16 @@ cdef class OriginalFBIO(DevFBIO):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        rd = self.generator.uniform(self.problem.lb, self.problem.ub)
+    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
+        rd = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
         return np.where(condition, solution, rd)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -83,18 +83,18 @@ cdef class OriginalFBIO(DevFBIO):
                                       / 2
                               )
             ## Not good move here, change only 1 variable but check bound of all variable in solution
-            pos_a = self.correct_solution(pos_a)
-            agent = self.generate_empty_agent(pos_a)
+            pos_a = self._correct_solution(pos_a)
+            agent = self._generate_empty_agent(pos_a)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_a)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_a)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
 
         # Step A2
@@ -118,21 +118,21 @@ cdef class OriginalFBIO(DevFBIO):
                         )
                     ## In the original matlab code they do the else condition here, not good again because no need else here
                 ## Same here, they do check the bound of all variable in solution
-                ## pos_a = self.amend_position(pos_a, self.problem.lb, self.problem.ub)
+                ## pos_a = self.amend_position(pos_a, self.problem.bounds.low, self.problem.bounds.up)
             else:
-                pos_a = self.generator.uniform(self.problem.lb, self.problem.ub)
-            pos_a = self.correct_solution(pos_a)
-            agent = self.generate_empty_agent(pos_a)
+                pos_a = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+            pos_a = self._correct_solution(pos_a)
+            agent = self._generate_empty_agent(pos_a)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_a)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_a)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(
-                pop_child, self.pop, self.problem.minmax
+            pop_child = self._update_target_for_population(pop_child)
+            self.pop = self._greedy_selection_population(
+                pop_child, self.pop, self.problem.sense
             )
         ## Persuing team - team B
         ## Step B1
@@ -146,25 +146,25 @@ cdef class OriginalFBIO(DevFBIO):
                 ] + self.generator.uniform() * (
                                    self.g_best.solution[j] - self.pop[idx].solution[j]
                            )
-            pos_b = self.correct_solution(pos_b)
-            agent = self.generate_empty_agent(pos_b)
+            pos_b = self._correct_solution(pos_b)
+            agent = self._generate_empty_agent(pos_b)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_b)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_b)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
         ## Step B2
         pop_child = []
         for idx in range(0, self.pop_size):
             rr = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            if self.compare_target(
-                    self.pop[idx].target, self.pop[rr].target, self.problem.minmax
+            if self._compare_target(
+                    self.pop[idx].target, self.pop[rr].target, self.problem.sense
             ):
                 ## Eq.(7) in FBI Inspired Meta-Optimization
                 pos_b = (
@@ -183,16 +183,16 @@ cdef class OriginalFBIO(DevFBIO):
                         + self.generator.uniform()
                         * (self.g_best.solution - self.pop[idx].solution)
                 )
-            pos_b = self.correct_solution(pos_b)
-            agent = self.generate_empty_agent(pos_b)
+            pos_b = self._correct_solution(pos_b)
+            agent = self._generate_empty_agent(pos_b)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_b)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_b)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(
-                pop_child, self.pop, self.problem.minmax
+            pop_child = self._update_target_for_population(pop_child)
+            self.pop = self._greedy_selection_population(
+                pop_child, self.pop, self.problem.sense
             )

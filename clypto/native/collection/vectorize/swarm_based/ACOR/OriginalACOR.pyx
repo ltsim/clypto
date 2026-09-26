@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalACOR(LegacyNativeOptimizer):
+cdef class OriginalACOR(VectorizeOptimizer):
     """
     The original version of: Ant Colony Optimization Continuous (ACOR)
 
@@ -27,15 +27,15 @@ cdef class OriginalACOR(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import ACOR    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = ACOR.OriginalACOR(epoch=1000, pop_size=50, sample_count = 25, intent_factor = 0.5, zeta = 1.0)
@@ -72,11 +72,10 @@ cdef class OriginalACOR(LegacyNativeOptimizer):
             intent_factor: Intensification Factor (Selection Pressure) (q in the paper), default = 0.5
             zeta: Deviation-Distance Ratio, default = 1.0
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "sample_count", "intent_factor", "zeta"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -86,7 +85,7 @@ cdef class OriginalACOR(LegacyNativeOptimizer):
         self.intent_factor = cy.validator(float, intent_factor, (0, 1.0), "intent_factor")
         self.zeta = cy.validator(float, zeta, (0, 5), "zeta")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sample, both
         cdef Py_ssize_t n = pop.n, d = pop.d, m = self.sample_count
@@ -104,7 +103,7 @@ cdef class OriginalACOR(LegacyNativeOptimizer):
         rdx = rng.choice(n, size=(m, d), p=p)  # a rank chosen per (sample, dimension)
         cols = np.arange(d)[None, :]
         sample = pop.take(np.zeros(m, dtype=int))
-        sample.X[:] = self.correct_solution(X[rdx, cols] + rng.normal(size=(m, d)) * sigma[rdx, cols])
+        sample.X[:] = self._correct_solution(X[rdx, cols] + rng.normal(size=(m, d)) * sigma[rdx, cols])
         self.evaluate(sample, 0, m)
         both = pop.concat(sample)
         self.pop = both.take(self.sorted_order(both)[:self.pop_size])

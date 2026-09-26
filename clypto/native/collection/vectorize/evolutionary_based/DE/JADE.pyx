@@ -9,13 +9,13 @@ import numpy as np
 from scipy.stats import cauchy
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent cimport LegacyNativeAgent
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class JADE(LegacyNativeOptimizer):
+cdef class JADE(VectorizeOptimizer):
     """
     The original version of: Differential Evolution (JADE)
 
@@ -31,14 +31,14 @@ cdef class JADE(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import DE    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -83,11 +83,10 @@ cdef class JADE(LegacyNativeOptimizer):
             pt (float): The percent of top best agents (p in the paper), default = 0.1
             ap (float): The Adaptation Parameter control value of f and cr (c in the paper), default=0.1
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "miu_f", "miu_cr", "pt", "ap"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -98,7 +97,7 @@ cdef class JADE(LegacyNativeOptimizer):
         self.pt = cy.validator(float, pt, (0, 1.0), "pt")
         self.ap = cy.validator(float, ap, (0, 1.0), "ap")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_miu_cr = self.miu_cr
         self.dyn_miu_f = self.miu_f
         self.dyn_pop_archive = np.empty((0, self.problem.n_dims))
@@ -107,7 +106,7 @@ cdef class JADE(LegacyNativeOptimizer):
         temp = np.sum(list_objects)
         return 0 if temp == 0 else np.sum(list_objects**2) / temp
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

@@ -8,11 +8,11 @@ import numpy as np
 from scipy.stats import cauchy
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class L_SHADE(LegacyNativeOptimizer):
+cdef class L_SHADE(VectorizeOptimizer):
     """
     The original version of: Linear Population Size Reduction Success-History Adaptation Differential Evolution (LSHADE)
 
@@ -26,15 +26,15 @@ cdef class L_SHADE(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import SHADE    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = SHADE.L_SHADE(epoch=1000, pop_size=50, miu_f = 0.5, miu_cr = 0.5)
@@ -74,11 +74,10 @@ cdef class L_SHADE(LegacyNativeOptimizer):
             miu_f (float): initial weighting factor, default = 0.5
             miu_cr (float): initial cross-over probability, default = 0.5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "miu_f", "miu_cr"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -87,7 +86,7 @@ cdef class L_SHADE(LegacyNativeOptimizer):
         self.miu_f = cy.validator(float, miu_f, (0, 1.0), "miu_f")
         self.miu_cr = cy.validator(float, miu_cr, (0, 1.0), "miu_cr")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_miu_f = self.miu_f * np.ones(self.pop_size)  # memory of the successful f,
         self.dyn_miu_cr = self.miu_cr * np.ones(self.pop_size)  # memory of the successful cr,
         self.dyn_pop_archive = np.empty((0, self.problem.n_dims))
@@ -100,7 +99,7 @@ cdef class L_SHADE(LegacyNativeOptimizer):
         down = np.sum(list_weights * list_objects)
         return up / down if down != 0 else 0.5
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

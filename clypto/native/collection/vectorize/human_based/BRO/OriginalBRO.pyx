@@ -12,7 +12,7 @@ import numpy as np
 from clypto.native.collection.vectorize.human_based.BRO.DevBRO cimport DevBRO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -31,14 +31,14 @@ cdef class OriginalBRO(DevBRO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import BRO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -70,9 +70,8 @@ cdef class OriginalBRO(DevBRO):
         """
         super().__init__(epoch, pop_size, threshold, name=name, mode=mode)
         self.sort_flag = False
-        self.is_parallelizable = False
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         for idx in range(self.pop_size):
             # Compare ith soldier with nearest one (jth)
             jdx = self.find_idx_min_distance__(self.objs[idx].solution, self.objs)
@@ -80,8 +79,8 @@ cdef class OriginalBRO(DevBRO):
                 idx,
                 jdx,
             )  ## This error in the algorithm's flow in the paper, But in the matlab code, he changed.
-            if self.compare_target(
-                self.objs[idx].target, self.objs[jdx].target, self.problem.minmax
+            if self._compare_target(
+                self.objs[idx].target, self.objs[jdx].target, self.problem.sense
             ):
                 dam, vic = jdx, idx  ## The mistake also here in the paper.
             if self.objs[dam].damage < self.threshold:
@@ -89,8 +88,8 @@ cdef class OriginalBRO(DevBRO):
                     np.maximum(self.objs[dam].solution, self.g_best.solution)
                     - np.minimum(self.objs[dam].solution, self.g_best.solution)
                 ) + np.maximum(self.objs[dam].solution, self.g_best.solution)
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
                 agent.damage = self.objs[dam].damage + 1
                 self.objs[dam] = agent
                 self.objs[vic].damage = 0
@@ -98,7 +97,7 @@ cdef class OriginalBRO(DevBRO):
                 pos_new = self.generator.uniform(
                     self.lb_updated, self.ub_updated
                 )
-                agent = self.generate_agent(pos_new)
+                agent = self._generate_agent(pos_new)
                 self.objs[dam] = agent
         if epoch >= self.dyn_delta:
             pos_list = np.array(

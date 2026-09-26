@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalAO(_LegacyOptimizer):
+cdef class OriginalAO(LegacyOptimizer):
     """
     The original version of: Aquila Optimization (AO)
 
@@ -19,15 +19,15 @@ cdef class OriginalAO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import AO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = AO.OriginalAO(epoch=1000, pop_size=50)
@@ -47,15 +47,15 @@ cdef class OriginalAO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -78,7 +78,7 @@ cdef class OriginalAO(_LegacyOptimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             x_mean = np.mean(np.array([agent.solution for agent in self.pop]), axis=0)
-            levy_step = self.get_levy_flight_step(beta=1.5, multiplier=1.0, case=-1)
+            levy_step = self._get_levy_flight_step(beta=1.5, multiplier=1.0, case=-1)
             if epoch <= (2 / 3) * self.epoch:  # Eq. 3, 4
                 if self.generator.random() < 0.5:
                     pos_new = self.g_best.solution * (
@@ -100,8 +100,8 @@ cdef class OriginalAO(_LegacyOptimizer):
                             - self.generator.random()
                             * (
                                     self.generator.random()
-                                    * (self.problem.ub - self.problem.lb)
-                                    + self.problem.lb
+                                    * (self.problem.bounds.up - self.problem.bounds.low)
+                                    + self.problem.bounds.low
                             )
                             * delta
                     )  # Eq. 13
@@ -112,16 +112,16 @@ cdef class OriginalAO(_LegacyOptimizer):
                             - g2 * levy_step
                             + self.generator.random() * g1
                     )  # Eq. 14
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

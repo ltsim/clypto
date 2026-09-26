@@ -8,11 +8,11 @@ from math import gamma
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalMSA(LegacyNativeOptimizer):
+cdef class OriginalMSA(VectorizeOptimizer):
     """
     The original version: Moth Search Algorithm (MSA)
 
@@ -28,14 +28,14 @@ cdef class OriginalMSA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import MSA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -76,11 +76,10 @@ cdef class OriginalMSA(LegacyNativeOptimizer):
             partition (float): The proportional of first partition, default=0.5
             max_step_size (float): Max step size used in Levy-flight technique, default=1.0
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "n_best", "partition", "max_step_size"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -93,7 +92,7 @@ cdef class OriginalMSA(LegacyNativeOptimizer):
         self.n_moth2 = self.pop_size - self.n_moth1
         self.golden_ratio = (np.sqrt(5) - 1) / 2.0
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d, m1 = self.n_moth1, m2 = n - self.n_moth1
@@ -107,7 +106,7 @@ cdef class OriginalMSA(LegacyNativeOptimizer):
                         * np.sin(np.pi * (beta - 1) / 2)
                         / (gamma(beta / 2) * (beta - 1) * 2 ** ((beta - 2) / 2))
                 ) ** (1 / (beta - 1))
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         # Migration operator: Levy walk of the first moths (Eq. 2.21)
         u = rng.uniform(lb, ub, size=(m1, d)) * sigma
         v = rng.uniform(lb, ub, size=(m1, d))

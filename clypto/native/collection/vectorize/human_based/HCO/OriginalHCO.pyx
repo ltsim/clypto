@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalHCO(LegacyNativeOptimizer):
+cdef class OriginalHCO(VectorizeOptimizer):
     """
     The original version of: Human Conception Optimizer (HCO)
 
@@ -32,14 +32,14 @@ cdef class OriginalHCO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import HCO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -81,11 +81,10 @@ cdef class OriginalHCO(LegacyNativeOptimizer):
             c1 (float): acceleration coefficient, same as PSO, default=1.4
             c2 (float): acceleration coefficient, same as PSO, default=1.4
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "wfp", "wfv", "c1", "c2"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -96,18 +95,18 @@ cdef class OriginalHCO(LegacyNativeOptimizer):
         self.c1 = cy.validator(float, c1, [0.0, 100.0], "c1")
         self.c2 = cy.validator(float, c2, [1.0, 100.0], "c2")
 
-    cdef void initialization(self):
+    def _initialization(self):
         cdef NativePopulation pop, cand
         cdef Py_ssize_t n, d
-        LegacyNativeOptimizer.initialization(self)
+        VectorizeOptimizer._initialization(self)
         pop = self.pop
         n, d = pop.n, pop.d
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         ops.step(self, ub + lb - pop.X)  # opposition-based initialization
         pop = self.pop
         F = np.asarray(pop.F)
         best, worst = F.min(), F.max()
-        if self.problem.minmax == "max":
+        if self.problem.sense == "max":
             best, worst = worst, best
         pfit = (worst - best) * self.wfp + best
         # agents worse than pfit are re-drawn until they are better than pfit
@@ -122,7 +121,7 @@ cdef class OriginalHCO(LegacyNativeOptimizer):
         self.vec = self.generator.uniform(lb, ub, (n, d))
         self.pop_p = pop.take(np.arange(n))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n
         cdef object rng = self.generator

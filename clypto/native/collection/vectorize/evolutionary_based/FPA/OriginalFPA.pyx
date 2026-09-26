@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalFPA(LegacyNativeOptimizer):
+cdef class OriginalFPA(VectorizeOptimizer):
     """
     The original version of: Flower Pollination Algorithm (FPA)
 
@@ -25,14 +25,14 @@ cdef class OriginalFPA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import FPA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -67,11 +67,10 @@ cdef class OriginalFPA(LegacyNativeOptimizer):
             p_s (float): switch probability, default = 0.8
             levy_multiplier (float): multiplier factor of Levy-flight trajectory, default = 0.2
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "p_s", "levy_multiplier"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -80,18 +79,18 @@ cdef class OriginalFPA(LegacyNativeOptimizer):
         self.p_s = cy.validator(float, p_s, (0, 1.0), "p_s")
         self.levy_multiplier = cy.validator(float, levy_multiplier, (-10000, 10000), "levy_multiplier")
 
-    cdef object amend_solution(self, object solution):
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
-        random_pos = self.problem.lb + self.generator.random(np.shape(solution)) * (self.problem.ub - self.problem.lb)
+    cdef object _amend_solution(self, object solution):
+        condition = np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up)
+        random_pos = self.problem.bounds.low + self.generator.random(np.shape(solution)) * (self.problem.bounds.up - self.problem.bounds.low)
         return np.where(condition, solution, random_pos)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        levy = self.get_levy_flight_step(multiplier=self.levy_multiplier, size=(n, d), case=-1)
+        levy = self._get_levy_flight_step(multiplier=self.levy_multiplier, size=(n, d), case=-1)
         pos_levy = X + 1.0 / np.sqrt(epoch_c) * levy * (X - g)  # global pollination
         i1, i2 = ops.two_others(self, n, 1)
         pos_local = X + rng.uniform(size=(n, 1)) * (X[i1[:, 0]] - X[i2[:, 0]])  # local pollination

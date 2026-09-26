@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevGSKA(_LegacyOptimizer):
+cdef class DevGSKA(LegacyOptimizer):
     """
     The developed version: Gaining Sharing Knowledge-based Algorithm (GSKA)
 
@@ -27,14 +27,14 @@ cdef class DevGSKA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import GSKA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -59,17 +59,17 @@ cdef class DevGSKA(_LegacyOptimizer):
             pb (float): percent of the best 0.1%, 0.8%, 0.1% (p in the paper), default = 0.1
             kr (float): knowledge ratio, default = 0.7
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pb = self.validator.check_float("pb", pb, (0, 1.0))
         self.kr = self.validator.check_float("kr", kr, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "pb", "kr"])
+        self._set_parameters(["epoch", "pop_size", "pb", "kr"])
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -91,10 +91,10 @@ cdef class DevGSKA(_LegacyOptimizer):
                     rand_idx = self.generator.choice(
                         list(set(range(0, self.pop_size)) - {previ, idx, nexti})
                     )
-                    if self.compare_target(
+                    if self._compare_target(
                             self.pop[rand_idx].target,
                             self.pop[idx].target,
-                            self.problem.minmax,
+                            self.problem.sense,
                     ):
                         pos_new = self.pop[idx].solution + self.generator.uniform(
                             0, 1, self.problem.n_dims
@@ -109,7 +109,7 @@ cdef class DevGSKA(_LegacyOptimizer):
                             0, 1, self.problem.n_dims
                         ) * (self.pop[rand_idx].solution - self.pop[idx].solution)
                 else:
-                    pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
+                    pos_new = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             else:  # junior gaining and sharing
                 if self.generator.uniform() <= self.kr:
                     id1 = int(self.pb * self.pop_size)
@@ -119,10 +119,10 @@ cdef class DevGSKA(_LegacyOptimizer):
                         list(set(range(id2, self.pop_size)) - {idx})
                     )
                     rand_mid = self.generator.choice(list(set(range(id1, id2)) - {idx}))
-                    if self.compare_target(
+                    if self._compare_target(
                             self.pop[rand_mid].target,
                             self.pop[idx].target,
-                            self.problem.minmax,
+                            self.problem.sense,
                     ):
                         pos_new = self.pop[idx].solution + self.generator.uniform(
                             0, 1, self.problem.n_dims
@@ -137,17 +137,17 @@ cdef class DevGSKA(_LegacyOptimizer):
                             0, 1, self.problem.n_dims
                         ) * (self.pop[rand_mid].solution - self.pop[idx].solution)
                 else:
-                    pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+                    pos_new = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

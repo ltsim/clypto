@@ -9,7 +9,7 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -29,14 +29,14 @@ cdef class OriginalCHIO(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import CHIO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -69,11 +69,10 @@ cdef class OriginalCHIO(AgentListOptimizer):
             brr (float): Basic reproduction rate, default=0.15
             max_age (int): Maximum infected cases age, default=10
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "brr", "max_age"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -82,14 +81,14 @@ cdef class OriginalCHIO(AgentListOptimizer):
         self.brr = cy.validator(float, brr, (0, 1.0), "brr")
         self.max_age = cy.validator(int, max_age, [1, 1 + int(epoch / 5)], "max_age")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.immunity_type_list = self.generator.integers(
             0, 3, self.pop_size
         )  # Randint [0, 1, 2]
         self.age_list = np.zeros(self.pop_size)  # Control the age of each position
         self.finished = False
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         pop_new = []
         is_corona_list = [
                              False,
@@ -134,19 +133,19 @@ cdef class OriginalCHIO(AgentListOptimizer):
                     )
             if self.finished:
                 break
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         if len(pop_new) != self.pop_size:
-            pop_child = self.generate_agents(self.pop_size - len(pop_new))
+            pop_child = self._generate_agents(self.pop_size - len(pop_new))
             pop_new = pop_new + pop_child
         for idx in range(0, self.pop_size):
             # Step 4: Update herd immunity population
-            if self.compare_target(
-                    pop_new[idx].target, self.objs[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, self.objs[idx].target, self.problem.sense
             ):
                 self.objs[idx] = pop_new[idx].copy()
             else:
@@ -155,16 +154,16 @@ cdef class OriginalCHIO(AgentListOptimizer):
             fit_list = np.array([agent.target.fitness for agent in self.objs])
             delta_fx = np.mean(fit_list)
             if (
-                    self.compare_fitness(
-                        pop_new[idx].target.fitness, delta_fx, self.problem.minmax
+                    self._compare_fitness(
+                        pop_new[idx].target.fitness, delta_fx, self.problem.sense
                     )
                     and self.immunity_type_list[idx] == 0
                     and is_corona_list[idx]
             ):
                 self.immunity_type_list[idx] = 1
                 self.age_list[idx] = 1
-            if self.compare_fitness(
-                    delta_fx, pop_new[idx].target.fitness, self.problem.minmax
+            if self._compare_fitness(
+                    delta_fx, pop_new[idx].target.fitness, self.problem.sense
             ) and (self.immunity_type_list[idx] == 1):
                 self.immunity_type_list[idx] = 2
                 self.age_list[idx] = 0
@@ -172,6 +171,6 @@ cdef class OriginalCHIO(AgentListOptimizer):
             if (self.age_list[idx] >= self.max_age) and (
                     self.immunity_type_list[idx] == 1
             ):
-                self.objs[idx] = self.generate_agent()
+                self.objs[idx] = self._generate_agent()
                 self.immunity_type_list[idx] = 0
                 self.age_list[idx] = 0

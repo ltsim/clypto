@@ -7,16 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalFOA(LegacyNativeOptimizer):
+cdef class OriginalFOA(VectorizeOptimizer):
     """
     The original version of: Fruit-fly Optimization Algorithm (FOA)
 
@@ -26,14 +26,14 @@ cdef class OriginalFOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import FOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -61,11 +61,10 @@ cdef class OriginalFOA(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -76,16 +75,16 @@ cdef class OriginalFOA(LegacyNativeOptimizer):
         """The smell concentration of a position (or of every row): norms of consecutive coordinate pairs."""
         return np.hypot(position, np.roll(position, -1, axis=-1))
 
-    cdef void initialization(self):
+    def _initialization(self):
         cdef NativePopulation pop = self.pop
         n, d = self.pop_size, self.problem.n_dims
-        pos = self.problem.lb + self.generator.random((n, d)) * (self.problem.ub - self.problem.lb)
+        pos = self.problem.bounds.low + self.generator.random((n, d)) * (self.problem.bounds.up - self.problem.bounds.low)
         self.pop = self.new_population(self.norm_consecutive_adjacent__(pos))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
-        pos = X + rng.random((n, 1)) * rng.normal(self.problem.lb, self.problem.ub, (n, d))
+        pos = X + rng.random((n, 1)) * rng.normal(self.problem.bounds.low, self.problem.bounds.up, (n, d))
         ops.step(self, self.norm_consecutive_adjacent__(pos))

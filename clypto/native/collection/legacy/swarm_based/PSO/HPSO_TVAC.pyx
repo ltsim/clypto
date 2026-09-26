@@ -21,15 +21,15 @@ cdef class HPSO_TVAC(P_PSO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.HPSO_TVAC(epoch=1000, pop_size=50, ci=0.5, cf=0.1)
@@ -56,13 +56,12 @@ cdef class HPSO_TVAC(P_PSO):
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.ci = self.validator.check_float("ci", ci, [0.3, 1.0])
         self.cf = self.validator.check_float("cf", cf, [0, 0.3])
-        self.set_parameters(["epoch", "pop_size", "ci", "cf"])
+        self._set_parameters(["epoch", "pop_size", "ci", "cf"])
         self.sort_flag = False
-        self.is_parallelizable = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -94,13 +93,13 @@ cdef class HPSO_TVAC(P_PSO):
             #########################
             v_new = np.minimum(np.maximum(v_new, -self.v_max), self.v_max)
             pos_new = self.pop[idx].solution + v_new
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             self.pop[idx].velocity = v_new
-            target = self.get_target(pos_new)
-            if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
+            target = self._get_target(pos_new)
+            if self._compare_target(target, self.pop[idx].target, self.problem.sense):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(
-                target, self.pop[idx].local_target, self.problem.minmax
+            if self._compare_target(
+                target, self.pop[idx].local_target, self.problem.sense
             ):
                 self.pop[idx].update(
                     local_solution=pos_new.copy(), local_target=target.copy()

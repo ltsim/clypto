@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class Matlab101GTO(LegacyNativeOptimizer):
+cdef class Matlab101GTO(VectorizeOptimizer):
     """
     The conversion of Matlab code (version 1.0.1 - 29/11/2022) to Python code of: Giant Trevally Optimizer (GTO)
 
@@ -28,14 +28,14 @@ cdef class Matlab101GTO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GTO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -63,29 +63,28 @@ cdef class Matlab101GTO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d, m = pop.n * (pop.n - 1)
         cdef object rng = self.generator
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         parent = np.repeat(np.arange(n), n - 1)  # n - 1 candidates per agent
         # Step 1: extensive search, Eq.(4): every agent keeps the best of its candidates and itself
         g = np.array(self.g_best_x())
-        levy = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(m, d), case=-1)
+        levy = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(m, d), case=-1)
         cand = pop.take(parent)
-        cand.X[:] = self.correct_solution(g * rng.random((m, 1)) + ((ub - lb) * rng.random((m, 1)) + lb) * levy)
+        cand.X[:] = self._correct_solution(g * rng.random((m, 1)) + ((ub - lb) * rng.random((m, 1)) + lb) * levy)
         self.evaluate(cand, 0, m)
         ops.scatter(self, cand, parent)
         # Step 2: choosing area, Eq. 7
@@ -102,6 +101,6 @@ cdef class Matlab101GTO(LegacyNativeOptimizer):
         theta1 = 1.3296 * np.sin(np.radians(theta2))
         VD = np.sin(np.radians(theta1)) * dist
         cand = pop.take(parent)
-        cand.X[:] = self.correct_solution(X[parent] * np.sin(np.radians(theta2)) * np.asarray(pop.F)[parent][:, None] + VD + H)
+        cand.X[:] = self._correct_solution(X[parent] * np.sin(np.radians(theta2)) * np.asarray(pop.F)[parent][:, None] + VD + H)
         self.evaluate(cand, 0, m)
         ops.scatter(self, cand, parent)

@@ -20,14 +20,14 @@ cdef class DevSPBO(OriginalSPBO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import SPBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -41,9 +41,9 @@ cdef class DevSPBO(OriginalSPBO):
         super().__init__(epoch, pop_size, **kwargs)
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -76,16 +76,16 @@ cdef class DevSPBO(OriginalSPBO):
                 ) * (x_mean - self.pop[idx].solution)
             else:
                 new_pos = self.problem.generate_solution()
-            new_pos = self.correct_solution(new_pos)
-            agent = self.generate_empty_agent(new_pos)
+            new_pos = self._correct_solution(new_pos)
+            agent = self._generate_empty_agent(new_pos)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(new_pos)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(new_pos)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

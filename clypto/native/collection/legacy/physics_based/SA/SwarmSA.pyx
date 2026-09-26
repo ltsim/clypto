@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class SwarmSA(_LegacyOptimizer):
+cdef class SwarmSA(LegacyOptimizer):
     """
     The swarm version of: Simulated Annealing (SwarmSA)
 
@@ -25,14 +25,14 @@ cdef class SwarmSA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import SA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -73,7 +73,7 @@ cdef class SwarmSA(_LegacyOptimizer):
             mutation_step_size (float): Mutation Step Size, default=0.1
             mutation_step_size_damp (float): Mutation Step Size Damp, default=0.99
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.max_sub_iter = self.validator.check_int(
@@ -93,7 +93,7 @@ cdef class SwarmSA(_LegacyOptimizer):
         self.mutation_step_size_damp = self.validator.check_float(
             "mutation_step_size_damp", mutation_step_size_damp, (0, 1.0)
         )
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -112,7 +112,7 @@ cdef class SwarmSA(_LegacyOptimizer):
     def mutate__(self, position, sigma):
         # Select Mutating Variables
         pos_new = position + sigma * self.generator.uniform(
-            self.problem.lb, self.problem.ub
+            self.problem.bounds.low, self.problem.bounds.up
         )
         pos_new = np.where(
             self.generator.random(self.problem.n_dims) < self.mutation_rate,
@@ -123,9 +123,9 @@ cdef class SwarmSA(_LegacyOptimizer):
             pos_new[self.generator.integers(0, self.problem.n_dims)] = (
                 self.generator.uniform()
             )
-        return self.correct_solution(pos_new)
+        return self._correct_solution(pos_new)
 
-    def initialization(self):
+    def _initialization(self):
         # Initial Temperature
         self.dyn_t = self.t0  # Initial Temperature
         self.t_damp = (self.t1 / self.t0) ** (
@@ -133,11 +133,11 @@ cdef class SwarmSA(_LegacyOptimizer):
         )  # Calculate Temperature Damp Rate
         self.dyn_sigma = self.mutation_step_size  # Initial Value of Step Size
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -150,21 +150,21 @@ cdef class SwarmSA(_LegacyOptimizer):
                 for j in range(0, self.move_count):
                     # Perform Mutation (Move)
                     pos_new = self.mutate__(self.pop[idx].solution, self.dyn_sigma)
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
-                        pop_new[-1].target = self.get_target(pos_new)
-            pop_new = self.update_target_for_population(pop_new)
+                        pop_new[-1].target = self._get_target(pos_new)
+            pop_new = self._update_target_for_population(pop_new)
             # Columnize and Sort Newly Created Population
-            pop_new = self.get_sorted_and_trimmed_population(
-                pop_new, self.pop_size, self.problem.minmax
+            pop_new = self._get_sorted_and_trimmed_population(
+                pop_new, self.pop_size, self.problem.sense
             )
             # Randomized Selection
             for idx in range(0, self.pop_size):
                 # Check if new solution is better than current
-                if self.compare_target(
-                        pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+                if self._compare_target(
+                        pop_new[idx].target, self.pop[idx].target, self.problem.sense
                 ):
                     self.pop[idx] = pop_new[idx].copy()
                 else:

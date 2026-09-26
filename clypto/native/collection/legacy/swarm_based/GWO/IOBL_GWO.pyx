@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class IOBL_GWO(_LegacyOptimizer):
+cdef class IOBL_GWO(LegacyOptimizer):
     """
     The original version of: Improved Opposite-based Learning Grey Wolf Optimizer (IOBL-GWO)
 
@@ -24,14 +24,14 @@ cdef class IOBL_GWO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -53,24 +53,23 @@ cdef class IOBL_GWO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         # linearly decreased from 2 to 0
         a = 2 - 2.0 * epoch / self.epoch
-        _, list_best, _ = self.get_special_agents(
-            self.pop, n_best=3, minmax=self.problem.minmax
+        _, list_best, _ = self._get_special_agents(
+            self.pop, n_best=3, sense=self.problem.sense
         )
         for idx in range(0, self.pop_size):
             # Try explorative equation first
@@ -84,14 +83,14 @@ cdef class IOBL_GWO(_LegacyOptimizer):
                 # Calculate average position of all wolves
                 x_avg = np.mean([agent.solution for agent in self.pop], axis=0)
                 pos_new = (list_best[0].solution - x_avg) - r3 * (
-                    self.problem.lb + r4 * (self.problem.ub - self.problem.lb)
+                    self.problem.bounds.low + r4 * (self.problem.bounds.up - self.problem.bounds.low)
                 )
             # Apply boundary constraints
-            pos_new = self.correct_solution(pos_new)
-            tar_new = self.get_target(pos_new)
-            if self.compare_target(tar_new, self.pop[idx].target, self.problem.minmax):
+            pos_new = self._correct_solution(pos_new)
+            tar_new = self._get_target(pos_new)
+            if self._compare_target(tar_new, self.pop[idx].target, self.problem.sense):
                 # If new position is better, update the agent
-                agent = self.generate_empty_agent(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 agent.target = tar_new
                 self.pop[idx] = agent
             else:
@@ -113,39 +112,39 @@ cdef class IOBL_GWO(_LegacyOptimizer):
                     C3 * list_best[2].solution - self.pop[idx].solution
                 )
                 pos_new = (X1 + X2 + X3) / 3.0
-                pos_new = self.correct_solution(pos_new)
-                tar_new = self.get_target(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                tar_new = self._get_target(pos_new)
                 # Create new agent with updated position
-                if self.compare_target(
-                    tar_new, self.pop[idx].target, self.problem.minmax
+                if self._compare_target(
+                    tar_new, self.pop[idx].target, self.problem.sense
                 ):
-                    agent = self.generate_empty_agent(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     agent.target = tar_new
                     self.pop[idx] = agent
 
         # Apply Opposition-Based Learning (OBL) for leading wolves
-        _, list_best, _ = self.get_special_agents(
-            self.pop, n_best=3, minmax=self.problem.minmax
+        _, list_best, _ = self._get_special_agents(
+            self.pop, n_best=3, sense=self.problem.sense
         )
-        pop_sorted, indices = self.get_sorted_indices_population(
-            self.pop, minmax=self.problem.minmax
+        pop_sorted, indices = self._get_sorted_indices_population(
+            self.pop, sense=self.problem.sense
         )
-        obl_alpha = self.generate_agent(
-            solution=self.problem.lb + self.problem.ub - pop_sorted[0].solution
+        obl_alpha = self._generate_agent(
+            solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[0].solution
         )
-        obl_beta = self.generate_agent(
-            solution=self.problem.lb + self.problem.ub - pop_sorted[1].solution
+        obl_beta = self._generate_agent(
+            solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[1].solution
         )
-        obl_delta = self.generate_agent(
-            solution=self.problem.lb + self.problem.ub - pop_sorted[2].solution
+        obl_delta = self._generate_agent(
+            solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[2].solution
         )
         obl_pop = [obl_alpha, obl_beta, obl_delta]
 
         # Replace worst 3 wolves with opposite solutions if they are better
         for idx in range(0, 3):
-            if self.compare_target(
+            if self._compare_target(
                 obl_pop[idx].target,
                 self.pop[indices[-3 + idx]].target,
-                self.problem.minmax,
+                self.problem.sense,
             ):
                 self.pop[idx] = obl_pop[idx]

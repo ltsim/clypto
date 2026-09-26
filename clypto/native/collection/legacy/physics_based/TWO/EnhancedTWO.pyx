@@ -20,14 +20,14 @@ class EnhancedTWO(OppoTWO, LevyTWO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import TWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -52,25 +52,25 @@ class EnhancedTWO(OppoTWO, LevyTWO):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
         pop_oppo = self.pop.copy()
         for idx in range(self.pop_size):
-            pos_opposite = self.problem.ub + self.problem.lb - self.pop[idx].solution
-            pos_new = self.correct_solution(pos_opposite)
+            pos_opposite = self.problem.bounds.up + self.problem.bounds.low - self.pop[idx].solution
+            pos_new = self._correct_solution(pos_opposite)
             pop_oppo[idx].solution = pos_new
             if self.mode not in self.AVAILABLE_MODES:
-                pop_oppo[idx].target = self.get_target(pos_new)
-        pop_oppo = self.update_target_for_population(pop_oppo)
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_oppo, self.pop_size, self.problem.minmax
+                pop_oppo[idx].target = self._get_target(pos_new)
+        pop_oppo = self._update_target_for_population(pop_oppo)
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_oppo, self.pop_size, self.problem.sense
         )
         self.pop = self.update_weight__(self.pop)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -92,7 +92,7 @@ class EnhancedTWO(OppoTWO, LevyTWO):
                     delta_x = 1 / 2 * acceleration + np.power(
                         self.alpha, epoch
                     ) * self.beta * (
-                        self.problem.ub - self.problem.lb
+                        self.problem.bounds.up - self.problem.bounds.low
                     ) * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
@@ -102,8 +102,8 @@ class EnhancedTWO(OppoTWO, LevyTWO):
             pos_new = self.pop[idx].solution.copy().astype(float)
             for jdx in range(self.problem.n_dims):
                 if (
-                    pos_new[jdx] < self.problem.lb[jdx]
-                    or pos_new[jdx] > self.problem.ub[jdx]
+                    pos_new[jdx] < self.problem.bounds.low[jdx]
+                    or pos_new[jdx] > self.problem.bounds.up[jdx]
                 ):
                     if self.generator.random() <= 0.5:
                         pos_new[jdx] = self.g_best.solution[
@@ -112,44 +112,44 @@ class EnhancedTWO(OppoTWO, LevyTWO):
                             self.g_best.solution[jdx] - pos_new[jdx]
                         )
                         if (
-                            pos_new[jdx] < self.problem.lb[jdx]
-                            or pos_new[jdx] > self.problem.ub[jdx]
+                            pos_new[jdx] < self.problem.bounds.low[jdx]
+                            or pos_new[jdx] > self.problem.bounds.up[jdx]
                         ):
                             pos_new[jdx] = self.pop[idx].solution[jdx]
                     else:
-                        if pos_new[jdx] < self.problem.lb[jdx]:
-                            pos_new[jdx] = self.problem.lb[jdx]
-                        if pos_new[jdx] > self.problem.ub[jdx]:
-                            pos_new[jdx] = self.problem.ub[jdx]
-            pop_new[idx].solution = self.correct_solution(pos_new)
+                        if pos_new[jdx] < self.problem.bounds.low[jdx]:
+                            pos_new[jdx] = self.problem.bounds.low[jdx]
+                        if pos_new[jdx] > self.problem.bounds.up[jdx]:
+                            pos_new[jdx] = self.problem.bounds.up[jdx]
+            pop_new[idx].solution = self._correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[idx].target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    pop_new[idx], self.pop[idx], self.problem.minmax
+                pop_new[idx].target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    pop_new[idx], self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
 
         for idx in range(self.pop_size):
-            C_op = self.generate_opposition_solution(pop_new[idx], self.g_best)
-            pos_new = self.correct_solution(C_op)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                agent.target, pop_new[idx].target, self.problem.minmax
+            C_op = self._generate_opposition_solution(pop_new[idx], self.g_best)
+            pos_new = self._correct_solution(C_op)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                agent.target, pop_new[idx].target, self.problem.sense
             ):
                 pop_new[idx] = agent
             else:
-                levy_step = self.get_levy_flight_step(
+                levy_step = self._get_levy_flight_step(
                     beta=1.0, multiplier=1.0, size=self.problem.n_dims, case=-1
                 )
                 pos_new = pop_new[idx].solution + 1.0 / np.sqrt(epoch) * levy_step
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                    agent.target, pop_new[idx].target, self.problem.minmax
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                    agent.target, pop_new[idx].target, self.problem.sense
                 ):
                     pop_new[idx] = agent
         self.pop = self.update_weight__(pop_new)

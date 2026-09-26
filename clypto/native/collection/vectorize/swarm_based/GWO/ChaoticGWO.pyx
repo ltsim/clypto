@@ -8,11 +8,11 @@ import numpy as np
 from clypto.optimizer.native.chaotic import ChaoticMap as CM
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class ChaoticGWO(LegacyNativeOptimizer):
+cdef class ChaoticGWO(VectorizeOptimizer):
     """
     The original version of: Chaotic-based Grey Wolf Optimizer (Chaotic-GWO or C-GWO)
 
@@ -22,14 +22,14 @@ cdef class ChaoticGWO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -78,11 +78,10 @@ cdef class ChaoticGWO(LegacyNativeOptimizer):
             chaotic_name (str): name of chaotic map to use, default = "chebyshev"
             initial_chaotic_value (float): initial value for chaotic map, default = 0.7
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "chaotic_name", "initial_chaotic_value"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -91,7 +90,7 @@ cdef class ChaoticGWO(LegacyNativeOptimizer):
         self.chaotic_name = cy.validator(str, chaotic_name, ChaoticGWO.CHAOTIC_MAPS.keys(), "chaotic_name")
         self.initial_chaotic_value = cy.validator(float, initial_chaotic_value, [0.0, 1.0], "initial_chaotic_value")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.chao_value = self.initial_chaotic_value
         self.chao_func = ChaoticGWO.CHAOTIC_MAPS[self.chaotic_name]
 
@@ -100,7 +99,7 @@ cdef class ChaoticGWO(LegacyNativeOptimizer):
         # Ensure chaotic value stays in [0, 1]
         self.chao_value = np.clip(chao_value, 0, 1)
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t idx, n = pop.n, d = pop.d
@@ -116,6 +115,6 @@ cdef class ChaoticGWO(LegacyNativeOptimizer):
         A = a * (2 * R[:, :3] * cv - 1)
         C = 2 * R[:, 3:] * cv
         Xs = best - A * np.abs(C * best - pop.X[:, None, :])
-        cand.X[:] = self.correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
+        cand.X[:] = self._correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

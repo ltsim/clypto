@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevGCO(LegacyNativeOptimizer):
+cdef class DevGCO(VectorizeOptimizer):
     """
     The developed version: Germinal Center Optimization (GCO)
 
@@ -25,14 +25,14 @@ cdef class DevGCO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.system_based import GCO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -60,11 +60,10 @@ cdef class DevGCO(LegacyNativeOptimizer):
             cr (float): crossover rate, default = 0.7 (Same as DE algorithm)
             wf (float): weighting factor (f in the paper), default = 1.25 (Same as DE algorithm)
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "cr", "wf"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -73,11 +72,11 @@ cdef class DevGCO(LegacyNativeOptimizer):
         self.cr = cy.validator(float, cr, (0, 1.0), "cr")
         self.wf = cy.validator(float, wf, (0, 3.0), "wf")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_list_cell_counter = np.ones(self.pop_size)  # CEll Counter
         self.dyn_list_life_signal = 70 * np.ones(self.pop_size)  # 70% to duplicate, and 30% to die  # LIfe-Signal
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

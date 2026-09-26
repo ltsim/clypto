@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevTPO(LegacyNativeOptimizer):
+cdef class DevTPO(VectorizeOptimizer):
     """
     The original version: Tree Physiology Optimization (TPO)
 
@@ -33,14 +33,14 @@ cdef class DevTPO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import TPO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -82,11 +82,10 @@ cdef class DevTPO(LegacyNativeOptimizer):
             beta (float): Diversification factor of tree shoot, default=50.
             theta (float): Factor to reduce randomization, Theta = Power law to reduce randomization as iteration increases, default=0.9
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "alpha", "beta", "theta"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -96,12 +95,12 @@ cdef class DevTPO(LegacyNativeOptimizer):
         self.beta = cy.validator(float, beta, [-100.0, 100], "beta")
         self.theta = cy.validator(float, theta, (0, 1.0), "theta")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.n_leafs = int(np.sqrt(self.pop_size) + 1)  # Number of leafs
         self._theta = self.theta
         self.roots = self.generator.uniform(0, 1, (self.n_leafs, self.problem.n_dims))
 
-    cdef void initialization(self):
+    def _initialization(self):
         cdef NativePopulation leafs, pop
         self.pop_total = []
         pop = None
@@ -112,7 +111,7 @@ cdef class DevTPO(LegacyNativeOptimizer):
             self.pop_total.append(leafs)
         self.pop = pop
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation leafs, cand, pop
         cdef Py_ssize_t idx
         g_best = np.array(self.g_best_x())
@@ -129,11 +128,11 @@ cdef class DevTPO(LegacyNativeOptimizer):
             nutrient_value = self._theta * (self.roots - roots_old)
             pos_list_new = g_best + self.beta * nutrient_value
             cand = leafs.empty_like()
-            cand.X[:] = self.correct_solution(pos_list_new)
+            cand.X[:] = self._correct_solution(pos_list_new)
             self.evaluate(cand, 0, cand.n)
             if self.mode in self.AVAILABLE_MODES:
                 # greedy_selection_population(candidates, leafs): a leaf stays only if strictly better
-                keep = leafs.F < cand.F if self.problem.minmax == "min" else leafs.F > cand.F
+                keep = leafs.F < cand.F if self.problem.sense == "min" else leafs.F > cand.F
                 rows = np.flatnonzero(~keep)
                 leafs.buf[rows] = cand.buf[rows]
             else:

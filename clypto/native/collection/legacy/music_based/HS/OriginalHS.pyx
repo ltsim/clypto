@@ -21,14 +21,14 @@ cdef class OriginalHS(DevHS):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.music_based import HS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -60,16 +60,16 @@ cdef class OriginalHS(DevHS):
         """
         super().__init__(epoch, pop_size, c_r, pa_r, **kwargs)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
+            pos_new = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             for jdx in range(self.problem.n_dims):
                 # Use Harmony Memory
                 if self.generator.uniform() <= self.c_r:
@@ -77,23 +77,23 @@ cdef class OriginalHS(DevHS):
                     pos_new[jdx] = self.pop[random_index].solution[jdx]
                 # Pitch Adjustment
                 if self.generator.uniform() <= self.pa_r:
-                    mean = (self.problem.lb + self.problem.ub) / 2
+                    mean = (self.problem.bounds.low + self.problem.bounds.up) / 2
                     std_dev = (
-                            abs(self.problem.ub - self.problem.lb) / 6
+                            abs(self.problem.bounds.up - self.problem.bounds.low) / 6
                     )  # This assumes a range of +/- 3 standard deviations
                     delta = self.dyn_fw * self.generator.normal(
                         mean, std_dev
                     )  # Gaussian(Normal)
                     pos_new[jdx] = pos_new[jdx] + delta[jdx]
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         # Update Damp Fret Width
         self.dyn_fw = self.dyn_fw * self.fw_damp
         # Merge Harmony Memory and New Harmonies, Then sort them, Then truncate extra harmonies
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, minmax=self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, sense=self.problem.sense
         )

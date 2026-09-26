@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.swarm_based.GWO.OriginalGWO cimport OriginalGWO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -28,14 +28,14 @@ cdef class IGWO(OriginalGWO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -72,11 +72,10 @@ cdef class IGWO(OriginalGWO):
             a_min (float): Lower bound of a, default = 0.02
             a_max (float): Upper bound of a, default = 2.2
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "a_min", "a_max"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -87,7 +86,7 @@ cdef class IGWO(OriginalGWO):
         self.growth_alpha = 2
         self.growth_delta = 3
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -100,6 +99,6 @@ cdef class IGWO(OriginalGWO):
         A = a * (2 * R[:, :3] - 1)
         C = 2 * R[:, 3:]
         Xs = best - A * np.abs(C * best - pop.X[:, None, :])
-        cand.X[:] = self.correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
+        cand.X[:] = self._correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

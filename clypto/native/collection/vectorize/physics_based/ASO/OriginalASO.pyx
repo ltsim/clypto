@@ -9,11 +9,11 @@ import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalASO(LegacyNativeOptimizer):
+cdef class OriginalASO(VectorizeOptimizer):
     """
     The original version of: Atom Search Optimization (ASO)
 
@@ -28,14 +28,14 @@ cdef class OriginalASO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import ASO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -70,11 +70,10 @@ cdef class OriginalASO(LegacyNativeOptimizer):
             alpha (int): [2, 20], Depth weight, default = 10
             beta (float): [0.1, 1.0], Multiplier weight, default = 0.2
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "alpha", "beta"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -87,12 +86,12 @@ cdef class OriginalASO(LegacyNativeOptimizer):
         return [("V", d), ("M", 1)]  # velocity and mass of each atom
 
     cdef void init_fields(self, NativePopulation pop):
-        pop.field("V")[:] = self.generator.uniform(self.problem.lb, self.problem.ub, (pop.n, pop.d))
+        pop.field("V")[:] = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (pop.n, pop.d))
         pop.field("M")[:] = 0.0
 
-    cdef object amend_solution(self, object solution):
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
-        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+    cdef object _amend_solution(self, object solution):
+        condition = np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up)
+        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, rand_pos)
 
     def update_mass__(self, NativePopulation pop):
@@ -131,7 +130,7 @@ cdef class OriginalASO(LegacyNativeOptimizer):
             + 1
         )
         # k_best atoms with the largest (min problems) / smallest (max problems) mass
-        k_best_idx = sorted(range(n), key=lambda i: mass[i], reverse=(self.problem.minmax == "min"))[:k_best]
+        k_best_idx = sorted(range(n), key=lambda i: mass[i], reverse=(self.problem.sense == "min"))[:k_best]
         mk_average = np.mean(np.array([X[i] for i in k_best_idx]))
         acc_list = np.zeros((self.pop_size, self.problem.n_dims))
         for idx in range(0, self.pop_size):
@@ -152,7 +151,7 @@ cdef class OriginalASO(LegacyNativeOptimizer):
             acc_list[idx] = acc
         return acc_list
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t idx, n = pop.n
@@ -169,11 +168,11 @@ cdef class OriginalASO(LegacyNativeOptimizer):
         R = self.generator.random((n, 2, pop.d))
         velocity = R[:, 0] * pop.field("V") + atom_acc_list
         pos_new = pop.X + velocity
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         pos_new = np.where(np.logical_and(lb <= pos_new, pos_new <= ub), pos_new, lb + (ub - lb) * R[:, 1])
-        cand.X[:] = self.problem.correct_solutions(pos_new)
+        cand.X[:] = self.problem.correct_solution(pos_new)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)
         current_best = self.sorted_order(cand)[0]
-        if self.compare_fitness(g_fit, cand.F[current_best], self.problem.minmax):
+        if self._compare_fitness(g_fit, cand.F[current_best], self.problem.sense):
             pop.buf[self.generator.integers(0, self.pop_size)] = g_row

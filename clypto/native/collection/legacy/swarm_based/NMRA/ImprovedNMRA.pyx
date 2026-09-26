@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class ImprovedNMRA(_LegacyOptimizer):
+cdef class ImprovedNMRA(LegacyOptimizer):
     """
     The developed version of: Improved Naked Mole-Rat Algorithm (I-NMRA)
 
@@ -25,14 +25,14 @@ cdef class ImprovedNMRA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import NMRA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -50,12 +50,12 @@ cdef class ImprovedNMRA(_LegacyOptimizer):
             pb (float): breeding probability, default = 0.75
             pm (float): probability of mutation, default = 0.01
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pb = self.validator.check_float("pb", pb, (0, 1.0))
         self.pm = self.validator.check_float("pm", pm, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "pb", "pm"])
+        self._set_parameters(["epoch", "pop_size", "pb", "pm"])
         self.sort_flag = True
         self.size_b = int(self.pop_size / 5)
 
@@ -72,9 +72,9 @@ cdef class ImprovedNMRA(_LegacyOptimizer):
         new_temp[id2:id3] = g_best.solution[id2:id3]
         return new_temp
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -88,7 +88,7 @@ cdef class ImprovedNMRA(_LegacyOptimizer):
                         0, 1, self.problem.n_dims
                     ) * (self.g_best.solution - self.pop[idx].solution)
                 else:
-                    levy_step = self.get_levy_flight_step(
+                    levy_step = self._get_levy_flight_step(
                         beta=1, multiplier=0.001, case=-1
                     )
                     pos_new = self.pop[idx].solution + 1.0 / np.sqrt(epoch) * np.sign(
@@ -106,19 +106,19 @@ cdef class ImprovedNMRA(_LegacyOptimizer):
                 else:
                     pos_new = self.crossover_random__(self.pop, self.g_best)
             # Mutation
-            temp = self.generator.uniform(self.problem.lb, self.problem.ub)
+            temp = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             condition = self.generator.uniform(0, 1, self.problem.n_dims) < self.pm
             pos_new = np.where(condition, temp, pos_new)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    self.pop[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

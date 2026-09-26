@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class ImprovedSFO(_LegacyOptimizer):
+cdef class ImprovedSFO(LegacyOptimizer):
     """
     The original version: Improved Sailfish Optimizer (I-SFO)
 
@@ -22,14 +22,14 @@ cdef class ImprovedSFO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import SFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -48,23 +48,23 @@ cdef class ImprovedSFO(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100, SailFish pop size
             pp (float): the rate between SailFish and Sardines (N_sf = N_s * pp) = 0.25, 0.2, 0.1
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pp = self.validator.check_float("pp", pp, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "pp"])
+        self._set_parameters(["epoch", "pop_size", "pp"])
         self.sort_flag = True
         self.s_size = int(self.pop_size / self.pp)
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
-        self.s_pop = self.generate_population(self.s_size)
-        self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)
+            self.pop = self._generate_population(self.pop_size)
+        self.s_pop = self._generate_population(self.s_size)
+        self.s_gbest = self._get_best_agent(self.s_pop, self.problem.sense)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -81,18 +81,18 @@ cdef class ImprovedSFO(_LegacyOptimizer):
                     / 2
                     - self.pop[idx].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    self.pop[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
         ## ## Calculate AttackPower using my Eq.thieu
         #### This is our proposed, simple but effective, no need A and epsilon parameters
@@ -101,15 +101,15 @@ cdef class ImprovedSFO(_LegacyOptimizer):
             for idx in range(0, len(self.s_pop)):
                 temp = (self.g_best.solution + AP) / 2
                 pos_new = (
-                        self.problem.lb
-                        + self.problem.ub
+                        self.problem.bounds.low
+                        + self.problem.bounds.up
                         - temp
                         + self.generator.uniform() * (temp - self.s_pop[idx].solution)
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(pos_new)
+                    agent.target = self._get_target(pos_new)
                     self.s_pop[idx] = agent
         else:
             ### Update the position of all sardine using Eq.(9)
@@ -117,31 +117,31 @@ cdef class ImprovedSFO(_LegacyOptimizer):
                 pos_new = self.generator.uniform() * (
                         self.g_best.solution - self.s_pop[idx].solution + AP
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(pos_new)
+                    agent.target = self._get_target(pos_new)
                     self.s_pop[idx] = agent
         ## Recalculate the fitness of all sardine
-        self.s_pop = self.update_target_for_population(self.s_pop)
+        self.s_pop = self._update_target_for_population(self.s_pop)
         ## Sort the population of sailfish and sardine (for reducing computational cost)
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop, self.pop_size, self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop, self.pop_size, self.problem.sense
         )
-        self.s_pop = self.get_sorted_and_trimmed_population(
-            self.s_pop, len(self.s_pop), self.problem.minmax
+        self.s_pop = self._get_sorted_and_trimmed_population(
+            self.s_pop, len(self.s_pop), self.problem.sense
         )
         for idx in range(0, self.pop_size):
             for jdx in range(0, len(self.s_pop)):
                 ### If there is a better position in sardine population.
-                if self.compare_target(
-                        self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                if self._compare_target(
+                        self.s_pop[jdx].target, self.pop[idx].target, self.problem.sense
                 ):
                     self.pop[idx] = self.s_pop[jdx].copy()
                     del self.s_pop[jdx]
                 break  #### This simple keyword helped reducing ton of comparing operation.
                 #### Especially when sardine pop size >> sailfish pop size
-        self.s_pop = self.s_pop + self.generate_population(
+        self.s_pop = self.s_pop + self._generate_population(
             self.s_size - len(self.s_pop)
         )
-        self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)
+        self.s_gbest = self._get_best_agent(self.s_pop, self.problem.sense)

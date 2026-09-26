@@ -7,32 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalASOAgent(_LegacyAgent):
+cdef class _OriginalASOAgent(LegacyAgent):
     cdef public object velocity
     cdef public object mass
-    def __init__(self, solution=None, target=None, velocity=None, mass=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.velocity = velocity
-        self.mass = mass
-    cpdef object copy(self):
-        return _OriginalASOAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.velocity,
-            self.mass,
-        )
-    def update(self, **kwargs):
-        if "velocity" in kwargs:
-            self.velocity = kwargs.pop("velocity")
-        if "mass" in kwargs:
-            self.mass = kwargs.pop("mass")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalASO(_LegacyOptimizer):
+cdef class OriginalASO(LegacyOptimizer):
     """
     The original version of: Atom Search Optimization (ASO)
 
@@ -47,14 +31,14 @@ cdef class OriginalASO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import ASO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -84,26 +68,26 @@ cdef class OriginalASO(_LegacyOptimizer):
             alpha (int): [2, 20], Depth weight, default = 10
             beta (float): [0.1, 1.0], Multiplier weight, default = 0.2
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.alpha = self.validator.check_int("alpha", alpha, [1, 100])
         self.beta = self.validator.check_float("beta", beta, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "alpha", "beta"])
+        self._set_parameters(["epoch", "pop_size", "alpha", "beta"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         mass = 0.0
         return _OriginalASOAgent(solution=solution, velocity=velocity, mass=mass)
 
-    def amend_solution(self, solution: np.ndarray) -> np.ndarray:
+    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
-        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, rand_pos)
 
     def update_mass__(self, population):
@@ -140,7 +124,7 @@ cdef class OriginalASO(_LegacyOptimizer):
             int(self.pop_size - (self.pop_size - 2) * (iteration / self.epoch) ** 0.5)
             + 1
         )
-        if self.problem.minmax == "min":
+        if self.problem.sense == "min":
             k_best_pop = sorted(pop, key=lambda agent: agent.mass, reverse=True)[
                 :k_best
             ].copy()
@@ -166,9 +150,9 @@ cdef class OriginalASO(_LegacyOptimizer):
             acc_list[idx] = acc
         return acc_list
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -185,21 +169,21 @@ cdef class OriginalASO(_LegacyOptimizer):
             )
             pos_new = self.pop[idx].solution + velocity
             # Relocate atom out of range
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
-        current_best = self.get_best_agent(pop_new, self.problem.minmax)
-        if self.compare_target(
-            self.g_best.target, current_best.target, self.problem.minmax
+        current_best = self._get_best_agent(pop_new, self.problem.sense)
+        if self._compare_target(
+            self.g_best.target, current_best.target, self.problem.sense
         ):
             self.pop[self.generator.integers(0, self.pop_size)] = self.g_best.copy()

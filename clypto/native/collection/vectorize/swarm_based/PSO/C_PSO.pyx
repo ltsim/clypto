@@ -7,7 +7,7 @@ import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native.agent cimport LegacyNativeAgent
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 from clypto.native.collection.vectorize.swarm_based.PSO.P_PSO cimport P_PSO
@@ -26,15 +26,15 @@ cdef class C_PSO(P_PSO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.C_PSO(epoch=1000, pop_size=50, c1=2.05, c2=2.05, w_min=0.4, w_max=0.9)
@@ -77,11 +77,10 @@ cdef class C_PSO(P_PSO):
             w_min: Weight min of bird, default = 0.4
             w_max: Weight max of bird, default = 0.9
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c1", "c2", "w_min", "w_max"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -92,20 +91,20 @@ cdef class C_PSO(P_PSO):
         self.w_min = cy.validator(float, w_min, (0, 0.5), "w_min")
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
 
-    cdef void initialize_variables(self):
-        self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
+    def _initialize_variables(self):
+        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.v_min = -self.v_max
         self.N_CLS = int(self.pop_size / 5)  # Number of chaotic local searches
-        self.dyn_lb = self.problem.lb.copy()
-        self.dyn_ub = self.problem.ub.copy()
+        self.dyn_lb = self.problem.bounds.low.copy()
+        self.dyn_ub = self.problem.bounds.up.copy()
 
     cdef object get_weights__(self, object fit, object fit_avg, object fit_min):
         temp1 = self.w_min + (self.w_max - self.w_min) * (fit - fit_min) / (fit_avg - fit_min)
-        if self.problem.minmax == "min":
+        if self.problem.sense == "min":
             return temp1 if fit <= fit_avg else self.w_max
         return self.w_max if fit <= fit_avg else temp1
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef NativePopulation merged
@@ -131,18 +130,18 @@ cdef class C_PSO(P_PSO):
             v_new = np.clip(v_new, self.v_min, self.v_max)
             x_new = Xs + v_new
             V[start:stop] = v_new
-            cand.X[start:stop] = self.correct_solution(np.clip(x_new, self.dyn_lb, self.dyn_ub))
+            cand.X[start:stop] = self._correct_solution(np.clip(x_new, self.dyn_lb, self.dyn_ub))
             self.evaluate(cand, start, stop)
             self.accept(cand, start, stop)
 
         ## Implement chaostic local search for the best solution
         g_best = self.current_g_best().copy()
-        cx_best_0 = (g_best.solution - self.problem.lb) / (self.problem.ub - self.problem.lb)  # Eq. 7
+        cx_best_0 = (g_best.solution - self.problem.bounds.low) / (self.problem.bounds.up - self.problem.bounds.low)  # Eq. 7
         cx_best_1 = 4 * cx_best_0 * (1 - cx_best_0)  # Eq. 6
-        x_best = self.problem.lb + cx_best_1 * (self.problem.ub - self.problem.lb)  # Eq. 8
-        x_best = self.correct_solution(x_best)
-        target_best = self.get_target(x_best)
-        # The classic engine compared with the default minmax="min" here.
+        x_best = self.problem.bounds.low + cx_best_1 * (self.problem.bounds.up - self.problem.bounds.low)  # Eq. 8
+        x_best = self._correct_solution(x_best)
+        target_best = self._get_target(x_best)
+        # The classic engine compared with the default sense="min" here.
         if cy.compare_target(target_best, g_best.target, "min"):
             g_best.solution = x_best
             g_best.target = target_best

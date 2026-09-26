@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class AAO(LegacyNativeOptimizer):
+cdef class AAO(VectorizeOptimizer):
     """
     The original version of: Adaptive Aquila Optimizer (AAO)
 
@@ -21,15 +21,15 @@ cdef class AAO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import AO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(n_vars=30, lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = AO.AAO(epoch=1000, pop_size=50, sharpness=10.0, sigmoid_midpoint=0.5)
@@ -63,11 +63,10 @@ cdef class AAO(LegacyNativeOptimizer):
             sharpness (float): is a positive variable that controls the sharpness of the transition between exploration and exploitation, default is 10.0, Valid range: [0.1, 10000.0].
             sigmoid_midpoint (float): a variable that controls the midpoint of the sigmoid function as it determines when the transition should be applied, default is 0.5, Valid range: [0.0, 1.0].
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "sharpness", "sigmoid_midpoint"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -76,14 +75,14 @@ cdef class AAO(LegacyNativeOptimizer):
         self.sharpness = cy.validator(float, sharpness, [0.1, 10000.0], "sharpness")
         self.sigmoid_midpoint = cy.validator(float, sigmoid_midpoint, [0.0, 1.0], "sigmoid_midpoint")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         alpha = delta = 0.1
         g1 = 2 * rng.random() - 1  # Eq. 16
         g2 = 2 * (1 - epoch / self.epoch)  # Eq. 17
@@ -94,7 +93,7 @@ cdef class AAO(LegacyNativeOptimizer):
         y = r * np.cos(phi)  # Eq.(10)
         QF = epoch ** ((2 * rng.random() - 1) / (1 - self.epoch) ** 2)  # Eq.(15) quality function
         x_mean = np.mean(np.array(X), axis=0)
-        levy_step = self.get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, 1), case=-1)
+        levy_step = self._get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, 1), case=-1)
         sigmoid_factor = 1 / (1 + np.exp(-self.sharpness * (epoch / self.epoch - self.sigmoid_midpoint)))
         R = rng.random((n, 6, 1))
         other = X[ops.others(self, n)[:, 0]]

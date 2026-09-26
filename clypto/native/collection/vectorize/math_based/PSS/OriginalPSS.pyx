@@ -8,11 +8,11 @@ import numpy as np
 from scipy.stats import qmc
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalPSS(LegacyNativeOptimizer):
+cdef class OriginalPSS(VectorizeOptimizer):
     """
     The original version of: Pareto-like Sequential Sampling (PSS)
 
@@ -27,14 +27,14 @@ cdef class OriginalPSS(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import PSS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -71,11 +71,10 @@ cdef class OriginalPSS(LegacyNativeOptimizer):
             acceptance_rate (float): the probability of accepting a solution in the normal range, default = 0.9
             sampling_method (str): 'LHS': Latin-Hypercube or 'MC': 'MonteCarlo', default = "LHS"
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "acceptance_rate", "sampling_method"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -84,7 +83,7 @@ cdef class OriginalPSS(LegacyNativeOptimizer):
         self.acceptance_rate = cy.validator(float, acceptance_rate, (0, 1.0), "acceptance_rate")
         self.sampling_method = cy.validator(str, sampling_method, ["MC", "LHS"], "sampling_method")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.step = 10e-10
         self.steps = np.ones(self.problem.n_dims) * self.step
         self.new_solution = True
@@ -96,16 +95,16 @@ cdef class OriginalPSS(LegacyNativeOptimizer):
         # default: "LHS" (the sampler draws from our generator, so a seed reproduces the run)
         return qmc.LatinHypercube(d=self.problem.n_dims, rng=self.generator).random(n=n)
 
-    cdef void initialization(self):
-        lb, ub = self.problem.lb, self.problem.ub
+    def _initialization(self):
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         pos = np.round((lb + self.create_population(self.pop_size) * (ub - lb)) / self.steps) * self.steps
-        self.pop = self.new_population(self.correct_solution(pos))
+        self.pop = self.new_population(self._correct_solution(pos))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         gb = self.current_g_best()
         g, g_fit = np.array(gb.solution), gb.target.fitness
         rand = self.create_population(n)

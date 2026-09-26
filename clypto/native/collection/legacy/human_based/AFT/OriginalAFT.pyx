@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalAFT(_LegacyOptimizer):
+cdef class OriginalAFT(LegacyOptimizer):
     """
     The original version of: Ali baba and the Forty Thieves (AFT) optimizer
 
@@ -19,14 +19,14 @@ cdef class OriginalAFT(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import AFT    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -49,20 +49,20 @@ cdef class OriginalAFT(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def before_main_loop(self):
+    def _before_main_loop(self):
         # Initialize best positions (Marjaneh's astute plans)
         self.pop_best = self.pop.copy()  # It is like local best positions like in PSO
         # self.pop is population of alibaba ==> It will always update with new version no matter what
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -98,8 +98,8 @@ cdef class OriginalAFT(_LegacyOptimizer):
                     pos_new = self.g_best.solution + movement * direction
                 else:
                     # Case 3: Random exploration within tracking distance
-                    pos_new = self.problem.lb + Td * (
-                            self.problem.ub - self.problem.lb
+                    pos_new = self.problem.bounds.low + Td * (
+                            self.problem.bounds.up - self.problem.bounds.low
                     ) * self.generator.random(self.problem.n_dims)
             else:
                 # Thieves don't know where to search - opposite direction (Marjaneh's tricks)
@@ -117,15 +117,15 @@ cdef class OriginalAFT(_LegacyOptimizer):
                 )
                 pos_new = self.g_best.solution - movement * direction
             # Clip to bounds
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             self.pop[idx] = agent
             # self.pop_baba[idx] = agent
             if self.mode not in self.AVAILABLE_MODES:
-                # self.pop_baba[idx].target = self.get_target(pos_new)
-                self.pop[idx].target = self.get_target(pos_new)
+                # self.pop_baba[idx].target = self._get_target(pos_new)
+                self.pop[idx].target = self._get_target(pos_new)
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self.update_target_for_population(self.pop)
-            self.pop_best = self.greedy_selection_population(
-                self.pop_best, self.pop, self.problem.minmax
+            self.pop = self._update_target_for_population(self.pop)
+            self.pop_best = self._greedy_selection_population(
+                self.pop_best, self.pop, self.problem.sense
             )

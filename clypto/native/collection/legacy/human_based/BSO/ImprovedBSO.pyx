@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class ImprovedBSO(_LegacyOptimizer):
+cdef class ImprovedBSO(LegacyOptimizer):
     """
     The improved version: Improved Brain Storm Optimization (IBSO)
 
@@ -25,14 +25,14 @@ cdef class ImprovedBSO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import BSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -67,7 +67,7 @@ cdef class ImprovedBSO(_LegacyOptimizer):
             p3 (float): 75% percent develop the old idea, 25% invented new idea based on levy-flight
             p4 (float): Need more weights on the centers instead of the random position
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
         self.m_clusters = self.validator.check_int(
@@ -77,7 +77,7 @@ cdef class ImprovedBSO(_LegacyOptimizer):
         self.p2 = self.validator.check_float("p2", p2, (0, 1.0))
         self.p3 = self.validator.check_float("p3", p3, (0, 1.0))
         self.p4 = self.validator.check_float("p4", p4, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "m_clusters", "p1", "p2", "p3", "p4"])
+        self._set_parameters(["epoch", "pop_size", "m_clusters", "p1", "p2", "p3", "p4"])
         self.sort_flag = False
         self.m_solution = int(self.pop_size / self.m_clusters)
         self.pop_group, self.centers = None, None
@@ -85,21 +85,21 @@ cdef class ImprovedBSO(_LegacyOptimizer):
     def find_cluster__(self, pop_group):
         centers = []
         for idx in range(0, self.m_clusters):
-            local_best = self.get_best_agent(pop_group[idx], self.problem.minmax)
+            local_best = self._get_best_agent(pop_group[idx], self.problem.sense)
             centers.append(local_best.copy())
         return centers
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
-        self.pop_group = self.generate_group_population(
+            self.pop = self._generate_population(self.pop_size)
+        self.pop_group = self._generate_group_population(
             self.pop, self.m_clusters, self.m_solution
         )
         self.centers = self.find_cluster__(self.pop_group)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -107,7 +107,7 @@ cdef class ImprovedBSO(_LegacyOptimizer):
         epsilon = 1.0 - 1.0 * epoch / self.epoch  # 1. Changed here, no need: k
         if self.generator.uniform() < self.p1:  # p_5a
             idx = self.generator.integers(0, self.m_clusters)
-            self.centers[idx] = self.generate_agent()
+            self.centers[idx] = self._generate_agent()
         pop_group = self.pop_group
         for idx in range(0, self.pop_size):  # Generate new individuals
             cluster_id = int(idx / self.m_solution)
@@ -121,7 +121,7 @@ cdef class ImprovedBSO(_LegacyOptimizer):
                         0, 1, self.problem.n_dims
                     )
                 else:  # 2. Using levy flight here
-                    levy_step = self.get_levy_flight_step(
+                    levy_step = self._get_levy_flight_step(
                         beta=1.0, multiplier=0.001, size=self.problem.n_dims, case=-1
                     )
                     pos_new = (
@@ -142,19 +142,19 @@ cdef class ImprovedBSO(_LegacyOptimizer):
                             self.pop_group[id1][rand_id1].solution
                             + self.pop_group[id2][rand_id2].solution
                     ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_group[cluster_id][location_id] = agent
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                pop_group[cluster_id][location_id] = self.get_better_agent(
-                    agent, self.pop_group[cluster_id][location_id], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                pop_group[cluster_id][location_id] = self._get_better_agent(
+                    agent, self.pop_group[cluster_id][location_id], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
             for idx in range(0, self.m_clusters):
-                pop_group[idx] = self.update_target_for_population(pop_group[idx])
-                pop_group[idx] = self.greedy_selection_population(
-                    self.pop_group[idx], pop_group[idx], self.problem.minmax
+                pop_group[idx] = self._update_target_for_population(pop_group[idx])
+                pop_group[idx] = self._greedy_selection_population(
+                    self.pop_group[idx], pop_group[idx], self.problem.sense
                 )
 
         # Needed to update the centers and population

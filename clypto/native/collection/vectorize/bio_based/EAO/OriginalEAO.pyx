@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalEAO(LegacyNativeOptimizer):
+cdef class OriginalEAO(VectorizeOptimizer):
     """
     The original version of: Enzyme Action Optimizer (EAO)
 
@@ -24,14 +24,14 @@ cdef class OriginalEAO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import EAO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,11 +65,10 @@ cdef class OriginalEAO(LegacyNativeOptimizer):
             pop_size: Number of population size, default = 100
             ec: Enzyme Concentration, default=0.1
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "ec"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -77,7 +76,7 @@ cdef class OriginalEAO(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.ec = cy.validator(float, ec, [0.0, 100], "ec")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -97,10 +96,10 @@ cdef class OriginalEAO(LegacyNativeOptimizer):
         posB = X + scB * (X[j1] - X[j2]) + exB * (g - X)
         # three candidates per agent, one batch; the best of them replaces the agent when it is better
         cand = pop.take(np.repeat(np.arange(n), 3))
-        cand.X[:] = self.correct_solution(np.stack([pos1, posA, posB], axis=1).reshape(3 * n, d))
+        cand.X[:] = self._correct_solution(np.stack([pos1, posA, posB], axis=1).reshape(3 * n, d))
         self.evaluate(cand, 0, 3 * n)
         F = np.asarray(cand.F).reshape(n, 3)
-        best = F.argmin(axis=1) if self.problem.minmax == "min" else F.argmax(axis=1)
+        best = F.argmin(axis=1) if self.problem.sense == "min" else F.argmax(axis=1)
         rows = 3 * np.arange(n) + best
         win = np.flatnonzero(ops.better(self, F[np.arange(n), best], np.asarray(pop.F)))
         pop.buf[win] = cand.buf[rows[win]]

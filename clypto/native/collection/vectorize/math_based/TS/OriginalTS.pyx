@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalTS(LegacyNativeOptimizer):
+cdef class OriginalTS(VectorizeOptimizer):
     """
     The original version of: Tabu Search (TS)
 
@@ -28,14 +28,14 @@ cdef class OriginalTS(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import TS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -75,11 +75,10 @@ cdef class OriginalTS(LegacyNativeOptimizer):
             neighbour_size (int): Size of the neighborhood for generating candidate solutions, Default: 10
             perturbation_scale (float): Scale of the perturbations for generating candidate solutions. default = 0.05
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "tabu_size", "neighbour_size", "perturbation_scale"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -89,12 +88,12 @@ cdef class OriginalTS(LegacyNativeOptimizer):
         self.neighbour_size = cy.validator(int, neighbour_size, [2, 10000], "neighbour_size")
         self.perturbation_scale = cy.validator(float, perturbation_scale, (0, 100), "perturbation_scale")
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         self.x = np.array(self.g_best.solution)
         self.tabu_list = []
         self.pop = self.pop.take(np.array([], dtype=int))  # the search keeps its best moves instead
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         # Generate candidate solutions by perturbing the current solution
@@ -106,7 +105,7 @@ cdef class OriginalTS(LegacyNativeOptimizer):
         # Evaluate candidate solutions and select best move
         list_candidates = []
         for candidate in candidates:
-            pos_new = self.correct_solution(candidate)
+            pos_new = self._correct_solution(candidate)
             if np.allclose(pos_new, self.x):
                 continue
             if tuple(pos_new) in self.tabu_list:

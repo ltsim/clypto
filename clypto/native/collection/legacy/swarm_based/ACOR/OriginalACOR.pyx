@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalACOR(_LegacyOptimizer):
+cdef class OriginalACOR(LegacyOptimizer):
     """
     The original version of: Ant Colony Optimization Continuous (ACOR)
 
@@ -25,15 +25,15 @@ cdef class OriginalACOR(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import ACOR    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = ACOR.OriginalACOR(epoch=1000, pop_size=50, sample_count = 25, intent_factor = 0.5, zeta = 1.0)
@@ -64,7 +64,7 @@ cdef class OriginalACOR(_LegacyOptimizer):
             intent_factor: Intensification Factor (Selection Pressure) (q in the paper), default = 0.5
             zeta: Deviation-Distance Ratio, default = 1.0
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.sample_count = self.validator.check_int(
@@ -74,14 +74,14 @@ cdef class OriginalACOR(_LegacyOptimizer):
             "intent_factor", intent_factor, (0, 1.0)
         )
         self.zeta = self.validator.check_float("zeta", zeta, (0, 5))
-        self.set_parameters(
+        self._set_parameters(
             ["epoch", "pop_size", "sample_count", "intent_factor", "zeta"]
         )
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -110,17 +110,17 @@ cdef class OriginalACOR(_LegacyOptimizer):
         for idx in range(0, self.sample_count):
             child = np.zeros(self.problem.n_dims)
             for jdx in range(0, self.problem.n_dims):
-                rdx = self.get_index_roulette_wheel_selection(matrix_p)
+                rdx = self._get_index_roulette_wheel_selection(matrix_p)
                 child[jdx] = (
                         self.pop[rdx].solution[jdx]
                         + self.generator.normal() * matrix_sigma[rdx, jdx]
                 )  # (1)
-            pos_new = self.correct_solution(child)  # (2)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(child)  # (2)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, self.problem.minmax
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, self.problem.sense
         )

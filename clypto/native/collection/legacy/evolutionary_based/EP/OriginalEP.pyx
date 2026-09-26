@@ -7,32 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalEPAgent(_LegacyAgent):
+cdef class _OriginalEPAgent(LegacyAgent):
     cdef public object strategy
     cdef public object win
-    def __init__(self, solution=None, target=None, strategy=None, win=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.strategy = strategy
-        self.win = win
-    cpdef object copy(self):
-        return _OriginalEPAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.strategy,
-            self.win,
-        )
-    def update(self, **kwargs):
-        if "strategy" in kwargs:
-            self.strategy = kwargs.pop("strategy")
-        if "win" in kwargs:
-            self.win = kwargs.pop("win")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalEP(_LegacyOptimizer):
+cdef class OriginalEP(LegacyOptimizer):
     """
     The original version of: Evolutionary Programming (EP)
 
@@ -46,14 +30,14 @@ cdef class OriginalEP(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import EP    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -81,27 +65,27 @@ cdef class OriginalEP(_LegacyOptimizer):
             pop_size (int): number of population size (miu in the paper), default = 100
             bout_size (float): percentage of child agents implement tournament selection
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.bout_size = self.validator.check_float("bout_size", bout_size, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "bout_size"])
+        self._set_parameters(["epoch", "pop_size", "bout_size"])
         self.sort_flag = True
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.n_bout_size = int(self.bout_size * self.pop_size)
-        self.distance = 0.05 * (self.problem.ub - self.problem.lb)
+        self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance, self.problem.n_dims)
         times_win = 0
         return _OriginalEPAgent(solution=solution, strategy=strategy, win=times_win)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -111,8 +95,8 @@ cdef class OriginalEP(_LegacyOptimizer):
             pos_new = self.pop[idx].solution + self.pop[
                 idx
             ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             s_old = (
                 self.pop[idx].strategy
                 + self.generator.normal(0, 1.0, self.problem.n_dims)
@@ -121,17 +105,17 @@ cdef class OriginalEP(_LegacyOptimizer):
             agent.update(solution=pos_new, strategy=s_old, win=0)
             child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                child[-1].target = self.get_target(pos_new)
-        child = self.update_target_for_population(child)
+                child[-1].target = self._get_target(pos_new)
+        child = self._update_target_for_population(child)
         # Update the global best
-        children = self.get_sorted_population(child, self.problem.minmax)
+        children = self._get_sorted_population(child, self.problem.sense)
         pop = children + self.pop
         for i in range(0, len(pop)):
             ## Tournament winner (Tried with bout_size times)
             for idx in range(0, self.n_bout_size):
                 rand_idx = self.generator.integers(0, len(pop))
-                if self.compare_target(
-                    pop[i].target, pop[rand_idx].target, self.problem.minmax
+                if self._compare_target(
+                    pop[i].target, pop[rand_idx].target, self.problem.sense
                 ):
                     pop[i].win += 1
                 else:

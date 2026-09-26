@@ -8,11 +8,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevBA(LegacyNativeOptimizer):
+cdef class DevBA(VectorizeOptimizer):
     """
     The original version of: Developed Bat-inspired Algorithm (DBA)
 
@@ -31,15 +31,15 @@ cdef class DevBA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import BA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BA.DevBA(epoch=1000, pop_size=50, pulse_rate = 0.95, pf_min = 0., pf_max = 10.)
@@ -66,11 +66,10 @@ cdef class DevBA(LegacyNativeOptimizer):
         name: str | None = None,
         mode: str | None = None,
     ) -> None:
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "pulse_rate", "pf_min", "pf_max"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -81,27 +80,27 @@ cdef class DevBA(LegacyNativeOptimizer):
         self.pf_max = cy.validator(float, pf_max, [2, 10], "pf_max")
         self.alpha = self.gamma = 0.9
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_list_velocity = np.zeros((self.pop_size, self.problem.n_dims))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, child
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         pf = self.pf_min + (self.pf_max - self.pf_min) * rng.uniform(size=(n, 1))  # Eq. 2
         self.dyn_list_velocity = rng.uniform(size=(n, 1)) * self.dyn_list_velocity + (g - X) * pf  # Eq. 3
         cand = pop.empty_like()
-        cand.X[:] = self.correct_solution(X + self.dyn_list_velocity)  # Eq. 4
+        cand.X[:] = self._correct_solution(X + self.dyn_list_velocity)  # Eq. 4
         self.evaluate(cand, 0, n)
         # agents whose move did not improve them try a local search around the best
         retry = np.flatnonzero(~ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) > self.pulse_rate))
         if len(retry):
             child = pop.take(retry)
-            child.X[:] = self.correct_solution(g + 0.01 * rng.uniform(lb, ub, (len(retry), d)))
+            child.X[:] = self._correct_solution(g + 0.01 * rng.uniform(lb, ub, (len(retry), d)))
             self.evaluate(child, 0, len(retry))
             ops.scatter(self, child, retry, dst=cand)
         self.pop = cand

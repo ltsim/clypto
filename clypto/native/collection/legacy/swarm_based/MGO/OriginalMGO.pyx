@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMGO(_LegacyOptimizer):
+cdef class OriginalMGO(LegacyOptimizer):
     """
     The original version of: Mountain Gazelle Optimizer (MGO)
 
@@ -20,14 +20,14 @@ cdef class OriginalMGO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import MGO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -50,10 +50,10 @@ cdef class OriginalMGO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
     def coefficient_vector__(self, n_dims, epoch, max_epoch):
@@ -67,9 +67,9 @@ cdef class OriginalMGO(_LegacyOptimizer):
         cofi[3, :] = u * np.power(v, 2) * np.cos((self.generator.random() * 2) * u)
         return cofi
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -129,22 +129,22 @@ cdef class OriginalMGO(_LegacyOptimizer):
             )
 
             x1 = self.problem.generate_solution()
-            x1 = self.correct_solution(x1)
-            x2 = self.correct_solution(x2)
-            x3 = self.correct_solution(x3)
-            x4 = self.correct_solution(x4)
+            x1 = self._correct_solution(x1)
+            x2 = self._correct_solution(x2)
+            x3 = self._correct_solution(x3)
+            x4 = self._correct_solution(x4)
 
-            agent1 = self.generate_empty_agent(x1)
-            agent2 = self.generate_empty_agent(x2)
-            agent3 = self.generate_empty_agent(x3)
-            agent4 = self.generate_empty_agent(x4)
+            agent1 = self._generate_empty_agent(x1)
+            agent2 = self._generate_empty_agent(x2)
+            agent3 = self._generate_empty_agent(x3)
+            agent4 = self._generate_empty_agent(x4)
 
             pop_new += [agent1, agent2, agent3, agent4]
             if self.mode not in self.AVAILABLE_MODES:
                 for jdx in range(-4, 0):
-                    pop_new[jdx].target = self.get_target(pop_new[jdx].solution)
+                    pop_new[jdx].target = self._get_target(pop_new[jdx].solution)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, self.problem.sense
         )

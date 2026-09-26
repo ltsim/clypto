@@ -1,7 +1,7 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class OriginalCRO(LegacyNativeOptimizer):
+cdef class OriginalCRO(VectorizeOptimizer):
     cdef public object po
     cdef public object Fb
     cdef public object Fa
@@ -22,5 +22,3 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
     cdef public object occupied_idx_list
     cdef public object objs
 
-    cdef void initialization(self)
-    cdef void evolve(self, int epoch_c)

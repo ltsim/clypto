@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OGWO(_LegacyOptimizer):
+cdef class OGWO(LegacyOptimizer):
     """
     The original version of: Opposition-based learning Grey Wolf Optimizer (OGWO)
 
@@ -19,14 +19,14 @@ cdef class OGWO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -55,7 +55,7 @@ cdef class OGWO(_LegacyOptimizer):
             miu_factor (float): nonlinear coefficient for equation (11), default = 2.0
             jumping_rate (float):  jumping rate for OBL, default = 0.05
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.miu_factor = self.validator.check_float(
@@ -64,37 +64,37 @@ cdef class OGWO(_LegacyOptimizer):
         self.jumping_rate = self.validator.check_float(
             "jumping_rate", jumping_rate, [0.0, 1.0]
         )
-        self.set_parameters(["epoch", "pop_size", "miu_factor", "jumping_rate"])
+        self._set_parameters(["epoch", "pop_size", "miu_factor", "jumping_rate"])
         self.sort_flag = False
 
-    def initialization(self) -> None:
+    def _initialization(self) -> None:
         """Initialize population with opposition-based learning"""
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
 
         # Generate opposition population using equation (12)
         pop_opposite = []
         for agent in self.pop:
-            pos_opposite = self.problem.lb + self.problem.ub - agent.solution
-            agent_opposite = self.generate_empty_agent(pos_opposite)
-            agent_opposite.target = self.get_target(pos_opposite)
+            pos_opposite = self.problem.bounds.low + self.problem.bounds.up - agent.solution
+            agent_opposite = self._generate_empty_agent(pos_opposite)
+            agent_opposite.target = self._get_target(pos_opposite)
             pop_opposite.append(agent_opposite)
         # Combine original and opposite populations
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_opposite, self.pop_size, minmax=self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_opposite, self.pop_size, sense=self.problem.sense
         )
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         # linearly decreased from 2 to 0
         a = 2.0 * (1 - (epoch / self.epoch) ** self.miu_factor)
-        _, list_best, _ = self.get_special_agents(
-            self.pop, n_best=3, minmax=self.problem.minmax
+        _, list_best, _ = self._get_special_agents(
+            self.pop, n_best=3, sense=self.problem.sense
         )
         pop_new = []
         for idx in range(0, self.pop_size):
@@ -114,18 +114,18 @@ cdef class OGWO(_LegacyOptimizer):
                 C3 * list_best[2].solution - self.pop[idx].solution
             )
             pos_new = (X1 + X2 + X3) / 3.0
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
 
         # Apply opposition-based learning
@@ -133,11 +133,11 @@ cdef class OGWO(_LegacyOptimizer):
             # Generate opposition population using equation (12)
             pop_opposite = []
             for agent in self.pop:
-                pos_opposite = self.problem.lb + self.problem.ub - agent.solution
-                agent_opposite = self.generate_empty_agent(pos_opposite)
-                agent_opposite.target = self.get_target(pos_opposite)
+                pos_opposite = self.problem.bounds.low + self.problem.bounds.up - agent.solution
+                agent_opposite = self._generate_empty_agent(pos_opposite)
+                agent_opposite.target = self._get_target(pos_opposite)
                 pop_opposite.append(agent_opposite)
             # Combine original and opposite populations
-            self.pop = self.get_sorted_and_trimmed_population(
-                self.pop + pop_opposite, self.pop_size, minmax=self.problem.minmax
+            self.pop = self._get_sorted_and_trimmed_population(
+                self.pop + pop_opposite, self.pop_size, sense=self.problem.sense
             )

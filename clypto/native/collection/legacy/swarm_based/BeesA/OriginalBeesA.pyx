@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalBeesA(_LegacyOptimizer):
+cdef class OriginalBeesA(LegacyOptimizer):
     """
     The original version of: Bees Algorithm (BeesA)
 
@@ -26,15 +26,15 @@ cdef class OriginalBeesA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import BeesA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BeesA.OriginalBeesA(epoch=1000, pop_size=50, selected_site_ratio=0.5, elite_site_ratio=0.4,
@@ -72,7 +72,7 @@ cdef class OriginalBeesA(_LegacyOptimizer):
             dance_radius (float):
             dance_reduction (float):
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         # (Scout Bee Count or Population Size, Selected Sites Count)
@@ -94,7 +94,7 @@ cdef class OriginalBeesA(_LegacyOptimizer):
         self.dance_reduction = self.validator.check_float(
             "dance_reduction", dance_reduction, (0, 1.0)
         )
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -121,11 +121,11 @@ cdef class OriginalBeesA(_LegacyOptimizer):
     def perform_dance__(self, position, r):
         jdx = self.generator.choice(range(0, self.problem.n_dims))
         position[jdx] = position[jdx] + r * self.generator.uniform(-1, 1)
-        return self.correct_solution(position)
+        return self._correct_solution(position)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -139,14 +139,14 @@ cdef class OriginalBeesA(_LegacyOptimizer):
                     pos_new = self.perform_dance__(
                         self.pop[idx].solution, self.dyn_radius
                     )
-                    agent = self.generate_empty_agent(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_child.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self.get_target(pos_new)
-                pop_child = self.update_target_for_population(pop_child)
-                local_best = self.get_best_agent(pop_child, self.problem.minmax)
-                if self.compare_target(
-                        local_best.target, self.pop[idx].target, self.problem.minmax
+                        pop_child[-1].target = self._get_target(pos_new)
+                pop_child = self._update_target_for_population(pop_child)
+                local_best = self._get_best_agent(pop_child, self.problem.sense)
+                if self._compare_target(
+                        local_best.target, self.pop[idx].target, self.problem.sense
                 ):
                     pop_new[idx] = local_best
             elif self.n_elite_bees <= idx < self.n_selected_bees:
@@ -156,19 +156,19 @@ cdef class OriginalBeesA(_LegacyOptimizer):
                     pos_new = self.perform_dance__(
                         self.pop[idx].solution, self.dyn_radius
                     )
-                    agent = self.generate_empty_agent(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_child.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self.get_target(pos_new)
-                pop_child = self.update_target_for_population(pop_child)
-                local_best = self.get_best_agent(pop_child, self.problem.minmax)
-                if self.compare_target(
-                        local_best.target, self.pop[idx].target, self.problem.minmax
+                        pop_child[-1].target = self._get_target(pos_new)
+                pop_child = self._update_target_for_population(pop_child)
+                local_best = self._get_best_agent(pop_child, self.problem.sense)
+                if self._compare_target(
+                        local_best.target, self.pop[idx].target, self.problem.sense
                 ):
                     pop_new[idx] = local_best
             else:
                 # Non-Selected Sites
-                pop_new[idx] = self.generate_agent()
+                pop_new[idx] = self._generate_agent()
         self.pop = pop_new
         # Damp Dance Radius
         self.dyn_radius = self.dance_reduction * self.dance_radius

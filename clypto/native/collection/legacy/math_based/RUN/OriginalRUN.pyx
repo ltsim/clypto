@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalRUN(_LegacyOptimizer):
+cdef class OriginalRUN(LegacyOptimizer):
     """
     The original version of: RUNge Kutta optimizer (RUN)
 
@@ -21,14 +21,14 @@ cdef class OriginalRUN(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.math_based import RUN    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -51,11 +51,10 @@ cdef class OriginalRUN(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
     def runge_kutta__(self, xb, xw, delta_x):
@@ -86,14 +85,14 @@ cdef class OriginalRUN(_LegacyOptimizer):
 
     def get_index_of_best_agent__(self, pop):
         fit_list = np.array([agent.target.fitness for agent in pop])
-        if self.problem.minmax == "min":
+        if self.problem.sense == "min":
             return np.argmin(fit_list)
         else:
             return np.argmax(fit_list)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -109,7 +108,7 @@ cdef class OriginalRUN(_LegacyOptimizer):
                     * (
                             self.pop[idx].solution
                             - self.generator.uniform(0, 1, self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
+                            * (self.problem.bounds.up - self.problem.bounds.low)
                     )
                     * np.exp(-4 * epoch / self.epoch)
             )
@@ -127,15 +126,15 @@ cdef class OriginalRUN(_LegacyOptimizer):
                 [self.pop[a], self.pop[b], self.pop[c]]
             )
             ## Determine Xb and Xw for using in Runge Kutta method
-            if self.compare_target(
-                    self.pop[idx].target, self.pop[id_min_x].target, self.problem.minmax
+            if self._compare_target(
+                    self.pop[idx].target, self.pop[id_min_x].target, self.problem.sense
             ):
                 xb, xw = self.pop[idx].solution, self.pop[id_min_x].solution
             else:
                 xb, xw = self.pop[id_min_x].solution, self.pop[idx].solution
             ## Search Mechanism (SM) of RUN based on Runge Kutta Method
             SM = self.runge_kutta__(xb, xw, delta_x)
-            local_best = self.get_best_agent(self.pop, self.problem.minmax)
+            local_best = self._get_best_agent(self.pop, self.problem.sense)
             L = self.generator.choice(range(0, 2), self.problem.n_dims)
             xc = L * self.pop[idx].solution + (1 - L) * self.pop[a].solution  # Eq. 17.3
             xm = L * self.g_best.solution + (1 - L) * local_best.solution  # Eq. 17.4
@@ -152,9 +151,9 @@ cdef class OriginalRUN(_LegacyOptimizer):
                         + SF[idx] * SM
                         + mu * (self.pop[a].solution - self.pop[b].solution)
                 )
-            pos_new = self.correct_solution(pos_new)
-            tar_new = self.get_target(pos_new)
-            if self.compare_target(tar_new, self.pop[idx].target, self.problem.minmax):
+            pos_new = self._correct_solution(pos_new)
+            tar_new = self._get_target(pos_new)
+            if self._compare_target(tar_new, self.pop[idx].target, self.problem.sense):
                 self.pop[idx].update(solution=pos_new, target=tar_new)
             ## Enhanced solution quality (ESQ)  (Eq. 19)
             if self.generator.random() < 0.5:
@@ -186,10 +185,10 @@ cdef class OriginalRUN(_LegacyOptimizer):
                 )
                 )
                 x_new2 = np.where(w < 1, x_new2_temp1, x_new2_temp2)
-                pos_new2 = self.correct_solution(x_new2)
-                tar_new2 = self.get_target(pos_new2)
-                if self.compare_target(
-                        tar_new2, self.pop[idx].target, self.problem.minmax
+                pos_new2 = self._correct_solution(x_new2)
+                tar_new2 = self._get_target(pos_new2)
+                if self._compare_target(
+                        tar_new2, self.pop[idx].target, self.problem.sense
                 ):
                     self.pop[idx].update(solution=pos_new2, target=tar_new2)
                 else:
@@ -214,9 +213,9 @@ cdef class OriginalRUN(_LegacyOptimizer):
                                         )
                                 )
                         )  # Eq. 20
-                        pos_new3 = self.correct_solution(x_new3)
-                        tar_new3 = self.get_target(pos_new3)
-                        if self.compare_target(
-                                tar_new3, self.pop[idx].target, self.problem.minmax
+                        pos_new3 = self._correct_solution(x_new3)
+                        tar_new3 = self._get_target(pos_new3)
+                        if self._compare_target(
+                                tar_new3, self.pop[idx].target, self.problem.sense
                         ):
                             self.pop[idx].update(solution=pos_new3, target=tar_new3)

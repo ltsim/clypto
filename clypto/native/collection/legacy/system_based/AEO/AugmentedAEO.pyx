@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class AugmentedAEO(_LegacyOptimizer):
+cdef class AugmentedAEO(LegacyOptimizer):
     """
     The original version of: Augmented Artificial Ecosystem Optimization (AAEO)
 
@@ -20,14 +20,14 @@ cdef class AugmentedAEO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.system_based import AEO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -50,15 +50,15 @@ cdef class AugmentedAEO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -68,10 +68,10 @@ cdef class AugmentedAEO(_LegacyOptimizer):
         wf = 2 * (1 - epoch / self.epoch)  # Weight factor
         a = (1.0 - epoch / self.epoch) * self.generator.random()
         x1 = (1 - a) * self.pop[-1].solution + a * self.generator.uniform(
-            self.problem.lb, self.problem.ub
+            self.problem.bounds.low, self.problem.bounds.up
         )
-        pos_new = self.correct_solution(x1)
-        agent = self.generate_agent(pos_new)
+        pos_new = self._correct_solution(x1)
+        agent = self._generate_agent(pos_new)
         self.pop[-1] = agent
         ## Consumption - Update the whole population left
         pop_new = []
@@ -103,26 +103,26 @@ cdef class AugmentedAEO(_LegacyOptimizer):
                             + (1 - r2) * (self.pop[idx].solution - self.pop[j].solution)
                     )
             else:
-                pos_new = self.pop[idx].solution + self.get_levy_flight_step(
+                pos_new = self.pop[idx].solution + self._get_levy_flight_step(
                     1.0, 0.001, case=-1
                 ) * (1.0 / np.sqrt(epoch)) * np.sign(self.generator.random() - 0.5) * (
                                   self.pop[idx].solution - self.g_best.solution
                           )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop[:-1] = self.greedy_selection_population(
-                self.pop[:-1], pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop[:-1] = self._greedy_selection_population(
+                self.pop[:-1], pop_new, self.problem.sense
             )
         ## find current best used in decomposition
-        best = self.get_best_agent(self.pop, self.problem.minmax)
+        best = self._get_best_agent(self.pop, self.problem.sense)
         ## Decomposition
         ### Eq. 10, 11, 12, 9   idx, pop, g_best, local_best
         pop_child = []
@@ -133,19 +133,19 @@ cdef class AugmentedAEO(_LegacyOptimizer):
                 ) * (best.solution - self.pop[idx].solution)
             else:
                 beta = self.generator.uniform(0.01, 1.0)
-                pos_new = best.solution + self.get_levy_flight_step(
+                pos_new = best.solution + self._get_levy_flight_step(
                     beta=beta, multiplier=0.01, size=self.problem.n_dims, case=0
                 ) * (best.solution - self.pop[idx].solution)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_child, self.problem.minmax
+            pop_child = self._update_target_for_population(pop_child)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_child, self.problem.sense
             )

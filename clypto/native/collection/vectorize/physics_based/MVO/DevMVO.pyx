@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevMVO(LegacyNativeOptimizer):
+cdef class DevMVO(VectorizeOptimizer):
     """
     The developed version: Multi-Verse Optimizer (MVO)
 
@@ -26,14 +26,14 @@ cdef class DevMVO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import MVO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -61,11 +61,10 @@ cdef class DevMVO(LegacyNativeOptimizer):
             wep_min (float): Wormhole Existence Probability (min in Eq.(3.3) paper, default = 0.2
             wep_max (float: Wormhole Existence Probability (max in Eq.(3.3) paper, default = 1.0
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "wep_min", "wep_max"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -74,14 +73,14 @@ cdef class DevMVO(LegacyNativeOptimizer):
         self.wep_min = cy.validator(float, wep_min, (0, 0.5), "wep_min")
         self.wep_max = cy.validator(float, wep_max, [0.5, 3.0], "wep_max")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         wep = self.wep_max - epoch * ((self.wep_max - self.wep_min) / self.epoch)
         tdr = 1 - epoch ** (1.0 / 6) / (<object>self.epoch) ** (<object>(1.0 / 6))
         white = ops.roulette(self, pop.F, n)

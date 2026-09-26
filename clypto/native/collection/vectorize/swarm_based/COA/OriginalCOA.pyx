@@ -7,16 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalCOA(LegacyNativeOptimizer):
+cdef class OriginalCOA(VectorizeOptimizer):
     """
     The original version of: Coyote Optimization Algorithm (COA)
 
@@ -30,15 +30,15 @@ cdef class OriginalCOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import COA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = COA.OriginalCOA(epoch=1000, pop_size=50, n_coyotes = 5)
@@ -73,11 +73,10 @@ cdef class OriginalCOA(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             n_coyotes (int): number of coyotes per group, default=5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "n_coyotes"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -92,12 +91,12 @@ cdef class OriginalCOA(LegacyNativeOptimizer):
     cdef void init_fields(self, NativePopulation pop):
         pop.field("AGE")[:] = 1
 
-    cdef void initialization(self):
-        LegacyNativeOptimizer.initialization(self)
+    def _initialization(self):
+        VectorizeOptimizer._initialization(self)
         self.ps = 1.0 / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation pup
         cdef Py_ssize_t n = pop.n, d = pop.d, npk = self.n_packs, nc = self.n_coyotes, m = npk * nc
@@ -105,7 +104,7 @@ cdef class OriginalCOA(LegacyNativeOptimizer):
         # every pack (a block of nc rows) is sorted by fitness, its best coyote leads
         F = np.asarray(pop.F)[:m].reshape(npk, nc)
         order = np.argsort(F, axis=1)
-        if self.problem.minmax == "max":
+        if self.problem.sense == "max":
             order = order[:, ::-1]
         pop = self.pop = pop.take(np.concatenate([(order + nc * np.arange(npk)[:, None]).ravel(), np.arange(m, n)]))
         X3 = np.array(pop.X[:m]).reshape(npk, nc, d)
@@ -125,13 +124,13 @@ cdef class OriginalCOA(LegacyNativeOptimizer):
         p = np.arange(npk)
         pups = rng.normal(0, 1, (npk, 1)) * np.where(rng.random((npk, d)) < prob1, X3[p, dad], X3[p, mom])
         pup = pop.take(np.arange(npk))
-        pup.X[:] = self.correct_solution(pups)
+        pup.X[:] = self._correct_solution(pups)
         self.evaluate(pup, 0, npk)
         pup.field("AGE")[:] = 1
-        worst = F.max(axis=1) if self.problem.minmax == "min" else F.min(axis=1)
+        worst = F.max(axis=1) if self.problem.sense == "min" else F.min(axis=1)
         survive = ops.better(self, np.asarray(pup.F), worst)
         ages = np.asarray(pop.field("AGE"))[:m, 0].reshape(npk, nc)
-        victim = ages.argmax(axis=1) if self.problem.minmax == "min" else ages.argmin(axis=1)  # the oldest (the youngest for max)
+        victim = ages.argmax(axis=1) if self.problem.sense == "min" else ages.argmin(axis=1)  # the oldest (the youngest for max)
         rows = (p * nc + victim)[survive]
         pop.buf[rows] = pup.buf[np.flatnonzero(survive)]
         # a coyote can leave its pack and join another one (Eq. 4)

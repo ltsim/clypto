@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
 
-cdef class EnhancedAEO(LegacyNativeOptimizer):
+cdef class EnhancedAEO(VectorizeOptimizer):
     """
     The original version of: Enhanced Artificial Ecosystem-Based Optimization (EAEO)
 
@@ -22,14 +22,14 @@ cdef class EnhancedAEO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.system_based import AEO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,29 +57,28 @@ cdef class EnhancedAEO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d, m = pop.n - 1
         cdef object rng = self.generator
         X = pop.X
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         g = np.array(self.g_best_x())
         ## Production: the worst agent (last row) is replaced by a new random-mixed agent
         a = 2 * (1.0 - epoch / self.epoch)
-        pos = self.correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
-        ops.set_row(pop, n - 1, pos, self.get_target(pos))
+        pos = self._correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
+        ops.set_row(pop, n - 1, pos, self._get_target(pos))
         X = pop.X
         ## Consumption
         rand = rng.random(m)

@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalDMOA(LegacyNativeOptimizer):
+cdef class OriginalDMOA(VectorizeOptimizer):
     """
     The original version of: Dwarf Mongoose Optimization Algorithm (DMOA)
 
@@ -27,14 +27,14 @@ cdef class OriginalDMOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import DMOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -66,11 +66,10 @@ cdef class OriginalDMOA(LegacyNativeOptimizer):
         name: str | None = None,
         mode: str | None = None,
     ) -> None:
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "n_baby_sitter", "peep"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -80,7 +79,7 @@ cdef class OriginalDMOA(LegacyNativeOptimizer):
         self.peep = cy.validator(float, peep, [1, 10.0], "peep")
         self.n_scout = self.pop_size - self.n_baby_sitter
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.C = np.zeros(self.pop_size)
         self.tau = -np.inf
         self.L = np.round(0.6 * self.problem.n_dims * self.n_baby_sitter)
@@ -107,7 +106,7 @@ cdef class OriginalDMOA(LegacyNativeOptimizer):
         phi = (self.peep / 2) * rng.uniform(-1, 1, (n, d))
         X = pop.X
         cand = pop.empty_like()
-        cand.X[:] = self.correct_solution(X + phi * (X - X[k]))
+        cand.X[:] = self._correct_solution(X + phi * (X - X[k]))
         self.evaluate(cand, 0, n)
         cf, of = np.asarray(cand.F), np.asarray(pop.F)
         SM = (cf - of) / (np.maximum(cf, of) + eps)
@@ -120,12 +119,12 @@ cdef class OriginalDMOA(LegacyNativeOptimizer):
         """The sites of rows that ran out of patience are re-drawn at random."""
         if len(rows):
             fresh = pop.take(rows)
-            fresh.X[:] = self.problem.lb + self.generator.random((len(rows), pop.d)) * (self.problem.ub - self.problem.lb)
+            fresh.X[:] = self.problem.bounds.low + self.generator.random((len(rows), pop.d)) * (self.problem.bounds.up - self.problem.bounds.low)
             self.evaluate(fresh, 0, len(rows))
             pop.buf[rows] = fresh.buf
             self.C[rows] = 0
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

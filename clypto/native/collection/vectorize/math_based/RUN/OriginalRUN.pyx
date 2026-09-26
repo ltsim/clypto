@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalRUN(LegacyNativeOptimizer):
+cdef class OriginalRUN(VectorizeOptimizer):
     """
     The original version of: RUNge Kutta optimizer (RUN)
 
@@ -24,14 +24,14 @@ cdef class OriginalRUN(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import RUN    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -59,11 +59,10 @@ cdef class OriginalRUN(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -98,12 +97,12 @@ cdef class OriginalRUN(LegacyNativeOptimizer):
 
     def get_index_of_best_agent__(self, fit_list):
         fit_list = np.array(fit_list)
-        if self.problem.minmax == "min":
+        if self.problem.sense == "min":
             return np.argmin(fit_list)
         else:
             return np.argmax(fit_list)
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         # In-place updates of the best agent are seen by the agents after it (g_best is
         # aliased), and every agent reads the ones updated before it: sequential on rows.
         cdef NativePopulation pop = self.pop
@@ -121,7 +120,7 @@ cdef class OriginalRUN(LegacyNativeOptimizer):
                     * (
                             Xp[idx]
                             - self.generator.uniform(0, 1, self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
+                            * (self.problem.bounds.up - self.problem.bounds.low)
                     )
                     * np.exp(-4 * epoch / self.epoch)
             )
@@ -137,7 +136,7 @@ cdef class OriginalRUN(LegacyNativeOptimizer):
             )
             id_min_x = self.get_index_of_best_agent__([pop.F[a], pop.F[b], pop.F[c]])
             ## Determine Xb and Xw for using in Runge Kutta method
-            if self.compare_fitness(pop.F[idx], pop.F[id_min_x], self.problem.minmax):
+            if self._compare_fitness(pop.F[idx], pop.F[id_min_x], self.problem.sense):
                 xb, xw = Xp[idx], Xp[id_min_x]
             else:
                 xb, xw = Xp[id_min_x], Xp[idx]
@@ -160,9 +159,9 @@ cdef class OriginalRUN(LegacyNativeOptimizer):
                         + SF[idx] * SM
                         + mu * (Xp[a] - Xp[b])
                 )
-            pos_new = self.correct_solution(pos_new)
-            tar_new = self.get_target(pos_new)
-            if self.compare_fitness(tar_new.fitness, pop.F[idx], self.problem.minmax):
+            pos_new = self._correct_solution(pos_new)
+            tar_new = self._get_target(pos_new)
+            if self._compare_fitness(tar_new.fitness, pop.F[idx], self.problem.sense):
                 ops.set_row(pop, idx, pos_new, tar_new)
             ## Enhanced solution quality (ESQ)  (Eq. 19)
             if self.generator.random() < 0.5:
@@ -194,9 +193,9 @@ cdef class OriginalRUN(LegacyNativeOptimizer):
                 )
                 )
                 x_new2 = np.where(w < 1, x_new2_temp1, x_new2_temp2)
-                pos_new2 = self.correct_solution(x_new2)
-                tar_new2 = self.get_target(pos_new2)
-                if self.compare_fitness(tar_new2.fitness, pop.F[idx], self.problem.minmax):
+                pos_new2 = self._correct_solution(x_new2)
+                tar_new2 = self._get_target(pos_new2)
+                if self._compare_fitness(tar_new2.fitness, pop.F[idx], self.problem.sense):
                     ops.set_row(pop, idx, pos_new2, tar_new2)
                 else:
                     if (
@@ -220,7 +219,7 @@ cdef class OriginalRUN(LegacyNativeOptimizer):
                                         )
                                 )
                         )  # Eq. 20
-                        pos_new3 = self.correct_solution(x_new3)
-                        tar_new3 = self.get_target(pos_new3)
-                        if self.compare_fitness(tar_new3.fitness, pop.F[idx], self.problem.minmax):
+                        pos_new3 = self._correct_solution(x_new3)
+                        tar_new3 = self._get_target(pos_new3)
+                        if self._compare_fitness(tar_new3.fitness, pop.F[idx], self.problem.sense):
                             ops.set_row(pop, idx, pos_new3, tar_new3)

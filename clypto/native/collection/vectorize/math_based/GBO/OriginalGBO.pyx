@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalGBO(LegacyNativeOptimizer):
+cdef class OriginalGBO(VectorizeOptimizer):
     """
     The original version of: Gradient-Based Optimizer (GBO)
 
@@ -24,14 +24,14 @@ cdef class OriginalGBO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import GBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -69,11 +69,10 @@ cdef class OriginalGBO(LegacyNativeOptimizer):
             beta_min (float): Fixed parameter (no name in the paper), default = 0.2
             beta_max (float): Fixed parameter (no name in the paper), default = 1.2
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "pr", "beta_min", "beta_max"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -83,7 +82,7 @@ cdef class OriginalGBO(LegacyNativeOptimizer):
         self.beta_min = cy.validator(float, beta_min, (0, 2.0), "beta_min")
         self.beta_max = cy.validator(float, beta_max, (0, 5.0), "beta_max")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         # Agents read the population they just updated (random members), so in sequential
         # mode the loop runs on the buffer rows; swarm/parallel modes batch the evaluation.
         cdef NativePopulation pop = self.pop
@@ -196,12 +195,12 @@ cdef class OriginalGBO(LegacyNativeOptimizer):
                             / 2
                     )
             # Check if solutions go outside the search space and bring them back
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             if swarm:
                 Xc[idx] = pos_new
             else:
-                tar = self.get_target(pos_new)
-                if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
+                tar = self._get_target(pos_new)
+                if self._compare_fitness(tar.fitness, pop.F[idx], self.problem.sense):
                     ops.set_row(pop, idx, pos_new, tar)
         if swarm:
             self.evaluate(cand, 0, pop.n)

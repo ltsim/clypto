@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalFLA(LegacyNativeOptimizer):
+cdef class OriginalFLA(VectorizeOptimizer):
     """
     The original version of: Fick's Law Algorithm (FLA)
 
@@ -32,14 +32,14 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import FLA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -94,11 +94,10 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
             C5 (float): factor C5, default=2.0
             DD (float): factor D in the paper, default=0.01
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "C1", "C2", "C3", "C4", "C5", "DD"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -111,7 +110,7 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
         self.C5 = cy.validator(float, C5, (-100.0, 100.0), "C5")
         self.DD = cy.validator(float, DD, (-100.0, 100.0), "DD")
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         self.xss = self.pop.take(self.sorted_order(self.pop))
         self.n1 = int(np.round(self.pop_size / 2))
         self.n2 = self.pop_size - self.n1
@@ -123,12 +122,12 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
         self.pop2 = self.pop.take(np.arange(self.n1, self.pop.n))
         self.best1 = self.pop1.agent(self.sorted_order(self.pop1)[0])
         self.best2 = self.pop2.agent(self.sorted_order(self.pop2)[0])
-        if self.compare_fitness(self.best1.target.fitness, self.best2.target.fitness, self.problem.minmax):
+        if self._compare_fitness(self.best1.target.fitness, self.best2.target.fitness, self.problem.sense):
             self.fsss = self.best1.target.fitness
         else:
             self.fsss = self.best2.target.fitness
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         # Candidates are built team by team (draws in the classic order); evaluation is batched
         # and each agent is replaced when its candidate is better (compare_target).
         cdef NativePopulation pop = self.pop
@@ -166,12 +165,12 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
                     pos_new = self.best2.solution + dfg * dof * self.generator.random(
                         self.problem.n_dims
                     ) * (jj * self.best2.solution - P1.X[idx])
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
                 for idx in range(nt12, self.n1):
                     tt = P1.X[idx] + dof * (
                             self.generator.random(self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
+                            * (self.problem.bounds.up - self.problem.bounds.low)
+                            + self.problem.bounds.low
                     )
                     pp = self.generator.random(self.problem.n_dims)
                     pos_new = np.where(
@@ -179,14 +178,14 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
                         self.best1.solution,
                         np.where(pp >= 0.9, P1.X[idx], tt),
                     )
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
                 for idx in range(0, self.n2):
                     pos_new = self.best2.solution + dof * (
                             self.generator.random(self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
+                            * (self.problem.bounds.up - self.problem.bounds.low)
+                            + self.problem.bounds.low
                     )
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
             else:
                 m1n, m2n = 0.1 * self.n2, 0.2 * self.n2
                 nt12 = int(np.round((m2n - m1n) * self.generator.random() + m1n))
@@ -205,12 +204,12 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
                     pos_new = self.best1.solution + dfg * dof * self.generator.random(
                         self.problem.n_dims
                     ) * (jj * self.best1.solution - P2.X[idx])
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
                 for idx in range(nt12, self.n2):
                     tt = P2.X[idx] + dof * (
                             self.generator.random(self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
+                            * (self.problem.bounds.up - self.problem.bounds.low)
+                            + self.problem.bounds.low
                     )
                     pp = self.generator.random(self.problem.n_dims)
                     pos_new = np.where(
@@ -218,14 +217,14 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
                         self.best2.solution,
                         np.where(pp >= 0.9, P2.X[idx], tt),
                     )
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
                 for idx in range(0, self.n1):
                     pos_new = self.best1.solution + dof * (
                             self.generator.random(self.problem.n_dims)
-                            * (self.problem.ub - self.problem.lb)
-                            + self.problem.lb
+                            * (self.problem.bounds.up - self.problem.bounds.low)
+                            + self.problem.bounds.low
                     )
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
         else:  # Equilibrium operator (EO)
             if tf <= 1:
                 for idx in range(0, self.n1):
@@ -246,7 +245,7 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
                             + qeo * P1.X[idx]
                             + qeo * (ms * self.best1.solution - P1.X[idx])
                     )
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
                 for idx in range(0, self.n2):
                     dfg = self.generator.integers(1, 3)
                     tttt = np.linalg.norm(self.best2.solution - P2.X[idx])
@@ -265,7 +264,7 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
                             + qeo * P2.X[idx]
                             + qeo * (ms * self.best2.solution - P2.X[idx])
                     )
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
             else:  # Steady state operator (SSO)
                 for idx in range(0, self.n1):
                     dfg = self.generator.integers(1, 3)
@@ -286,7 +285,7 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
                             + qg * P1.X[idx]
                             + qg * (ms * self.best1.solution - P1.X[idx])
                     )
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
                 for idx in range(0, self.n2):
                     dfg = self.generator.integers(1, 3)
                     tttt = np.linalg.norm(
@@ -306,11 +305,11 @@ cdef class OriginalFLA(LegacyNativeOptimizer):
                             + qg * P2.X[idx]
                             + qg * (ms * g_best - P2.X[idx])
                     )
-                    pop_new.append(self.correct_solution(pos_new))
+                    pop_new.append(self._correct_solution(pos_new))
         cand.X[:] = np.array(pop_new)
         self.evaluate(cand, 0, pop.n)
         better = cand.F < pop.F
-        if self.problem.minmax != "min":
+        if self.problem.sense != "min":
             better = ~better
         rows = np.flatnonzero(better)
         pop.buf[rows] = cand.buf[rows]

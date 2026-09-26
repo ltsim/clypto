@@ -7,25 +7,25 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class RW_GWO(LegacyNativeOptimizer):
+cdef class RW_GWO(VectorizeOptimizer):
     """
     The original version of: Random Walk Grey Wolf Optimizer (RW-GWO)
 
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -52,18 +52,17 @@ cdef class RW_GWO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -75,7 +74,7 @@ cdef class RW_GWO(LegacyNativeOptimizer):
 
         ## Random walk of the three leaders (Cauchy steps drawn leader by leader)
         walk = np.array([leaders.X[k] + a * self.generator.standard_cauchy(d) for k in range(3)])
-        leaders_new = self.new_population(self.correct_solution(walk))
+        leaders_new = self.new_population(self._correct_solution(walk))
         ops.accept(self, leaders_new, dst=leaders)
 
         ## Update other wolves (Eq. 3 and 4)
@@ -83,7 +82,7 @@ cdef class RW_GWO(LegacyNativeOptimizer):
         miu = a * (2 * R[:, :3] - 1)
         c = 2 * R[:, 3:]
         Xs = leaders.X[None] - miu * np.abs(c * g_best - pop.X[:, None, :])
-        cand.X[:] = self.correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
+        cand.X[:] = self._correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)
 

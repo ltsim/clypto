@@ -17,14 +17,14 @@ cdef class OppoTWO(OriginalTWO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import TWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -44,9 +44,9 @@ cdef class OppoTWO(OriginalTWO):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
         half_size = -(-self.pop_size // 2)  # ceil division, safe for odd pop_size
         list_idx = self.generator.choice(
             range(0, self.pop_size), half_size, replace=False
@@ -54,19 +54,19 @@ cdef class OppoTWO(OriginalTWO):
         pop_temp = [self.pop[list_idx[idx]] for idx in range(0, half_size)]
         pop_oppo = []
         for idx in range(len(pop_temp)):
-            pos_opposite = self.problem.ub + self.problem.lb - pop_temp[idx].solution
-            pos_opposite = self.correct_solution(pos_opposite)
-            agent = self.generate_empty_agent(pos_opposite)
+            pos_opposite = self.problem.bounds.up + self.problem.bounds.low - pop_temp[idx].solution
+            pos_opposite = self._correct_solution(pos_opposite)
+            agent = self._generate_empty_agent(pos_opposite)
             pop_oppo.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_oppo[-1].target = self.get_target(pos_opposite)
-        pop_oppo = self.update_target_for_population(pop_oppo)
+                pop_oppo[-1].target = self._get_target(pos_opposite)
+        pop_oppo = self._update_target_for_population(pop_oppo)
         self.pop = (pop_temp + pop_oppo)[: self.pop_size]
         self.pop = self.update_weight__(self.pop)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -89,7 +89,7 @@ cdef class OppoTWO(OriginalTWO):
                     delta_x = 1 / 2 * acceleration + np.power(
                         self.alpha, epoch
                     ) * self.beta * (
-                        self.problem.ub - self.problem.lb
+                        self.problem.bounds.up - self.problem.bounds.low
                     ) * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
@@ -101,39 +101,39 @@ cdef class OppoTWO(OriginalTWO):
                 0, 1, self.problem.n_dims
             ) / (epoch) * (self.g_best.solution - pop_new[idx].solution)
             conditions = np.logical_or(
-                pop_new[idx].solution < self.problem.lb,
-                pop_new[idx].solution > self.problem.ub,
+                pop_new[idx].solution < self.problem.bounds.low,
+                pop_new[idx].solution > self.problem.bounds.up,
             )
             conditions = np.logical_and(
                 conditions, self.generator.random(self.problem.n_dims) < 0.5
             )
             pos_new = np.where(conditions, pos_new, self.pop[idx].solution)
-            pop_new[idx].solution = self.correct_solution(pos_new)
+            pop_new[idx].solution = self._correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[idx].target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    pop_new[idx], self.pop[idx], self.problem.minmax
+                pop_new[idx].target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    pop_new[idx], self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
         ## Opposition-based here
         pop = []
         for idx in range(self.pop_size):
-            C_op = self.generate_opposition_solution(self.pop[idx], self.g_best)
-            pos_new = self.correct_solution(C_op)
-            agent = self.generate_empty_agent(pos_new)
+            C_op = self._generate_opposition_solution(self.pop[idx], self.g_best)
+            pos_new = self._correct_solution(C_op)
+            agent = self._generate_empty_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop, self.problem.minmax
+            pop = self._update_target_for_population(pop)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop, self.problem.sense
             )
         self.pop = self.update_weight__(self.pop)

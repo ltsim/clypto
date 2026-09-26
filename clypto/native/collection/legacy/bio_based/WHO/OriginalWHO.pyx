@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalWHO(_LegacyOptimizer):
+cdef class OriginalWHO(LegacyOptimizer):
     """
     The original version of: Wildebeest Herd Optimization (WHO)
 
@@ -31,14 +31,14 @@ cdef class OriginalWHO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.bio_based import WHO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -85,7 +85,7 @@ cdef class OriginalWHO(_LegacyOptimizer):
             delta_w (float): dist to worst
             delta_c (float): dist to best
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.n_explore_step = self.validator.check_int(
@@ -108,7 +108,7 @@ cdef class OriginalWHO(_LegacyOptimizer):
         )
         self.delta_w = self.validator.check_float("delta_w", delta_w, (0.5, 5.0))
         self.delta_c = self.validator.check_float("delta_c", delta_c, (0.5, 5.0))
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -126,9 +126,9 @@ cdef class OriginalWHO(_LegacyOptimizer):
         )
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -142,37 +142,37 @@ cdef class OriginalWHO(_LegacyOptimizer):
                 temp = self.pop[
                            idx
                        ].solution + self.eta * self.generator.uniform() * self.generator.uniform(
-                    self.problem.lb, self.problem.ub
+                    self.problem.bounds.low, self.problem.bounds.up
                 )
-                pos_new = self.correct_solution(temp)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(temp)
+                agent = self._generate_empty_agent(pos_new)
                 local_list.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    local_list[-1].target = self.get_target(pos_new)
-            local_list = self.update_target_for_population(local_list)
-            best_local = self.get_best_agent(local_list, self.problem.minmax)
+                    local_list[-1].target = self._get_target(pos_new)
+            local_list = self._update_target_for_population(local_list)
+            best_local = self._get_best_agent(local_list, self.problem.sense)
             temp = self.local_alpha * best_local.solution + self.local_beta * (
                     self.pop[idx].solution - best_local.solution
             )
-            pos_new = self.correct_solution(temp)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(temp)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
         for idx in range(0, self.pop_size):
             ### 2. Herd instinct
             idr = self.generator.choice(range(0, self.pop_size))
             if (
-                    self.compare_target(
-                        self.pop[idr].target, self.pop[idx].target, self.problem.minmax
+                    self._compare_target(
+                        self.pop[idr].target, self.pop[idx].target, self.problem.sense
                     )
                     and self.generator.random() < self.p_hi
             ):
@@ -180,15 +180,15 @@ cdef class OriginalWHO(_LegacyOptimizer):
                         self.global_alpha * self.pop[idx].solution
                         + self.global_beta * self.pop[idr].solution
                 )
-                pos_new = self.correct_solution(temp)
-                tar_new = self.get_target(pos_new)
-                if self.compare_target(
-                        tar_new, self.pop[idx].target, self.problem.minmax
+                pos_new = self._correct_solution(temp)
+                tar_new = self._get_target(pos_new)
+                if self._compare_target(
+                        tar_new, self.pop[idx].target, self.problem.sense
                 ):
                     self.pop[idx].update(solution=pos_new, target=tar_new)
 
-        _, best, worst = self.get_special_agents(
-            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        _, best, worst = self._get_special_agents(
+            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
         )
         g_best, g_worst = best[0], worst[0]
         pop_child = []
@@ -198,47 +198,47 @@ cdef class OriginalWHO(_LegacyOptimizer):
             ### 3. Starvation avoidance
             if dist_to_worst < self.delta_w:
                 temp = self.pop[idx].solution + self.generator.uniform() * (
-                        self.problem.ub - self.problem.lb
-                ) * self.generator.uniform(self.problem.lb, self.problem.ub)
-                pos_new = self.correct_solution(temp)
-                agent = self.generate_empty_agent(pos_new)
+                        self.problem.bounds.up - self.problem.bounds.low
+                ) * self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+                pos_new = self._correct_solution(temp)
+                agent = self._generate_empty_agent(pos_new)
                 pop_child.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(pos_new)
-                    self.pop[idx] = self.get_better_agent(
-                        agent, self.pop[idx], self.problem.minmax
+                    agent.target = self._get_target(pos_new)
+                    self.pop[idx] = self._get_better_agent(
+                        agent, self.pop[idx], self.problem.sense
                     )
             ### 4. Population pressure
             if 1.0 < dist_to_best and dist_to_best < self.delta_c:
                 temp = g_best.solution + self.eta * self.generator.uniform(
-                    self.problem.lb, self.problem.ub
+                    self.problem.bounds.low, self.problem.bounds.up
                 )
-                pos_new = self.correct_solution(temp)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(temp)
+                agent = self._generate_empty_agent(pos_new)
                 pop_child.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(pos_new)
-                    self.pop[idx] = self.get_better_agent(
-                        agent, self.pop[idx], self.problem.minmax
+                    agent.target = self._get_target(pos_new)
+                    self.pop[idx] = self._get_better_agent(
+                        agent, self.pop[idx], self.problem.sense
                     )
             ### 5. Herd social memory
             for jdx in range(0, self.n_exploit_step):
                 temp = g_best.solution + 0.1 * self.generator.uniform(
-                    self.problem.lb, self.problem.ub
+                    self.problem.bounds.low, self.problem.bounds.up
                 )
-                pos_new = self.correct_solution(temp)
-                agent = self.generate_empty_agent(temp)
+                pos_new = self._correct_solution(temp)
+                agent = self._generate_empty_agent(temp)
                 pop_child.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(pos_new)
-                    self.pop[idx] = self.get_better_agent(
-                        agent, self.pop[idx], self.problem.minmax
+                    agent.target = self._get_target(pos_new)
+                    self.pop[idx] = self._get_better_agent(
+                        agent, self.pop[idx], self.problem.sense
                     )
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self.update_target_for_population(pop_child)
-            pop_child = self.get_sorted_and_trimmed_population(
-                pop_child, self.pop_size, self.problem.minmax
+            pop_child = self._update_target_for_population(pop_child)
+            pop_child = self._get_sorted_and_trimmed_population(
+                pop_child, self.pop_size, self.problem.sense
             )
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_child, self.problem.minmax
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_child, self.problem.sense
             )

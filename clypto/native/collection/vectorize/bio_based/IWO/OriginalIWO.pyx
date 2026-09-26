@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalIWO(LegacyNativeOptimizer):
+cdef class OriginalIWO(VectorizeOptimizer):
     """
     The original version of: Invasive Weed Optimization (IWO)
 
@@ -32,14 +32,14 @@ cdef class OriginalIWO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import IWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -83,7 +83,7 @@ cdef class OriginalIWO(LegacyNativeOptimizer):
             sigma_start (float): The initial value of standard deviation
             sigma_end (float): The final value of standard deviation
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -95,7 +95,6 @@ cdef class OriginalIWO(LegacyNativeOptimizer):
                 "sigma_end",
             ],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -107,7 +106,7 @@ cdef class OriginalIWO(LegacyNativeOptimizer):
         self.sigma_start = cy.validator(float, sigma_start, [0.5, 5.0], "sigma_start")
         self.sigma_end = cy.validator(float, sigma_end, (0, 0.5), "sigma_end")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -121,5 +120,5 @@ cdef class OriginalIWO(LegacyNativeOptimizer):
         s = np.minimum(np.ceil(self.seed_min + (self.seed_max - self.seed_min) * ratio).astype(int), int(np.sqrt(self.pop_size)))
         parent = np.repeat(np.arange(n), s)
         pos = Xs[parent] + sigma * rng.normal(0, 1, (len(parent), d))
-        cand = self.new_population(self.correct_solution(pos))
+        cand = self.new_population(self._correct_solution(pos))
         self.pop = cand.take(self.sorted_order(cand)[:self.pop_size])

@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalSeaHO(LegacyNativeOptimizer):
+cdef class OriginalSeaHO(VectorizeOptimizer):
     """
     The original version of: Sea-Horse Optimization (SeaHO)
 
@@ -22,14 +22,14 @@ cdef class OriginalSeaHO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import SeaHO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -61,23 +61,22 @@ cdef class OriginalSeaHO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.uu = 0.05
         self.vv = 0.05
         self.ll = 0.05
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation child, offspring, both
@@ -86,14 +85,14 @@ cdef class OriginalSeaHO(LegacyNativeOptimizer):
         X = pop.X
         g = np.array(self.g_best_x())
         # The motor behavior of sea horses
-        step_length = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
+        step_length = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
         beta = rng.normal(0, 1, (n, d))
         theta = 2 * np.pi * rng.random((n, d))
         row = self.uu * np.exp(theta * self.vv)
         xx, yy, zz = row * np.cos(theta), row * np.sin(theta), row * theta
         eq4 = X + step_length * ((g - X) * xx * yy * zz + g)  # Eq. 4
         eq7 = X + rng.random((n, d)) * self.ll * beta * (g - beta * g)  # Eq. 7
-        moved = self.correct_solution(np.where((rng.normal(0, 1, (n, 1)) > 0), eq4, eq7))
+        moved = self._correct_solution(np.where((rng.normal(0, 1, (n, 1)) > 0), eq4, eq7))
         # The predation behavior of sea horses
         alpha = (1 - epoch / self.epoch) ** (2 * epoch / self.epoch)
         r1 = rng.random((n, d))
@@ -103,13 +102,13 @@ cdef class OriginalSeaHO(LegacyNativeOptimizer):
             (1 - alpha) * (moved - r1 * g) + alpha * moved,  # Eq. 11
         )
         child = pop.empty_like()
-        child.X[:] = self.correct_solution(pos)
+        child.X[:] = self._correct_solution(pos)
         self.evaluate(child, 0, n)
         child = child.take(self.sorted_order(child))  # Sorted population
         # The reproductive behavior of sea horses
         offspring = child.take(np.arange(half))
         r3 = rng.random((half, 1))
-        offspring.X[:] = self.correct_solution(r3 * child.X[:half] + (1 - r3) * child.X[half:2 * half])  # Eq. 13
+        offspring.X[:] = self._correct_solution(r3 * child.X[:half] + (1 - r3) * child.X[half:2 * half])  # Eq. 13
         self.evaluate(offspring, 0, half)
         # Sea horses selection
         both = child.concat(offspring)

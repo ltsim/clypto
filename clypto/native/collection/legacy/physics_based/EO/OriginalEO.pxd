@@ -1,5 +1,5 @@
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalEO(_LegacyOptimizer):
+cdef class OriginalEO(LegacyOptimizer):
     pass

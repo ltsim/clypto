@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.bio_based.SBO.DevSBO cimport DevSBO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
@@ -30,14 +30,14 @@ cdef class OriginalSBO(DevSBO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import SBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -73,14 +73,14 @@ cdef class OriginalSBO(DevSBO):
         """
         super().__init__(epoch, pop_size, alpha, p_m, psw, name=name, mode=mode)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        self.sigma = self.psw * (self.problem.ub - self.problem.lb)
+        self.sigma = self.psw * (self.problem.bounds.up - self.problem.bounds.low)
         fx = np.array(pop.F)
         fit = np.where(fx < 0, 1.0 + np.abs(fx), 1.0 / (1.0 + np.abs(fx)))
         prob = fit / np.sum(fit)
@@ -92,7 +92,7 @@ cdef class OriginalSBO(DevSBO):
         # The classic code only refreshes the fitness of the population with the candidates' values in the
         # sequential mode (positions stay) and replaces the population in swarm modes; both are kept.
         cdef NativePopulation cand = pop.empty_like()
-        cand.X[:] = self.correct_solution(pos)
+        cand.X[:] = self._correct_solution(pos)
         self.evaluate(cand, 0, n)
         if self.mode in self.AVAILABLE_MODES:
             self.pop = cand

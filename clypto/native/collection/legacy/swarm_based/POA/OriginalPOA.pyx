@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalPOA(_LegacyOptimizer):
+cdef class OriginalPOA(LegacyOptimizer):
     """
     The original version of: Pelican Optimization Algorithm (POA)
 
@@ -24,14 +24,14 @@ cdef class OriginalPOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import POA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -54,16 +54,15 @@ cdef class OriginalPOA(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -72,8 +71,8 @@ cdef class OriginalPOA(_LegacyOptimizer):
         kk = self.generator.permutation(self.pop_size)[0]
         for idx in range(0, self.pop_size):
             # PHASE 1: Moving towards prey (exploration phase)
-            if self.compare_target(
-                    self.pop[kk].target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                    self.pop[kk].target, self.pop[idx].target, self.problem.sense
             ):  # Eq. 4
                 pos_new = self.pop[idx].solution + self.generator.random() * (
                         self.pop[kk].solution
@@ -83,10 +82,10 @@ cdef class OriginalPOA(_LegacyOptimizer):
                 pos_new = self.pop[idx].solution + self.generator.random() * (
                         self.pop[idx].solution - self.pop[kk].solution
                 )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
 
@@ -98,9 +97,9 @@ cdef class OriginalPOA(_LegacyOptimizer):
                     * (2 * self.generator.random(self.problem.n_dims) - 1)
                     * self.pop[idx].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent

@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHC(_LegacyOptimizer):
+cdef class OriginalHC(LegacyOptimizer):
     """
     The original version of: Hill Climbing (HC)
 
@@ -24,14 +24,14 @@ cdef class OriginalHC(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.math_based import HC    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -59,18 +59,18 @@ cdef class OriginalHC(_LegacyOptimizer):
             pop_size (int): number of population size, default = 2
             neighbour_size (int): fixed parameter, sensitive exploitation parameter, Default: 50
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
         self.neighbour_size = self.validator.check_int(
             "neighbour_size", neighbour_size, [2, 1000]
         )
-        self.set_parameters(["epoch", "pop_size", "neighbour_size"])
+        self._set_parameters(["epoch", "pop_size", "neighbour_size"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -80,11 +80,11 @@ cdef class OriginalHC(_LegacyOptimizer):
         for idx in range(0, self.neighbour_size):
             pos_new = (
                     self.g_best.solution
-                    + self.generator.uniform(self.problem.lb, self.problem.ub) * step_size
+                    + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up) * step_size
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_neighbours.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_neighbours[-1].target = self.get_target(pos_new)
-        self.pop = self.update_target_for_population(pop_neighbours)
+                pop_neighbours[-1].target = self._get_target(pos_new)
+        self.pop = self._update_target_for_population(pop_neighbours)

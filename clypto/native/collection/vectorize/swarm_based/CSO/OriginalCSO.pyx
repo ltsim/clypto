@@ -9,12 +9,12 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -42,14 +42,14 @@ cdef class OriginalCSO(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import CSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -105,7 +105,7 @@ cdef class OriginalCSO(AgentListOptimizer):
             w_max (float): same in PSO
             selected_strategy (int):  0: best fitness, 1: tournament, 2: roulette wheel, else: random (decrease by quality)
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -121,7 +121,6 @@ cdef class OriginalCSO(AgentListOptimizer):
                 "selected_strategy",
             ],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -137,16 +136,16 @@ cdef class OriginalCSO(AgentListOptimizer):
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
         self.selected_strategy = cy.validator(int, selected_strategy, [0, 4], "selected_strategy")
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         flag = True if self.generator.uniform() < self.mixture_ratio else False
         return FieldAgent(solution=solution, velocity=velocity, flag=flag)
 
     def seeking_mode__(self, cat):
         candidate_cats = []
-        clone_cats = self.generate_agents(self.smp)
+        clone_cats = self._generate_agents(self.smp)
         if self.spc:
             candidate_cats.append(cat.copy())
             clone_cats = [cat.copy() for _ in range(self.smp - 1)]
@@ -162,33 +161,33 @@ cdef class OriginalCSO(AgentListOptimizer):
                 self.generator.random(self.problem.n_dims) < 0.5, pos_new1, pos_new2
             )
             pos_new[idx] = clone.solution[idx]
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.update(velocity=clone.velocity, flag=clone.flag)
             candidate_cats.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                candidate_cats[-1].target = self.get_target(pos_new)
-        candidate_cats = self.update_target_for_population(candidate_cats)
+                candidate_cats[-1].target = self._get_target(pos_new)
+        candidate_cats = self._update_target_for_population(candidate_cats)
 
         if self.selected_strategy == 0:  # Best fitness-self
-            cat = self.get_best_agent(candidate_cats, self.problem.minmax)
+            cat = self._get_best_agent(candidate_cats, self.problem.sense)
         elif self.selected_strategy == 1:  # Tournament
             k_way = 4
             idx = self.generator.choice(range(0, self.smp), k_way, replace=False)
             cats_k_way = [candidate_cats[_] for _ in idx]
-            cat = self.get_best_agent(cats_k_way, self.problem.minmax)
+            cat = self._get_best_agent(cats_k_way, self.problem.sense)
         elif self.selected_strategy == 2:  ### Roul-wheel selection
             list_fitness = [
                 candidate_cats[u].target.fitness for u in range(0, len(candidate_cats))
             ]
-            idx = self.get_index_roulette_wheel_selection(list_fitness)
+            idx = self._get_index_roulette_wheel_selection(list_fitness)
             cat = candidate_cats[idx]
         else:
             idx = self.generator.choice(range(0, len(candidate_cats)))
             cat = candidate_cats[idx]  # Random
         return cat.solution
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         w = (self.epoch - epoch) / self.epoch * (self.w_max - self.w_min) + self.w_min
         pop_new = []
         for idx in range(0, self.pop_size):
@@ -202,7 +201,7 @@ cdef class OriginalCSO(AgentListOptimizer):
                     * self.c1
                     * (self.g_best.solution - self.objs[idx].solution)
                 )
-                pos_new = self.correct_solution(pos_new)
+                pos_new = self._correct_solution(pos_new)
             else:
                 pos_new = self.seeking_mode__(self.objs[idx])
             agent.solution = pos_new
@@ -211,5 +210,5 @@ cdef class OriginalCSO(AgentListOptimizer):
             )
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        self.objs = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        self.objs = self._update_target_for_population(pop_new)

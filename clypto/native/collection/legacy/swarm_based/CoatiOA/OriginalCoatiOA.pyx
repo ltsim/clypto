@@ -4,10 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCoatiOA(_LegacyOptimizer):
+cdef class OriginalCoatiOA(LegacyOptimizer):
     """
     The original version of: Coati Optimization Algorithm (CoatiOA)
 
@@ -23,15 +23,15 @@ cdef class OriginalCoatiOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import CoatiOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = CoatiOA.OriginalCoatiOA(epoch=1000, pop_size=50)
@@ -53,16 +53,15 @@ cdef class OriginalCoatiOA(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -74,17 +73,17 @@ cdef class OriginalCoatiOA(_LegacyOptimizer):
                     self.g_best.solution
                     - self.generator.integers(1, 3) * self.pop[idx].solution
             )  # Eq. 4
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
 
         for idx in range(size2, self.pop_size):
-            iguana = self.generate_agent()
-            if self.compare_target(
-                    iguana.target, self.pop[idx].target, self.problem.minmax
+            iguana = self._generate_agent()
+            if self._compare_target(
+                    iguana.target, self.pop[idx].target, self.problem.sense
             ):
                 pos_new = self.pop[idx].solution + self.generator.random() * (
                         iguana.solution
@@ -94,22 +93,22 @@ cdef class OriginalCoatiOA(_LegacyOptimizer):
                 pos_new = self.pop[idx].solution + self.generator.random() * (
                         self.pop[idx].solution - iguana.solution
                 )  # Eq. 6
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
 
         # Phase2: The process of escaping from predators (Exploitation Phase)
         for idx in range(0, self.pop_size):
-            LO, HI = self.problem.lb / epoch, self.problem.ub / epoch
+            LO, HI = self.problem.bounds.low / epoch, self.problem.bounds.up / epoch
             pos_new = self.pop[idx].solution + (1 - 2 * self.generator.random()) * (
                     LO + self.generator.random() * (HI - LO)
             )  # Eq. 8
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent

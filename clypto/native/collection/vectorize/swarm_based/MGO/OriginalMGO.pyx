@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalMGO(LegacyNativeOptimizer):
+cdef class OriginalMGO(VectorizeOptimizer):
     """
     The original version of: Mountain Gazelle Optimizer (MGO)
 
@@ -22,14 +22,14 @@ cdef class OriginalMGO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import MGO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,18 +57,17 @@ cdef class OriginalMGO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -76,7 +75,7 @@ cdef class OriginalMGO(LegacyNativeOptimizer):
         X = pop.X
         cdef NativePopulation cand
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         rows = np.arange(n)
         m3 = int(np.ceil(n / 3))
         idxs_rand = rng.random((n, n)).argsort(axis=1)[:, :m3]  # a random third of the herd per agent
@@ -101,7 +100,7 @@ cdef class OriginalMGO(LegacyNativeOptimizer):
         x4 = X - D + (k[:, 4] * g - k[:, 5] * M) * cofi[rows, rng.integers(0, 4, size=n)]
         x1 = lb + rng.random((n, d)) * (ub - lb)
         cand = pop.take(np.zeros(4 * n, dtype=int))
-        cand.X[:] = self.correct_solution(np.concatenate([x1, x2, x3, x4]))
+        cand.X[:] = self._correct_solution(np.concatenate([x1, x2, x3, x4]))
         self.evaluate(cand, 0, 4 * n)
         both = pop.concat(cand)
         self.pop = both.take(self.sorted_order(both)[:n])

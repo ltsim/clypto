@@ -10,7 +10,7 @@ import numpy as np
 from clypto.native.collection.vectorize.physics_based.TWO.OriginalTWO cimport OriginalTWO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
@@ -22,14 +22,14 @@ cdef class LevyTWO(OriginalTWO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import TWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -54,17 +54,17 @@ cdef class LevyTWO(OriginalTWO):
         """
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sub
         pos = self.forces__(pop, epoch_c)
-        pop.X[:] = self.correct_solution(self.bound__(pos, epoch_c))
+        pop.X[:] = self._correct_solution(self.bound__(pos, epoch_c))
         self.evaluate(pop, 0, pop.n)
         # half of the teams try a Levy jump
         jump = np.flatnonzero(self.generator.random(pop.n) < 0.5)
         if len(jump):
             sub = pop.take(jump)
-            sub.X[:] = self.correct_solution(pop.X[jump] + self.get_levy_flight_step(beta=1.0, multiplier=0.01, size=(len(jump), pop.d), case=-1))
+            sub.X[:] = self._correct_solution(pop.X[jump] + self._get_levy_flight_step(beta=1.0, multiplier=0.01, size=(len(jump), pop.d), case=-1))
             self.evaluate(sub, 0, len(jump))
             ops.scatter(self, sub, jump)
         self.update_weight__(pop)

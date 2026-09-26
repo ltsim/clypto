@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalHC(LegacyNativeOptimizer):
+cdef class OriginalHC(VectorizeOptimizer):
     """
     The original version of: Hill Climbing (HC)
 
@@ -26,14 +26,14 @@ cdef class OriginalHC(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import HC    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,11 +65,10 @@ cdef class OriginalHC(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 2
             neighbour_size (int): fixed parameter, sensitive exploitation parameter, Default: 50
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "neighbour_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -77,8 +76,8 @@ cdef class OriginalHC(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [2, 10000], "pop_size")
         self.neighbour_size = cy.validator(int, neighbour_size, [2, 1000], "neighbour_size")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef Py_ssize_t k = self.neighbour_size, d = self.pop.d
         step_size = np.exp(-2 * epoch / self.epoch)
-        pos = np.array(self.g_best_x()) + self.generator.uniform(self.problem.lb, self.problem.ub, (k, d)) * step_size
-        self.pop = self.new_population(self.correct_solution(pos))
+        pos = np.array(self.g_best_x()) + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (k, d)) * step_size
+        self.pop = self.new_population(self._correct_solution(pos))

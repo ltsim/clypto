@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class ImprovedNMRA(LegacyNativeOptimizer):
+cdef class ImprovedNMRA(VectorizeOptimizer):
     """
     The developed version of: Improved Naked Mole-Rat Algorithm (I-NMRA)
 
@@ -27,14 +27,14 @@ cdef class ImprovedNMRA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import NMRA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,11 +65,10 @@ cdef class ImprovedNMRA(LegacyNativeOptimizer):
             pb (float): breeding probability, default = 0.75
             pm (float): probability of mutation, default = 0.01
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "pb", "pm"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -79,16 +78,16 @@ cdef class ImprovedNMRA(LegacyNativeOptimizer):
         self.pm = cy.validator(float, pm, (0, 1.0), "pm")
         self.size_b = int(self.pop_size / 5)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d, b = self.size_b
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         me = np.arange(n)
         # breeding operators (the first size_b agents)
-        levy = self.get_levy_flight_step(beta=1, multiplier=0.001, size=(n, 1), case=-1)
+        levy = self._get_levy_flight_step(beta=1, multiplier=0.001, size=(n, 1), case=-1)
         breed = np.where((rng.uniform(size=n) < self.pb)[:, None], X + rng.normal(0, 1, (n, d)) * (g - X),
                          X + 1.0 / np.sqrt(epoch_c) * np.sign(rng.random((n, 1)) - 0.5) * levy * (X - g))
         # working operators: a difference of two workers, or a crossover of the best with a random partner

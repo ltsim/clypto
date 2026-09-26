@@ -7,10 +7,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevBA(_LegacyOptimizer):
+cdef class DevBA(LegacyOptimizer):
     """
     The original version of: Developed Bat-inspired Algorithm (DBA)
 
@@ -29,15 +29,15 @@ cdef class DevBA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import BA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BA.DevBA(epoch=1000, pop_size=50, pulse_rate = 0.95, pf_min = 0., pf_max = 10.)
@@ -55,22 +55,22 @@ cdef class DevBA(_LegacyOptimizer):
         pf_max=10.0,
         **kwargs
     ):
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pulse_rate = self.validator.check_float("pulse_rate", pulse_rate, (0, 1.0))
         self.pf_min = self.validator.check_float("pf_min", pf_min, [0, 2])
         self.pf_max = self.validator.check_float("pf_max", pf_max, [2, 10])
         self.alpha = self.gamma = 0.9
-        self.set_parameters(["epoch", "pop_size", "pulse_rate", "pf_min", "pf_max"])
+        self._set_parameters(["epoch", "pop_size", "pulse_rate", "pf_min", "pf_max"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_list_velocity = np.zeros((self.pop_size, self.problem.n_dims))
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -85,17 +85,17 @@ cdef class DevBA(_LegacyOptimizer):
                 + (self.g_best.solution - self.pop[idx].solution) * pf
             )  # Eq. 3
             x = self.pop[idx].solution + self.dyn_list_velocity[idx]  # Eq. 4
-            pos_new = self.correct_solution(x)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(x)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         pop_child_idx = []
         pop_child = []
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                pop_new[idx].target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx].update(
                     solution=pop_new[idx].solution.copy(), target=pop_new[idx].target
@@ -103,18 +103,18 @@ cdef class DevBA(_LegacyOptimizer):
             else:
                 if self.generator.random() > self.pulse_rate:
                     x = self.g_best.solution + 0.01 * self.generator.uniform(
-                        self.problem.lb, self.problem.ub
+                        self.problem.bounds.low, self.problem.bounds.up
                     )
-                    pos_new = self.correct_solution(x)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(x)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_child_idx.append(idx)
                     pop_child.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self.get_target(pos_new)
-        pop_child = self.update_target_for_population(pop_child)
+                        pop_child[-1].target = self._get_target(pos_new)
+        pop_child = self._update_target_for_population(pop_child)
         for idx, idx_selected in enumerate(pop_child_idx):
-            if self.compare_target(
-                pop_child[idx].target, pop_new[idx_selected].target, self.problem.minmax
+            if self._compare_target(
+                pop_child[idx].target, pop_new[idx_selected].target, self.problem.sense
             ):
                 pop_new[idx_selected].update(
                     solution=pop_child[idx].solution, target=pop_child[idx].target

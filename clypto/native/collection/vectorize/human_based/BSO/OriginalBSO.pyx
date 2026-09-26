@@ -11,7 +11,7 @@ import numpy as np
 from clypto.native.collection.vectorize.human_based.BSO.ImprovedBSO cimport ImprovedBSO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -35,14 +35,14 @@ cdef class OriginalBSO(ImprovedBSO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import BSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -88,19 +88,19 @@ cdef class OriginalBSO(ImprovedBSO):
         self._params_name_ordered = tuple(["epoch", "pop_size", "m_clusters", "p1", "p2", "p3", "p4", "slope"])
         self.slope = cy.validator(int, slope, [10, 50], "slope")
 
-    cdef object amend_solution(self, object solution):
-        rp = self.generator.uniform(self.problem.lb, self.problem.ub)
+    cdef object _amend_solution(self, object solution):
+        rp = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
         return np.where(condition, solution, rp)
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         x = (0.5 * self.epoch - epoch) / self.slope
         epsilon = self.generator.uniform() * (1 / (1 + np.exp(-x)))
         if self.generator.random() < self.p1:  # p_5a
             idx = self.generator.integers(0, self.m_clusters)
-            self.centers[idx] = self.generate_agent()
+            self.centers[idx] = self._generate_agent()
         pop_group = self.pop_group
         for idx in range(0, self.pop_size):  # Generate new individuals
             cluster_id = int(idx / self.m_solution)
@@ -134,19 +134,19 @@ cdef class OriginalBSO(ImprovedBSO):
                             self.pop_group[id1][rand_id1].solution
                             + self.pop_group[id2][rand_id2].solution
                     ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_group[cluster_id][location_id] = agent
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                pop_group[cluster_id][location_id] = self.get_better_agent(
-                    agent, self.pop_group[cluster_id][location_id], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                pop_group[cluster_id][location_id] = self._get_better_agent(
+                    agent, self.pop_group[cluster_id][location_id], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
             for idx in range(0, self.m_clusters):
-                pop_group[idx] = self.update_target_for_population(pop_group[idx])
-                pop_group[idx] = self.greedy_selection_population(
-                    self.pop_group[idx], pop_group[idx], self.problem.minmax
+                pop_group[idx] = self._update_target_for_population(pop_group[idx])
+                pop_group[idx] = self._greedy_selection_population(
+                    self.pop_group[idx], pop_group[idx], self.problem.sense
                 )
         # Needed to update the centers and population
         self.centers = self.find_cluster__(pop_group)

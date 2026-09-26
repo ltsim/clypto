@@ -11,4 +11,3 @@ cdef class ImprovedBSO(AgentListOptimizer):
     cdef public object centers
     cdef public object pop_group
 
-    cdef void initialization(self)

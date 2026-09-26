@@ -7,26 +7,26 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalESO(LegacyNativeOptimizer):
+cdef class OriginalESO(VectorizeOptimizer):
     """
     The original version of: Electrical Storm Optimization (ESO)
 
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import ESO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -53,18 +53,17 @@ cdef class OriginalESO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation out = pop.empty_like()
         cdef NativeTarget tar_a, tar_b
@@ -142,9 +141,9 @@ cdef class OriginalESO(LegacyNativeOptimizer):
                     loc=0, scale=storm_power, size=self.problem.n_dims
                 )
                 pos_new = pop.X[alpha] + perturbation
-                pos_a = self.correct_solution(pos_new)
-                self.get_target(pos_a)  # generate_agent evaluates the position ...
-            tar_a = self.get_target(pos_a)  # ... and the classic code evaluates it once more
+                pos_a = self._correct_solution(pos_new)
+                self._get_target(pos_a)  # generate_agent evaluates the position ...
+            tar_a = self._get_target(pos_a)  # ... and the classic code evaluates it once more
 
             ## Branching and propagation
             # Simulate branching and propagation of lightning
@@ -169,12 +168,12 @@ cdef class OriginalESO(LegacyNativeOptimizer):
                 else:
                     # Random search
                     pos_new = self.generator.uniform(
-                        self.problem.lb, self.problem.ub, self.problem.n_dims
+                        self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                     )
-            pos_b = self.correct_solution(pos_new)
-            tar_b = self.get_target(pos_b)
+            pos_b = self._correct_solution(pos_new)
+            tar_b = self._get_target(pos_b)
 
-            # Select better position (the classic code compares with the default minmax="min")
+            # Select better position (the classic code compares with the default sense="min")
             if tar_b.fitness < tar_a.fitness:
                 ops.set_row(out, idx, pos_b, tar_b)
             else:

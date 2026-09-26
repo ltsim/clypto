@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalALO(_LegacyOptimizer):
+cdef class OriginalALO(LegacyOptimizer):
     """
     The original version of: Ant Lion Optimizer (ALO)
 
@@ -20,15 +20,15 @@ cdef class OriginalALO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import ALO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = ALO.OriginalALO(epoch=1000, pop_size=50)
@@ -49,10 +49,10 @@ cdef class OriginalALO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
     def random_walk_antlion__(self, solution, current_epoch):
@@ -69,8 +69,8 @@ cdef class OriginalALO(_LegacyOptimizer):
             I = 1 + 1000000 * (current_epoch / self.epoch)
 
         # Decrease boundaries to converge towards antlion
-        lb = self.problem.lb / I  # Equation (2.10) in the paper
-        ub = self.problem.ub / I  # Equation (2.10) in the paper
+        lb = self.problem.bounds.low / I  # Equation (2.10) in the paper
+        ub = self.problem.bounds.up / I  # Equation (2.10) in the paper
 
         # Move the interval of [lb ub] around the antlion [lb+anlion ub+antlion]
         if self.generator.random() < 0.5:
@@ -94,9 +94,9 @@ cdef class OriginalALO(_LegacyOptimizer):
             temp.append(X_norm)
         return np.array(temp)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -107,7 +107,7 @@ cdef class OriginalALO(_LegacyOptimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             # Select ant lions based on their fitness (the better anlion the higher chance of catching ant)
-            rolette_index = self.get_index_roulette_wheel_selection(list_fitness)
+            rolette_index = self._get_index_roulette_wheel_selection(list_fitness)
             # RA is the random walk around the selected antlion by rolette wheel
             RA = self.random_walk_antlion__(self.pop[rolette_index].solution, epoch)
             # RE is the random walk around the elite (the best antlion so far)
@@ -116,16 +116,16 @@ cdef class OriginalALO(_LegacyOptimizer):
                            RA[:, epoch - 1] + RE[:, epoch - 1]
                    ) / 2  # Equation(2.13) in the paper
             # Bound checking (bring back the antlions of ants inside search space if they go beyonds the boundaries
-            pos_new = self.correct_solution(temp)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(temp)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         # Update antlion positions and fitnesses based on the ants (if an ant becomes fitter than an antlion
         # we assume it was caught by the antlion and the antlion update goes to its position to build the trap)
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, self.problem.sense
         )
         # Keep the elite in the population
         self.pop[-1] = self.g_best.copy()

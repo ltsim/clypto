@@ -8,4 +8,3 @@ cdef class OriginalCHIO(AgentListOptimizer):
     cdef public object age_list
     cdef public object finished
 
-    cdef void initialize_variables(self)

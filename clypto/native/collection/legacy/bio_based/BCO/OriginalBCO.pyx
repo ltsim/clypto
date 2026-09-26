@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalBCO(_LegacyOptimizer):
+cdef class OriginalBCO(LegacyOptimizer):
     """
     The original version of: Bacterial Colony Optimization (BCO)
 
@@ -23,14 +23,14 @@ cdef class OriginalBCO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.bio_based import BCO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -69,7 +69,7 @@ cdef class OriginalBCO(_LegacyOptimizer):
             energy_threshold: Energy threshold for reproduction/elimination
             migration_prob: Migration probability
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.c_min = self.validator.check_float("c_min", c_min, (0.0, 1.0))
@@ -86,7 +86,7 @@ cdef class OriginalBCO(_LegacyOptimizer):
         self.migration_prob = self.validator.check_float(
             "migration_prob", migration_prob, (0, 1.0)
         )
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -100,12 +100,12 @@ cdef class OriginalBCO(_LegacyOptimizer):
         )
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.energy = self.generator.uniform(0, 1, self.pop_size)
 
-    def initialization(self) -> None:
+    def _initialization(self) -> None:
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
         self.pop_local = self.pop.copy()
 
     def get_energy(self, best, worst, fits):
@@ -118,16 +118,16 @@ cdef class OriginalBCO(_LegacyOptimizer):
         # Energy inversely proportional to fitness (lower fitness = higher energy)
         return 1 - norm_fit
 
-    def evolve(self, epoch: int) -> None:
+    def _evolve(self, epoch: int) -> None:
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch: The current iteration
         """
         # Normalize fitness to [0, 1]
-        _, best, worst = self.get_special_agents(
-            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        _, best, worst = self._get_special_agents(
+            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
         )
         fits = np.array([agent.target.fitness for agent in self.pop])
         energy = self.get_energy(best[0], worst[0], fits)
@@ -155,18 +155,18 @@ cdef class OriginalBCO(_LegacyOptimizer):
                 # Swimming (no turbulence)
                 pos_new = f_i * global_direction + (1 - f_i) * personal_direction
             pos_new = self.pop[idx].solution + step * pos_new
-            pos_new = self.correct_solution(pos_new)
-            agent_new = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent_new = self._generate_empty_agent(pos_new)
             pop.append(agent_new)
             if self.mode not in self.AVAILABLE_MODES:
-                agent_new.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent_new, minmax=self.problem.minmax
+                agent_new.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    self.pop[idx], agent_new, sense=self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop, self.problem.minmax
+            pop = self._update_target_for_population(pop)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop, self.problem.sense
             )
 
         ## Perform interactive exchange between bacteria
@@ -188,13 +188,13 @@ cdef class OriginalBCO(_LegacyOptimizer):
                     )
 
                 # Exchange information if neighbor is better
-                if self.compare_target(self.pop[neighbor].target, self.pop[idx].target):
+                if self._compare_target(self.pop[neighbor].target, self.pop[idx].target):
                     self.pop[idx] = self.pop[neighbor]
             else:
                 # Group exchange
-                if self.compare_target(self.pop[idx].target, self.g_best.target):
+                if self._compare_target(self.pop[idx].target, self.g_best.target):
                     # Move towards global best
                     self.pop[idx].solution += 0.1 * (
                             self.g_best.solution - self.pop[idx].solution
                     )
-        self.pop = self.update_target_for_population(self.pop)
+        self.pop = self._update_target_for_population(self.pop)

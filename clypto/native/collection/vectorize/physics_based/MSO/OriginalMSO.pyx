@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalMSO(LegacyNativeOptimizer):
+cdef class OriginalMSO(VectorizeOptimizer):
     """
     The original version of: Mirage Search Optimization (MSO)
 
@@ -22,14 +22,14 @@ cdef class OriginalMSO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import MSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,11 +57,10 @@ cdef class OriginalMSO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -93,7 +92,7 @@ cdef class OriginalMSO(LegacyNativeOptimizer):
             return 1.0
         return np.arctanh(x)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         # The classic code reads the evaluation counter while it builds the candidates (every
         # agent is evaluated as soon as it is built), so each agent is evaluated inline.
         cdef object epoch = epoch_c
@@ -148,8 +147,8 @@ cdef class OriginalMSO(LegacyNativeOptimizer):
                 dx = dx * zf
                 pos_new[k] = Xp[idx][k] + dx
             # Bound the variables
-            pos_new = self.correct_solution(pos_new)
-            ops.set_row(new, i, pos_new, self.get_target(pos_new))
+            pos_new = self._correct_solution(pos_new)
+            ops.set_row(new, i, pos_new, self._get_target(pos_new))
         merged = pop.concat(new)
         pop = merged.take(self.sorted_order(merged)[:self.pop_size])
         self.pop = pop
@@ -176,7 +175,7 @@ cdef class OriginalMSO(LegacyNativeOptimizer):
                     )
                     * self.cosd(omg)
             ) / self.cosd(omg - gama)
-            pos_new = self.correct_solution(Xp[idx] + x * zf)
-            ops.set_row(new, idx, pos_new, self.get_target(pos_new))
+            pos_new = self._correct_solution(Xp[idx] + x * zf)
+            ops.set_row(new, idx, pos_new, self._get_target(pos_new))
         merged = pop.concat(new)
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

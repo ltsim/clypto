@@ -19,14 +19,14 @@ cdef class ModifiedEO(OriginalEO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import EO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -53,16 +53,16 @@ cdef class ModifiedEO(OriginalEO):
         self.sort_flag = False
         self.pop_len = int(self.pop_size / 3)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         # ---------------- Memory saving-------------------  make equilibrium pool
-        _, c_eq_list, _ = self.get_special_agents(
-            self.pop, n_best=4, minmax=self.problem.minmax
+        _, c_eq_list, _ = self._get_special_agents(
+            self.pop, n_best=4, sense=self.problem.sense
         )
         c_pool = self.make_equilibrium_pool__(c_eq_list)
         # Eq. 9
@@ -87,22 +87,22 @@ cdef class ModifiedEO(OriginalEO):
                     + (self.pop[idx].solution - c_eq) * f
                     + (g * self.V / lamda) * (1.0 - f)
             )  # Eq. 16
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
         ## Sort the updated population based on fitness
-        _, pop_s1, _ = self.get_special_agents(
-            self.pop, n_best=self.pop_len, minmax=self.problem.minmax
+        _, pop_s1, _ = self._get_special_agents(
+            self.pop, n_best=self.pop_len, sense=self.problem.sense
         )
         ## Mutation scheme
         pop_s2 = pop_s1.copy()
@@ -111,18 +111,18 @@ cdef class ModifiedEO(OriginalEO):
             pos_new = pop_s2[idx].solution * (
                     1 + self.generator.normal(0, 1, self.problem.n_dims)
             )  # Eq. 12
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_s2_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                pop_s2[idx] = self.get_better_agent(
-                    agent, pop_s2[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                pop_s2[idx] = self._get_better_agent(
+                    agent, pop_s2[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_s2_new = self.update_target_for_population(pop_s2_new)
-            pop_s2 = self.greedy_selection_population(
-                pop_s2_new, pop_s2, self.problem.minmax
+            pop_s2_new = self._update_target_for_population(pop_s2_new)
+            pop_s2 = self._greedy_selection_population(
+                pop_s2_new, pop_s2, self.problem.sense
             )
 
         ## Search Mechanism
@@ -131,15 +131,15 @@ cdef class ModifiedEO(OriginalEO):
         pop_s3 = []
         for idx in range(0, self.pop_len):
             pos_new = (c_pool[0].solution - pos_s1_mean) - self.generator.random() * (
-                    self.problem.lb
-                    + self.generator.random() * (self.problem.ub - self.problem.lb)
+                    self.problem.bounds.low
+                    + self.generator.random() * (self.problem.bounds.up - self.problem.bounds.low)
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_s3.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_s3[-1].target = self.get_target(pos_new)
-        pop_s3 = self.update_target_for_population(pop_s3)
+                pop_s3[-1].target = self._get_target(pos_new)
+        pop_s3 = self._update_target_for_population(pop_s3)
         ## Construct a new population
         self.pop = pop_s1 + pop_s2 + pop_s3
         n_left = self.pop_size - len(self.pop)

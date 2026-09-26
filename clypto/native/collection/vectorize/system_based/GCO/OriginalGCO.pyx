@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.system_based.GCO.DevGCO cimport DevGCO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
@@ -29,14 +29,14 @@ cdef class OriginalGCO(DevGCO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.system_based import GCO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -69,9 +69,8 @@ cdef class OriginalGCO(DevGCO):
             wf (float): weighting factor (f in the paper), default = 1.25 (Same as DE algorithm)
         """
         super().__init__(epoch, pop_size, cr, wf, name=name, mode=mode)
-        self.is_parallelizable = False
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
@@ -92,6 +91,6 @@ cdef class OriginalGCO(DevGCO):
         fit_max = np.max(fit_list)
         fit_min = np.min(fit_list)
         fit = (fit_list - fit_max) / (fit_min - fit_max + self.EPSILON)
-        if self.problem.minmax != "min":
+        if self.problem.sense != "min":
             fit = 1 - fit
         life += 10 * fit

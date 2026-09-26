@@ -7,24 +7,12 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 from clypto.native.collection.legacy.math_based.SCA.DevSCA cimport DevSCA
 
 
-cdef class _QleSCAAgent(_LegacyAgent):
+cdef class _QleSCAAgent(LegacyAgent):
     cdef public object q_table
-    def __init__(self, solution=None, target=None, q_table=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.q_table = q_table
-    cpdef object copy(self):
-        return _QleSCAAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.q_table,
-        )
-    def update(self, **kwargs):
-        if "q_table" in kwargs:
-            self.q_table = kwargs.pop("q_table")
-        _LegacyAgent.update(self, **kwargs)
 
 
 class QTable:
@@ -85,14 +73,14 @@ cdef class QleSCA(DevSCA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.math_based import SCA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -125,20 +113,19 @@ cdef class QleSCA(DevSCA):
         super().__init__(epoch, pop_size, **kwargs)
         self.alpha = self.validator.check_float("alpha", alpha, [0.0, 1.0])
         self.gama = self.validator.check_float("gama", gama, [0.0, 1.0])
-        self.set_parameters(["epoch", "pop_size", "alpha", "gama"])
+        self._set_parameters(["epoch", "pop_size", "alpha", "gama"])
         self.sort_flag = False
-        self.is_parallelizable = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
         return _QleSCAAgent(solution=solution, q_table=q_table)
 
-    def amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
+        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(
-            np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub),
+            np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up),
             solution,
             rand_pos,
         )
@@ -164,9 +151,9 @@ cdef class QleSCA(DevSCA):
         # calculate the distance
         return numerator / denominator
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -176,7 +163,7 @@ cdef class QleSCA(DevSCA):
             ## Step 3: State computation
             den = self.density__(self.pop)
             dis = self.distance__(
-                self.g_best, self.pop, self.problem.lb, self.problem.ub
+                self.g_best, self.pop, self.problem.bounds.low, self.problem.bounds.up
             )
             ## Step 4: Action execution
             state = self.pop[idx].q_table.get_state(density=den, distance=dis)
@@ -195,11 +182,11 @@ cdef class QleSCA(DevSCA):
                     r3 * self.g_best.solution - self.pop[idx].solution
                 )
             # Check the bound
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             agent.solution = pos_new
-            agent.target = self.get_target(pos_new)
-            if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+            agent.target = self._get_target(pos_new)
+            if self._compare_target(
+                agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
                 self.pop[idx].q_table.update(

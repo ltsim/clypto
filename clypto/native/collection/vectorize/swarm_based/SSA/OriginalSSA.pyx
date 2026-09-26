@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.swarm_based.SSA.DevSSA cimport DevSSA
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -29,14 +29,14 @@ cdef class OriginalSSA(DevSSA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import SSA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -72,14 +72,14 @@ cdef class OriginalSSA(DevSSA):
         """
         super().__init__(epoch, pop_size, ST, PD, SD, name=name, mode=mode)
 
-    cdef object amend_solution(self, object solution):
+    cdef object _amend_solution(self, object solution):
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
-        pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub, size=np.shape(solution))
+        pos_rand = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, size=np.shape(solution))
         return np.where(condition, solution, pos_rand)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
@@ -88,7 +88,7 @@ cdef class OriginalSSA(DevSSA):
         r2 = rng.uniform()  # R2 in [0, 1], the alarm value
         best_x = np.array(X[ops.best_row(self, self.pop)])
         F = np.asarray(pop.F)
-        worst_x = np.array(X[int(F.argmax() if self.problem.minmax == "min" else F.argmin())])
+        worst_x = np.array(X[int(F.argmax() if self.problem.sense == "min" else F.argmin())])
         # producers (the first n1 sparrows) and scroungers
         des = (me + 1)[:, None] / (rng.uniform(size=(n, 1)) * self.epoch + self.EPSILON)
         des = np.where(des > 5, rng.uniform(size=(n, 1)), des)

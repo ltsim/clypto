@@ -23,14 +23,14 @@ cdef class LevyEP(OriginalEP):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import EP    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -56,9 +56,9 @@ cdef class LevyEP(OriginalEP):
         super().__init__(epoch, pop_size, bout_size, **kwargs)
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -68,27 +68,27 @@ cdef class LevyEP(OriginalEP):
             pos_new = self.pop[idx].solution + self.pop[
                 idx
             ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             s_old = (
                 self.pop[idx].strategy
                 + self.generator.normal(0, 1.0, self.problem.n_dims)
                 * np.abs(self.pop[idx].strategy) ** 0.5
             )
-            agent = self.generate_empty_agent(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.update(solution=pos_new, strategy=s_old, win=0)
             child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                child[-1].target = self.get_target(pos_new)
-        child = self.update_target_for_population(child)
+                child[-1].target = self._get_target(pos_new)
+        child = self._update_target_for_population(child)
         # Update the global best
-        children = self.get_sorted_population(child, self.problem.minmax)
+        children = self._get_sorted_population(child, self.problem.sense)
         pop = children + self.pop
         for i in range(0, len(pop)):
             ## Tournament winner (Tried with bout_size times)
             for idx in range(0, self.n_bout_size):
                 rand_idx = self.generator.integers(0, len(pop))
-                if self.compare_target(
-                    pop[i].target, pop[rand_idx].target, self.problem.minmax
+                if self._compare_target(
+                    pop[i].target, pop[rand_idx].target, self.problem.sense
                 ):
                     pop[i].win += 1
                 else:
@@ -103,17 +103,17 @@ cdef class LevyEP(OriginalEP):
             range(0, len(pop_left)), int(0.5 * len(pop_left)), replace=False
         )
         for idx in idx_list:
-            pos_new = pop_left[idx].solution + self.get_levy_flight_step(
+            pos_new = pop_left[idx].solution + self._get_levy_flight_step(
                 multiplier=0.01, size=self.problem.n_dims, case=0
             )
-            pos_new = self.correct_solution(pos_new)
-            strategy = self.distance = 0.05 * (self.problem.ub - self.problem.lb)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            strategy = self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
+            agent = self._generate_empty_agent(pos_new)
             agent.update(solution=pos_new, strategy=strategy, win=0)
             pop_comeback.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_comeback[-1].target = self.get_target(pos_new)
-        pop_comeback = self.update_target_for_population(pop_comeback)
-        self.pop = self.get_sorted_and_trimmed_population(
-            pop_new + pop_comeback, self.pop_size, self.problem.minmax
+                pop_comeback[-1].target = self._get_target(pos_new)
+        pop_comeback = self._update_target_for_population(pop_comeback)
+        self.pop = self._get_sorted_and_trimmed_population(
+            pop_new + pop_comeback, self.pop_size, self.problem.sense
         )

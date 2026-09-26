@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalABC(LegacyNativeOptimizer):
+cdef class OriginalABC(VectorizeOptimizer):
     """
     The original version of: Artificial Bee Colony (ABC)
 
@@ -25,14 +25,14 @@ cdef class OriginalABC(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import ABC    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,11 +65,10 @@ cdef class OriginalABC(LegacyNativeOptimizer):
             pop_size: number of population size = onlooker bees = employed bees, default = 100
             n_limits: Limit of trials before abandoning a food source, default=25
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "n_limits"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -77,10 +76,10 @@ cdef class OriginalABC(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.n_limits = cy.validator(int, n_limits, [1, 1000], "n_limits")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.trials = np.zeros(self.pop_size)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, scouts
         cdef Py_ssize_t i, n = pop.n, d = pop.d
@@ -98,13 +97,13 @@ cdef class OriginalABC(LegacyNativeOptimizer):
             selected = rng.integers(0, n, size=n)
         else:
             f = fits - fits.min() if np.any(fits < 0) else fits
-            f = f.max() - f if self.problem.minmax == "min" else f
+            f = f.max() - f if self.problem.sense == "min" else f
             selected = rng.choice(n, size=n, p=f / f.sum())
         X = pop.X
         guide = (selected + rng.integers(1, n, size=n)) % n
         phi = rng.uniform(low=-1, high=1, size=(n, d))
         cand = pop.take(selected)
-        cand.X[:] = self.correct_solution(X[selected] + phi * (X[guide] - X[selected]))
+        cand.X[:] = self._correct_solution(X[selected] + phi * (X[guide] - X[selected]))
         self.evaluate(cand, 0, n)
         for i in range(n):  # bees chosen several times keep their best candidate
             s = selected[i]
@@ -117,7 +116,7 @@ cdef class OriginalABC(LegacyNativeOptimizer):
         abandoned = np.flatnonzero(self.trials >= self.n_limits)
         if len(abandoned):
             scouts = pop.take(abandoned)
-            scouts.X[:] = self.problem.lb + rng.random((len(abandoned), d)) * (self.problem.ub - self.problem.lb)
+            scouts.X[:] = self.problem.bounds.low + rng.random((len(abandoned), d)) * (self.problem.bounds.up - self.problem.bounds.low)
             self.evaluate(scouts, 0, len(abandoned))
             pop.buf[abandoned] = scouts.buf
             self.trials[abandoned] = 0

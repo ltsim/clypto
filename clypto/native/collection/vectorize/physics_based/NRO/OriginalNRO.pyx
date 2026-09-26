@@ -8,11 +8,11 @@ import math
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalNRO(LegacyNativeOptimizer):
+cdef class OriginalNRO(VectorizeOptimizer):
     """
     The original version of: Nuclear Reaction Optimization (NRO)
 
@@ -22,14 +22,14 @@ cdef class OriginalNRO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import NRO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -60,23 +60,22 @@ cdef class OriginalNRO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef object amend_solution(self, object solution):
-        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
+    cdef object _amend_solution(self, object solution):
+        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        condition = np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up)
         return np.where(condition, solution, rand_pos)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
@@ -152,7 +151,7 @@ cdef class OriginalNRO(LegacyNativeOptimizer):
                     ]
                 )
             ## Check the boundary and evaluate the fitness function
-            ops.commit(self, pop, cand, idx, self.correct_solution(Xi), swarm)
+            ops.commit(self, pop, cand, idx, self._correct_solution(Xi), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)
 
@@ -196,7 +195,7 @@ cdef class OriginalNRO(LegacyNativeOptimizer):
                     ##### Based on Eq. 21
                     if X_worst.solution[j] == g_best[j]:
                         X_ion[j] = Xp[idx][j] + alpha * levy_b * (
-                                self.problem.ub[j] - self.problem.lb[j]
+                                self.problem.bounds.up[j] - self.problem.bounds.low[j]
                         )
                     ##### Based on Eq. 13
                     else:
@@ -206,7 +205,7 @@ cdef class OriginalNRO(LegacyNativeOptimizer):
                                            X_worst.solution[j] - g_best[j]
                                    )
             ## Check the boundary and evaluate the fitness function for X_ion
-            ops.commit(self, pop, cand, idx, self.correct_solution(X_ion), swarm)
+            ops.commit(self, pop, cand, idx, self._correct_solution(X_ion), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)
 
@@ -258,6 +257,6 @@ cdef class OriginalNRO(LegacyNativeOptimizer):
                                 / self.epoch
                                 + 1
                         ) * (Xp[i1] - Xp[i2])
-            ops.commit(self, pop, cand, idx, self.correct_solution(X_fu), swarm)
+            ops.commit(self, pop, cand, idx, self._correct_solution(X_fu), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)

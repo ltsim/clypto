@@ -17,10 +17,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMShOA(_LegacyOptimizer):
+cdef class OriginalMShOA(LegacyOptimizer):
     """
     The original version of: Mantis Shrimp Optimization Algorithm (MShOA)
 
@@ -46,14 +46,14 @@ cdef class OriginalMShOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import MShOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -96,7 +96,7 @@ cdef class OriginalMShOA(_LegacyOptimizer):
             k_value: Upper bound for k parameter in defense/shelter phase (Strategy 3, Equation 15).
                     k is sampled from U(0, k_value). Default = 0.3 (matches paper value).
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         # Keep polarization_rate for backward compatibility but it's not used
@@ -107,7 +107,7 @@ cdef class OriginalMShOA(_LegacyOptimizer):
             "strike_factor", strike_factor, (0.0, 5.0)
         )
         self.k_value = self.validator.check_float("k_value", k_value, (0.0, 1.0))
-        self.set_parameters(
+        self._set_parameters(
             ["epoch", "pop_size", "polarization_rate", "strike_factor", "k_value"]
         )
         self.sort_flag = False
@@ -119,7 +119,7 @@ cdef class OriginalMShOA(_LegacyOptimizer):
         # PTI = 3: Defense/Burrow (circular polarized light)
         self.pti = None  # Will be initialized in before_main_loop
 
-    def before_main_loop(self):
+    def _before_main_loop(self):
         """
         Initialize PTI vector randomly (Algorithm 1, initialization step)
         PTI ∈ {1, 2, 3} for each agent using PTI_i = round(1 + 2 * rand_i)
@@ -131,9 +131,9 @@ cdef class OriginalMShOA(_LegacyOptimizer):
         self.pti = np.round(pti_raw).astype(int)  # round to nearest integer
         self.pti = np.clip(self.pti, 1, 3)  # ensure values are in {1, 2, 3}
 
-    def evolve(self, epoch: int) -> None:
+    def _evolve(self, epoch: int) -> None:
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
         Implements Algorithm 2 from the paper with PTI-based strategy selection.
 
         Execution order (critical for correct LPA calculation):
@@ -330,18 +330,18 @@ cdef class OriginalMShOA(_LegacyOptimizer):
         # Create new agents efficiently
         pop_new = []
         for idx in range(self.pop_size):
-            pos_corrected = self.correct_solution(pos_new[idx])
-            agent = self.generate_empty_agent(pos_corrected)
+            pos_corrected = self._correct_solution(pos_new[idx])
+            agent = self._generate_empty_agent(pos_corrected)
             pop_new.append(agent)
         # Use standard Mealpy helper to update all targets
-        pop_new = self.update_target_for_population(pop_new)
+        pop_new = self._update_target_for_population(pop_new)
 
         # Safety check: ensure no agent has None target
         for agent in pop_new:
             if agent.target is None:
-                agent.target = self.get_target(agent.solution)
+                agent.target = self._get_target(agent.solution)
 
         # Perform greedy selection using standard Mealpy helper
-        self.pop = self.greedy_selection_population(
-            self.pop, pop_new, self.problem.minmax
+        self.pop = self._greedy_selection_population(
+            self.pop, pop_new, self.problem.sense
         )

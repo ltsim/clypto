@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalHHO(LegacyNativeOptimizer):
+cdef class OriginalHHO(VectorizeOptimizer):
     """
     The original version of: Harris Hawks Optimization (HHO)
 
@@ -22,14 +22,14 @@ cdef class OriginalHHO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import HHO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,18 +57,17 @@ cdef class OriginalHHO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sub
@@ -76,8 +75,8 @@ cdef class OriginalHHO(LegacyNativeOptimizer):
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
-        minmax = self.problem.minmax
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
+        sense = self.problem.sense
         E0 = 2 * rng.uniform(size=(n, 1)) - 1
         E = 2 * E0 * (1.0 - epoch * 1.0 / self.epoch)  # decreasing energy of the rabbit
         J = 2 * (1 - rng.uniform(size=(n, 1)))
@@ -93,16 +92,16 @@ cdef class OriginalHHO(LegacyNativeOptimizer):
         delta_X = g - X
         pounce = np.where(absE >= 0.5, delta_X - E * np.abs(J * g - X), g - E * np.abs(delta_X))  # Eqs. (6), (4)
         Y = np.where(absE >= 0.5, g - E * np.abs(J * g - X), g - E * np.abs(J * g - X_m))  # Eqs. (10), (11)
-        LF_D = self.get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, 1), case=-1)
+        LF_D = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, 1), case=-1)
         Z = Y + rng.uniform(lb, ub, size=(n, d)) * LF_D
         pos = np.where(absE >= 1, explore, pounce)
         levy = np.flatnonzero((absE[:, 0] < 1) & (rng.random(n) < 0.5))
         if len(levy):  # rapid dives: keep Y or Z only if better than the agent, else stay
             sub = pop.take(levy)
-            sub.X[:] = self.correct_solution(Y[levy])
+            sub.X[:] = self._correct_solution(Y[levy])
             self.evaluate(sub, 0, len(levy))
             better_y = ops.better(self, sub.F, pop.F[levy])
-            sub.X[:] = self.correct_solution(Z[levy])
+            sub.X[:] = self._correct_solution(Z[levy])
             self.evaluate(sub, 0, len(levy))
             better_z = ops.better(self, sub.F, pop.F[levy])
             pos[levy] = np.where(better_y[:, None], Y[levy], np.where(better_z[:, None], Z[levy], X[levy]))

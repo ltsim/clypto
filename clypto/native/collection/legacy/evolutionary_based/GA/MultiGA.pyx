@@ -28,15 +28,15 @@ class MultiGA(BaseGA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import GA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = GA.MultiGA(epoch=1000, pop_size=50, pc=0.9, pm=0.8, selection = "roulette", crossover = "uniform", mutation = "swap", k_way=0.2)
@@ -95,7 +95,7 @@ class MultiGA(BaseGA):
         )
         self.mutation = self.validator.check_str("mutation", mutation, ["flip", "swap"])
         self.k_way = self.validator.check_float("k_way", k_way, (0, 1.0))
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",

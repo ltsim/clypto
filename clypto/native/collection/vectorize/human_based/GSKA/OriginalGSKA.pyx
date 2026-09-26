@@ -6,11 +6,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalGSKA(LegacyNativeOptimizer):
+cdef class OriginalGSKA(VectorizeOptimizer):
     """
     The original version of: Gaining Sharing Knowledge-based Algorithm (GSKA)
 
@@ -26,14 +26,14 @@ cdef class OriginalGSKA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import GSKA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -75,11 +75,10 @@ cdef class OriginalGSKA(LegacyNativeOptimizer):
             kr (float): knowledge ratio, default = 0.9
             kg (int): Number of generations effect to D-dimension, default = 5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "pb", "kf", "kr", "kg"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -90,7 +89,7 @@ cdef class OriginalGSKA(LegacyNativeOptimizer):
         self.kr = cy.validator(float, kr, (0, 1.0), "kr")
         self.kg = cy.validator(int, kg, [1, 1 + int(epoch / 2)], "kg")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

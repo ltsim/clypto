@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevEFO(LegacyNativeOptimizer):
+cdef class DevEFO(VectorizeOptimizer):
     """
     The developed version: Electromagnetic Field Optimization (EFO)
 
@@ -24,14 +24,14 @@ cdef class DevEFO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import EFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -63,11 +63,10 @@ cdef class DevEFO(LegacyNativeOptimizer):
             p_field (float): default = 0.1     portion of population, positive field
             n_field (float): default = 0.45    portion of population, negative field
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "r_rate", "ps_rate", "p_field", "n_field"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -79,13 +78,13 @@ cdef class DevEFO(LegacyNativeOptimizer):
         self.n_field = cy.validator(float, n_field, (0, 1.0), "n_field")
         self.phi = (1 + np.sqrt(5)) / 2
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         # random top, middle and bottom agents of the (sorted) population
         r1 = rng.integers(0, int(n * self.p_field), size=n)
         r2 = rng.integers(int(n * (1 - self.n_field)), n, size=n)

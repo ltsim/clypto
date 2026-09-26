@@ -11,7 +11,7 @@ import numpy as np
 from clypto.native.collection.vectorize.human_based.CHIO.OriginalCHIO cimport OriginalCHIO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -28,14 +28,14 @@ cdef class DevCHIO(OriginalCHIO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import CHIO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -64,7 +64,7 @@ cdef class DevCHIO(OriginalCHIO):
         """
         super().__init__(epoch, pop_size, brr, max_age, name=name, mode=mode)
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         pop_new = []
         is_corona_list = [
                              False,
@@ -121,17 +121,17 @@ cdef class DevCHIO(OriginalCHIO):
                     )
             if self.finished:
                 break
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
 
         for idx in range(0, self.pop_size):
             # Step 4: Update herd immunity population
-            if self.compare_target(
-                    pop_new[idx].target, self.objs[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, self.objs[idx].target, self.problem.sense
             ):
                 self.objs[idx] = pop_new[idx].copy()
             else:
@@ -140,16 +140,16 @@ cdef class DevCHIO(OriginalCHIO):
             fit_list = np.array([agent.target.fitness for agent in self.objs])
             delta_fx = np.mean(fit_list)
             if (
-                    self.compare_fitness(
-                        pop_new[idx].target.fitness, delta_fx, self.problem.minmax
+                    self._compare_fitness(
+                        pop_new[idx].target.fitness, delta_fx, self.problem.sense
                     )
                     and (self.immunity_type_list[idx] == 0)
                     and is_corona_list[idx]
             ):
                 self.immunity_type_list[idx] = 1
                 self.age_list[idx] = 1
-            if self.compare_fitness(
-                    delta_fx, pop_new[idx].target.fitness, self.problem.minmax
+            if self._compare_fitness(
+                    delta_fx, pop_new[idx].target.fitness, self.problem.sense
             ) and (self.immunity_type_list[idx] == 1):
                 self.immunity_type_list[idx] = 2
                 self.age_list[idx] = 0
@@ -157,6 +157,6 @@ cdef class DevCHIO(OriginalCHIO):
             if (self.age_list[idx] >= self.max_age) and (
                     self.immunity_type_list[idx] == 1
             ):
-                self.objs[idx] = self.generate_agent()
+                self.objs[idx] = self._generate_agent()
                 self.immunity_type_list[idx] = 0
                 self.age_list[idx] = 0

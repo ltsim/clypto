@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class LARO(LegacyNativeOptimizer):
+cdef class LARO(VectorizeOptimizer):
     """
     The improved version of:  Lévy flight, and the selective opposition version of the artificial rabbit algorithm (LARO)
 
@@ -21,15 +21,15 @@ cdef class LARO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import ARO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = ARO.LARO(epoch=1000, pop_size=50)
@@ -56,11 +56,10 @@ cdef class LARO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -73,7 +72,7 @@ cdef class LARO(LegacyNativeOptimizer):
         ranks = self.generator.random((n, d)).argsort(axis=1).argsort(axis=1)
         return (ranks < k[:, None]).astype(float)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
@@ -91,7 +90,7 @@ cdef class LARO(LegacyNativeOptimizer):
         gr = self.random_dims__(n, d)
         H = rng.normal(0, 1, (n, 1)) * (epoch / self.epoch)
         b = X + H * gr * X
-        hiding = X + R * (self.get_levy_flight_step(beta=1.5, multiplier=0.1, size=n, case=-1)[:, None] * b - X)
+        hiding = X + R * (self._get_levy_flight_step(beta=1.5, multiplier=0.1, size=n, case=-1)[:, None] * b - X)
         ops.step(self, np.where((A > 1)[:, None], detour, hiding))
         # second phase: agents far from the best in most dimensions and with a negative rank correlation jump to the mirror image
         X = np.array(self.pop.X)
@@ -108,6 +107,6 @@ cdef class LARO(LegacyNativeOptimizer):
         sel = np.flatnonzero((np.asarray(self.pop.F) != gb_fit) & (src <= 0) & (n_df > n_dc))
         if len(sel):
             cand = self.pop.take(sel)
-            cand.X[:] = self.correct_solution((df_lb + df_ub)[sel][:, None] - X[sel])
+            cand.X[:] = self._correct_solution((df_lb + df_ub)[sel][:, None] - X[sel])
             self.evaluate(cand, 0, len(sel))
             ops.scatter(self, cand, sel)

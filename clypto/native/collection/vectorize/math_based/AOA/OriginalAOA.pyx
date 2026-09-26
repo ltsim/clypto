@@ -6,11 +6,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalAOA(LegacyNativeOptimizer):
+cdef class OriginalAOA(VectorizeOptimizer):
     """
     The original version of: Arithmetic Optimization Algorithm (AOA)
 
@@ -26,14 +26,14 @@ cdef class OriginalAOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import AOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -74,11 +74,10 @@ cdef class OriginalAOA(LegacyNativeOptimizer):
             moa_min (float): range min of Math Optimizer Accelerated, Default: 0.2,
             moa_max (float): range max of Math Optimizer Accelerated, Default: 0.9,
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "alpha", "miu", "moa_min", "moa_max"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -89,7 +88,7 @@ cdef class OriginalAOA(LegacyNativeOptimizer):
         self.moa_min = cy.validator(float, moa_min, (0, 0.41), "moa_min")
         self.moa_max = cy.validator(float, moa_max, (0.41, 1.0), "moa_max")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -102,12 +101,12 @@ cdef class OriginalAOA(LegacyNativeOptimizer):
         g = np.array(self.g_best_x())
         R = self.generator.random((n, d, 3))  # per agent and dimension: r1, r2, r3
         r1, r2, r3 = R[..., 0], R[..., 1], R[..., 2]
-        span = (self.problem.ub - self.problem.lb) * self.miu + self.problem.lb
+        span = (self.problem.bounds.up - self.problem.bounds.low) * self.miu + self.problem.bounds.low
         pos = np.where(
             r1 > moa,  # Exploration phase
             np.where(r2 < 0.5, g / (mop + self.EPSILON) * span, g * mop * span),
             np.where(r3 < 0.5, g - mop * span, g + mop * span),  # Exploitation phase
         )
-        cand.X[:] = self.correct_solution(pos)
+        cand.X[:] = self._correct_solution(pos)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

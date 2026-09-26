@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.system_based.AEO.OriginalAEO cimport OriginalAEO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -24,14 +24,14 @@ cdef class ImprovedAEO(OriginalAEO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.system_based import AEO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -61,18 +61,18 @@ cdef class ImprovedAEO(OriginalAEO):
         """
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d, m = pop.n - 1
         cdef object rng = self.generator
         X = pop.X
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         g = np.array(self.g_best_x())
         ## Production: the worst agent (last row) is replaced by a new random-mixed agent
         a = (1.0 - epoch / self.epoch) * rng.uniform()
-        pos = self.correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
-        ops.set_row(pop, n - 1, pos, self.get_target(pos))
+        pos = self._correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
+        ops.set_row(pop, n - 1, pos, self._get_target(pos))
         X = pop.X
         ## Consumption: the other agents feed on the producer, a random previous agent or both
         rand = rng.random(m)

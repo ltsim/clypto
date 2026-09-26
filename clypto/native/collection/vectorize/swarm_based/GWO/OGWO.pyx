@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OGWO(LegacyNativeOptimizer):
+cdef class OGWO(VectorizeOptimizer):
     """
     The original version of: Opposition-based learning Grey Wolf Optimizer (OGWO)
 
@@ -21,14 +21,14 @@ cdef class OGWO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -62,11 +62,10 @@ cdef class OGWO(LegacyNativeOptimizer):
             miu_factor (float): nonlinear coefficient for equation (11), default = 2.0
             jumping_rate (float):  jumping rate for OBL, default = 0.05
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "miu_factor", "jumping_rate"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -75,17 +74,17 @@ cdef class OGWO(LegacyNativeOptimizer):
         self.miu_factor = cy.validator(float, miu_factor, [0.0, 10.0], "miu_factor")
         self.jumping_rate = cy.validator(float, jumping_rate, [0.0, 1.0], "jumping_rate")
 
-    cdef void initialization(self):
-        LegacyNativeOptimizer.initialization(self)
+    def _initialization(self):
+        VectorizeOptimizer._initialization(self)
         self.merge_opposition()
 
     def merge_opposition(self):
         # Opposition population using equation (12); keep the best pop_size of both
         cdef NativePopulation pop = self.pop
-        cdef NativePopulation merged = pop.concat(self.new_population(self.problem.lb + self.problem.ub - pop.X))
+        cdef NativePopulation merged = pop.concat(self.new_population(self.problem.bounds.low + self.problem.bounds.up - pop.X))
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -96,7 +95,7 @@ cdef class OGWO(LegacyNativeOptimizer):
         A = a * (2 * R[:, :3] - 1)
         C = 2 * R[:, 3:]
         Xs = best - A * np.abs(C * best - pop.X[:, None, :])
-        cand.X[:] = self.correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
+        cand.X[:] = self._correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)
 

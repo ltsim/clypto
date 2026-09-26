@@ -9,7 +9,7 @@ from clypto.native.collection.vectorize.swarm_based.FOA.OriginalFOA cimport Orig
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -25,14 +25,14 @@ cdef class DevFOA(OriginalFOA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import FOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -57,11 +57,11 @@ cdef class DevFOA(OriginalFOA):
         """
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         c = 1 - epoch_c / self.epoch
-        pos = X + rng.normal(self.problem.lb, self.problem.ub, (n, d))
+        pos = X + rng.normal(self.problem.bounds.low, self.problem.bounds.up, (n, d))
         ops.step(self, c * rng.random((n, 1)) * self.norm_consecutive_adjacent__(pos))

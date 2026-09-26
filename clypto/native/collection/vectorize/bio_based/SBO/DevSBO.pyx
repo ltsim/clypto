@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevSBO(LegacyNativeOptimizer):
+cdef class DevSBO(VectorizeOptimizer):
     """
     The developed version: Satin Bowerbird Optimizer (SBO)
 
@@ -30,14 +30,14 @@ cdef class DevSBO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import SBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -67,11 +67,10 @@ cdef class DevSBO(LegacyNativeOptimizer):
             p_m (float): mutation probability, default=0.05
             psw (float): proportion of space width (z in the paper), default=0.02
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "alpha", "p_m", "psw"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -81,14 +80,14 @@ cdef class DevSBO(LegacyNativeOptimizer):
         self.p_m = cy.validator(float, p_m, (0, 1.0), "p_m")
         self.psw = cy.validator(float, psw, (0, 1.0), "psw")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        self.sigma = self.psw * (self.problem.ub - self.problem.lb)
+        self.sigma = self.psw * (self.problem.bounds.up - self.problem.bounds.low)
         rdx = ops.roulette(self, pop.F, n)
         lamda = self.alpha * rng.uniform(size=(n, 1))
         pos = X + lamda * ((X[rdx] + g) / 2 - X)

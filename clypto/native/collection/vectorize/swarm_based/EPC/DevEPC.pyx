@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevEPC(LegacyNativeOptimizer):
+cdef class DevEPC(VectorizeOptimizer):
     """
     The developed version of: Emperor Penguins Colony (EPC)
 
@@ -28,15 +28,15 @@ cdef class DevEPC(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import EPC    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = EPC.DevEPC(epoch=1000, pop_size=50, heat_damping_factor=0.95, mutation_factor=0.1,
@@ -84,7 +84,7 @@ cdef class DevEPC(LegacyNativeOptimizer):
             spiral_a (float): Constant for logarithmic spiral movement, default = 1.0
             spiral_b (float): Constant for logarithmic spiral movement, default = 0.5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -95,7 +95,6 @@ cdef class DevEPC(LegacyNativeOptimizer):
                 "spiral_b",
             ],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -106,7 +105,7 @@ cdef class DevEPC(LegacyNativeOptimizer):
         self.spiral_a = cy.validator(float, spiral_a, [0.0, 100.0], "spiral_a")
         self.spiral_b = cy.validator(float, spiral_b, [0.0, 100.0], "spiral_b")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         # Physical constants (from paper)
         self.surface_area = 0.56  # m^2 (total surface area of emperor penguin)
         self.emissivity = 0.98  # emissivity of bird plumage
@@ -163,7 +162,7 @@ cdef class DevEPC(LegacyNativeOptimizer):
         )
         return new_position
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -173,7 +172,7 @@ cdef class DevEPC(LegacyNativeOptimizer):
         self.heat_radiation = self.heat_radiation * self.heat_damping_factor
         self.current_mutation_factor = self.mutation_factor * (1 - epoch_c / self.epoch)
         # every penguin moves towards each penguin that is better than it (one candidate per such pair)
-        better = (F[None, :] < F[:, None]) if self.problem.minmax == "min" else (F[None, :] > F[:, None])
+        better = (F[None, :] < F[:, None]) if self.problem.sense == "min" else (F[None, :] > F[:, None])
         i, j = np.nonzero(better)
         m = len(i)
         if m == 0:
@@ -193,6 +192,6 @@ cdef class DevEPC(LegacyNativeOptimizer):
         pos = X[i] + (att * dist * self.spiral_a)[:, None] * direction + self.current_mutation_factor * rng.uniform(-1, 1, (m, d))
         pos = np.where((dist == 0)[:, None], X[i], pos)
         cand = pop.take(i)
-        cand.X[:] = self.correct_solution(pos)
+        cand.X[:] = self._correct_solution(pos)
         self.evaluate(cand, 0, m)
         ops.scatter(self, cand, i)

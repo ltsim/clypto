@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalBBO(LegacyNativeOptimizer):
+cdef class OriginalBBO(VectorizeOptimizer):
     """
     The original version of: Biogeography-Based Optimization (BBO)
 
@@ -25,14 +25,14 @@ cdef class OriginalBBO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import BBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -66,11 +66,10 @@ cdef class OriginalBBO(LegacyNativeOptimizer):
             p_m: Mutation probability, default=0.01
             n_elites: Number of elites will be keep for next generation, default=2
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "p_m", "n_elites"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -83,12 +82,12 @@ cdef class OriginalBBO(LegacyNativeOptimizer):
                 )
         self.mr = 1 - self.mu
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         pop_elites = pop.take(self.sorted_order(pop)[:self.n_elites])
         # Probabilistic migration: dimension j of agent i immigrates with probability mr[i] from an agent chosen by roulette wheel on mu
         immigrate = rng.random((n, d)) < self.mr[:n, None]

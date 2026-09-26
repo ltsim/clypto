@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DS_GWO(_LegacyOptimizer):
+cdef class DS_GWO(LegacyOptimizer):
     """
     The original version of: Diversity enhanced Strategy based Grey Wolf Optimizer (DS-GWO)
 
@@ -23,14 +23,14 @@ cdef class DS_GWO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -59,23 +59,23 @@ cdef class DS_GWO(_LegacyOptimizer):
             explore_ratio (float): ratio to control exploration, default = 0.4
             n_groups (int): number of groups for group-stage competition, default = 5
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
         self.explore_ratio = self.validator.check_float(
             "explore_ratio", explore_ratio, [0.0, 1.0]
         )
         self.n_groups = self.validator.check_int("n_groups", n_groups, [5, 100])
-        self.set_parameters(["epoch", "pop_size", "explore_ratio", "n_groups"])
+        self._set_parameters(["epoch", "pop_size", "explore_ratio", "n_groups"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         """
         Initialize any variables needed for the algorithm.
         """
         self.explore_epoch = int(self.epoch * self.explore_ratio)
 
-    def before_main_loop(self):
+    def _before_main_loop(self):
         """
         Initialize variables before the main loop starts.
         """
@@ -117,14 +117,14 @@ cdef class DS_GWO(_LegacyOptimizer):
             # Get group members
             group_population = self.pop[start_idx:end_idx]
             # Find best wolf in group
-            group_sorted = self.get_sorted_population(
-                group_population, minmax=self.problem.minmax
+            group_sorted = self._get_sorted_population(
+                group_population, sense=self.problem.sense
             )
             self.delta_candidates.append(group_sorted[0].copy())
 
         # Set alpha wolf (best among all delta candidates)
-        _, list_best, _ = self.get_special_agents(
-            self.delta_candidates, n_best=1, minmax=self.problem.minmax
+        _, list_best, _ = self._get_special_agents(
+            self.delta_candidates, n_best=1, sense=self.problem.sense
         )
         self.alpha = list_best[0].copy()
 

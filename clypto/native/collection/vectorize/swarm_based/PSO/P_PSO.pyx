@@ -6,7 +6,7 @@
 import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
@@ -18,15 +18,15 @@ cdef class P_PSO(_PSOBase):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.P_PSO(epoch=1000, pop_size=50)
@@ -53,26 +53,25 @@ cdef class P_PSO(_PSOBase):
             epoch: maximum number of iterations, default = 10000
             pop_size: number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void initialize_variables(self):
-        self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
+    def _initialize_variables(self):
+        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.dyn_delta_list = self.generator.uniform(0, 2 * np.pi, self.pop_size)
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t idx, start, stop, n = pop.n
-        span = self.problem.ub - self.problem.lb
+        span = self.problem.bounds.up - self.problem.bounds.low
         # Per-agent scalars, computed with the same NumPy scalar operations as the
         # classic loop. Agent i+1 clips with the v_max left by agent i.
         aa, bb, ee, tt, v_limit = [], [], [], [], []
@@ -97,6 +96,6 @@ cdef class P_PSO(_PSOBase):
             v_new = ee[start:stop] * (P[start:stop] - Xs) + tt[start:stop] * (g - Xs)
             v_new = np.minimum(np.maximum(v_new, -lim), lim)
             V[start:stop] = v_new
-            cand.X[start:stop] = self.correct_solution(Xs + v_new)
+            cand.X[start:stop] = self._correct_solution(Xs + v_new)
             self.evaluate(cand, start, stop)
             self.accept(cand, start, stop)

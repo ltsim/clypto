@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevGCO(_LegacyOptimizer):
+cdef class DevGCO(LegacyOptimizer):
     """
     The developed version: Germinal Center Optimization (GCO)
 
@@ -23,14 +23,14 @@ cdef class DevGCO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.system_based import GCO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -55,23 +55,23 @@ cdef class DevGCO(_LegacyOptimizer):
             cr (float): crossover rate, default = 0.7 (Same as DE algorithm)
             wf (float): weighting factor (f in the paper), default = 1.25 (Same as DE algorithm)
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.cr = self.validator.check_float("cr", cr, (0, 1.0))
         self.wf = self.validator.check_float("wf", wf, (0, 3.0))
-        self.set_parameters(["epoch", "pop_size", "cr", "wf"])
+        self._set_parameters(["epoch", "pop_size", "cr", "wf"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_list_cell_counter = np.ones(self.pop_size)  # CEll Counter
         self.dyn_list_life_signal = 70 * np.ones(
             self.pop_size
         )  # 70% to duplicate, and 30% to die  # LIfe-Signal
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -92,15 +92,15 @@ cdef class DevGCO(_LegacyOptimizer):
             )
             condition = self.generator.random(self.problem.n_dims) < self.cr
             pos_new = np.where(condition, pos_new, self.pop[idx].solution)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
             ):
                 self.dyn_list_cell_counter[idx] += 10
                 self.pop[idx] = pop_new[idx].copy()

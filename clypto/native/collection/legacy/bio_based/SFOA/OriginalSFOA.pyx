@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSFOA(_LegacyOptimizer):
+cdef class OriginalSFOA(LegacyOptimizer):
     """
     The original version: Starfish Optimization Algorithm (SFOA)
 
@@ -30,14 +30,14 @@ cdef class OriginalSFOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.bio_based import SFOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -60,16 +60,16 @@ cdef class OriginalSFOA(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             gp (float): the exploration of starfish, default=0.5
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.gp = self.validator.check_float("gp", gp, [0, 1.0])
-        self.set_parameters(["epoch", "pop_size", "gp"])
+        self._set_parameters(["epoch", "pop_size", "gp"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -101,8 +101,8 @@ cdef class OriginalSFOA(_LegacyOptimizer):
                     pos_new[jp1] = pos[jp1]
                     # Boundary check for individual dimension
                     pos_new[jp1] = np.where(
-                        (pos_new[jp1] < self.problem.lb[jp1])
-                        | (pos_new[jp1] > self.problem.ub[jp1]),
+                        (pos_new[jp1] < self.problem.bounds.low[jp1])
+                        | (pos_new[jp1] > self.problem.bounds.up[jp1]),
                         self.pop[idx].solution[jp1],
                         pos_new[jp1],
                     )
@@ -117,17 +117,17 @@ cdef class OriginalSFOA(_LegacyOptimizer):
                     pos_new[jp2] = tEO * pos_new[jp2] + rand1 * diff1 + rand2 * diff2
                     # Boundary check for individual dimension
                     if (
-                            pos_new[jp2] > self.problem.ub[jp2]
-                            or pos_new[jp2] < self.problem.lb[jp2]
+                            pos_new[jp2] > self.problem.bounds.up[jp2]
+                            or pos_new[jp2] < self.problem.bounds.low[jp2]
                     ):
                         pos_new[jp2] = self.pop[idx].solution[jp2]
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
+                    pop_new[-1].target = self._get_target(pos_new)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self.update_target_for_population(pop_new)
+                pop_new = self._update_target_for_population(pop_new)
         else:  # exploitation of starfish
             df = self.generator.choice(self.pop_size, 5, replace=False)
             # five arms of starfish
@@ -148,14 +148,14 @@ cdef class OriginalSFOA(_LegacyOptimizer):
                             np.exp(-epoch * self.pop_size / self.epoch)
                             * self.pop[idx].solution
                     )  # regeneration of starfish
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self.get_target(pos_new)
+                    pop_new[-1].target = self._get_target(pos_new)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self.update_target_for_population(pop_new)
+                pop_new = self._update_target_for_population(pop_new)
         # Update population with greedy strategy
-        self.pop = self.greedy_selection_population(
-            self.pop, pop_new, self.problem.minmax
+        self.pop = self._greedy_selection_population(
+            self.pop, pop_new, self.problem.sense
         )

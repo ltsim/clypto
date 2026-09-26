@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class MGTO(_LegacyOptimizer):
+cdef class MGTO(LegacyOptimizer):
     """
     The original version of: Modified Gorilla Troops Optimization (mGTO)
 
@@ -19,15 +19,15 @@ cdef class MGTO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import AGTO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = AGTO.MGTO(epoch=1000, pop_size=50, pp=0.03)
@@ -54,23 +54,23 @@ cdef class MGTO(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             pp (float): the probability of transition in exploration phase (p in the paper), default = 0.03
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pp = self.validator.check_float("p1", pp, (0, 1))  # p in the paper
-        self.set_parameters(["epoch", "pop_size", "pp"])
+        self._set_parameters(["epoch", "pop_size", "pp"])
         self.sort_flag = False
 
-    def amend_solution(self, solution: np.ndarray) -> np.ndarray:
+    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
-        random_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+        random_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, random_pos)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -85,15 +85,15 @@ cdef class MGTO(_LegacyOptimizer):
         pos_list = d_lb + d_ub - pos_list
         pop_new = []
         for idx in range(0, self.pop_size):
-            pos_new = self.correct_solution(pos_list[idx])
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_list[idx])
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
+                pop_new[-1].target = self._get_target(pos_new)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
+            pop_new = self._update_target_for_population(pop_new)
         self.pop = pop_new
-        _, self.g_best = self.update_global_best_agent(self.pop, save=False)
+        _, self.g_best = self._update_global_best_agent(self.pop)
 
         ## Exploration
         pop_new = []
@@ -118,20 +118,20 @@ cdef class MGTO(_LegacyOptimizer):
                             + self.generator.random()
                             * (self.pop[idx].solution - self.pop[id2].solution)
                     )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
-        _, self.g_best = self.update_global_best_agent(self.pop, save=False)
+        _, self.g_best = self._update_global_best_agent(self.pop)
 
         pos_list = np.array([agent.solution for agent in self.pop])
         ## Exploitation
@@ -154,16 +154,16 @@ cdef class MGTO(_LegacyOptimizer):
                 pos_new = self.g_best.solution - Q * (
                         self.g_best.solution - self.pop[idx].solution
                 ) * np.tan(v * np.pi / 2)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

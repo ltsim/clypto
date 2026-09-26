@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalALO(LegacyNativeOptimizer):
+cdef class OriginalALO(VectorizeOptimizer):
     """
     The original version of: Ant Lion Optimizer (ALO)
 
@@ -22,15 +22,15 @@ cdef class OriginalALO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import ALO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = ALO.OriginalALO(epoch=1000, pop_size=50)
@@ -56,11 +56,10 @@ cdef class OriginalALO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -84,8 +83,8 @@ cdef class OriginalALO(LegacyNativeOptimizer):
         rng = self.generator
         # Decrease boundaries to converge towards antlion (Eq. 2.10), move the interval around it (Eqs. 2.8, 2.9)
         sign = np.where(rng.random((n, 2, 1)) < 0.5, 1.0, -1.0)
-        lb = sign[:, 0] * (self.problem.lb / I) + solution
-        ub = sign[:, 1] * (self.problem.ub / I) + solution
+        lb = sign[:, 0] * (self.problem.bounds.low / I) + solution
+        ub = sign[:, 1] * (self.problem.bounds.up / I) + solution
         out = np.empty((n, d))
         block = max(1, 4000000 // max(1, d * steps))  # agents per block: bounded (block, d, steps) walks
         for i0 in range(0, n, block):
@@ -96,7 +95,7 @@ cdef class OriginalALO(LegacyNativeOptimizer):
             out[i0:i1] = ((X[:, :, column] - a) * (ub[i0:i1] - lb[i0:i1])) / (b - a) + lb[i0:i1]  # Eq. (2.7)
         return out
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, both
@@ -111,12 +110,12 @@ cdef class OriginalALO(LegacyNativeOptimizer):
             selected = rng.integers(0, n, size=n)
         else:
             f = fits - fits.min() if np.any(fits < 0) else fits
-            f = f.max() - f if self.problem.minmax == "min" else f
+            f = f.max() - f if self.problem.sense == "min" else f
             selected = rng.choice(n, size=n, p=f / f.sum())
         RA = self.random_walk_antlion__(X[selected], epoch, self.epoch, epoch - 1)
         RE = self.random_walk_antlion__(np.broadcast_to(elite_x, (n, pop.d)), epoch, self.epoch, epoch - 1)
         cand = pop.empty_like()
-        cand.X[:] = self.correct_solution((RA + RE) / 2)  # Equation(2.13)
+        cand.X[:] = self._correct_solution((RA + RE) / 2)  # Equation(2.13)
         self.evaluate(cand, 0, n)
         # an ant fitter than an antlion is caught by it: the antlion moves to its position
         both = pop.concat(cand)

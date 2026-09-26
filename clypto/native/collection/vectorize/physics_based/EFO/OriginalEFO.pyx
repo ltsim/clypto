@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.physics_based.EFO.DevEFO cimport DevEFO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
@@ -30,14 +30,14 @@ cdef class OriginalEFO(DevEFO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import EFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -87,13 +87,13 @@ cdef class OriginalEFO(DevEFO):
         super().__init__(epoch, pop_size, r_rate, ps_rate, p_field, n_field, name=name, mode=mode)
         self.support_parallel_modes = False
 
-    cdef object amend_solution(self, object solution):
-        rd = self.generator.uniform(self.problem.lb, self.problem.ub)
-        condition = np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub)
+    cdef object _amend_solution(self, object solution):
+        rd = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        condition = np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up)
         return np.where(condition, solution, rd)
 
-    cdef void initialization(self):
-        LegacyNativeOptimizer.initialization(self)
+    def _initialization(self):
+        VectorizeOptimizer._initialization(self)
         # %random vectors (this is to increase the calculation speed instead of determining the random values in each
         # iteration we allocate them in the beginning before algorithm start
         self.r_index1 = self.generator.integers(0, int(self.pop_size * self.p_field), (self.problem.n_dims, self.epoch))
@@ -118,7 +118,7 @@ cdef class OriginalEFO(DevEFO):
         # Coefficient of randomization when generated electro magnet is out of boundary
         self.RI = 0
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativeTarget tar
         iter01 = epoch - 1
@@ -135,16 +135,16 @@ cdef class OriginalEFO(DevEFO):
         # replacement of one electromagnet of generated particle with a random number (only for some generated particles) to bring diversity to the population
         if self.rp[iter01] < self.r_rate:
             x_new[self.RI] = (
-                    self.problem.lb[self.RI]
-                    + (self.problem.ub[self.RI] - self.problem.lb[self.RI])
+                    self.problem.bounds.low[self.RI]
+                    + (self.problem.bounds.up[self.RI] - self.problem.bounds.low[self.RI])
                     * self.randomization[iter01]
             )
             RI = self.RI + 1
             if RI >= self.problem.n_dims:
                 self.RI = 0
         # checking whether the generated number is inside boundary or not
-        pos_new = self.correct_solution(x_new)
-        tar = self.get_target(pos_new)
+        pos_new = self._correct_solution(x_new)
+        tar = self._get_target(pos_new)
         # Updating the population if the fitness of the generated particle is better than worst fitness in
         #     the population (because the population is sorted by fitness, the last particle is the worst)
         ops.set_row(pop, pop.n - 1, pos_new, tar)

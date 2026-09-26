@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.bio_based.VCS.DevVCS cimport DevVCS
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -27,14 +27,14 @@ cdef class OriginalVCS(DevVCS):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import VCS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -68,12 +68,12 @@ cdef class OriginalVCS(DevVCS):
         """
         super().__init__(epoch, pop_size, lamda, sigma, name=name, mode=mode)
 
-    cdef object amend_solution(self, object solution):
-        condition = np.clip(solution, self.problem.lb, self.problem.ub)
-        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+    cdef object _amend_solution(self, object solution):
+        condition = np.clip(solution, self.problem.bounds.low, self.problem.bounds.up)
+        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, rand_pos)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand

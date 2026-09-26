@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalGOA(LegacyNativeOptimizer):
+cdef class OriginalGOA(VectorizeOptimizer):
     """
     The original version of: Grasshopper Optimization Algorithm (GOA)
 
@@ -26,14 +26,14 @@ cdef class OriginalGOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -68,11 +68,10 @@ cdef class OriginalGOA(LegacyNativeOptimizer):
             c_min (float): coefficient c min, default=0.00004
             c_max (float): coefficient c max, default=2.0
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c_min", "c_max"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -87,14 +86,14 @@ cdef class OriginalGOA(LegacyNativeOptimizer):
         # Eq.(2.3) in the paper
         return f * np.exp(-r_vector / l) - np.exp(-r_vector)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d, i0, i1
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         # Eq.(2.8) in the paper
         c = self.c_max - epoch * ((self.c_max - self.c_min) / self.epoch)
         N = rng.normal(0, 1, (n, d))

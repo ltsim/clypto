@@ -8,11 +8,11 @@ import numpy as np
 from clypto.optimizer.native.fuzzy import FuzzySystem as FS
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class FuzzyGWO(LegacyNativeOptimizer):
+cdef class FuzzyGWO(VectorizeOptimizer):
     """
     The original version of: Fuzzy Hierarchical Operator - Grey Wolf Optimizer (FHO-GWO or FuzzyGWO or F-GWO)
 
@@ -22,14 +22,14 @@ cdef class FuzzyGWO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -63,11 +63,10 @@ cdef class FuzzyGWO(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             fuzzy_name (str): type of fuzzy operator to use, default = "increase"
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "fuzzy_name"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -75,10 +74,10 @@ cdef class FuzzyGWO(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.fuzzy_name = cy.validator(str, fuzzy_name, FuzzyGWO.FUZZY_OPERATORS, "fuzzy_name")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.fuzzy_system = FS(self.fuzzy_name)
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -92,6 +91,6 @@ cdef class FuzzyGWO(LegacyNativeOptimizer):
         # Get fuzzy weights (they only depend on the epoch)
         FW_alpha, FW_beta, FW_delta = self.fuzzy_system.get_fuzzy_weights(epoch, self.epoch)
         total_weight = FW_alpha + FW_beta + FW_delta
-        cand.X[:] = self.correct_solution((Xs[:, 0] * FW_alpha + Xs[:, 1] * FW_beta + Xs[:, 2] * FW_delta) / total_weight)
+        cand.X[:] = self._correct_solution((Xs[:, 0] * FW_alpha + Xs[:, 1] * FW_beta + Xs[:, 2] * FW_delta) / total_weight)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

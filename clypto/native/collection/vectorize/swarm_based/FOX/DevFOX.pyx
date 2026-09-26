@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevFOX(LegacyNativeOptimizer):
+cdef class DevFOX(VectorizeOptimizer):
     """
     The developed version of: Fox Optimizer (FOX)
 
@@ -27,14 +27,14 @@ cdef class DevFOX(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import FOX    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -64,11 +64,10 @@ cdef class DevFOX(LegacyNativeOptimizer):
         name: str | None = None,
         mode: str | None = None,
     ) -> None:
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c1", "c2", "pp"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -78,10 +77,10 @@ cdef class DevFOX(LegacyNativeOptimizer):
         self.c2 = cy.validator(float, c2, (-100.0, 100.0), "c2")
         self.pp = cy.validator(float, pp, (0.0, 1.0), "pp")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.mint = 10000000
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

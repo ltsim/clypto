@@ -11,12 +11,12 @@ import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalTWO(LegacyNativeOptimizer):
+cdef class OriginalTWO(VectorizeOptimizer):
     """
     The original version of: Tug of War Optimization (TWO)
 
@@ -26,14 +26,14 @@ cdef class OriginalTWO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import TWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -62,11 +62,10 @@ cdef class OriginalTWO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -84,8 +83,8 @@ cdef class OriginalTWO(LegacyNativeOptimizer):
     cdef void init_fields(self, NativePopulation pop):
         pop.field("W")[:] = 0.0
 
-    cdef void initialization(self):
-        LegacyNativeOptimizer.initialization(self)
+    def _initialization(self):
+        VectorizeOptimizer._initialization(self)
         self.update_weight__(self.pop)
 
     def update_weight__(self, NativePopulation teams):
@@ -103,7 +102,7 @@ cdef class OriginalTWO(LegacyNativeOptimizer):
 
         Team i is pulled by every heavier team j; the noise terms of the pulls are summed as one Gaussian.
         """
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         X, W = np.array(pop.X), np.array(pop.field("W")[:, 0])
         n, d = X.shape
         pulled = W[:, None] < W[None, :]  # (i, j): j heavier than i
@@ -114,16 +113,16 @@ cdef class OriginalTWO(LegacyNativeOptimizer):
 
     def bound__(self, pos, epoch):
         """Out-of-bound coordinates: half the time re-drawn around the best, else clipped (returns the position)."""
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         g = np.array(self.g_best_x())
         out = (pos < lb) | (pos > ub)
         around = g + self.generator.standard_normal(pos.shape) / epoch * (g - pos)
         around = np.where((around < lb) | (around > ub), pos, around)
         return np.where(out & (self.generator.random(pos.shape) <= 0.5), around, np.where(out, np.clip(pos, lb, ub), pos))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         pos = self.forces__(pop, epoch_c)
-        pop.X[:] = self.correct_solution(self.bound__(pos, epoch_c))
+        pop.X[:] = self._correct_solution(self.bound__(pos, epoch_c))
         self.evaluate(pop, 0, pop.n)
         self.update_weight__(pop)

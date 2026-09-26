@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalTS(_LegacyOptimizer):
+cdef class OriginalTS(LegacyOptimizer):
     """
     The original version of: Tabu Search (TS)
 
@@ -26,14 +26,14 @@ cdef class OriginalTS(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.math_based import TS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,7 +65,7 @@ cdef class OriginalTS(_LegacyOptimizer):
             neighbour_size (int): Size of the neighborhood for generating candidate solutions, Default: 10
             perturbation_scale (float): Scale of the perturbations for generating candidate solutions. default = 0.05
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
         self.tabu_size = self.validator.check_int("tabu_size", tabu_size, [2, 10000])
@@ -75,19 +75,19 @@ cdef class OriginalTS(_LegacyOptimizer):
         self.perturbation_scale = self.validator.check_float(
             "perturbation_scale", perturbation_scale, (0, 100)
         )
-        self.set_parameters(
+        self._set_parameters(
             ["epoch", "pop_size", "tabu_size", "neighbour_size", "perturbation_scale"]
         )
         self.sort_flag = False
 
-    def before_main_loop(self):
+    def _before_main_loop(self):
         self.x = self.g_best.solution.copy()
         self.tabu_list = []
         self.pop = []
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -101,17 +101,17 @@ cdef class OriginalTS(_LegacyOptimizer):
         # Evaluate candidate solutions and select best move
         list_candidates = []
         for candidate in candidates:
-            pos_new = self.correct_solution(candidate)
+            pos_new = self._correct_solution(candidate)
             if np.allclose(pos_new, self.x):
                 continue
             if tuple(pos_new) in self.tabu_list:
                 continue
-            agent = self.generate_empty_agent(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             list_candidates.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                list_candidates[-1].target = self.get_target(pos_new)
-        list_candidates = self.update_target_for_population(list_candidates)
-        best_candidate = self.get_best_agent(list_candidates, self.problem.minmax)
+                list_candidates[-1].target = self._get_target(pos_new)
+        list_candidates = self._update_target_for_population(list_candidates)
+        best_candidate = self._get_best_agent(list_candidates, self.problem.sense)
         self.x = best_candidate.solution
         # Update tabu list
         self.tabu_list.append(tuple(self.x))

@@ -7,37 +7,17 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalBFOAgent(_LegacyAgent):
+cdef class _OriginalBFOAgent(LegacyAgent):
     cdef public object cost
     cdef public object interaction
     cdef public object nutrients
-    def __init__(self, solution=None, target=None, cost=None, interaction=None, nutrients=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.cost = cost
-        self.interaction = interaction
-        self.nutrients = nutrients
-    cpdef object copy(self):
-        return _OriginalBFOAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.cost,
-            self.interaction,
-            self.nutrients,
-        )
-    def update(self, **kwargs):
-        if "cost" in kwargs:
-            self.cost = kwargs.pop("cost")
-        if "interaction" in kwargs:
-            self.interaction = kwargs.pop("interaction")
-        if "nutrients" in kwargs:
-            self.nutrients = kwargs.pop("nutrients")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalBFO(_LegacyOptimizer):
+cdef class OriginalBFO(LegacyOptimizer):
     """
     The original version of: Bacterial Foraging Optimization (BFO)
 
@@ -62,15 +42,15 @@ cdef class OriginalBFO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import BFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BFO.OriginalBFO(epoch=1000, pop_size=50, Ci = 0.01, Ped = 0.25, Nc = 5, Ns = 4, d_attract=0.1, w_attract=0.2, h_repels=0.1, w_repels=10)
@@ -113,7 +93,7 @@ cdef class OriginalBFO(_LegacyOptimizer):
             h_repels (float): coefficient to calculate repel force, default = 0.1
             w_repels (float): coefficient to calculate repel force, default = 10
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.step_size = self.Ci = self.validator.check_int("Ci", Ci, (0, 5.0))
@@ -124,7 +104,7 @@ cdef class OriginalBFO(_LegacyOptimizer):
         self.w_attract = self.validator.check_float("w_attract", w_attract, (0, 1.0))
         self.h_repels = self.validator.check_float("h_repels", h_repels, (0, 1.0))
         self.w_repels = self.validator.check_float("w_repels", w_repels, (2.0, 20.0))
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -139,10 +119,9 @@ cdef class OriginalBFO(_LegacyOptimizer):
             ]
         )
         self.half_pop_size = int(self.pop_size / 2)
-        self.is_parallelizable = False
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         cost = 0.0
@@ -176,14 +155,14 @@ cdef class OriginalBFO(_LegacyOptimizer):
         return cells
 
     def tumble_cell__(self, cell, step_size):
-        delta_i = self.generator.uniform(self.problem.lb, self.problem.ub)
+        delta_i = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         unit_vector = delta_i / np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
         vector = cell.solution + step_size * unit_vector
         return [vector, 0.0, 0.0, 0.0, 0.0]
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -195,13 +174,13 @@ cdef class OriginalBFO(_LegacyOptimizer):
                 sum_nutrients += self.pop[idx].cost
 
                 for m in range(0, self.swim_length):
-                    delta_i = self.generator.uniform(self.problem.lb, self.problem.ub)
+                    delta_i = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                     unit_vector = delta_i / np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
                     pos_new = self.pop[idx].solution + self.step_size * unit_vector
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
-                    if self.compare_target(
-                        agent.target, self.pop[idx].target, self.problem.minmax
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_agent(pos_new)
+                    if self._compare_target(
+                        agent.target, self.pop[idx].target, self.problem.sense
                     ):
                         self.pop[idx] = agent
                         break
@@ -214,4 +193,4 @@ cdef class OriginalBFO(_LegacyOptimizer):
             )
             for idc in range(self.pop_size):
                 if self.generator.random() < self.p_eliminate:
-                    self.pop[idc] = self.generate_agent()
+                    self.pop[idc] = self._generate_agent()

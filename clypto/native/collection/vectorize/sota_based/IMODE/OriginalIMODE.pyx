@@ -10,7 +10,7 @@ from typing import Tuple, List
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -27,14 +27,14 @@ cdef class OriginalIMODE(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.sota_based import IMODE    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -75,11 +75,10 @@ cdef class OriginalIMODE(AgentListOptimizer):
             memory_size (int): [2, 20], Memory size for F and CR, default = 5
             archive_size (int): [5, 100], Size of the solution archive for diversity, default = 20
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "memory_size", "archive_size"],
             sort_flag=True,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -88,7 +87,7 @@ cdef class OriginalIMODE(AgentListOptimizer):
         self.memory_size = cy.validator(int, memory_size, [2, 100], "memory_size")
         self.archive_size = cy.validator(int, archive_size, [5, 100], "archive_size")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         # Operator probabilities (3 operators)
         self.operator_probs = np.ones(3) / 3
         # Parameter memory for adaptive control
@@ -98,7 +97,7 @@ cdef class OriginalIMODE(AgentListOptimizer):
         # Archive for diversity
         self.archive_size = max(self.archive_size, self.pop_size)
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         # Initialize archive with initial population
         self.archive = self.objs.copy()
 
@@ -209,10 +208,10 @@ cdef class OriginalIMODE(AgentListOptimizer):
         if strategy == 1:  # Strategy 1: Midpoint repair
             for idx in range(0, len(vectors)):
                 res = np.select(
-                    [vectors[idx] < self.problem.lb, vectors[idx] > self.problem.ub],
+                    [vectors[idx] < self.problem.bounds.low, vectors[idx] > self.problem.bounds.up],
                     [
-                        (vectors[idx] + self.problem.ub) / 2,
-                        (vectors[idx] + self.problem.lb) / 2,
+                        (vectors[idx] + self.problem.bounds.up) / 2,
+                        (vectors[idx] + self.problem.bounds.low) / 2,
                     ],
                     default=vectors[idx],
                 )
@@ -220,31 +219,31 @@ cdef class OriginalIMODE(AgentListOptimizer):
         elif strategy == 2:  # Strategy 2: Reflection
             for idx in range(0, len(vectors)):
                 res = vectors[idx]
-                flag1 = res < self.problem.lb
+                flag1 = res < self.problem.bounds.low
                 res[flag1] = np.clip(
-                    2 * self.problem.lb[flag1] - res[flag1],
-                    self.problem.lb[flag1],
-                    self.problem.ub[flag1],
+                    2 * self.problem.bounds.low[flag1] - res[flag1],
+                    self.problem.bounds.low[flag1],
+                    self.problem.bounds.up[flag1],
                 )
-                flag2 = res > self.problem.ub
+                flag2 = res > self.problem.bounds.up
                 res[flag2] = np.clip(
-                    2 * self.problem.ub[flag2] - res[flag2],
-                    self.problem.lb[flag2],
-                    self.problem.ub[flag2],
+                    2 * self.problem.bounds.up[flag2] - res[flag2],
+                    self.problem.bounds.low[flag2],
+                    self.problem.bounds.up[flag2],
                 )
                 result.append(res)
         else:  # Strategy 3: Random reinitialization
             for idx in range(0, len(vectors)):
                 res = vectors[idx]
-                mask_lower = res < self.problem.lb
-                mask_upper = res > self.problem.ub
+                mask_lower = res < self.problem.bounds.low
+                mask_upper = res > self.problem.bounds.up
                 res[mask_lower | mask_upper] = self.generator.uniform(
-                    self.problem.lb[mask_lower | mask_upper],
-                    self.problem.ub[mask_lower | mask_upper],
+                    self.problem.bounds.low[mask_lower | mask_upper],
+                    self.problem.bounds.up[mask_lower | mask_upper],
                 )
                 result.append(res)
         results = np.clip(
-            result, self.problem.lb, self.problem.ub
+            result, self.problem.bounds.low, self.problem.bounds.up
         )  # Ensure final results are within bounds
         return results
 
@@ -301,12 +300,12 @@ cdef class OriginalIMODE(AgentListOptimizer):
                 keep_indices = list(set(range(len(self.archive))) - set(remove_indices))
                 self.archive = [self.archive[idx] for idx in keep_indices]
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         # Generate adaptive parameters
         f_values, cr_values = self._generate_parameters()
 
         # Sort population by fitness
-        self.objs = self.get_sorted_population(self.objs, self.problem.minmax)
+        self.objs = self._get_sorted_population(self.objs, self.problem.sense)
         cr_values = np.sort(cr_values)
 
         # Mutation
@@ -323,9 +322,9 @@ cdef class OriginalIMODE(AgentListOptimizer):
         improvements = np.zeros(self.pop_size)
         pop_new = []
         for idx in range(len(matrix_child)):
-            pos_new = self.correct_solution(matrix_child[idx])
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(agent.target, self.objs[idx].target):
+            pos_new = self._correct_solution(matrix_child[idx])
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(agent.target, self.objs[idx].target):
                 improvement_mask[idx] = True
             improvements[idx] = np.abs(
                 self.objs[idx].target.fitness - agent.target.fitness

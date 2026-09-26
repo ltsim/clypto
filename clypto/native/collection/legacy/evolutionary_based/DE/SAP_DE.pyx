@@ -7,37 +7,17 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _SAP_DEAgent(_LegacyAgent):
+cdef class _SAP_DEAgent(LegacyAgent):
     cdef public object crossover
     cdef public object mutation
     cdef public object pop_size
-    def __init__(self, solution=None, target=None, crossover=None, mutation=None, pop_size=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.crossover = crossover
-        self.mutation = mutation
-        self.pop_size = pop_size
-    cpdef object copy(self):
-        return _SAP_DEAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.crossover,
-            self.mutation,
-            self.pop_size,
-        )
-    def update(self, **kwargs):
-        if "crossover" in kwargs:
-            self.crossover = kwargs.pop("crossover")
-        if "mutation" in kwargs:
-            self.mutation = kwargs.pop("mutation")
-        if "pop_size" in kwargs:
-            self.pop_size = kwargs.pop("pop_size")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class SAP_DE(_LegacyOptimizer):
+cdef class SAP_DE(LegacyOptimizer):
     """
     The original version of: Differential Evolution with Self-Adaptive Populations (SAP_DE)
 
@@ -50,14 +30,14 @@ cdef class SAP_DE(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import DE    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -84,15 +64,15 @@ cdef class SAP_DE(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             branch (str): gaussian (absolute) or uniform (relative) method
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.branch = self.validator.check_str("branch", branch, ["ABS", "REL"])
-        self.set_parameters(["epoch", "pop_size", "branch"])
+        self._set_parameters(["epoch", "pop_size", "branch"])
         self.fixed_pop_size = self.pop_size
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None):
+    def _generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         crossover_rate = self.generator.uniform(0, 1)
@@ -117,9 +97,9 @@ cdef class SAP_DE(_LegacyOptimizer):
                 var -= func_value()
         return var
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -152,13 +132,13 @@ cdef class SAP_DE(_LegacyOptimizer):
                     ps_new = self.pop[idxs[0]].pop_size + self.F * (
                         self.pop[idxs[1]].pop_size - self.pop[idxs[2]].pop_size
                     )
-                pos_new = self.correct_solution(pos_new)
+                pos_new = self._correct_solution(pos_new)
                 cr_new = self.edit_to_range__(cr_new, 0, 1, self.generator.random)
                 mr_new = self.edit_to_range__(mr_new, 0, 1, self.generator.random)
-                agent = self.generate_empty_agent(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 pop.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(pos_new)
+                    agent.target = self._get_target(pos_new)
                     agent.update(crossover=cr_new, mutation=mr_new, pop_size=ps_new)
             else:
                 pop.append(self.pop[idx].copy())
@@ -175,13 +155,13 @@ cdef class SAP_DE(_LegacyOptimizer):
                     ps_new = self.pop[idx].pop_size + self.generator.normal(
                         0, self.pop[idxs[0]].mutation
                     )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 pop.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(pos_new)
+                    agent.target = self._get_target(pos_new)
                     agent.update(crossover=cr_new, mutation=mr_new, pop_size=ps_new)
-        pop = self.update_target_for_population(pop)
+        pop = self._update_target_for_population(pop)
         # Calculate new population size
         total = np.sum([pop[idx].pop_size for idx in range(0, self.pop_size)])
         if self.branch == "ABS":
@@ -196,6 +176,6 @@ cdef class SAP_DE(_LegacyOptimizer):
         if m_new <= self.pop_size:
             self.pop = pop[:m_new]
         else:
-            pop_sorted = self.get_sorted_population(pop, self.problem.minmax)
+            pop_sorted = self._get_sorted_population(pop, self.problem.sense)
             self.pop = pop + pop_sorted[: m_new - self.pop_size]
         self.pop_size = len(self.pop)

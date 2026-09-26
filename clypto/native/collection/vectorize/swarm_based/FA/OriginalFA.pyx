@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalFA(LegacyNativeOptimizer):
+cdef class OriginalFA(VectorizeOptimizer):
     """
     The original version of: Fireworks Algorithm (FA)
 
@@ -28,14 +28,14 @@ cdef class OriginalFA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import FA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -79,11 +79,10 @@ cdef class OriginalFA(LegacyNativeOptimizer):
             max_ea (int): maximum explosion amplitude, default=40
             m_sparks (int): number of sparks generated in each explosion generation, default=100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "max_sparks", "p_a", "p_b", "max_ea", "m_sparks"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -95,13 +94,13 @@ cdef class OriginalFA(LegacyNativeOptimizer):
         self.max_ea = cy.validator(int, max_ea, [2, 100], "max_ea")
         self.m_sparks = cy.validator(int, m_sparks, [2, 10000], "m_sparks")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sparks, both
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = np.array(pop.X)
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         fit = np.array(pop.F)
         fl = np.sort(fit)
         si = self.max_sparks * (fl[-1] - fit) / (n * fl[-1] - np.sum(fl) + self.EPSILON)
@@ -119,7 +118,7 @@ cdef class OriginalFA(LegacyNativeOptimizer):
         pos = X[parent] + np.where(subset, shift, 0.0)
         pos = np.where((pos < lb) | (pos > ub), lb + np.abs(pos) % (ub - lb), pos)
         sparks = pop.take(np.zeros(total, dtype=int))
-        sparks.X[:] = self.correct_solution(pos)
+        sparks.X[:] = self._correct_solution(pos)
         self.evaluate(sparks, 0, total)
         both = sparks.concat(pop)
         self.pop = both.take(self.sorted_order(both)[:self.pop_size])

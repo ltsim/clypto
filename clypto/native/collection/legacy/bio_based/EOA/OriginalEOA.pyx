@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalEOA(_LegacyOptimizer):
+cdef class OriginalEOA(LegacyOptimizer):
     """
     The developed version: Earthworm Optimisation Algorithm (EOA)
 
@@ -32,14 +32,14 @@ cdef class OriginalEOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.bio_based import EOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -77,7 +77,7 @@ cdef class OriginalEOA(_LegacyOptimizer):
             beta (float): default = 0.9, the initial proportional factor
             gama (float): default = 0.9, a constant that is similar to cooling factor of a cooling schedule in the simulated annealing.
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.p_c = self.validator.check_float("p_c", p_c, (0, 1.0))
@@ -88,30 +88,30 @@ cdef class OriginalEOA(_LegacyOptimizer):
         self.alpha = self.validator.check_float("alpha", alpha, (0, 1.0))
         self.beta = self.validator.check_float("beta", beta, (0, 1.0))
         self.gama = self.validator.check_float("gama", gama, (0, 1.0))
-        self.set_parameters(
+        self._set_parameters(
             ["epoch", "pop_size", "p_c", "p_m", "n_best", "alpha", "beta", "gama"]
         )
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_beta = self.beta
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         ## Update the pop best
-        pop_elites, _, _ = self.get_special_agents(
-            self.pop, n_best=1, minmax=self.problem.minmax
+        pop_elites, _, _ = self._get_special_agents(
+            self.pop, n_best=1, sense=self.problem.sense
         )
         pop = []
         for idx in range(0, self.pop_size):
             ### Reproduction 1: the first way of reproducing
             x_t1 = (
-                    self.problem.lb + self.problem.ub - self.alpha * self.pop[idx].solution
+                    self.problem.bounds.low + self.problem.bounds.up - self.alpha * self.pop[idx].solution
             )
 
             ### Reproduction 2: the second way of reproducing
@@ -135,22 +135,22 @@ cdef class OriginalEOA(_LegacyOptimizer):
                 r1 = self.generator.integers(0, self.pop_size)
                 x_child = self.pop[r1].solution
             x_t1 = self.dyn_beta * x_t1 + (1.0 - self.dyn_beta) * x_child
-            pos_new = self.correct_solution(x_t1)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(x_t1)
+            agent = self._generate_empty_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop = self.update_target_for_population(pop)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop, self.problem.minmax
+            pop = self._update_target_for_population(pop)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop, self.problem.sense
             )
         self.dyn_beta = self.gama * self.beta
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop, self.pop_size, self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop, self.pop_size, self.problem.sense
         )
 
         pos_list = np.array([agent.solution for agent in self.pop])
@@ -164,22 +164,22 @@ cdef class OriginalEOA(_LegacyOptimizer):
             condition = self.generator.random(self.problem.n_dims) < self.p_m
             cauchy_w = np.where(condition, x_mean, cauchy_w)
             x_t1 = (cauchy_w + self.g_best.solution) / 2
-            pos_new = self.correct_solution(x_t1)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(x_t1)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop[self.n_best:] = self.greedy_selection_population(
-                pop_new, self.pop[self.n_best:], self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop[self.n_best:] = self._greedy_selection_population(
+                pop_new, self.pop[self.n_best:], self.problem.sense
             )
 
         ## Elitism Strategy: Replace the worst with the previous generation's elites.
-        self.pop, _, _ = self.get_special_agents(self.pop, minmax=self.problem.minmax)
+        self.pop, _, _ = self._get_special_agents(self.pop, sense=self.problem.sense)
         for idx in range(0, self.n_best):
             self.pop[self.pop_size - idx - 1] = pop_elites[idx].copy()
 
@@ -187,6 +187,6 @@ cdef class OriginalEOA(_LegacyOptimizer):
         new_set = set()
         for idx, agent in enumerate(self.pop):
             if tuple(agent.solution.tolist()) in new_set:
-                self.pop[idx] = self.generate_agent()
+                self.pop[idx] = self._generate_agent()
             else:
                 new_set.add(tuple(agent.solution.tolist()))

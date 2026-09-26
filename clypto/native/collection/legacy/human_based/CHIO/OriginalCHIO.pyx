@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCHIO(_LegacyOptimizer):
+cdef class OriginalCHIO(LegacyOptimizer):
     """
     The original version of: Coronavirus Herd Immunity Optimization (CHIO)
 
@@ -23,14 +23,14 @@ cdef class OriginalCHIO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import CHIO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -60,25 +60,25 @@ cdef class OriginalCHIO(_LegacyOptimizer):
             brr (float): Basic reproduction rate, default=0.15
             max_age (int): Maximum infected cases age, default=10
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.brr = self.validator.check_float("brr", brr, (0, 1.0))
         self.max_age = self.validator.check_int(
             "max_age", max_age, [1, 1 + int(epoch / 5)]
         )
-        self.set_parameters(["epoch", "pop_size", "brr", "max_age"])
+        self._set_parameters(["epoch", "pop_size", "brr", "max_age"])
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.immunity_type_list = self.generator.integers(
             0, 3, self.pop_size
         )  # Randint [0, 1, 2]
         self.age_list = np.zeros(self.pop_size)  # Control the age of each position
         self.finished = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -127,19 +127,19 @@ cdef class OriginalCHIO(_LegacyOptimizer):
                     )
             if self.finished:
                 break
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         if len(pop_new) != self.pop_size:
-            pop_child = self.generate_population(self.pop_size - len(pop_new))
+            pop_child = self._generate_population(self.pop_size - len(pop_new))
             pop_new = pop_new + pop_child
         for idx in range(0, self.pop_size):
             # Step 4: Update herd immunity population
-            if self.compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = pop_new[idx].copy()
             else:
@@ -148,16 +148,16 @@ cdef class OriginalCHIO(_LegacyOptimizer):
             fit_list = np.array([agent.target.fitness for agent in self.pop])
             delta_fx = np.mean(fit_list)
             if (
-                    self.compare_fitness(
-                        pop_new[idx].target.fitness, delta_fx, self.problem.minmax
+                    self._compare_fitness(
+                        pop_new[idx].target.fitness, delta_fx, self.problem.sense
                     )
                     and self.immunity_type_list[idx] == 0
                     and is_corona_list[idx]
             ):
                 self.immunity_type_list[idx] = 1
                 self.age_list[idx] = 1
-            if self.compare_fitness(
-                    delta_fx, pop_new[idx].target.fitness, self.problem.minmax
+            if self._compare_fitness(
+                    delta_fx, pop_new[idx].target.fitness, self.problem.sense
             ) and (self.immunity_type_list[idx] == 1):
                 self.immunity_type_list[idx] = 2
                 self.age_list[idx] = 0
@@ -165,6 +165,6 @@ cdef class OriginalCHIO(_LegacyOptimizer):
             if (self.age_list[idx] >= self.max_age) and (
                     self.immunity_type_list[idx] == 1
             ):
-                self.pop[idx] = self.generate_agent()
+                self.pop[idx] = self._generate_agent()
                 self.immunity_type_list[idx] = 0
                 self.age_list[idx] = 0

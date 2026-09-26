@@ -7,10 +7,10 @@
 from math import gamma
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMSA(_LegacyOptimizer):
+cdef class OriginalMSA(LegacyOptimizer):
     """
     The original version: Moth Search Algorithm (MSA)
 
@@ -26,14 +26,14 @@ cdef class OriginalMSA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import MSA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,7 +65,7 @@ cdef class OriginalMSA(_LegacyOptimizer):
             partition (float): The proportional of first partition, default=0.5
             max_step_size (float): Max step size used in Levy-flight technique, default=1.0
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
         self.n_best = self.validator.check_int(
@@ -75,7 +75,7 @@ cdef class OriginalMSA(_LegacyOptimizer):
         self.max_step_size = self.validator.check_float(
             "max_step_size", max_step_size, (0, 5.0)
         )
-        self.set_parameters(
+        self._set_parameters(
             ["epoch", "pop_size", "n_best", "partition", "max_step_size"]
         )
         self.sort_flag = True
@@ -93,16 +93,16 @@ cdef class OriginalMSA(_LegacyOptimizer):
                         * np.sin(np.pi * (beta - 1) / 2)
                         / (gamma(beta / 2) * (beta - 1) * 2 ** ((beta - 2) / 2))
                 ) ** (1 / (beta - 1))
-        u = self.generator.uniform(self.problem.lb, self.problem.ub) * sigma
-        v = self.generator.uniform(self.problem.lb, self.problem.ub)
+        u = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up) * sigma
+        v = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         step = u / np.abs(v) ** (1.0 / (beta - 1))  # Eq. 2.21
         scale = self.max_step_size / iteration
         delta_x = scale * step
         return delta_x
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -131,20 +131,20 @@ cdef class OriginalMSA(_LegacyOptimizer):
                     temp_case2,
                     temp_case1,
                 )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    self.pop[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
-        self.pop = self.get_sorted_population(self.pop, self.problem.minmax)
+        self.pop = self._get_sorted_population(self.pop, self.problem.sense)
         # Replace the worst with the previous generation's elites.
         for idx in range(0, self.n_best):
             self.pop[-1 - idx] = pop_best[idx].copy()

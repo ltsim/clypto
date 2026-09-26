@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalTOA(_LegacyOptimizer):
+cdef class OriginalTOA(LegacyOptimizer):
     """
     The original version of: Teamwork Optimization Algorithm (TOA)
 
@@ -32,14 +32,14 @@ cdef class OriginalTOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import TOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -62,24 +62,23 @@ cdef class OriginalTOA(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
     def get_indexes_better__(self, pop, idx):
         fits = np.array([agent.target.fitness for agent in self.pop])
-        if self.problem.minmax == "min":
+        if self.problem.sense == "min":
             idxs = np.where(fits < pop[idx].target.fitness)
         else:
             idxs = np.where(fits > pop[idx].target.fitness)
         return idxs[0]
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -90,10 +89,10 @@ cdef class OriginalTOA(_LegacyOptimizer):
                     self.g_best.solution
                     - self.generator.integers(1, 3) * self.pop[idx].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
             # Stage 2: Information sharing
@@ -102,15 +101,15 @@ cdef class OriginalTOA(_LegacyOptimizer):
                 sf = self.g_best
             else:
                 sf_pos = np.array([self.pop[jdx].solution for jdx in idxs])
-                sf_pos = self.correct_solution(np.mean(sf_pos, axis=0))
-                sf = self.generate_agent(sf_pos)
+                sf_pos = self._correct_solution(np.mean(sf_pos, axis=0))
+                sf = self._generate_agent(sf_pos)
             pos_new = self.pop[idx].solution + self.generator.random() * (
                     sf.solution - self.generator.integers(1, 3) * self.pop[idx].solution
             ) * np.sign(self.pop[idx].target.fitness - sf.target.fitness)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
             # Stage 3: Individual activity
@@ -118,9 +117,9 @@ cdef class OriginalTOA(_LegacyOptimizer):
                     self.pop[idx].solution
                     + (-0.01 + self.generator.random() * 0.02) * self.pop[idx].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent

@@ -17,14 +17,14 @@ cdef class LevyTWO(OriginalTWO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import TWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -44,9 +44,9 @@ cdef class LevyTWO(OriginalTWO):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -68,7 +68,7 @@ cdef class LevyTWO(OriginalTWO):
                     delta_x = 1 / 2 * acceleration + np.power(
                         self.alpha, epoch
                     ) * self.beta * (
-                        self.problem.ub - self.problem.lb
+                        self.problem.bounds.up - self.problem.bounds.low
                     ) * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
@@ -78,8 +78,8 @@ cdef class LevyTWO(OriginalTWO):
             pos_new = self.pop[idx].solution.copy().astype(float)
             for jdx in range(self.problem.n_dims):
                 if (
-                    pos_new[jdx] < self.problem.lb[jdx]
-                    or pos_new[jdx] > self.problem.ub[jdx]
+                    pos_new[jdx] < self.problem.bounds.low[jdx]
+                    or pos_new[jdx] > self.problem.bounds.up[jdx]
                 ):
                     if self.generator.random() <= 0.5:
                         pos_new[jdx] = self.g_best.solution[
@@ -88,38 +88,38 @@ cdef class LevyTWO(OriginalTWO):
                             self.g_best.solution[jdx] - pos_new[jdx]
                         )
                         if (
-                            pos_new[jdx] < self.problem.lb[jdx]
-                            or pos_new[jdx] > self.problem.ub[jdx]
+                            pos_new[jdx] < self.problem.bounds.low[jdx]
+                            or pos_new[jdx] > self.problem.bounds.up[jdx]
                         ):
                             pos_new[jdx] = self.pop[idx].solution[jdx]
                     else:
-                        if pos_new[jdx] < self.problem.lb[jdx]:
-                            pos_new[jdx] = self.problem.lb[jdx]
-                        if pos_new[jdx] > self.problem.ub[jdx]:
-                            pos_new[jdx] = self.problem.ub[jdx]
-            pop_new[idx].solution = self.correct_solution(pos_new)
+                        if pos_new[jdx] < self.problem.bounds.low[jdx]:
+                            pos_new[jdx] = self.problem.bounds.low[jdx]
+                        if pos_new[jdx] > self.problem.bounds.up[jdx]:
+                            pos_new[jdx] = self.problem.bounds.up[jdx]
+            pop_new[idx].solution = self._correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[idx].target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    pop_new[idx], self.pop[idx], self.problem.minmax
+                pop_new[idx].target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    pop_new[idx], self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
         ### Apply levy-flight here
         for idx in range(self.pop_size):
             ## Chance for each agent to update using levy is 50%
             if self.generator.random() < 0.5:
-                levy_step = self.get_levy_flight_step(
+                levy_step = self._get_levy_flight_step(
                     beta=1.0, multiplier=0.01, size=self.problem.n_dims, case=-1
                 )
                 pos_new = pop_new[idx].solution + levy_step
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                    agent.target, pop_new[idx].target, self.problem.minmax
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                    agent.target, pop_new[idx].target, self.problem.sense
                 ):
                     pop_new[idx] = agent
         self.pop = self.update_weight__(pop_new)

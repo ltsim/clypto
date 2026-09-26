@@ -9,12 +9,12 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -45,15 +45,15 @@ cdef class OriginalBFO(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import BFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BFO.OriginalBFO(epoch=1000, pop_size=50, Ci = 0.01, Ped = 0.25, Nc = 5, Ns = 4, d_attract=0.1, w_attract=0.2, h_repels=0.1, w_repels=10)
@@ -112,7 +112,7 @@ cdef class OriginalBFO(AgentListOptimizer):
             h_repels (float): coefficient to calculate repel force, default = 0.1
             w_repels (float): coefficient to calculate repel force, default = 10
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -127,7 +127,6 @@ cdef class OriginalBFO(AgentListOptimizer):
                 "w_repels",
             ],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
@@ -143,7 +142,7 @@ cdef class OriginalBFO(AgentListOptimizer):
         self.w_repels = cy.validator(float, w_repels, (2.0, 20.0), "w_repels")
         self.half_pop_size = int(self.pop_size / 2)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         cost = 0.0
@@ -177,12 +176,12 @@ cdef class OriginalBFO(AgentListOptimizer):
         return cells
 
     def tumble_cell__(self, cell, step_size):
-        delta_i = self.generator.uniform(self.problem.lb, self.problem.ub)
+        delta_i = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         unit_vector = delta_i / np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
         vector = cell.solution + step_size * unit_vector
         return [vector, 0.0, 0.0, 0.0, 0.0]
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         for j in range(0, self.chem_steps):
             for idx in range(0, self.pop_size):
                 sum_nutrients = 0.0
@@ -190,13 +189,13 @@ cdef class OriginalBFO(AgentListOptimizer):
                 sum_nutrients += self.objs[idx].cost
 
                 for m in range(0, self.swim_length):
-                    delta_i = self.generator.uniform(self.problem.lb, self.problem.ub)
+                    delta_i = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                     unit_vector = delta_i / np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
                     pos_new = self.objs[idx].solution + self.step_size * unit_vector
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
-                    if self.compare_target(
-                        agent.target, self.objs[idx].target, self.problem.minmax
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_agent(pos_new)
+                    if self._compare_target(
+                        agent.target, self.objs[idx].target, self.problem.sense
                     ):
                         self.objs[idx] = agent
                         break
@@ -209,4 +208,4 @@ cdef class OriginalBFO(AgentListOptimizer):
             )
             for idc in range(self.pop_size):
                 if self.generator.random() < self.p_eliminate:
-                    self.objs[idc] = self.generate_agent()
+                    self.objs[idc] = self._generate_agent()

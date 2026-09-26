@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class WMQIMRFO(_LegacyOptimizer):
+cdef class WMQIMRFO(LegacyOptimizer):
     """
     The original version of: Wavelet Mutation and Quadratic Interpolation MRFO (WMQIMRFO)
 
@@ -23,14 +23,14 @@ cdef class WMQIMRFO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import MRFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -60,19 +60,19 @@ cdef class WMQIMRFO(_LegacyOptimizer):
             somersault_range (float): somersault factor that decides the somersault range of manta rays, default=2
             pm (float): probability mutation, default = 0.5
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.somersault_range = self.validator.check_float(
             "somersault_range", somersault_range, [1.0, 5.0]
         )
         self.pm = self.validator.check_float("pm", pm, (0.0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "somersault_range", "pm"])
+        self._set_parameters(["epoch", "pop_size", "somersault_range", "pm"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -126,14 +126,14 @@ cdef class WMQIMRFO(_LegacyOptimizer):
                                     + self.generator.random(self.problem.n_dims)
                                     * (x_rand - x_t)
                                     + beta * (x_rand - x_t)
-                                    + xichma * (self.problem.ub - x_t)
+                                    + xichma * (self.problem.bounds.up - x_t)
                             )
                             t2 = (
                                     x_rand
                                     + self.generator.random(self.problem.n_dims)
                                     * (x_rand - x_t)
                                     + beta * (x_rand - x_t)
-                                    + xichma * (x_t - self.problem.lb)
+                                    + xichma * (x_t - self.problem.bounds.low)
                             )
                         else:
                             t1 = (
@@ -141,14 +141,14 @@ cdef class WMQIMRFO(_LegacyOptimizer):
                                     + self.generator.random(self.problem.n_dims)
                                     * (x_t1 - x_t)
                                     + beta * (x_rand - x_t)
-                                    + xichma * (self.problem.ub - x_t)
+                                    + xichma * (self.problem.bounds.up - x_t)
                             )
                             t2 = (
                                     x_rand
                                     + self.generator.random(self.problem.n_dims)
                                     * (x_t1 - x_t)
                                     + beta * (x_rand - x_t)
-                                    + xichma * (x_t - self.problem.lb)
+                                    + xichma * (x_t - self.problem.bounds.low)
                             )
                         pos_new = np.where(conditions, t1, t2)
                 else:
@@ -177,20 +177,20 @@ cdef class WMQIMRFO(_LegacyOptimizer):
                     pos_new = (
                             x_t + r * (x_t1 - x_t) + alpha * (self.g_best.solution - x_t)
                     )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    self.pop[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
-        _, g_best = self.update_global_best_agent(self.pop, save=False)
+        _, g_best = self._update_global_best_agent(self.pop)
 
         # Somersault foraging   (Eq. 8)
         pop_child = []
@@ -199,20 +199,20 @@ cdef class WMQIMRFO(_LegacyOptimizer):
                     self.generator.random() * g_best.solution
                     - self.generator.random() * self.pop[idx].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    self.pop[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self.update_target_for_population(pop_child)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_child, self.problem.minmax
+            pop_child = self._update_target_for_population(pop_child)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_child, self.problem.sense
             )
-        self.pop, g_best = self.update_global_best_agent(self.pop, save=False)
+        self.pop, g_best = self._update_global_best_agent(self.pop)
 
         # Quadratic Interpolation
         pop_new = []
@@ -241,16 +241,16 @@ cdef class WMQIMRFO(_LegacyOptimizer):
                          (x3 ** 2 - x2 ** 2) * f1 + (x1 ** 2 - x3 ** 2) * f2 + (x2 ** 2 - x1 ** 2) * f3
                  ) / (2 * ((x3 - x2) * f1 + (x1 - x3) * f2 + (x2 - x1) * f3) + self.EPSILON)
             pos_new = np.where(a > 0, gx, x1)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    self.pop[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

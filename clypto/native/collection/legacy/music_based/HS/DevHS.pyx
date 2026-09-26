@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevHS(_LegacyOptimizer):
+cdef class DevHS(LegacyOptimizer):
     """
     The developed version: Harmony Search (HS)
 
@@ -27,14 +27,14 @@ cdef class DevHS(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.music_based import HS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -59,22 +59,22 @@ cdef class DevHS(_LegacyOptimizer):
             c_r (float): Harmony Memory Consideration Rate, default = 0.15
             pa_r (float): Pitch Adjustment Rate, default=0.5
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.c_r = self.validator.check_float("c_r", c_r, (0, 1.0))
         self.pa_r = self.validator.check_float("pa_r", pa_r, (0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "c_r", "pa_r"])
+        self._set_parameters(["epoch", "pop_size", "c_r", "pa_r"])
         self.sort_flag = False
 
-    def initialize_variables(self):
-        self.fw = 0.0001 * (self.problem.ub - self.problem.lb)  # Fret Width (Bandwidth)
+    def _initialize_variables(self):
+        self.fw = 0.0001 * (self.problem.bounds.up - self.problem.bounds.low)  # Fret Width (Bandwidth)
         self.fw_damp = 0.9995  # Fret Width Damp Ratio
         self.dyn_fw = self.fw
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -82,9 +82,9 @@ cdef class DevHS(_LegacyOptimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             # Create New Harmony Position
-            pos_new = self.generator.uniform(self.problem.lb, self.problem.ub)
+            pos_new = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             delta = self.dyn_fw * self.generator.normal(
-                self.problem.lb, self.problem.ub
+                self.problem.bounds.low, self.problem.bounds.up
             )
             # Use Harmony Memory
             pos_new = np.where(
@@ -97,15 +97,15 @@ cdef class DevHS(_LegacyOptimizer):
             pos_new = np.where(
                 self.generator.random(self.problem.n_dims) < self.pa_r, x_new, pos_new
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         # Update Damp Fret Width
         self.dyn_fw = self.dyn_fw * self.fw_damp
         # Merge Harmony Memory and New Harmonies, Then sort them, Then truncate extra harmonies
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, minmax=self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop + pop_new, self.pop_size, sense=self.problem.sense
         )

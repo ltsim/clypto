@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.physics_based.EO.OriginalEO cimport OriginalEO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -23,14 +23,14 @@ cdef class ModifiedEO(OriginalEO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import EO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -64,14 +64,14 @@ cdef class ModifiedEO(OriginalEO):
         self.sort_flag = False
         self.pop_len = int(self.pop_size / 3)
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef NativePopulation pop_s1, pop_s2, pop_s2_new, pop_s3
         cdef Py_ssize_t idx, n = pop.n, d = pop.d
         # ---------------- Memory saving-------------------  make equilibrium pool
         c_pool = self.make_equilibrium_pool__(pop.take(self.sorted_order(pop)[:4]))
-        cand.X[:] = self.correct_solution(self.candidates__(pop, c_pool, epoch))
+        cand.X[:] = self._correct_solution(self.candidates__(pop, c_pool, epoch))
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)
         ## Sort the updated population based on fitness
@@ -79,11 +79,11 @@ cdef class ModifiedEO(OriginalEO):
         ## Mutation scheme
         pop_s2 = pop_s1.take(np.arange(pop_s1.n))
         pop_s2_new = pop_s1.empty_like()
-        pop_s2_new.X[:] = self.correct_solution(pop_s2.X * (1 + self.generator.normal(0, 1, (self.pop_len, d))))  # Eq. 12
+        pop_s2_new.X[:] = self._correct_solution(pop_s2.X * (1 + self.generator.normal(0, 1, (self.pop_len, d))))  # Eq. 12
         self.evaluate(pop_s2_new, 0, pop_s2_new.n)
         if self.mode in self.AVAILABLE_MODES:
             # greedy_selection_population(pop_s2_new, pop_s2): the mutated agent stays unless the original is strictly better
-            keep = pop_s2.F < pop_s2_new.F if self.problem.minmax == "min" else pop_s2.F > pop_s2_new.F
+            keep = pop_s2.F < pop_s2_new.F if self.problem.sense == "min" else pop_s2.F > pop_s2_new.F
             rows = np.flatnonzero(~keep)
             pop_s2.buf[rows] = pop_s2_new.buf[rows]
         else:
@@ -92,8 +92,8 @@ cdef class ModifiedEO(OriginalEO):
         pos_s1_mean = np.mean(np.ascontiguousarray(pop_s1.X), axis=0)
         R = self.generator.random((self.pop_len, 2))
         pop_s3 = pop_s1.empty_like()
-        pop_s3.X[:] = self.correct_solution(
-            (c_pool.X[0] - pos_s1_mean) - R[:, 0:1] * (self.problem.lb + R[:, 1:2] * (self.problem.ub - self.problem.lb))
+        pop_s3.X[:] = self._correct_solution(
+            (c_pool.X[0] - pos_s1_mean) - R[:, 0:1] * (self.problem.bounds.low + R[:, 1:2] * (self.problem.bounds.up - self.problem.bounds.low))
         )
         self.evaluate(pop_s3, 0, pop_s3.n)
         ## Construct a new population

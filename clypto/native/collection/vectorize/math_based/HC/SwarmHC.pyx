@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class SwarmHC(LegacyNativeOptimizer):
+cdef class SwarmHC(VectorizeOptimizer):
     """
     The developed version: Swarm-based Hill Climbing (S-HC)
 
@@ -30,14 +30,14 @@ cdef class SwarmHC(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import HC    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -64,11 +64,10 @@ cdef class SwarmHC(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             neighbour_size (int): fixed parameter, sensitive exploitation parameter, Default: 10
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "neighbour_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -76,28 +75,25 @@ cdef class SwarmHC(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.neighbour_size = cy.validator(int, neighbour_size, [2, int(self.pop_size / 2)], "neighbour_size")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation best = pop.empty_like()
         cdef Py_ssize_t idx, n = pop.n, k = self.neighbour_size, d = pop.d
         ranks = np.array(list(range(1, self.pop_size + 1)))
         ranks = ranks / np.sum(ranks)
-        step_size = np.mean(self.problem.ub - self.problem.lb) * np.exp(-2 * epoch / self.epoch)
+        step_size = np.mean(self.problem.bounds.up - self.problem.bounds.low) * np.exp(-2 * epoch / self.epoch)
         ss = step_size * ranks
         # per agent, k neighbours: one normal(0, 1, d) draw each
         N = self.generator.normal(0, 1, (n, k, d))
         pos = pop.X[:, None, :] + N * ss[:, None, None]
-        pos = self.correct_solution(pos.reshape(n * k, d))
-        R = self.evaluate_rows(pos)
-        F = self._fitness(R)
+        pos = self._correct_solution(pos.reshape(n * k, d))
+        F, R = self.problem.evaluate(pos)
+        self._nfe_counter += n * k
         for idx in range(n):
             # best neighbour of agent idx (the classic argsort tie rule)
             order = np.argsort(F[idx * k:(idx + 1) * k])
-            j = idx * k + (order[::-1][0] if self.problem.minmax == "max" else order[0])
+            j = idx * k + (order[::-1][0] if self.problem.sense == "max" else order[0])
             best.X[idx] = pos[j]
             best.O[idx] = R[j]
             best.F[idx] = F[j]
         ops.accept(self, best)
-
-    def evaluate_rows(self, X):
-        return self._objectives(X)

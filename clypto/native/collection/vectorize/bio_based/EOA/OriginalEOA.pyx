@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalEOA(LegacyNativeOptimizer):
+cdef class OriginalEOA(VectorizeOptimizer):
     """
     The developed version: Earthworm Optimisation Algorithm (EOA)
 
@@ -35,14 +35,14 @@ cdef class OriginalEOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import EOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -90,11 +90,10 @@ cdef class OriginalEOA(LegacyNativeOptimizer):
             beta (float): default = 0.9, the initial proportional factor
             gama (float): default = 0.9, a constant that is similar to cooling factor of a cooling schedule in the simulated annealing.
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "p_c", "p_m", "n_best", "alpha", "beta", "gama"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -107,17 +106,17 @@ cdef class OriginalEOA(LegacyNativeOptimizer):
         self.beta = cy.validator(float, beta, (0, 1.0), "beta")
         self.gama = cy.validator(float, gama, (0, 1.0), "gama")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_beta = self.beta
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef NativePopulation elites, merged
         cdef NativeTarget tar
         cdef Py_ssize_t i, idx, n = pop.n
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        minmax = self.problem.minmax
+        sense = self.problem.sense
         Xp = pop.X
         g_best = np.array(self.g_best_x())
         ## Update the pop best
@@ -125,7 +124,7 @@ cdef class OriginalEOA(LegacyNativeOptimizer):
         for i in range(0, self.pop_size):
             idx = i
             ### Reproduction 1: the first way of reproducing
-            x_t1 = self.problem.lb + self.problem.ub - self.alpha * Xp[idx]
+            x_t1 = self.problem.bounds.low + self.problem.bounds.up - self.alpha * Xp[idx]
 
             ### Reproduction 2: the second way of reproducing
             if idx >= self.n_best:  ### Select two parents to mate and create two children
@@ -141,7 +140,7 @@ cdef class OriginalEOA(LegacyNativeOptimizer):
                 x_child = Xp[r1]
             x_t1 = self.dyn_beta * x_t1 + (1.0 - self.dyn_beta) * x_child
             # sequential mode replaces row idx (possibly the re-used index); swarm modes keep agent i's candidate
-            ops.commit(self, pop, cand, i if swarm else idx, self.correct_solution(x_t1), swarm)
+            ops.commit(self, pop, cand, i if swarm else idx, self._correct_solution(x_t1), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)
         self.dyn_beta = self.gama * self.beta
@@ -158,12 +157,12 @@ cdef class OriginalEOA(LegacyNativeOptimizer):
             condition = self.generator.random(self.problem.n_dims) < self.p_m
             cauchy_w = np.where(condition, x_mean, cauchy_w)
             x_t1 = (cauchy_w + g_best) / 2
-            ops.commit(self, pop, cand, idx, self.correct_solution(x_t1), swarm)
+            ops.commit(self, pop, cand, idx, self._correct_solution(x_t1), swarm)
         if swarm:
             # greedy_selection_population(pop_new, pop[n_best:]): the old agent stays only if strictly better
             self.evaluate(cand, self.n_best, n)
             old, new = pop.F[self.n_best:], cand.F[self.n_best:]
-            keep = old < new if minmax == "min" else old > new
+            keep = old < new if sense == "min" else old > new
             rows = self.n_best + np.flatnonzero(~keep)
             pop.buf[rows] = cand.buf[rows]
 
@@ -178,7 +177,7 @@ cdef class OriginalEOA(LegacyNativeOptimizer):
             key = tuple(pop.X[idx].tolist())
             if key in new_set:
                 x = self.problem.generate_solution(True)
-                ops.set_row(pop, idx, x, self.get_target(x))
+                ops.set_row(pop, idx, x, self._get_target(x))
             else:
                 new_set.add(key)
         self.pop = pop

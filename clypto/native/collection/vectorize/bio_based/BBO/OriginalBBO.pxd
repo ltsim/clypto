@@ -1,10 +1,9 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class OriginalBBO(LegacyNativeOptimizer):
+cdef class OriginalBBO(VectorizeOptimizer):
     cdef public object p_m
     cdef public object n_elites
     cdef public object mu
     cdef public object mr
 
-    cdef void evolve(self, int epoch_c)

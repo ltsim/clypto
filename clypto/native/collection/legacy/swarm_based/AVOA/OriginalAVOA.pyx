@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalAVOA(_LegacyOptimizer):
+cdef class OriginalAVOA(LegacyOptimizer):
     """
     The original version of: African Vultures Optimization Algorithm (AVOA)
 
@@ -27,15 +27,15 @@ cdef class OriginalAVOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import AVOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = AVOA.OriginalAVOA(epoch=1000, pop_size=50, p1=0.6, p2=0.4, p3=0.6, alpha=0.8, gama=2.5)
@@ -65,7 +65,7 @@ cdef class OriginalAVOA(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.p1 = self.validator.check_float("p1", p1, (0, 1))
@@ -73,12 +73,12 @@ cdef class OriginalAVOA(_LegacyOptimizer):
         self.p3 = self.validator.check_float("p3", p3, (0, 1))
         self.alpha = self.validator.check_float("alpha", alpha, (0, 1))
         self.gama = self.validator.check_float("gama", gama, (0, 5.0))
-        self.set_parameters(["epoch", "pop_size", "p1", "p2", "p3", "alpha", "gama"])
+        self._set_parameters(["epoch", "pop_size", "p1", "p2", "p3", "alpha", "gama"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -89,8 +89,8 @@ cdef class OriginalAVOA(_LegacyOptimizer):
                 - 1
         )
         ppp = (2 * self.generator.random() + 1) * (1 - epoch / self.epoch) + a
-        _, best_list, _ = self.get_special_agents(
-            self.pop, n_best=2, minmax=self.problem.minmax
+        _, best_list, _ = self._get_special_agents(
+            self.pop, n_best=2, sense=self.problem.sense
         )
         pop_new = []
         for idx in range(0, self.pop_size):
@@ -115,9 +115,9 @@ cdef class OriginalAVOA(_LegacyOptimizer):
                             - F
                             + self.generator.random()
                             * (
-                                    (self.problem.ub - self.problem.lb)
+                                    (self.problem.bounds.up - self.problem.bounds.low)
                                     * self.generator.random()
-                                    + self.problem.lb
+                                    + self.problem.bounds.low
                             )
                     )
             else:  # Exploitation
@@ -145,7 +145,7 @@ cdef class OriginalAVOA(_LegacyOptimizer):
                     else:
                         pos_new = rand_pos - np.abs(
                             rand_pos - self.pop[idx].solution
-                        ) * F * self.get_levy_flight_step(
+                        ) * F * self._get_levy_flight_step(
                             beta=1.5, multiplier=1.0, size=self.problem.n_dims, case=-1
                         )
                 else:  # Phase 2
@@ -178,9 +178,9 @@ cdef class OriginalAVOA(_LegacyOptimizer):
                                 * np.sin(self.pop[idx].solution)
                         )
                         pos_new = rand_pos - (s1 + s2)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        self.pop = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        self.pop = self._update_target_for_population(pop_new)

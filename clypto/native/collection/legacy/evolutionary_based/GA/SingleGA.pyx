@@ -27,15 +27,15 @@ class SingleGA(BaseGA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import GA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = GA.SingleGA(epoch=1000, pop_size=50, pc=0.9, pm=0.8, selection = "roulette", crossover = "uniform", mutation = "swap")
@@ -96,7 +96,7 @@ class SingleGA(BaseGA):
             "mutation", mutation, ["flip", "swap", "scramble", "inversion"]
         )
         self.k_way = self.validator.check_float("k_way", k_way, (0, 1.0))
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -150,6 +150,6 @@ class SingleGA(BaseGA):
         else:  # "flip"
             idx = self.generator.integers(0, self.problem.n_dims)
             child[idx] = self.generator.uniform(
-                self.problem.lb[idx], self.problem.ub[idx]
+                self.problem.bounds.low[idx], self.problem.bounds.up[idx]
             )
             return child

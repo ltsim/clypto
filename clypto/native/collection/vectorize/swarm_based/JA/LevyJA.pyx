@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.swarm_based.JA.DevJA cimport DevJA
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -25,14 +25,14 @@ cdef class LevyJA(DevJA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import JA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -63,7 +63,7 @@ cdef class LevyJA(DevJA):
         super().__init__(epoch, pop_size, name=name, mode=mode)
         self.sort_flag = False
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -71,6 +71,6 @@ cdef class LevyJA(DevJA):
         X = pop.X
         order = self.sorted_order(pop)
         best, worst = X[order[0]], X[order[n - 1]]
-        L1 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, size=(n, 1), case=-1)
-        L2 = self.get_levy_flight_step(multiplier=1.0, beta=1.8, size=(n, 1), case=-1)
+        L1 = self._get_levy_flight_step(multiplier=1.0, beta=1.8, size=(n, 1), case=-1)
+        L2 = self._get_levy_flight_step(multiplier=1.0, beta=1.8, size=(n, 1), case=-1)
         ops.step(self, X + np.abs(L1) * (best - np.abs(X)) - np.abs(L2) * (worst - np.abs(X)))

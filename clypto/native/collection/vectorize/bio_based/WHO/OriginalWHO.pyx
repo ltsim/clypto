@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalWHO(LegacyNativeOptimizer):
+cdef class OriginalWHO(VectorizeOptimizer):
     """
     The original version of: Wildebeest Herd Optimization (WHO)
 
@@ -34,14 +34,14 @@ cdef class OriginalWHO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import WHO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -101,7 +101,7 @@ cdef class OriginalWHO(LegacyNativeOptimizer):
             delta_w (float): dist to worst
             delta_c (float): dist to best
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -118,7 +118,6 @@ cdef class OriginalWHO(LegacyNativeOptimizer):
                 "delta_c",
             ],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -135,7 +134,7 @@ cdef class OriginalWHO(LegacyNativeOptimizer):
         self.delta_w = cy.validator(float, delta_w, (0.5, 5.0), "delta_w")
         self.delta_c = cy.validator(float, delta_c, (0.5, 5.0), "delta_c")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         # Agents are compared and replaced as they move (the later steps see the rows updated
         # before), so the loops run on the buffer rows; swarm modes collect the candidates.
         cdef NativePopulation pop = self.pop
@@ -144,8 +143,8 @@ cdef class OriginalWHO(LegacyNativeOptimizer):
         cdef NativeTarget tar
         cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        minmax = self.problem.minmax
-        lb, ub = self.problem.lb, self.problem.ub
+        sense = self.problem.sense
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         Xp = pop.X
         ## Begin the Wildebeest Herd Optimization process
         for idx in range(0, self.pop_size):
@@ -153,20 +152,20 @@ cdef class OriginalWHO(LegacyNativeOptimizer):
             k = self.n_explore_step
             R = self.generator.random((k, 1 + d))  # per step: uniform(), then uniform(lb, ub)
             temp = Xp[idx] + self.eta * R[:, :1] * (lb + (ub - lb) * R[:, 1:])
-            local = self.new_population(self.correct_solution(temp))
+            local = self.new_population(self._correct_solution(temp))
             best_local = local.X[self.sorted_order(local)[0]]
             temp = self.local_alpha * best_local + self.local_beta * (Xp[idx] - best_local)
-            ops.commit(self, pop, cand, idx, self.correct_solution(temp), swarm)
+            ops.commit(self, pop, cand, idx, self._correct_solution(temp), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)
         for idx in range(0, self.pop_size):
             ### 2. Herd instinct
             idr = self.generator.choice(range(0, self.pop_size))
-            if self.compare_fitness(pop.F[idr], pop.F[idx], minmax) and self.generator.random() < self.p_hi:
+            if self._compare_fitness(pop.F[idr], pop.F[idx], sense) and self.generator.random() < self.p_hi:
                 temp = self.global_alpha * Xp[idx] + self.global_beta * Xp[idr]
-                pos_new = self.correct_solution(temp)
-                tar = self.get_target(pos_new)
-                if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
+                pos_new = self._correct_solution(temp)
+                tar = self._get_target(pos_new)
+                if self._compare_fitness(tar.fitness, pop.F[idx], sense):
                     ops.set_row(pop, idx, pos_new, tar)
 
         order = self.sorted_order(pop)
@@ -178,32 +177,32 @@ cdef class OriginalWHO(LegacyNativeOptimizer):
             ### 3. Starvation avoidance
             if dist_to_worst < self.delta_w:
                 temp = Xp[idx] + self.generator.uniform() * (ub - lb) * self.generator.uniform(lb, ub)
-                pos_new = self.correct_solution(temp)
+                pos_new = self._correct_solution(temp)
                 if swarm:
                     pop_child.append(pos_new)
                 else:
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, pop.F[idx], sense):
                         ops.set_row(pop, idx, pos_new, tar)
             ### 4. Population pressure
             if 1.0 < dist_to_best and dist_to_best < self.delta_c:
                 temp = g_best + self.eta * self.generator.uniform(lb, ub)
-                pos_new = self.correct_solution(temp)
+                pos_new = self._correct_solution(temp)
                 if swarm:
                     pop_child.append(pos_new)
                 else:
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, pop.F[idx], sense):
                         ops.set_row(pop, idx, pos_new, tar)
             ### 5. Herd social memory (the classic agent keeps the uncorrected position)
             for jdx in range(0, self.n_exploit_step):
                 temp = g_best + 0.1 * self.generator.uniform(lb, ub)
-                pos_new = self.correct_solution(temp)
+                pos_new = self._correct_solution(temp)
                 if swarm:
                     pop_child.append(temp)
                 else:
-                    tar = self.get_target(pos_new)
-                    if self.compare_fitness(tar.fitness, pop.F[idx], minmax):
+                    tar = self._get_target(pos_new)
+                    if self._compare_fitness(tar.fitness, pop.F[idx], sense):
                         ops.set_row(pop, idx, temp, tar)
         if swarm:
             child = self.new_population(np.array(pop_child))

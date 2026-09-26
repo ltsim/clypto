@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHHO(_LegacyOptimizer):
+cdef class OriginalHHO(LegacyOptimizer):
     """
     The original version of: Harris Hawks Optimization (HHO)
 
@@ -19,14 +19,14 @@ cdef class OriginalHHO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import HHO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -49,15 +49,15 @@ cdef class OriginalHHO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -87,11 +87,11 @@ cdef class OriginalHHO(_LegacyOptimizer):
                     pos_new = (
                                       self.g_best.solution - X_m
                               ) - self.generator.uniform() * (
-                                      self.problem.lb
-                                      + self.generator.uniform() * (self.problem.ub - self.problem.lb)
+                                      self.problem.bounds.low
+                                      + self.generator.uniform() * (self.problem.bounds.up - self.problem.bounds.low)
                               )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 pop_new.append(agent)
             # -------- Exploitation phase -------------------
             else:
@@ -106,11 +106,11 @@ cdef class OriginalHHO(_LegacyOptimizer):
                         )
                     else:  # Soft besiege Eq. (4) in paper
                         pos_new = self.g_best.solution - E * np.abs(delta_X)
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     pop_new.append(agent)
                 else:
-                    LF_D = self.get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
+                    LF_D = self._get_levy_flight_step(beta=1.5, multiplier=0.01, case=-1)
                     if np.abs(E) >= 0.5:  # Soft besiege Eq. (10) in paper
                         Y = self.g_best.solution - E * np.abs(
                             J * self.g_best.solution - self.pop[idx].solution
@@ -120,35 +120,35 @@ cdef class OriginalHHO(_LegacyOptimizer):
                         Y = self.g_best.solution - E * np.abs(
                             J * self.g_best.solution - X_m
                         )
-                    pos_Y = self.correct_solution(Y)
-                    target_Y = self.get_target(pos_Y)
+                    pos_Y = self._correct_solution(Y)
+                    target_Y = self._get_target(pos_Y)
                     Z = (
                             Y
-                            + self.generator.uniform(self.problem.lb, self.problem.ub)
+                            + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                             * LF_D
                     )
-                    pos_Z = self.correct_solution(Z)
-                    target_Z = self.get_target(pos_Z)
-                    if self.compare_target(
-                            target_Y, self.pop[idx].target, self.problem.minmax
+                    pos_Z = self._correct_solution(Z)
+                    target_Z = self._get_target(pos_Z)
+                    if self._compare_target(
+                            target_Y, self.pop[idx].target, self.problem.sense
                     ):
-                        agent = self.generate_empty_agent(pos_Y)
+                        agent = self._generate_empty_agent(pos_Y)
                         agent.target = target_Y
                         pop_new.append(agent)
                         continue
-                    if self.compare_target(
-                            target_Z, self.pop[idx].target, self.problem.minmax
+                    if self._compare_target(
+                            target_Z, self.pop[idx].target, self.problem.sense
                     ):
-                        agent = self.generate_empty_agent(pos_Z)
+                        agent = self._generate_empty_agent(pos_Z)
                         agent.target = target_Z
                         pop_new.append(agent)
                         continue
                     pop_new.append(self.pop[idx].copy())
         if self.mode not in self.AVAILABLE_MODES:
             for idx, agent in enumerate(pop_new):
-                pop_new[idx].target = self.get_target(agent.solution)
+                pop_new[idx].target = self._get_target(agent.solution)
         else:
-            pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.greedy_selection_population(
-            self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+        self.pop = self._greedy_selection_population(
+            self.pop, pop_new, self.problem.sense
         )

@@ -7,32 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalSSDOAgent(_LegacyAgent):
+cdef class _OriginalSSDOAgent(LegacyAgent):
     cdef public object velocity
     cdef public object local_solution
-    def __init__(self, solution=None, target=None, velocity=None, local_solution=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.velocity = velocity
-        self.local_solution = local_solution
-    cpdef object copy(self):
-        return _OriginalSSDOAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.velocity,
-            self.local_solution,
-        )
-    def update(self, **kwargs):
-        if "velocity" in kwargs:
-            self.velocity = kwargs.pop("velocity")
-        if "local_solution" in kwargs:
-            self.local_solution = kwargs.pop("local_solution")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalSSDO(_LegacyOptimizer):
+cdef class OriginalSSDO(LegacyOptimizer):
     """
     The original version of: Social Ski-Driver Optimization (SSDO)
 
@@ -43,14 +27,14 @@ cdef class OriginalSSDO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import SSDO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -73,32 +57,32 @@ cdef class OriginalSSDO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.lb, self.problem.ub)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         pos_local = solution.copy()
         return _OriginalSSDOAgent(
             solution=solution, velocity=velocity, local_solution=pos_local
         )
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
         c = 2 - epoch * (2.0 / self.epoch)  # a decreases linearly from 2 to 0
         ## Calculate the mean of the best three solutions in each dimension. Eq 9
-        _, pop_best3, _ = self.get_special_agents(
-            self.pop, n_best=3, minmax=self.problem.minmax
+        _, pop_best3, _ = self._get_special_agents(
+            self.pop, n_best=3, sense=self.problem.sense
         )
         pos_mean = np.mean(np.array([agent.solution for agent in pop_best3]))
         pop_new = [agent.copy() for agent in self.pop]
@@ -121,16 +105,16 @@ cdef class OriginalSSDO(_LegacyOptimizer):
                 self.generator.normal(0, 1, self.problem.n_dims) * pop_new[idx].solution
                 + self.generator.random() * pop_new[idx].velocity
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.local_solution = self.pop[idx].solution.copy()
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, pop_new[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, pop_new[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

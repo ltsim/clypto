@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class IncrementalGWO(LegacyNativeOptimizer):
+cdef class IncrementalGWO(VectorizeOptimizer):
     """
     The original version of: Incremental model-based Grey Wolf Optimizer (IncrementalGWO)
 
@@ -25,14 +25,14 @@ cdef class IncrementalGWO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -63,11 +63,10 @@ cdef class IncrementalGWO(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             explore_factor (float): factor to control exploration, default = 1.5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "explore_factor"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -75,7 +74,7 @@ cdef class IncrementalGWO(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.explore_factor = cy.validator(float, explore_factor, [0.0, 5.0], "explore_factor")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t idx, n = pop.n, d = pop.d
@@ -91,6 +90,6 @@ cdef class IncrementalGWO(LegacyNativeOptimizer):
         for idx in range(1, n):
             mask = np.arange(n) != idx
             pos[idx] = ps[mask].mean(axis=0)
-        cand.X[:] = self.correct_solution(pos)
+        cand.X[:] = self._correct_solution(pos)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

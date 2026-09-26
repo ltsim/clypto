@@ -7,13 +7,13 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 from clypto.optimizer.native.agent cimport LegacyNativeAgent
 
 
-cdef class OriginalBCO(LegacyNativeOptimizer):
+cdef class OriginalBCO(VectorizeOptimizer):
     """
     The original version of: Bacterial Colony Optimization (BCO)
 
@@ -27,14 +27,14 @@ cdef class OriginalBCO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import BCO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -85,7 +85,7 @@ cdef class OriginalBCO(LegacyNativeOptimizer):
             energy_threshold: Energy threshold for reproduction/elimination
             migration_prob: Migration probability
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -98,7 +98,6 @@ cdef class OriginalBCO(LegacyNativeOptimizer):
                 "migration_prob",
             ],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -118,24 +117,24 @@ cdef class OriginalBCO(LegacyNativeOptimizer):
             ops.set_row(pop, i, agent.solution, agent.target)
         return pop
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.energy = self.generator.uniform(0, 1, self.pop_size)
 
-    cdef void initialization(self):
+    def _initialization(self):
         # The classic algorithm shares agents (and their solution arrays) between its lists and edits
         # them in place, so it keeps agent objects and mirrors them into ``self.pop``.
         cdef NativePopulation base
-        LegacyNativeOptimizer.initialization(self)
+        VectorizeOptimizer._initialization(self)
         base = self.pop
         self.objs = [base.agent(i) for i in range(base.n)]
         self.pop_local = list(self.objs)  # pop.copy(): the same agents
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativeTarget tar
         cdef Py_ssize_t idx, jdx
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
-        minimize = self.problem.minmax == "min"
+        minimize = self.problem.sense == "min"
         pop = self.objs
         # g_best is one of the agents (aliased) once the first epoch is over; before, a copy that shares its array
         if self._g_best_row >= 0:
@@ -164,11 +163,11 @@ cdef class OriginalBCO(LegacyNativeOptimizer):
                 # Swimming (no turbulence)
                 pos_new = f_i * global_direction + (1 - f_i) * personal_direction
             pos_new = pop[idx].solution + step * pos_new
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             agent_new = LegacyNativeAgent(pos_new, None)
             pop_new.append(agent_new)
             if not swarm:
-                agent_new.target = self.get_target(pos_new)
+                agent_new.target = self._get_target(pos_new)
                 # get_better_agent(old, new): copies of the winner
                 old = pop[idx]
                 if minimize:
@@ -177,7 +176,7 @@ cdef class OriginalBCO(LegacyNativeOptimizer):
                     pop[idx] = agent_new.copy() if old.target.fitness < agent_new.target.fitness else old.copy()
         if swarm:
             for agent in pop_new:
-                agent.target = self.get_target(agent.solution, counted=False)
+                agent.target = self._get_target(agent.solution, counted=False)
             self._nfe_counter += len(pop_new)
             if minimize:
                 pop = [pop_new[i] if pop_new[i].target.fitness < pop[i].target.fitness else pop[i] for i in range(len(pop))]
@@ -210,7 +209,7 @@ cdef class OriginalBCO(LegacyNativeOptimizer):
                     pop[idx].solution += 0.1 * (g_best.solution - pop[idx].solution)
         if swarm:
             for agent in pop:
-                agent.target = self.get_target(agent.solution, counted=False)
+                agent.target = self._get_target(agent.solution, counted=False)
             self._nfe_counter += len(pop)
         self.objs = pop
         self.pop = self.mirror__()

@@ -7,12 +7,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
 
-cdef class AugmentedAEO(LegacyNativeOptimizer):
+cdef class AugmentedAEO(VectorizeOptimizer):
     """
     The original version of: Augmented Artificial Ecosystem Optimization (AAEO)
 
@@ -23,14 +23,14 @@ cdef class AugmentedAEO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.system_based import AEO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -58,30 +58,29 @@ cdef class AugmentedAEO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d, m = pop.n - 1
         cdef object rng = self.generator
         X = pop.X
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         g = np.array(self.g_best_x())
         ## Production: the worst agent (last row) is replaced by a new random-mixed agent
         wf = 2 * (1 - epoch / self.epoch)  # weight factor
         a = (1.0 - epoch / self.epoch) * rng.random()
-        pos = self.correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
-        ops.set_row(pop, n - 1, pos, self.get_target(pos))
+        pos = self._correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
+        ops.set_row(pop, n - 1, pos, self._get_target(pos))
         X = pop.X
         ## Consumption (or a Levy move towards the best)
         rand = rng.random(m)
@@ -94,12 +93,12 @@ cdef class AugmentedAEO(LegacyNativeOptimizer):
         car = Xm + wf * c * (Xm - xj)
         omn = Xm + wf * c * (r2 * (Xm - x0) + (1 - r2) * (Xm - xj))
         feed = np.where((rand < 1.0 / 3)[:, None], her, np.where((rand <= 2.0 / 3)[:, None], car, omn))
-        levy = Xm + self.get_levy_flight_step(1.0, 0.001, size=(m, 1), case=-1) * (1.0 / np.sqrt(epoch)) * np.sign(rng.random((m, 1)) - 0.5) * (Xm - g)
+        levy = Xm + self._get_levy_flight_step(1.0, 0.001, size=(m, 1), case=-1) * (1.0 / np.sqrt(epoch)) * np.sign(rng.random((m, 1)) - 0.5) * (Xm - g)
         ops.step(self, np.where((rng.random(m) < 0.5)[:, None], feed, levy), stop=m)
         ## Decomposition
         best = np.array(X[self.sorted_order(pop)[0]])
         X = pop.X
         gauss = best + rng.normal(0, 1, (n, d)) * (best - X)
         beta = rng.uniform(0.01, 1.0)
-        levy2 = best + self.get_levy_flight_step(beta=beta, multiplier=0.01, size=(n, d), case=-1) * rng.random((n, 1)) * (best - X)
+        levy2 = best + self._get_levy_flight_step(beta=beta, multiplier=0.01, size=(n, d), case=-1) * rng.random((n, 1)) * (best - X)
         ops.step(self, np.where((rng.random(n) < 0.5)[:, None], gauss, levy2))

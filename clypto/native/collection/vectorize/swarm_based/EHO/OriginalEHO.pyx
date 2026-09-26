@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalEHO(LegacyNativeOptimizer):
+cdef class OriginalEHO(VectorizeOptimizer):
     """
     The original version of: Elephant Herding Optimization (EHO)
 
@@ -26,14 +26,14 @@ cdef class OriginalEHO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import EHO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -73,11 +73,10 @@ cdef class OriginalEHO(LegacyNativeOptimizer):
             beta (float): a factor that determines the influence of the x_center, default=0.5
             n_clans (int): the number of clans, default=5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "alpha", "beta", "n_clans"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -88,7 +87,7 @@ cdef class OriginalEHO(LegacyNativeOptimizer):
         self.n_clans = cy.validator(int, n_clans, [2, int(self.pop_size / 5)], "n_clans")
         self.n_individuals = int(self.pop_size / self.n_clans)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation fresh
         cdef Py_ssize_t n = pop.n, d = pop.d, nc = self.n_clans, ni = self.n_individuals, m = nc * ni  # (m <= n rows belong to a clan)
@@ -103,11 +102,11 @@ cdef class OriginalEHO(LegacyNativeOptimizer):
         pop = self.pop
         F = np.asarray(pop.F)[:m].reshape(nc, ni)
         order = np.argsort(F, axis=1)
-        if self.problem.minmax == "max":
+        if self.problem.sense == "max":
             order = order[:, ::-1]
         pop = pop.take(np.concatenate([(order + ni * np.arange(nc)[:, None]).ravel(), np.arange(m, n)]))
         fresh = pop.take(ni * np.arange(1, nc + 1) - 1)
-        fresh.X[:] = self.correct_solution(rng.uniform(self.problem.lb, self.problem.ub, (nc, d)))
+        fresh.X[:] = self._correct_solution(rng.uniform(self.problem.bounds.low, self.problem.bounds.up, (nc, d)))
         self.evaluate(fresh, 0, nc)
         pop.buf[ni * np.arange(1, nc + 1) - 1] = fresh.buf
         self.pop = pop

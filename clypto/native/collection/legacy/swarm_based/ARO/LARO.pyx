@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class LARO(_LegacyOptimizer):
+cdef class LARO(LegacyOptimizer):
     """
     The improved version of:  Lévy flight, and the selective opposition version of the artificial rabbit algorithm (LARO)
 
@@ -19,15 +19,15 @@ cdef class LARO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import ARO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = ARO.LARO(epoch=1000, pop_size=50)
@@ -47,15 +47,15 @@ cdef class LARO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -93,22 +93,22 @@ cdef class LARO(_LegacyOptimizer):
                 gr[rd_index] = 1  # Eq. 12
                 H = self.generator.normal(0, 1) * (epoch / self.epoch)  # Eq. 8
                 b = self.pop[idx].solution + H * gr * self.pop[idx].solution  # Eq. 13
-                levy = self.get_levy_flight_step(beta=1.5, multiplier=0.1)
+                levy = self._get_levy_flight_step(beta=1.5, multiplier=0.1)
                 pos_new = self.pop[idx].solution + R * (
                         levy * b - self.pop[idx].solution
                 )  # Eq. 11
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, minmax=self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, sense=self.problem.sense
             )
         # Selective Opposition (SO) Strategy
         TS = 2 - (2 * epoch / self.epoch)
@@ -125,9 +125,9 @@ cdef class LARO(_LegacyOptimizer):
                     df_lb, df_ub = np.min(dd[idx_far]), np.max(dd[idx_far])
                 if src <= 0 and n_df > n_dc:
                     pos_new = df_lb + df_ub - self.pop[idx].solution
-                    pos_new = self.correct_solution(pos_new)
-                    target = self.get_target(pos_new)
-                    if self.compare_target(
-                            target, self.pop[idx].target, self.problem.minmax
+                    pos_new = self._correct_solution(pos_new)
+                    target = self._get_target(pos_new)
+                    if self._compare_target(
+                            target, self.pop[idx].target, self.problem.sense
                     ):
                         self.pop[idx].update(solution=pos_new, target=target)

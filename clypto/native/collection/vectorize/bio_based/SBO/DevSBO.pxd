@@ -1,10 +1,9 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class DevSBO(LegacyNativeOptimizer):
+cdef class DevSBO(VectorizeOptimizer):
     cdef public object alpha
     cdef public object p_m
     cdef public object psw
     cdef public object sigma
 
-    cdef void evolve(self, int epoch_c)

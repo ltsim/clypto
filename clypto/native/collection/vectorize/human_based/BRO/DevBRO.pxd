@@ -8,4 +8,3 @@ cdef class DevBRO(AgentListOptimizer):
     cdef public object lb_updated
     cdef public object ub_updated
 
-    cdef void initialize_variables(self)

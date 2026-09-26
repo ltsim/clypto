@@ -54,7 +54,7 @@ class QTable:
         )
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
@@ -73,14 +73,14 @@ cdef class QleSCA(DevSCA):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import SCA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -119,7 +119,6 @@ cdef class QleSCA(DevSCA):
         super().__init__(epoch, pop_size, name=name, mode=mode)
         self._params_name_ordered = tuple(["epoch", "pop_size", "alpha", "gama"])
         self.sort_flag = False
-        self.is_parallelizable = False
         self.alpha = cy.validator(float, alpha, [0.0, 1.0], "alpha")
         self.gama = cy.validator(float, gama, [0.0, 1.0], "gama")
 
@@ -127,10 +126,10 @@ cdef class QleSCA(DevSCA):
         # one Q-table per agent (row), as the classic agents carried theirs
         self.q_tables = [QTable(n_states=9, n_actions=9, generator=self.generator) for _ in range(pop.n)]
 
-    cdef object amend_solution(self, object solution):
-        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+    cdef object _amend_solution(self, object solution):
+        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(
-            np.logical_and(self.problem.lb <= solution, solution <= self.problem.ub),
+            np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up),
             solution,
             rand_pos,
         )
@@ -154,7 +153,7 @@ cdef class QleSCA(DevSCA):
         # calculate the distance
         return numerator / denominator
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         # Each agent moves after seeing the population updated so far: sequential on rows.
         cdef NativePopulation pop = self.pop
         cdef NativeTarget tar
@@ -164,7 +163,7 @@ cdef class QleSCA(DevSCA):
         for idx in range(0, self.pop_size):
             ## Step 3: State computation
             den = self.density__(Xp)
-            dis = self.distance__(g_best, Xp, self.problem.lb, self.problem.ub)
+            dis = self.distance__(g_best, Xp, self.problem.bounds.low, self.problem.bounds.up)
             ## Step 4: Action execution
             q_table = self.q_tables[idx]
             state = q_table.get_state(density=den, distance=dis)
@@ -179,9 +178,9 @@ cdef class QleSCA(DevSCA):
             else:
                 pos_new = Xp[idx] + r1 * np.cos(r2) * (r3 * g_best - Xp[idx])
             # Check the bound
-            pos_new = self.correct_solution(pos_new)
-            tar = self.get_target(pos_new)
-            if self.compare_fitness(tar.fitness, pop.F[idx], self.problem.minmax):
+            pos_new = self._correct_solution(pos_new)
+            tar = self._get_target(pos_new)
+            if self._compare_fitness(tar.fitness, pop.F[idx], self.problem.sense):
                 ops.set_row(pop, idx, pos_new, tar)
                 q_table.update(state, action, reward=1, alpha=self.alpha, gama=self.gama)
             else:

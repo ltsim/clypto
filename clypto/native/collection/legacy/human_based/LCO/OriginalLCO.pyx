@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalLCO(_LegacyOptimizer):
+cdef class OriginalLCO(LegacyOptimizer):
     """
     The original version of: Life Choice-based Optimization (LCO)
 
@@ -22,14 +22,14 @@ cdef class OriginalLCO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import LCO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -56,17 +56,17 @@ cdef class OriginalLCO(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             r1 (float): coefficient factor
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.r1 = self.validator.check_float("r1", r1, [1.0, 3.0])
-        self.set_parameters(["epoch", "pop_size", "r1"])
+        self._set_parameters(["epoch", "pop_size", "r1"])
         self.n_agents = int(np.ceil(np.sqrt(self.pop_size)))
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -99,20 +99,20 @@ cdef class OriginalLCO(_LegacyOptimizer):
                 )
             else:
                 temp = (
-                        self.problem.ub
-                        - (self.pop[idx].solution - self.problem.lb)
+                        self.problem.bounds.up
+                        - (self.pop[idx].solution - self.problem.bounds.low)
                         * self.generator.random()
                 )
-            pos_new = self.correct_solution(temp)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(temp)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

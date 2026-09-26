@@ -1,11 +1,9 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class DevGCO(LegacyNativeOptimizer):
+cdef class DevGCO(VectorizeOptimizer):
     cdef public double cr
     cdef public double wf
     cdef public object dyn_list_cell_counter
     cdef public object dyn_list_life_signal
 
-    cdef void initialize_variables(self)
-    cdef void evolve(self, int epoch_c)

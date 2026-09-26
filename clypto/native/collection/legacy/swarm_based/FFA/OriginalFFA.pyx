@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalFFA(_LegacyOptimizer):
+cdef class OriginalFFA(LegacyOptimizer):
     """
     The original version of: Firefly Algorithm (FFA)
 
@@ -24,14 +24,14 @@ cdef class OriginalFFA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import FFA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -71,7 +71,7 @@ cdef class OriginalFFA(_LegacyOptimizer):
             delta (float): Mutation Step Size, default = 0.05
             exponent (int): Exponent (m in the paper), default = 2
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.gamma = self.validator.check_float("gamma", gamma, (0, 1.0))
@@ -80,7 +80,7 @@ cdef class OriginalFFA(_LegacyOptimizer):
         self.alpha_damp = self.validator.check_float("alpha_damp", alpha_damp, (0, 1.0))
         self.delta = self.validator.check_float("delta", delta, (0, 1.0))
         self.exponent = self.validator.check_int("exponent", exponent, [2, 4])
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -92,15 +92,14 @@ cdef class OriginalFFA(_LegacyOptimizer):
                 "exponent",
             ]
         )
-        self.is_parallelizable = False
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_alpha = self.alpha  # Initial Value of Mutation Coefficient
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -112,8 +111,8 @@ cdef class OriginalFFA(_LegacyOptimizer):
             pop_child = []
             for j in range(idx + 1, self.pop_size):
                 # Move Towards Better Solutions
-                if self.compare_target(
-                        self.pop[j].target, agent.target, self.problem.minmax
+                if self._compare_target(
+                        self.pop[j].target, agent.target, self.problem.sense
                 ):
                     # Calculate Radius and Attraction Level
                     rij = np.linalg.norm(agent.solution - self.pop[j].solution) / dmax
@@ -131,15 +130,15 @@ cdef class OriginalFFA(_LegacyOptimizer):
                     pos_new = (
                             agent.solution + self.dyn_alpha * mutation_vector + beta * temp
                     )
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_agent(pos_new)
                     pop_child.append(agent)
             if len(pop_child) < self.pop_size:
-                pop_child += self.generate_population(self.pop_size - len(pop_child))
-            local_best = self.get_best_agent(pop_child, self.problem.minmax)
+                pop_child += self._generate_population(self.pop_size - len(pop_child))
+            local_best = self._get_best_agent(pop_child, self.problem.sense)
             # Compare to Previous Solution
-            if self.compare_target(
-                    local_best.target, agent.target, self.problem.minmax
+            if self._compare_target(
+                    local_best.target, agent.target, self.problem.sense
             ):
                 self.pop[idx] = local_best
         self.pop.append(self.g_best)

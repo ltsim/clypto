@@ -7,27 +7,15 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _CMA_ESAgent(_LegacyAgent):
+cdef class _CMA_ESAgent(LegacyAgent):
     cdef public object step
-    def __init__(self, solution=None, target=None, step=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.step = step
-    cpdef object copy(self):
-        return _CMA_ESAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.step,
-        )
-    def update(self, **kwargs):
-        if "step" in kwargs:
-            self.step = kwargs.pop("step")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class CMA_ES(_LegacyOptimizer):
+cdef class CMA_ES(LegacyOptimizer):
     """
     The original version of: Covariance Matrix Adaptation Evolution Strategy (CMA-ES)
 
@@ -37,14 +25,14 @@ cdef class CMA_ES(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import ES    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -66,13 +54,13 @@ cdef class CMA_ES(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size (miu in the paper), default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         step = self.generator.multivariate_normal(
@@ -80,7 +68,7 @@ cdef class CMA_ES(_LegacyOptimizer):
         )
         return _CMA_ESAgent(solution=solution, step=step)
 
-    def before_main_loop(self):
+    def _before_main_loop(self):
         self.mu = int(np.round(self.pop_size / 2))
         self.ps = np.zeros(self.problem.n_dims)
         self.C = np.eye(self.problem.n_dims)
@@ -89,7 +77,7 @@ cdef class CMA_ES(_LegacyOptimizer):
         self.w = self.w / np.sum(self.w)
         self.mu_eff = 1.0 / np.sum(self.w**2)  # Number of effective solutions
         # Step Size Control Parameters (c_sigma and d_sigma);
-        sigma0 = 0.1 * (self.problem.ub - self.problem.lb)
+        sigma0 = 0.1 * (self.problem.bounds.up - self.problem.bounds.low)
         self.cs = (self.mu_eff + 2) / (self.problem.n_dims + self.mu_eff + 5)
         self.ds = (
             1
@@ -123,9 +111,9 @@ cdef class CMA_ES(_LegacyOptimizer):
             )
         return pop
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -133,13 +121,13 @@ cdef class CMA_ES(_LegacyOptimizer):
         pop_new = []
         for idx in range(0, self.pop_size):
             pos_new = self.x_mean + self.sigma * self.pop[idx].step
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
-        self.pop = self.get_sorted_population(pop_new, self.problem.minmax)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
+        self.pop = self._get_sorted_population(pop_new, self.problem.sense)
         # Update MEan
         self.pop = self.update_step__(self.pop, self.C)
         self.x_step = np.zeros(self.problem.n_dims)

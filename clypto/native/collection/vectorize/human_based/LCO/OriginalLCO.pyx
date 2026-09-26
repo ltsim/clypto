@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalLCO(LegacyNativeOptimizer):
+cdef class OriginalLCO(VectorizeOptimizer):
     """
     The original version of: Life Choice-based Optimization (LCO)
 
@@ -24,14 +24,14 @@ cdef class OriginalLCO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import LCO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -61,11 +61,10 @@ cdef class OriginalLCO(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             r1 (float): coefficient factor
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "r1"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -74,13 +73,13 @@ cdef class OriginalLCO(LegacyNativeOptimizer):
         self.r1 = cy.validator(float, r1, [1.0, 3.0], "r1")
         self.n_agents = int(np.ceil(np.sqrt(self.pop_size)))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         prob = rng.random((n, 1))
         # Eq. 1: mean of random fractions of the n_agents best positions
         top = (rng.random((n, self.n_agents, 1)) * X[None, :self.n_agents]).mean(axis=1)

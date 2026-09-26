@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class HI_WOA(LegacyNativeOptimizer):
+cdef class HI_WOA(VectorizeOptimizer):
     """
     The original version of: Hybrid Improved Whale Optimization Algorithm (HI-WOA)
 
@@ -24,14 +24,14 @@ cdef class HI_WOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import WOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -65,11 +65,10 @@ cdef class HI_WOA(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             feedback_max (int): maximum iterations of each feedback, default = 10
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "feedback_max"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -77,11 +76,11 @@ cdef class HI_WOA(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.feedback_max = cy.validator(int, feedback_max, [2, 2 + int(self.epoch / 2)], "feedback_max")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.n_changes = int(self.pop_size / 2)
         self.dyn_feedback_count = 0
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
@@ -110,7 +109,7 @@ cdef class HI_WOA(LegacyNativeOptimizer):
             else:
                 D1 = np.abs(g_best - Xp[idx])
                 pos_new = g_best + np.exp(b * l) * np.cos(2 * np.pi * l) * D1
-            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
+            ops.commit(self, pop, cand, idx, self._correct_solution(pos_new), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)
         ## Feedback Mechanism

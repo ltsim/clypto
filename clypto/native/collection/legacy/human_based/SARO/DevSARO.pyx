@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevSARO(_LegacyOptimizer):
+cdef class DevSARO(LegacyOptimizer):
     """
     The developed version: Search And Rescue Optimization (SARO)
 
@@ -20,14 +20,14 @@ cdef class DevSARO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import SARO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -52,33 +52,33 @@ cdef class DevSARO(_LegacyOptimizer):
             se (float): social effect, default = 0.5
             mu (int): maximum unsuccessful search number, default = 15
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.se = self.validator.check_float("se", se, (0, 1.0))
         self.mu = self.validator.check_int("mu", mu, [2, 2 + int(self.pop_size / 2)])
-        self.set_parameters(["epoch", "pop_size", "se", "mu"])
+        self._set_parameters(["epoch", "pop_size", "se", "mu"])
         self.sort_flag = True
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.dyn_USN = np.zeros(self.pop_size)
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(2 * self.pop_size)
+            self.pop = self._generate_population(2 * self.pop_size)
         else:
-            self.pop = self.pop + self.generate_population(self.pop_size)
+            self.pop = self.pop + self._generate_population(self.pop_size)
 
-    def amend_solution(self, solution: np.ndarray) -> np.ndarray:
+    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
-        rand_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, rand_pos)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -98,15 +98,15 @@ cdef class DevSARO(_LegacyOptimizer):
                 self.pop[k].target.fitness < pop_x[idx].target.fitness,
             )
             pos_new = np.where(condition, pos_new_1, pos_new_2)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         for idx in range(self.pop_size):
-            if self.compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
             ):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
@@ -124,15 +124,15 @@ cdef class DevSARO(_LegacyOptimizer):
             pos_new = self.g_best.solution + self.generator.uniform() * (
                     pop[k1].solution - pop[k2].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        pop_new = self._update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.minmax
+            if self._compare_target(
+                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
             ):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
@@ -140,6 +140,6 @@ cdef class DevSARO(_LegacyOptimizer):
             else:
                 self.dyn_USN[idx] += 1
             if self.dyn_USN[idx] > self.mu:
-                pop_x[idx] = self.generate_agent()
+                pop_x[idx] = self._generate_agent()
                 self.dyn_USN[idx] = 0
         self.pop = pop_x + pop_m

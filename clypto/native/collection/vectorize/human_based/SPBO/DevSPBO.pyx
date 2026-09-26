@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.human_based.SPBO.OriginalSPBO cimport OriginalSPBO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -24,14 +24,14 @@ cdef class DevSPBO(OriginalSPBO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.human_based import SPBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -52,14 +52,14 @@ cdef class DevSPBO(OriginalSPBO):
         super().__init__(epoch, pop_size, name=name, mode=mode)
         self.sort_flag = True
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
         me = np.arange(n)
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         good, average = int(n / 3), 2 * int(n / 3)
         x_mean = np.mean(np.ascontiguousarray(X), axis=0)
         j = ops.others(self, n)[:, 0]

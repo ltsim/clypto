@@ -9,7 +9,7 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -29,14 +29,14 @@ cdef class WMQIMRFO(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import MRFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -71,11 +71,10 @@ cdef class WMQIMRFO(AgentListOptimizer):
             somersault_range (float): somersault factor that decides the somersault range of manta rays, default=2
             pm (float): probability mutation, default = 0.5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "somersault_range", "pm"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -84,7 +83,7 @@ cdef class WMQIMRFO(AgentListOptimizer):
         self.somersault_range = cy.validator(float, somersault_range, [1.0, 5.0], "somersault_range")
         self.pm = cy.validator(float, pm, (0.0, 1.0), "pm")
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
         pop_new = []
         for idx in range(0, self.pop_size):
             x_t = self.objs[idx].solution
@@ -134,14 +133,14 @@ cdef class WMQIMRFO(AgentListOptimizer):
                                     + self.generator.random(self.problem.n_dims)
                                     * (x_rand - x_t)
                                     + beta * (x_rand - x_t)
-                                    + xichma * (self.problem.ub - x_t)
+                                    + xichma * (self.problem.bounds.up - x_t)
                             )
                             t2 = (
                                     x_rand
                                     + self.generator.random(self.problem.n_dims)
                                     * (x_rand - x_t)
                                     + beta * (x_rand - x_t)
-                                    + xichma * (x_t - self.problem.lb)
+                                    + xichma * (x_t - self.problem.bounds.low)
                             )
                         else:
                             t1 = (
@@ -149,14 +148,14 @@ cdef class WMQIMRFO(AgentListOptimizer):
                                     + self.generator.random(self.problem.n_dims)
                                     * (x_t1 - x_t)
                                     + beta * (x_rand - x_t)
-                                    + xichma * (self.problem.ub - x_t)
+                                    + xichma * (self.problem.bounds.up - x_t)
                             )
                             t2 = (
                                     x_rand
                                     + self.generator.random(self.problem.n_dims)
                                     * (x_t1 - x_t)
                                     + beta * (x_rand - x_t)
-                                    + xichma * (x_t - self.problem.lb)
+                                    + xichma * (x_t - self.problem.bounds.low)
                             )
                         pos_new = np.where(conditions, t1, t2)
                 else:
@@ -185,20 +184,20 @@ cdef class WMQIMRFO(AgentListOptimizer):
                     pos_new = (
                             x_t + r * (x_t1 - x_t) + alpha * (self.g_best.solution - x_t)
                     )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    self.objs[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.objs[idx] = self._get_better_agent(
+                    self.objs[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.objs = self._greedy_selection_population(
+                self.objs, pop_new, self.problem.sense
             )
-        _, g_best = self.update_global_best_agent(self.objs, save=False)
+        _, g_best = self._update_global_best_agent(self.objs)
 
         # Somersault foraging   (Eq. 8)
         pop_child = []
@@ -207,20 +206,20 @@ cdef class WMQIMRFO(AgentListOptimizer):
                     self.generator.random() * g_best.solution
                     - self.generator.random() * self.objs[idx].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    self.objs[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.objs[idx] = self._get_better_agent(
+                    self.objs[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self.update_target_for_population(pop_child)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_child, self.problem.minmax
+            pop_child = self._update_target_for_population(pop_child)
+            self.objs = self._greedy_selection_population(
+                self.objs, pop_child, self.problem.sense
             )
-        self.objs, g_best = self.update_global_best_agent(self.objs, save=False)
+        self.objs, g_best = self._update_global_best_agent(self.objs)
 
         # Quadratic Interpolation
         pop_new = []
@@ -249,16 +248,16 @@ cdef class WMQIMRFO(AgentListOptimizer):
                          (x3 ** 2 - x2 ** 2) * f1 + (x1 ** 2 - x3 ** 2) * f2 + (x2 ** 2 - x1 ** 2) * f3
                  ) / (2 * ((x3 - x2) * f1 + (x1 - x3) * f2 + (x2 - x1) * f3) + self.EPSILON)
             pos_new = np.where(a > 0, gx, x1)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.objs[idx] = self.get_better_agent(
-                    self.objs[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.objs[idx] = self._get_better_agent(
+                    self.objs[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.objs = self.greedy_selection_population(
-                self.objs, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.objs = self._greedy_selection_population(
+                self.objs, pop_new, self.problem.sense
             )

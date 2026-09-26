@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalWarSO(_LegacyOptimizer):
+cdef class OriginalWarSO(LegacyOptimizer):
     """
     The original version of: War Strategy Optimization (WarSO) algorithm
 
@@ -22,14 +22,14 @@ cdef class OriginalWarSO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import WarSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -53,27 +53,26 @@ cdef class OriginalWarSO(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             rr (float): the probability of switching position updating, default=0.1
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.rr = self.validator.check_float("rr", rr, (0.0, 1.0))
-        self.set_parameters(["epoch", "pop_size", "rr"])
-        self.is_parallelizable = False
+        self._set_parameters(["epoch", "pop_size", "rr"])
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.wl = 2 * np.ones(self.pop_size)
         self.wg = np.zeros(self.pop_size)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop_sorted, indices = self.get_sorted_indices_population(
-            self.pop, self.problem.minmax
+        pop_sorted, indices = self._get_sorted_indices_population(
+            self.pop, self.problem.sense
         )
         self.wl = self.wl[indices]
         self.wg = self.wg[indices]
@@ -92,10 +91,10 @@ cdef class OriginalWarSO(_LegacyOptimizer):
                 ) + self.generator.random() * (
                     self.wl[idx] * self.g_best.solution - self.pop[idx].solution
                 )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
                 self.wg[idx] += 1

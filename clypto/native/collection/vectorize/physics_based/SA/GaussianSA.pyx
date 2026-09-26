@@ -7,13 +7,13 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 from clypto.optimizer.native.agent cimport LegacyNativeAgent
 
 
-cdef class GaussianSA(LegacyNativeOptimizer):
+cdef class GaussianSA(VectorizeOptimizer):
     """
     The developed version of: Gaussian Simulated Annealing (GaussianSA)
 
@@ -29,14 +29,14 @@ cdef class GaussianSA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import SA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -71,11 +71,10 @@ cdef class GaussianSA(LegacyNativeOptimizer):
             cooling_rate (float): cooling rate, default=0.99
             scale (float): the scale in gaussian random, default=0.1
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "temp_init", "cooling_rate", "scale"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -85,21 +84,21 @@ cdef class GaussianSA(LegacyNativeOptimizer):
         self.cooling_rate = cy.validator(float, cooling_rate, (0.0, 1.0), "cooling_rate")
         self.scale = cy.validator(float, scale, (0.0, 100.0), "scale")
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         # Initialize the system
         self.temp_current = self.temp_init
         self.agent_current = self.g_best.copy()
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativeTarget tar
         cdef object cur = self.agent_current
         # Perturb the current solution
         pos_new = cur.solution + self.generator.normal(scale=self.scale, size=self.problem.n_dims)
-        tar = self.get_target(pos_new)
+        tar = self._get_target(pos_new)
         agent = LegacyNativeAgent(pos_new, tar)
         # Accept or reject the new solution
-        if self.compare_fitness(tar.fitness, cur.target.fitness, self.problem.minmax):
+        if self._compare_fitness(tar.fitness, cur.target.fitness, self.problem.sense):
             self.agent_current = agent
         else:
             # Calculate the energy difference

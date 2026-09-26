@@ -10,12 +10,12 @@
 from math import gamma
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 from clypto.optimizer.native.agent_list import FieldAgent
@@ -33,14 +33,14 @@ cdef class ModifiedSLO(AgentListOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import SLO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -63,29 +63,28 @@ cdef class ModifiedSLO(AgentListOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        local_pos = self.problem.lb + self.problem.ub - solution
-        local_pos = self.correct_solution(local_pos)
+        local_pos = self.problem.bounds.low + self.problem.bounds.up - solution
+        local_pos = self._correct_solution(local_pos)
         return FieldAgent(solution=solution, local_solution=local_pos)
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        agent = self.generate_empty_agent(solution)
-        target = self.get_target(agent.solution)
-        local_target = self.get_target(agent.local_solution)
-        if self.compare_target(target, local_target, self.problem.minmax):
+    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+        agent = self._generate_empty_agent(solution)
+        target = self._get_target(agent.solution)
+        local_target = self._get_target(agent.local_solution)
+        if self._compare_target(target, local_target, self.problem.sense):
             t1 = agent.local_solution.copy()
             t2 = agent.solution.copy()
             agent.update(
@@ -107,13 +106,13 @@ cdef class ModifiedSLO(AgentListOptimizer):
         a = self.generator.normal(0, xich_ma_1, 1)
         b = self.generator.normal(0, xich_ma_2, 1)
         LB = 0.01 * a / (np.power(np.abs(b), 1 / beta)) * dist * c
-        D = self.generator.uniform(self.problem.lb, self.problem.ub)
+        D = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         levy = LB * D
         return (
             current_pos - np.sqrt(epoch + 1) * np.sign(self.generator.random() - 0.5)
         ) * levy
 
-    def evolve_agents(self, epoch):
+    def _evolve_agents(self, epoch):
 
         c = 2.0 - 2.0 * epoch / self.epoch
         if c > 1:
@@ -146,19 +145,19 @@ cdef class ModifiedSLO(AgentListOptimizer):
                     pos_new = rand_SL - c * np.abs(
                         self.generator.uniform() * rand_SL - self.objs[idx].solution
                     )
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(agent.solution)
-        pop_new = self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(agent.solution)
+        pop_new = self._update_target_for_population(pop_new)
         for idx in range(0, self.pop_size):
-            if self.compare_target(
-                pop_new[idx].target, self.objs[idx].target, self.problem.minmax
+            if self._compare_target(
+                pop_new[idx].target, self.objs[idx].target, self.problem.sense
             ):
                 self.objs[idx] = pop_new[idx].copy()
-                if self.compare_target(
-                    pop_new[idx].target, self.objs[idx].local_target, self.problem.minmax
+                if self._compare_target(
+                    pop_new[idx].target, self.objs[idx].local_target, self.problem.sense
                 ):
                     self.objs[idx].local_solution = pop_new[idx].solution.copy()
                     self.objs[idx].local_target = pop_new[idx].target.copy()

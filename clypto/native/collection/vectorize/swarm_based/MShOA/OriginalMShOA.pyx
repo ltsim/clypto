@@ -18,11 +18,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalMShOA(LegacyNativeOptimizer):
+cdef class OriginalMShOA(VectorizeOptimizer):
     """
     The original version of: Mantis Shrimp Optimization Algorithm (MShOA)
 
@@ -48,14 +48,14 @@ cdef class OriginalMShOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import MShOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -105,11 +105,10 @@ cdef class OriginalMShOA(LegacyNativeOptimizer):
             k_value: Upper bound for k parameter in defense/shelter phase (Strategy 3, Equation 15).
                     k is sampled from U(0, k_value). Default = 0.3 (matches paper value).
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "polarization_rate", "strike_factor", "k_value"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -120,14 +119,14 @@ cdef class OriginalMShOA(LegacyNativeOptimizer):
         self.k_value = cy.validator(float, k_value, (0.0, 1.0), "k_value")
         self.pti = None
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         # Initialize PTI according to paper: PTI_i = round(1 + 2 * rand_i)
         u = self.generator.random(self.pop_size)  # uniform(0, 1) for each agent
         pti_raw = 1 + 2 * u  # produces values in [1, 3)
         self.pti = np.round(pti_raw).astype(int)  # round to nearest integer
         self.pti = np.clip(self.pti, 1, 3)  # ensure values are in {1, 2, 3}
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         pop_pos = np.array(pop.X)  # X_i(t)
         g_best_pos = np.array(self.g_best_x())  # Shape: (n_dims,)

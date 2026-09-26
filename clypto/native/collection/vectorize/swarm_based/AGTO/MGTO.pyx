@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class MGTO(LegacyNativeOptimizer):
+cdef class MGTO(VectorizeOptimizer):
     """
     The original version of: Modified Gorilla Troops Optimization (mGTO)
 
@@ -21,15 +21,15 @@ cdef class MGTO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import AGTO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = AGTO.MGTO(epoch=1000, pop_size=50, pp=0.03)
@@ -60,11 +60,10 @@ cdef class MGTO(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             pp (float): the probability of transition in exploration phase (p in the paper), default = 0.03
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "pp"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -72,19 +71,19 @@ cdef class MGTO(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.pp = cy.validator(float, pp, (0, 1), "p1")
 
-    cdef object amend_solution(self, object solution):
+    cdef object _amend_solution(self, object solution):
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
-        random_pos = self.generator.uniform(self.problem.lb, self.problem.ub, size=np.shape(solution))
+        random_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, size=np.shape(solution))
         return np.where(condition, solution, random_pos)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = np.array(pop.X)
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         F = 1 + np.cos(2 * rng.random())
         C = F * (1 - epoch_c / self.epoch)
         L = C * rng.choice([-1, 1])

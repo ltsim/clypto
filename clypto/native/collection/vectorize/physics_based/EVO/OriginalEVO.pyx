@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalEVO(LegacyNativeOptimizer):
+cdef class OriginalEVO(VectorizeOptimizer):
     """
     The original version of: Energy Valley Optimizer (EVO)
 
@@ -27,14 +27,14 @@ cdef class OriginalEVO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.physics_based import EVO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -62,18 +62,17 @@ cdef class OriginalEVO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         # One or two candidates per agent depending on its branch (different draws): built agent
         # by agent from the unchanged population; evaluation and the merge are batched.
         cdef NativePopulation pop = self.pop
@@ -96,7 +95,7 @@ cdef class OriginalEVO(LegacyNativeOptimizer):
 
             pos_new1 = pos_list[idx].copy()
             pos_new2 = pos_list[idx].copy()
-            if self.compare_fitness(eb, fit_list[idx], self.problem.minmax):
+            if self._compare_fitness(eb, fit_list[idx], self.problem.sense):
                 if self.generator.random() > sl:
                     a1_idx = self.generator.integers(self.problem.n_dims)
                     a2_idx = self.generator.integers(0, self.problem.n_dims, size=a1_idx)
@@ -111,15 +110,15 @@ cdef class OriginalEVO(LegacyNativeOptimizer):
                     ir = self.generator.uniform(0, 1, 2)
                     jr = self.generator.uniform(0, 1, self.problem.n_dims)
                     pos_new2 += jr * (ir[0] * gb_pos - ir[1] * x_avg_team)
-                pop_new.append(self.correct_solution(pos_new1))
-                pop_new.append(self.correct_solution(pos_new2))
+                pop_new.append(self._correct_solution(pos_new1))
+                pop_new.append(self._correct_solution(pos_new2))
             else:
                 pos_new = (
                         pos_new1
                         + self.generator.random()
                         * sl
-                        * self.generator.uniform(self.problem.lb, self.problem.ub, self.problem.n_dims)
+                        * self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims)
                 )
-                pop_new.append(self.correct_solution(pos_new))
+                pop_new.append(self._correct_solution(pos_new))
         merged = pop.concat(self.new_population(np.array(pop_new)))
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

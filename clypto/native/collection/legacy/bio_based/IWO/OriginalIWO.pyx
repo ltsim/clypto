@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalIWO(_LegacyOptimizer):
+cdef class OriginalIWO(LegacyOptimizer):
     """
     The original version of: Invasive Weed Optimization (IWO)
 
@@ -30,14 +30,14 @@ cdef class OriginalIWO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.bio_based import IWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -73,7 +73,7 @@ cdef class OriginalIWO(_LegacyOptimizer):
             sigma_start (float): The initial value of standard deviation
             sigma_end (float): The final value of standard deviation
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.seed_min = self.validator.check_int("seed_min", seed_min, [1, 3])
@@ -85,7 +85,7 @@ cdef class OriginalIWO(_LegacyOptimizer):
             "sigma_start", sigma_start, [0.5, 5.0]
         )
         self.sigma_end = self.validator.check_float("sigma_end", sigma_end, (0, 0.5))
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -98,9 +98,9 @@ cdef class OriginalIWO(_LegacyOptimizer):
         )
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -109,8 +109,8 @@ cdef class OriginalIWO(_LegacyOptimizer):
         sigma = (1.0 - epoch / self.epoch) ** self.exponent * (
                 self.sigma_start - self.sigma_end
         ) + self.sigma_end
-        pop, list_best, list_worst = self.get_special_agents(
-            self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
+        pop, list_best, list_worst = self._get_special_agents(
+            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
         )
         best, worst = list_best[0], list_worst[0]
         pop_new = []
@@ -129,14 +129,14 @@ cdef class OriginalIWO(_LegacyOptimizer):
                 pos_new = pop[idx].solution + sigma * self.generator.normal(
                     0, 1, self.problem.n_dims
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 pop_local.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_local[-1].target = self.get_target(pos_new)
+                    pop_local[-1].target = self._get_target(pos_new)
             if self.mode in self.AVAILABLE_MODES:
-                pop_local = self.update_target_for_population(pop_local)
+                pop_local = self._update_target_for_population(pop_local)
             pop_new += pop_local
-        self.pop = self.get_sorted_and_trimmed_population(
-            pop_new, self.pop_size, self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            pop_new, self.pop_size, self.problem.sense
         )

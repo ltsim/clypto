@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalAO(LegacyNativeOptimizer):
+cdef class OriginalAO(VectorizeOptimizer):
     """
     The original version of: Aquila Optimization (AO)
 
@@ -21,15 +21,15 @@ cdef class OriginalAO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import AO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = AO.OriginalAO(epoch=1000, pop_size=50)
@@ -56,25 +56,24 @@ cdef class OriginalAO(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         alpha = delta = 0.1
         g1 = 2 * rng.random() - 1  # Eq. 16
         g2 = 2 * (1 - epoch / self.epoch)  # Eq. 17
@@ -85,7 +84,7 @@ cdef class OriginalAO(LegacyNativeOptimizer):
         y = r * np.cos(phi)  # Eq.(10)
         QF = epoch ** ((2 * rng.random() - 1) / (1 - self.epoch) ** 2)  # Eq.(15) quality function
         x_mean = np.mean(np.array(X), axis=0)
-        levy_step = self.get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, 1), case=-1)
+        levy_step = self._get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, 1), case=-1)
         R = rng.random((n, 5, 1))
         if epoch <= (2 / 3) * self.epoch:  # Eq. 3, 4
             other = X[ops.others(self, n)[:, 0]]

@@ -9,7 +9,7 @@ import numpy as np
 from clypto.native.collection.vectorize.bio_based.BBO.OriginalBBO cimport OriginalBBO
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
@@ -24,14 +24,14 @@ cdef class DevBBO(OriginalBBO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import BBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -62,12 +62,12 @@ cdef class DevBBO(OriginalBBO):
         """
         super().__init__(epoch, pop_size, p_m, n_elites, name=name, mode=mode)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         pop_elites = pop.take(self.sorted_order(pop)[:self.n_elites])
         # migration from an agent chosen by roulette wheel on the fitness, then mutation
         selected = ops.roulette(self, pop.F, n)

@@ -6,11 +6,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class CleverBookBeesA(LegacyNativeOptimizer):
+cdef class CleverBookBeesA(VectorizeOptimizer):
     """
     The original version of: Bees Algorithm (CB-BeesA)
 
@@ -29,15 +29,15 @@ cdef class CleverBookBeesA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import BeesA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BeesA.CleverBookBeesA(epoch=1000, pop_size=50, n_elites = 16, n_others = 4,
@@ -84,7 +84,7 @@ cdef class CleverBookBeesA(LegacyNativeOptimizer):
             n_sites (int): 3 bees (employed bees, onlookers and scouts),
             n_elite_sites (int): 1 good partition
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -97,7 +97,6 @@ cdef class CleverBookBeesA(LegacyNativeOptimizer):
                 "n_elite_sites",
             ],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -110,7 +109,7 @@ cdef class CleverBookBeesA(LegacyNativeOptimizer):
         self.n_sites = cy.validator(int, n_sites, [2, 5], "n_sites")
         self.n_elite_sites = cy.validator(int, n_elite_sites, [1, 3], "n_elite_sites")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, fresh
         cdef Py_ssize_t n = pop.n, d = pop.d, ns = self.n_sites
@@ -125,12 +124,12 @@ cdef class CleverBookBeesA(LegacyNativeOptimizer):
         shift = rng.uniform(size=m) * self.patch_size * np.where(rng.uniform(size=m) < 0.5, 1.0, -1.0)
         pos[np.arange(m), rng.integers(0, d - 1, size=m)] += shift
         cand = pop.take(parent)
-        cand.X[:] = self.correct_solution(pos)
+        cand.X[:] = self._correct_solution(pos)
         self.evaluate(cand, 0, m)
         ops.scatter(self, cand, parent)
         # the other bees scout random sources, kept only if they beat the bee they replace
         if ns < n:
             fresh = pop.take(np.arange(ns, n))
-            fresh.X[:] = self.problem.lb + rng.random((n - ns, d)) * (self.problem.ub - self.problem.lb)
+            fresh.X[:] = self.problem.bounds.low + rng.random((n - ns, d)) * (self.problem.bounds.up - self.problem.bounds.low)
             self.evaluate(fresh, 0, n - ns)
             ops.scatter(self, fresh, np.arange(ns, n))

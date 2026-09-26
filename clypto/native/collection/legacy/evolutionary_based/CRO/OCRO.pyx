@@ -31,14 +31,14 @@ cdef class OCRO(OriginalCRO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import CRO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -102,7 +102,7 @@ cdef class OCRO(OriginalCRO):
         self.restart_count = self.validator.check_int(
             "restart_count", restart_count, [2, int(epoch / 2)]
         )
-        self.set_parameters(
+        self._set_parameters(
             [
                 "epoch",
                 "pop_size",
@@ -120,25 +120,25 @@ cdef class OCRO(OriginalCRO):
         )
         self.sort_flag = False
 
-    def initialize_variables(self):
+    def _initialize_variables(self):
         self.reset_count = 0
 
     def local_search__(self, pop=None):
         pop_new = []
         for idx in range(0, len(pop)):
-            random_pos = self.generator.uniform(self.problem.lb, self.problem.ub)
+            random_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             condition = self.generator.random(self.problem.n_dims) < 0.5
             pos_new = np.where(condition, self.g_best.solution, random_pos)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self.get_target(pos_new)
-        return self.update_target_for_population(pop_new)
+                pop_new[-1].target = self._get_target(pos_new)
+        return self._update_target_for_population(pop_new)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -149,8 +149,8 @@ cdef class OCRO(OriginalCRO):
         ## Asexual Reproduction
         num_duplicate = int(len(self.occupied_idx_list) * self.Fa)
         pop_best = [self.pop[idx] for idx in self.occupied_idx_list]
-        pop_best = self.get_sorted_and_trimmed_population(
-            pop_best, num_duplicate, self.problem.minmax
+        pop_best = self._get_sorted_and_trimmed_population(
+            pop_best, num_duplicate, self.problem.sense
         )
         pop_local_search = self.local_search__(pop_best)
         self.larvae_setting__(pop_local_search)
@@ -161,10 +161,10 @@ cdef class OCRO(OriginalCRO):
             selected_depredator = idx_list_sorted[-num__depredation__:]
             for idx in selected_depredator:
                 ### Using opposition-based leanring
-                pos_oppo = self.generate_opposition_solution(self.pop[idx], self.g_best)
-                agent = self.generate_agent(pos_oppo)
-                if self.compare_target(
-                        agent.target, self.pop[idx].target, self.problem.minmax
+                pos_oppo = self._generate_opposition_solution(self.pop[idx], self.g_best)
+                agent = self._generate_agent(pos_oppo)
+                if self._compare_target(
+                        agent.target, self.pop[idx].target, self.problem.sense
                 ):
                     self.pop[idx] = agent
                 else:
@@ -177,13 +177,13 @@ cdef class OCRO(OriginalCRO):
         if self.G1 >= self.gamma_min:
             self.G1 -= self.gama
         self.reset_count += 1
-        local_best = self.get_best_agent(self.pop, self.problem.minmax)
-        if self.compare_target(
-                local_best.target, self.g_best.target, self.problem.minmax
+        local_best = self._get_best_agent(self.pop, self.problem.sense)
+        if self._compare_target(
+                local_best.target, self.g_best.target, self.problem.sense
         ):
             self.reset_count = 0
         if self.reset_count == self.restart_count:
-            self.pop = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
             self.occupied_list = np.zeros(self.pop_size)
             self.occupied_idx_list = self.generator.choice(
                 range(self.pop_size), self.num_occupied, replace=False

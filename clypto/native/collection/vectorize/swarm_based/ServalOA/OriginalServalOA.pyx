@@ -6,12 +6,12 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalServalOA(LegacyNativeOptimizer):
+cdef class OriginalServalOA(VectorizeOptimizer):
     """
     The original version of: Serval Optimization Algorithm (ServalOA)
 
@@ -27,14 +27,14 @@ cdef class OriginalServalOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import ServalOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -62,18 +62,17 @@ cdef class OriginalServalOA(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size"],
             sort_flag=False,
-            parallelizable=False,
             name=name,
             mode=mode,
         )
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -83,4 +82,4 @@ cdef class OriginalServalOA(LegacyNativeOptimizer):
         # Phase 1: prey selection and attacking (exploration)
         ops.step(self, X + rng.random((n, d)) * (X[kk] - rng.integers(1, 3, size=(n, d)) * X))
         # Phase 2: chase process (exploitation), Eq. 6
-        ops.step(self, X + rng.integers(1, 3, size=(n, d)) * (self.problem.ub - self.problem.lb) / epoch)
+        ops.step(self, X + rng.integers(1, 3, size=(n, d)) * (self.problem.bounds.up - self.problem.bounds.low) / epoch)

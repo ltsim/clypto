@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSFO(_LegacyOptimizer):
+cdef class OriginalSFO(LegacyOptimizer):
     """
     The original version of: SailFish Optimizer (SFO)
 
@@ -24,14 +24,14 @@ cdef class OriginalSFO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import SFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -63,27 +63,27 @@ cdef class OriginalSFO(_LegacyOptimizer):
             AP (float): coefficient for decreasing the value of Power Attack linearly from AP to 0
             epsilon (float): should be 0.0001, 0.001
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.pp = self.validator.check_float("pp", pp, (0, 1.0))
         self.AP = self.validator.check_float("AP", AP, (0, 100))
         self.epsilon = self.validator.check_float("epsilon", epsilon, (0, 0.1))
-        self.set_parameters(["epoch", "pop_size", "pp", "AP", "epsilon"])
+        self._set_parameters(["epoch", "pop_size", "pp", "AP", "epsilon"])
         self.sort_flag = True
         self.s_size = int(self.pop_size / self.pp)
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)  # pop = sailfish
-        self.s_pop = self.generate_population(self.s_size)
-        self.s_gbest = self.get_best_agent(
-            self.s_pop, self.problem.minmax
+            self.pop = self._generate_population(self.pop_size)  # pop = sailfish
+        self.s_pop = self._generate_population(self.s_size)
+        self.s_gbest = self._get_best_agent(
+            self.s_pop, self.problem.sense
         )  # s_pop = sardines
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -100,18 +100,18 @@ cdef class OriginalSFO(_LegacyOptimizer):
                     / 2
                     - self.pop[idx].solution
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_empty_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    self.pop[idx], agent, self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    self.pop[idx], agent, self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
         ## Calculate AttackPower using Eq.(10)
         AP = self.AP * (1.0 - 2.0 * epoch * self.epsilon)
@@ -131,10 +131,10 @@ cdef class OriginalSFO(_LegacyOptimizer):
                             self.generator.uniform(0, 1, self.problem.n_dims)
                             * (self.s_gbest.solution - self.s_pop[idx].solution + AP)
                     )[list2]
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_empty_agent(pos_new)
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_empty_agent(pos_new)
                     if self.mode not in self.AVAILABLE_MODES:
-                        agent.target = self.get_target(pos_new)
+                        agent.target = self._get_target(pos_new)
                         self.s_pop[idx] = agent
         else:
             ### Update the position of all sardine using Eq.(9)
@@ -142,25 +142,25 @@ cdef class OriginalSFO(_LegacyOptimizer):
                 pos_new = self.generator.uniform() * (
                         self.g_best.solution - self.s_pop[idx].solution + AP
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_empty_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_empty_agent(pos_new)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self.get_target(pos_new)
+                    agent.target = self._get_target(pos_new)
                     self.s_pop[idx] = agent
         ## Recalculate the fitness of all sardine
-        self.s_pop = self.update_target_for_population(self.s_pop)
+        self.s_pop = self._update_target_for_population(self.s_pop)
         ## Sort the population of sailfish and sardine (for reducing computational cost)
-        self.pop = self.get_sorted_and_trimmed_population(
-            self.pop, self.pop_size, self.problem.minmax
+        self.pop = self._get_sorted_and_trimmed_population(
+            self.pop, self.pop_size, self.problem.sense
         )
-        self.s_pop = self.get_sorted_and_trimmed_population(
-            self.s_pop, len(self.s_pop), self.problem.minmax
+        self.s_pop = self._get_sorted_and_trimmed_population(
+            self.s_pop, len(self.s_pop), self.problem.sense
         )
         for idx in range(0, self.pop_size):
             for jdx in range(0, self.s_size):
                 ### If there is a better position in sardine population.
-                if self.compare_target(
-                        self.s_pop[jdx].target, self.pop[idx].target, self.problem.minmax
+                if self._compare_target(
+                        self.s_pop[jdx].target, self.pop[idx].target, self.problem.sense
                 ):
                     self.pop[idx] = self.s_pop[jdx].copy()
                     del self.s_pop[jdx]
@@ -168,9 +168,9 @@ cdef class OriginalSFO(_LegacyOptimizer):
                 #### Especially when sardine pop size >> sailfish pop size
         temp = self.s_size - len(self.s_pop)
         if temp == 1:
-            self.s_pop = self.s_pop + [self.generate_agent()]
+            self.s_pop = self.s_pop + [self._generate_agent()]
         else:
-            self.s_pop = self.s_pop + self.generate_population(
+            self.s_pop = self.s_pop + self._generate_population(
                 self.s_size - len(self.s_pop)
             )
-        self.s_gbest = self.get_best_agent(self.s_pop, self.problem.minmax)
+        self.s_gbest = self._get_best_agent(self.s_pop, self.problem.sense)

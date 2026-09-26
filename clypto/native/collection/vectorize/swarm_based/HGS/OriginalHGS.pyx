@@ -7,16 +7,16 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport LegacyAgent
 
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalHGS(LegacyNativeOptimizer):
+cdef class OriginalHGS(VectorizeOptimizer):
     """
     The original version of: Hunger Games Search (HGS)
 
@@ -30,14 +30,14 @@ cdef class OriginalHGS(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import HGS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -72,11 +72,10 @@ cdef class OriginalHGS(LegacyNativeOptimizer):
             PUP (float): The probability of updating position (L in the paper), default = 0.08
             LH (float): Largest hunger / threshold, default = 10000
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "PUP", "LH"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -94,7 +93,7 @@ cdef class OriginalHGS(LegacyNativeOptimizer):
     def sech__(self, x):
         return np.where(np.abs(x) > 50, 0.5, 2 / (np.exp(np.clip(x, -50, 50)) + np.exp(-np.clip(x, -50, 50))))
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
@@ -102,11 +101,11 @@ cdef class OriginalHGS(LegacyNativeOptimizer):
         F = np.array(pop.F)
         hunger = pop.field("HUNGER")
         g = np.array(X[ops.best_row(self, pop)])
-        fb = F.min() if self.problem.minmax == "min" else F.max()
-        fw = F.max() if self.problem.minmax == "min" else F.min()
+        fb = F.min() if self.problem.sense == "min" else F.max()
+        fw = F.max() if self.problem.sense == "min" else F.min()
         # hunger grows with the distance to the best fitness (Eqs. 2.8, 2.9)
         r = rng.random(n)
-        space = np.mean(self.problem.ub - self.problem.lb)
+        space = np.mean(self.problem.bounds.up - self.problem.bounds.low)
         H = (F - fb) / (fw - fb + self.EPSILON) * r * 2 * space
         H = np.where(H < self.LH, self.LH * (1 + r), H)
         hunger[:, 0] += H

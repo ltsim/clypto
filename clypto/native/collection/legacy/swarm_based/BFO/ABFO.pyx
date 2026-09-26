@@ -7,37 +7,17 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _ABFOAgent(_LegacyAgent):
+cdef class _ABFOAgent(LegacyAgent):
     cdef public object nutrients
     cdef public object local_solution
     cdef public object local_target
-    def __init__(self, solution=None, target=None, nutrients=None, local_solution=None, local_target=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.nutrients = nutrients
-        self.local_solution = local_solution
-        self.local_target = local_target
-    cpdef object copy(self):
-        return _ABFOAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.nutrients,
-            self.local_solution,
-            self.local_target,
-        )
-    def update(self, **kwargs):
-        if "nutrients" in kwargs:
-            self.nutrients = kwargs.pop("nutrients")
-        if "local_solution" in kwargs:
-            self.local_solution = kwargs.pop("local_solution")
-        if "local_target" in kwargs:
-            self.local_target = kwargs.pop("local_target")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class ABFO(_LegacyOptimizer):
+cdef class ABFO(LegacyOptimizer):
     """
     The original version of: Adaptive Bacterial Foraging Optimization (ABFO)
 
@@ -53,15 +33,15 @@ cdef class ABFO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import BFO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = BFO.ABFO(epoch=1000, pop_size=50, C_s=0.1, C_e=0.001, Ped = 0.01, Ns = 4, N_adapt = 2, N_split = 40)
@@ -99,7 +79,7 @@ cdef class ABFO(_LegacyOptimizer):
             N_adapt (int): Dead threshold value default=2
             N_split (int): Split threshold value, default=40
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.C_s = self.Ped = self.validator.check_float("C_s", C_s, (0, 2.0))
@@ -108,17 +88,17 @@ cdef class ABFO(_LegacyOptimizer):
         self.swim_length = self.Ns = self.validator.check_int("Ns", Ns, [2, 100])
         self.N_adapt = self.validator.check_int("N_adapt", N_adapt, [0, 4])
         self.N_split = self.validator.check_int("N_split", N_split, [5, 50])
-        self.set_parameters(
+        self._set_parameters(
             ["epoch", "pop_size", "C_s", "C_e", "Ped", "Ns", "N_adapt", "N_split"]
         )
         self.support_parallel_modes = False
         self.sort_flag = False
 
-    def initialize_variables(self):
-        self.C_s = self.C_s * (self.problem.ub - self.problem.lb)
-        self.C_e = self.C_e * (self.problem.ub - self.problem.lb)
+    def _initialize_variables(self):
+        self.C_s = self.C_s * (self.problem.bounds.up - self.problem.bounds.low)
+        self.C_e = self.C_e * (self.problem.bounds.up - self.problem.bounds.low)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         nutrients = 0  # total nutrient gained by the bacterium in its whole searching process.(int number)
@@ -127,9 +107,9 @@ cdef class ABFO(_LegacyOptimizer):
             solution=solution, nutrients=nutrients, local_solution=local_solution
         )
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
-        agent = self.generate_empty_agent(solution)
-        agent.target = self.get_target(agent.solution)
+    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+        agent = self._generate_empty_agent(solution)
+        agent.target = self._get_target(agent.solution)
         agent.local_target = agent.target.copy()
         return agent
 
@@ -145,9 +125,9 @@ cdef class ABFO(_LegacyOptimizer):
         )
         return step_size
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -160,21 +140,21 @@ cdef class ABFO(_LegacyOptimizer):
                 )
                 delta = np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
                 unit_vector = (
-                    self.generator.uniform(self.problem.lb, self.problem.ub)
+                    self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                     if delta == 0
                     else (delta_i / delta)
                 )
                 pos_new = self.pop[idx].solution + step_size * unit_vector
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
                 ):
                     agent.nutrients += 1
                     self.pop[idx] = agent
                     # Update personal best
-                    if self.compare_target(
-                        agent.target, self.pop[idx].local_target, self.problem.minmax
+                    if self._compare_target(
+                        agent.target, self.pop[idx].local_target, self.problem.sense
                     ):
                         self.pop[idx].update(
                             local_solution=pos_new.copy(),
@@ -190,8 +170,8 @@ cdef class ABFO(_LegacyOptimizer):
                 pos_new = tt * self.pop[idx].solution + (1 - tt) * (
                     self.g_best.solution - self.pop[idx].solution
                 )
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
                 self.pop.append(agent)
             nut_min = min(
                 self.N_adapt,
@@ -201,7 +181,7 @@ cdef class ABFO(_LegacyOptimizer):
                 self.pop[idx].nutrients < nut_min
                 or self.generator.random() < self.p_eliminate
             ):
-                self.pop[idx] = self.generate_agent()
+                self.pop[idx] = self._generate_agent()
         ## Make sure the population does not have duplicates.
         new_set = set()
         for idx, obj in enumerate(self.pop):
@@ -213,7 +193,7 @@ cdef class ABFO(_LegacyOptimizer):
         n_agents = len(self.pop) - self.pop_size
         if n_agents < 0:
             for idx in range(0, n_agents):
-                agent = self.generate_agent()
+                agent = self._generate_agent()
                 self.pop.append(agent)
         elif n_agents > 0:
             list_idx_removed = self.generator.choice(

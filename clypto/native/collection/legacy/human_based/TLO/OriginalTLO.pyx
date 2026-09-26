@@ -21,14 +21,14 @@ cdef class OriginalTLO(DevTLO):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.human_based import TLO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -52,12 +52,11 @@ cdef class OriginalTLO(DevTLO):
             pop_size (int): number of population size, default = 100
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.is_parallelizable = False
         self.sort_flag = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -70,10 +69,10 @@ cdef class OriginalTLO(DevTLO):
             pos_new = self.pop[idx].solution + self.generator.uniform(
                 0, 1, self.problem.n_dims
             ) * (self.g_best.solution - TF * np.mean(list_pos, axis=0))
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
             ## Learning Phrase
@@ -81,8 +80,8 @@ cdef class OriginalTLO(DevTLO):
                 np.setxor1d(np.array(range(self.pop_size)), np.array([idx]))
             )
             #### Remove third loop here
-            if self.compare_target(
-                    self.pop[idx].target, self.pop[id_partner].target, self.problem.minmax
+            if self._compare_target(
+                    self.pop[idx].target, self.pop[id_partner].target, self.problem.sense
             ):
                 diff = self.pop[idx].solution - self.pop[id_partner].solution
             else:
@@ -91,9 +90,9 @@ cdef class OriginalTLO(DevTLO):
                     self.pop[idx].solution
                     + self.generator.uniform(0, 1, self.problem.n_dims) * diff
             )
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent

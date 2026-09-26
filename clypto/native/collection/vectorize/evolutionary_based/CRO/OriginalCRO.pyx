@@ -7,13 +7,13 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent cimport LegacyNativeAgent
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-cdef class OriginalCRO(LegacyNativeOptimizer):
+cdef class OriginalCRO(VectorizeOptimizer):
     """
     The original version of: Coral Reefs Optimization (CRO)
 
@@ -34,14 +34,14 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import CRO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -88,7 +88,7 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
             gamma_max (float): factor for mutation process
             n_trials (int): number of attempts for a larva to set in the reef.
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=[
                 "epoch",
@@ -104,7 +104,6 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
                 "n_trials",
             ],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -120,8 +119,8 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
         self.gamma_max = cy.validator(float, gamma_max, (0.15, 1.0), "gamma_max")
         self.n_trials = cy.validator(int, n_trials, [2, int(self.pop_size / 2)], "n_trials")
 
-    cdef void initialization(self):
-        LegacyNativeOptimizer.initialization(self)
+    def _initialization(self):
+        VectorizeOptimizer._initialization(self)
         self.reef = np.array([])
         self.occupied_position = (
             []
@@ -139,17 +138,17 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
 
     def gaussian_mutation__(self, position):
         random_pos = position + self.G1 * (
-                self.problem.ub - self.problem.lb
+                self.problem.bounds.up - self.problem.bounds.low
         ) * self.generator.normal(0, 1, self.problem.n_dims)
         condition = self.generator.random(self.problem.n_dims) < self.GCR
         pos_new = np.where(condition, random_pos, position)
-        return self.correct_solution(pos_new)
+        return self._correct_solution(pos_new)
 
     def multi_point_cross__(self, pos1, pos2):
         p1, p2 = self.generator.choice(list(range(len(pos1))), 2, replace=False)
         start, end = min(p1, p2), max(p1, p2)
         pos_new = np.concatenate((pos1[:start], pos2[start:end], pos1[end:]), axis=0)
-        return self.correct_solution(pos_new)
+        return self._correct_solution(pos_new)
 
     def larvae_setting__(self, larvae):
         # Trial to land on a square of reefs
@@ -164,7 +163,7 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
                     self.occupied_list[pdx] = 1  # Update occupied list
                     break
                 else:
-                    if self.compare_fitness(larva.target.fitness, self.objs[pdx].target.fitness, self.problem.minmax):
+                    if self._compare_fitness(larva.target.fitness, self.objs[pdx].target.fitness, self.problem.sense):
                         self.objs[pdx] = larva
                         break
 
@@ -188,7 +187,7 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
                 agent = LegacyNativeAgent(pos_new, None)
                 larvae.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    larvae[-1].target = self.get_target(pos_new)
+                    larvae[-1].target = self._get_target(pos_new)
         # Step 1b
         while len(selected_corals) >= 2:
             id1, id2 = self.generator.choice(
@@ -201,11 +200,11 @@ cdef class OriginalCRO(LegacyNativeOptimizer):
             agent = LegacyNativeAgent(pos_new, None)
             larvae.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                larvae[-1].target = self.get_target(pos_new)
+                larvae[-1].target = self._get_target(pos_new)
             selected_corals = np.delete(selected_corals, [id1, id2])
         return ops.update_targets(self, larvae)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         self.objs = ops.agents_of(self.pop)
         ## Broadcast Spawning Brooding

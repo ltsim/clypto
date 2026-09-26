@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DS_GWO(LegacyNativeOptimizer):
+cdef class DS_GWO(VectorizeOptimizer):
     """
     The original version of: Diversity enhanced Strategy based Grey Wolf Optimizer (DS-GWO)
 
@@ -25,14 +25,14 @@ cdef class DS_GWO(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import GWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -70,11 +70,10 @@ cdef class DS_GWO(LegacyNativeOptimizer):
             explore_ratio (float): ratio to control exploration, default = 0.4
             n_groups (int): number of groups for group-stage competition, default = 5
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "explore_ratio", "n_groups"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -83,10 +82,10 @@ cdef class DS_GWO(LegacyNativeOptimizer):
         self.explore_ratio = cy.validator(float, explore_ratio, [0.0, 1.0], "explore_ratio")
         self.n_groups = cy.validator(int, n_groups, [5, 100], "n_groups")
 
-    cdef void initialize_variables(self):
+    def _initialize_variables(self):
         self.explore_epoch = int(self.epoch * self.explore_ratio)
 
-    cdef void before_main_loop(self):
+    def _before_main_loop(self):
         self.group_stage_competition()
 
     def get_coefficients(self, a: float) -> tuple:
@@ -114,7 +113,7 @@ cdef class DS_GWO(LegacyNativeOptimizer):
         # Set alpha wolf (best among all delta candidates)
         fits = [agent.target.fitness for agent in self.delta_candidates]
         order = np.argsort(fits)
-        if self.problem.minmax == "max":
+        if self.problem.sense == "max":
             order = order[::-1]
         self.alpha = self.delta_candidates[order[0]].copy()
 

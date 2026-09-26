@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalCircleSA(LegacyNativeOptimizer):
+cdef class OriginalCircleSA(VectorizeOptimizer):
     """
     The original version of: Circle Search Algorithm (CircleSA)
 
@@ -22,14 +22,14 @@ cdef class OriginalCircleSA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.math_based import CircleSA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -55,11 +55,10 @@ cdef class OriginalCircleSA(LegacyNativeOptimizer):
         name: str | None = None,
         mode: str | None = None,
     ) -> None:
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "c_factor"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -67,7 +66,7 @@ cdef class OriginalCircleSA(LegacyNativeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.c_factor = cy.validator(float, c_factor, (0, 1.0), "c_factor")
 
-    cdef void evolve(self, int epoch):
+    def _evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t idx, n = pop.n
         a = np.pi - np.pi * (<object>(epoch / self.epoch)) ** 2  # Eq. 8
@@ -87,4 +86,4 @@ cdef class OriginalCircleSA(LegacyNativeOptimizer):
         else:
             tan = np.array([np.tan(w[idx] * p) for idx in range(n)])
             x_new = g - (g - X) * tan[:, None]
-        self.pop = self.new_population(self.correct_solution(x_new))
+        self.pop = self.new_population(self._correct_solution(x_new))

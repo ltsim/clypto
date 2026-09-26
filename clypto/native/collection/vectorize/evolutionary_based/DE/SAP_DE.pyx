@@ -11,7 +11,7 @@ import numpy as np
 
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.agent cimport LegacyNativeAgent
 
@@ -30,7 +30,7 @@ class _SAPAgent:
                          self.crossover, self.mutation, self.pop_size)
 
 
-cdef class SAP_DE(LegacyNativeOptimizer):
+cdef class SAP_DE(VectorizeOptimizer):
     """
     The original version of: Differential Evolution with Self-Adaptive Populations (SAP_DE)
 
@@ -43,14 +43,14 @@ cdef class SAP_DE(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.evolutionary_based import DE    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -84,11 +84,10 @@ cdef class SAP_DE(LegacyNativeOptimizer):
             pop_size (int): number of population size, default = 100
             branch (str): gaussian (absolute) or uniform (relative) method
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "branch"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -109,13 +108,13 @@ cdef class SAP_DE(LegacyNativeOptimizer):
             pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
         agent = _SAPAgent(solution, None, crossover_rate, mutation_rate, pop_size)
         if evaluate:
-            agent.target = self.get_target(agent.solution)
+            agent.target = self._get_target(agent.solution)
         return agent
 
     def mirror__(self):
         return ops.build_population(self, self.objs)
 
-    cdef void initialization(self):
+    def _initialization(self):
         # every agent carries its own rates and population size, so the agents are kept as objects
         if self._starting is not None:
             self.objs = [self.new_agent__(x, True) for x in self._starting]
@@ -131,7 +130,7 @@ cdef class SAP_DE(LegacyNativeOptimizer):
                 var -= func_value()
         return var
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
         popl = self.objs
         pop = []
@@ -149,13 +148,13 @@ cdef class SAP_DE(LegacyNativeOptimizer):
                     ps_new = popl[idxs[0]].pop_size + int(self.F * (popl[idxs[1]].pop_size - popl[idxs[2]].pop_size))
                 else:  # elif self.branch == "REL":
                     ps_new = popl[idxs[0]].pop_size + self.F * (popl[idxs[1]].pop_size - popl[idxs[2]].pop_size)
-                pos_new = self.correct_solution(pos_new)
+                pos_new = self._correct_solution(pos_new)
                 cr_new = self.edit_to_range__(cr_new, 0, 1, self.generator.random)
                 mr_new = self.edit_to_range__(mr_new, 0, 1, self.generator.random)
                 agent = self.new_agent__(pos_new)
                 pop.append(agent)
                 if not swarm:
-                    agent.target = self.get_target(pos_new)
+                    agent.target = self._get_target(pos_new)
                     agent.crossover, agent.mutation, agent.pop_size = cr_new, mr_new, ps_new
             else:
                 pop.append(popl[idx].copy())
@@ -168,11 +167,11 @@ cdef class SAP_DE(LegacyNativeOptimizer):
                     ps_new = popl[idx].pop_size + int(self.generator.normal(0.5, 1))
                 else:  # elif self.branch == "REL":
                     ps_new = popl[idx].pop_size + self.generator.normal(0, popl[idxs[0]].mutation)
-                pos_new = self.correct_solution(pos_new)
+                pos_new = self._correct_solution(pos_new)
                 agent = self.new_agent__(pos_new)
                 pop.append(agent)
                 if not swarm:
-                    agent.target = self.get_target(pos_new)
+                    agent.target = self._get_target(pos_new)
                     agent.crossover, agent.mutation, agent.pop_size = cr_new, mr_new, ps_new
         pop = ops.update_targets(self, pop)
         # Calculate new population size

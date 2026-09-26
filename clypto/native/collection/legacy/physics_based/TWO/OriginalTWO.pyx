@@ -7,27 +7,15 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalTWOAgent(_LegacyAgent):
+cdef class _OriginalTWOAgent(LegacyAgent):
     cdef public object weight
-    def __init__(self, solution=None, target=None, weight=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.weight = weight
-    cpdef object copy(self):
-        return _OriginalTWOAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.weight,
-        )
-    def update(self, **kwargs):
-        if "weight" in kwargs:
-            self.weight = kwargs.pop("weight")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalTWO(_LegacyOptimizer):
+cdef class OriginalTWO(LegacyOptimizer):
     """
     The original version of: Tug of War Optimization (TWO)
 
@@ -37,14 +25,14 @@ cdef class OriginalTWO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import TWO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -67,10 +55,10 @@ cdef class OriginalTWO(_LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = False
         self.muy_s = 1
         self.muy_k = 1
@@ -78,12 +66,12 @@ cdef class OriginalTWO(_LegacyOptimizer):
         self.alpha = 0.99
         self.beta = 0.1
 
-    def initialization(self):
+    def _initialization(self):
         if self.pop is None:
-            self.pop = self.generate_population(self.pop_size)
+            self.pop = self._generate_population(self.pop_size)
         self.pop = self.update_weight__(self.pop)
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         """
         Generate new agent with solution
 
@@ -105,9 +93,9 @@ cdef class OriginalTWO(_LegacyOptimizer):
             teams[idx].weight = list_weights[idx]
         return teams
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -129,7 +117,7 @@ cdef class OriginalTWO(_LegacyOptimizer):
                     delta_x = 0.5 * acceleration + np.power(
                         self.alpha, epoch
                     ) * self.beta * (
-                        self.problem.ub - self.problem.lb
+                        self.problem.bounds.up - self.problem.bounds.low
                     ) * self.generator.normal(
                         0, 1, self.problem.n_dims
                     )
@@ -139,8 +127,8 @@ cdef class OriginalTWO(_LegacyOptimizer):
             pos_new = pop_new[idx].solution.copy().astype(float)
             for jdx in range(self.problem.n_dims):
                 if (
-                    pos_new[jdx] < self.problem.lb[jdx]
-                    or pos_new[jdx] > self.problem.ub[jdx]
+                    pos_new[jdx] < self.problem.bounds.low[jdx]
+                    or pos_new[jdx] > self.problem.bounds.up[jdx]
                 ):
                     if self.generator.random() <= 0.5:
                         pos_new[jdx] = self.g_best.solution[
@@ -149,25 +137,25 @@ cdef class OriginalTWO(_LegacyOptimizer):
                             self.g_best.solution[jdx] - pos_new[jdx]
                         )
                         if (
-                            pos_new[jdx] < self.problem.lb[jdx]
-                            or pos_new[jdx] > self.problem.ub[jdx]
+                            pos_new[jdx] < self.problem.bounds.low[jdx]
+                            or pos_new[jdx] > self.problem.bounds.up[jdx]
                         ):
                             pos_new[jdx] = self.pop[idx].solution[jdx]
                     else:
-                        if pos_new[jdx] < self.problem.lb[jdx]:
-                            pos_new[jdx] = self.problem.lb[jdx]
-                        if pos_new[jdx] > self.problem.ub[jdx]:
-                            pos_new[jdx] = self.problem.ub[jdx]
-            pos_new = self.correct_solution(pos_new)
+                        if pos_new[jdx] < self.problem.bounds.low[jdx]:
+                            pos_new[jdx] = self.problem.bounds.low[jdx]
+                        if pos_new[jdx] > self.problem.bounds.up[jdx]:
+                            pos_new[jdx] = self.problem.bounds.up[jdx]
+            pos_new = self._correct_solution(pos_new)
             pop_new[idx].solution = pos_new
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[idx].target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    pop_new[idx], self.pop[idx], self.problem.minmax
+                pop_new[idx].target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    pop_new[idx], self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )
         self.pop = self.update_weight__(self.pop)

@@ -24,14 +24,14 @@ cdef class LevyES(OriginalES):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.evolutionary_based import ES    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -60,9 +60,9 @@ cdef class LevyES(OriginalES):
         """
         super().__init__(epoch, pop_size, lamda, **kwargs)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -72,25 +72,25 @@ cdef class LevyES(OriginalES):
             pos_new = self.pop[idx].solution + self.pop[
                 idx
             ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
             tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
             strategy = np.exp(
                 tau_p * self.generator.normal(0, 1.0, self.problem.n_dims)
                 + tau * self.generator.normal(0, 1.0, self.problem.n_dims)
             )
-            agent = self.generate_empty_agent(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.update(solution=pos_new, strategy=strategy)
             child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                child[-1].target = self.get_target(pos_new)
-        child = self.update_target_for_population(child)
+                child[-1].target = self._get_target(pos_new)
+        child = self._update_target_for_population(child)
         child_levy = []
         for idx in range(0, self.n_child):
-            pos_new = self.pop[idx].solution + self.get_levy_flight_step(
+            pos_new = self.pop[idx].solution + self._get_levy_flight_step(
                 multiplier=0.001, size=self.problem.n_dims, case=-1
             )
-            pos_new = self.correct_solution(pos_new)
+            pos_new = self._correct_solution(pos_new)
             tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
             tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
             stdevs = np.array(
@@ -102,12 +102,12 @@ cdef class LevyES(OriginalES):
                     for _ in range(self.problem.n_dims)
                 ]
             )
-            agent = self.generate_empty_agent(pos_new)
+            agent = self._generate_empty_agent(pos_new)
             agent.update(solution=pos_new, strategy=stdevs)
             child_levy.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                child_levy[-1].target = self.get_target(pos_new)
-        child_levy = self.update_target_for_population(child_levy)
-        self.pop = self.get_sorted_and_trimmed_population(
-            child + child_levy + self.pop, self.pop_size, self.problem.minmax
+                child_levy[-1].target = self._get_target(pos_new)
+        child_levy = self._update_target_for_population(child_levy)
+        self.pop = self._get_sorted_and_trimmed_population(
+            child + child_levy + self.pop, self.pop_size, self.problem.sense
         )

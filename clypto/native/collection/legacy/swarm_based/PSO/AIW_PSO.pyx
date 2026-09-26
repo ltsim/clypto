@@ -7,37 +7,17 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _AIW_PSOAgent(_LegacyAgent):
+cdef class _AIW_PSOAgent(LegacyAgent):
     cdef public object velocity
     cdef public object local_solution
     cdef public object local_target
-    def __init__(self, solution=None, target=None, velocity=None, local_solution=None, local_target=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.velocity = velocity
-        self.local_solution = local_solution
-        self.local_target = local_target
-    cpdef object copy(self):
-        return _AIW_PSOAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.velocity,
-            self.local_solution,
-            self.local_target,
-        )
-    def update(self, **kwargs):
-        if "velocity" in kwargs:
-            self.velocity = kwargs.pop("velocity")
-        if "local_solution" in kwargs:
-            self.local_solution = kwargs.pop("local_solution")
-        if "local_target" in kwargs:
-            self.local_target = kwargs.pop("local_target")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class AIW_PSO(_LegacyOptimizer):
+cdef class AIW_PSO(LegacyOptimizer):
     """
     The original version of: Adaptive Inertia Weight Particle Swarm Optimization (AIW-PSO)
 
@@ -49,15 +29,15 @@ cdef class AIW_PSO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import PSO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = PSO.AIW_PSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, alpha=0.4)
@@ -89,21 +69,20 @@ cdef class AIW_PSO(_LegacyOptimizer):
             c2: [0-2] global coefficient
             alpha: The positive constant, default = 0.4
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.c1 = self.validator.check_float("c1", c1, (0, 5.0))
         self.c2 = self.validator.check_float("c2", c2, (0, 5.0))
         self.alpha = self.validator.check_float("alpha", alpha, [0.0, 1.0])
-        self.set_parameters(["epoch", "pop_size", "c1", "c2", "alpha"])
+        self._set_parameters(["epoch", "pop_size", "c1", "c2", "alpha"])
         self.sort_flag = False
-        self.is_parallelizable = False
 
-    def initialize_variables(self):
-        self.v_max = 0.5 * (self.problem.ub - self.problem.lb)
+    def _initialize_variables(self):
+        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.v_min = -self.v_max
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None):
+    def _generate_empty_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.v_min, self.v_max)
@@ -112,27 +91,27 @@ cdef class AIW_PSO(_LegacyOptimizer):
             solution=solution, velocity=velocity, local_solution=local_pos
         )
 
-    def generate_agent(self, solution: np.ndarray | None = None):
-        agent = self.generate_empty_agent(solution)
-        agent.target = self.get_target(agent.solution)
+    def _generate_agent(self, solution: np.ndarray | None = None):
+        agent = self._generate_empty_agent(solution)
+        agent.target = self._get_target(agent.solution)
         agent.local_target = agent.target.copy()
         return agent
 
-    def amend_solution(self, solution: np.ndarray) -> np.ndarray:
+    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
-        pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub)
+        pos_rand = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, pos_rand)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        current_best = self.get_best_agent(self.pop, self.problem.minmax)
+        current_best = self._get_best_agent(self.pop, self.problem.sense)
         for idx in range(0, self.pop_size):
             denom = np.abs(self.pop[idx].local_solution - current_best.solution)
             denom = np.where(denom == 0, 1e-6, denom)
@@ -153,12 +132,12 @@ cdef class AIW_PSO(_LegacyOptimizer):
             velocity = w * self.pop[idx].velocity + cognitive + social
             self.pop[idx].velocity = np.clip(velocity, self.v_min, self.v_max)
             pos_new = self.pop[idx].solution + self.pop[idx].velocity
-            pos_new = self.correct_solution(pos_new)
-            target = self.get_target(pos_new)
-            if self.compare_target(target, self.pop[idx].target, self.problem.minmax):
+            pos_new = self._correct_solution(pos_new)
+            target = self._get_target(pos_new)
+            if self._compare_target(target, self.pop[idx].target, self.problem.sense):
                 self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self.compare_target(
-                target, self.pop[idx].local_target, self.problem.minmax
+            if self._compare_target(
+                target, self.pop[idx].local_target, self.problem.sense
             ):
                 self.pop[idx].update(
                     local_solution=pos_new.copy(), local_target=target.copy()

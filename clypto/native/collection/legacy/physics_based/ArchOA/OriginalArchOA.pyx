@@ -7,37 +7,17 @@
 
 import numpy as np
 
-from clypto.optimizer.native.agent cimport _LegacyAgent
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport LegacyAgent
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class _OriginalArchOAAgent(_LegacyAgent):
+cdef class _OriginalArchOAAgent(LegacyAgent):
     cdef public object den
     cdef public object vol
     cdef public object acc
-    def __init__(self, solution=None, target=None, den=None, vol=None, acc=None):
-        _LegacyAgent.__init__(self, solution, target)
-        self.den = den
-        self.vol = vol
-        self.acc = acc
-    cpdef object copy(self):
-        return _OriginalArchOAAgent(
-            self.solution, None if self.target is None else self.target.copy(),
-            self.den,
-            self.vol,
-            self.acc,
-        )
-    def update(self, **kwargs):
-        if "den" in kwargs:
-            self.den = kwargs.pop("den")
-        if "vol" in kwargs:
-            self.vol = kwargs.pop("vol")
-        if "acc" in kwargs:
-            self.acc = kwargs.pop("acc")
-        _LegacyAgent.update(self, **kwargs)
 
 
-cdef class OriginalArchOA(_LegacyOptimizer):
+cdef class OriginalArchOA(LegacyOptimizer):
     """
     The original version of: Archimedes Optimization Algorithm (ArchOA)
 
@@ -55,14 +35,14 @@ cdef class OriginalArchOA(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.physics_based import ArchOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -100,7 +80,7 @@ cdef class OriginalArchOA(_LegacyOptimizer):
             acc_max (float): acceleration max, Default 0.9
             acc_min (float): acceleration min, Default 0.1
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.c1 = self.validator.check_float("c1", c1, [1, 3])
@@ -109,26 +89,26 @@ cdef class OriginalArchOA(_LegacyOptimizer):
         self.c4 = self.validator.check_float("c4", c4, (0, 1.0))
         self.acc_max = self.validator.check_float("acc_max", acc_max, (0.3, 1.0))
         self.acc_min = self.validator.check_float("acc_min", acc_min, (0, 0.3))
-        self.set_parameters(
+        self._set_parameters(
             ["epoch", "pop_size", "c1", "c2", "c3", "c4", "acc_max", "acc_min"]
         )
         self.sort_flag = False
 
-    def generate_empty_agent(self, solution: np.ndarray | None = None) -> _LegacyAgent:
+    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
-        den = self.generator.uniform(self.problem.lb, self.problem.ub)  # Density
-        vol = self.generator.uniform(self.problem.lb, self.problem.ub)  # Volume
-        acc = self.problem.lb + self.generator.uniform(
-            self.problem.lb, self.problem.ub
+        den = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)  # Density
+        vol = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)  # Volume
+        acc = self.problem.bounds.low + self.generator.uniform(
+            self.problem.bounds.low, self.problem.bounds.up
         ) * (
-            self.problem.ub - self.problem.lb
+            self.problem.bounds.up - self.problem.bounds.low
         )  # Acceleration
         return _OriginalArchOAAgent(solution=solution, den=den, vol=vol, acc=acc)
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -201,15 +181,15 @@ cdef class OriginalArchOA(_LegacyOptimizer):
                     * ddf
                     * (t * self.g_best.solution - self.pop[idx].solution)
                 )
-            agent.solution = self.correct_solution(pos_new)
+            agent.solution = self._correct_solution(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self.get_target(pos_new)
-                self.pop[idx] = self.get_better_agent(
-                    agent, self.pop[idx], self.problem.minmax
+                agent.target = self._get_target(pos_new)
+                self.pop[idx] = self._get_better_agent(
+                    agent, self.pop[idx], self.problem.sense
                 )
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self.update_target_for_population(pop_new)
-            self.pop = self.greedy_selection_population(
-                self.pop, pop_new, self.problem.minmax
+            pop_new = self._update_target_for_population(pop_new)
+            self.pop = self._greedy_selection_population(
+                self.pop, pop_new, self.problem.sense
             )

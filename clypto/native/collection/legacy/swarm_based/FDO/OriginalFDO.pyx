@@ -6,10 +6,10 @@
 
 import numpy as np
 
-from clypto.optimizer.native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalFDO(_LegacyOptimizer):
+cdef class OriginalFDO(LegacyOptimizer):
     """
     The original version of: Fitness Dependent Optimizer (FDO)
 
@@ -23,14 +23,14 @@ cdef class OriginalFDO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.legacy.swarm_based import FDO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -58,17 +58,16 @@ cdef class OriginalFDO(_LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             weight_factor (float): factor to adjust the fitness weight calculation, default = 0.1
         """
-        _LegacyOptimizer.__init__(self, **kwargs)
+        LegacyOptimizer.__init__(self, **kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
         self.weight_factor = self.validator.check_float(
             "weight_factor", weight_factor, [0.0, 1.0]
         )
-        self.set_parameters(["epoch", "pop_size", "weight_factor"])
+        self._set_parameters(["epoch", "pop_size", "weight_factor"])
         self.sort_flag = False
-        self.is_parallelizable = False
 
-    def before_main_loop(self):
+    def _before_main_loop(self):
         self.pop_pace = [
                             0,
                         ] * self.pop_size
@@ -88,7 +87,7 @@ cdef class OriginalFDO(_LegacyOptimizer):
         if best_fit == 0:
             return 0
         else:
-            if self.problem.minmax == "min":
+            if self.problem.sense == "min":
                 if best_fit < (0.05 * current_fit):
                     return 0.2
                 else:
@@ -109,21 +108,21 @@ cdef class OriginalFDO(_LegacyOptimizer):
         Returns:
             np.ndarray: The position clipped to the problem bounds.
         """
-        levy = self.get_levy_flight_step(
+        levy = self._get_levy_flight_step(
             beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
         )
-        levy_up = self.problem.ub * np.abs(levy)
-        levy_lb = self.problem.lb * np.abs(levy)
+        levy_up = self.problem.bounds.up * np.abs(levy)
+        levy_lb = self.problem.bounds.low * np.abs(levy)
         pos_new = np.select(
-            [pos_new > self.problem.ub, pos_new < self.problem.lb],
+            [pos_new > self.problem.bounds.up, pos_new < self.problem.bounds.low],
             [levy_up, levy_lb],
             default=pos_new,
         )
         return pos_new
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         """
-        The main operations (equations) of algorithm. Inherit from _LegacyOptimizer class
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
@@ -136,7 +135,7 @@ cdef class OriginalFDO(_LegacyOptimizer):
                 self.weight_factor,
             )
             dist = self.g_best.solution - self.pop[idx].solution
-            levy = self.get_levy_flight_step(
+            levy = self._get_levy_flight_step(
                 beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
             )
             if fw == 1:
@@ -148,11 +147,11 @@ cdef class OriginalFDO(_LegacyOptimizer):
             self.pop_pace[idx] = pace
             pos_new = self.pop[idx].solution + pace
             pos_new = self.get_into_levy_bound(pos_new)
-            pos_new = self.correct_solution(pos_new)
-            agent = self.generate_agent(pos_new)
+            pos_new = self._correct_solution(pos_new)
+            agent = self._generate_agent(pos_new)
             # Check if new position is better
-            if self.compare_target(
-                    agent.target, self.pop[idx].target, self.problem.minmax
+            if self._compare_target(
+                    agent.target, self.pop[idx].target, self.problem.sense
             ):
                 self.pop[idx] = agent
             else:
@@ -160,22 +159,22 @@ cdef class OriginalFDO(_LegacyOptimizer):
                 dist = self.g_best.solution - pos_new
                 pos_new = pos_new + (dist * fw) + self.pop_pace[idx]
                 pos_new = self.get_into_levy_bound(pos_new)
-                pos_new = self.correct_solution(pos_new)
-                agent = self.generate_agent(pos_new)
-                if self.compare_target(
-                        agent.target, self.pop[idx].target, self.problem.minmax
+                pos_new = self._correct_solution(pos_new)
+                agent = self._generate_agent(pos_new)
+                if self._compare_target(
+                        agent.target, self.pop[idx].target, self.problem.sense
                 ):
                     self.pop[idx] = agent
                 else:
                     # Third update strategy
-                    levy = self.get_levy_flight_step(
+                    levy = self._get_levy_flight_step(
                         beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
                     )
                     pos_new = self.pop[idx].solution + self.pop[idx].solution * levy
                     pos_new = self.get_into_levy_bound(pos_new)
-                    pos_new = self.correct_solution(pos_new)
-                    agent = self.generate_agent(pos_new)
-                    if self.compare_target(
-                            agent.target, self.pop[idx].target, self.problem.minmax
+                    pos_new = self._correct_solution(pos_new)
+                    agent = self._generate_agent(pos_new)
+                    if self._compare_target(
+                            agent.target, self.pop[idx].target, self.problem.sense
                     ):
                         self.pop[idx] = agent

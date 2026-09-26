@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class DevSSA(LegacyNativeOptimizer):
+cdef class DevSSA(VectorizeOptimizer):
     """
     The developed version: Sparrow Search Algorithm (SSA)
 
@@ -27,14 +27,14 @@ cdef class DevSSA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import SSA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -69,11 +69,10 @@ cdef class DevSSA(LegacyNativeOptimizer):
             PD (float): number of producers (percentage), default = 0.2
             SD (float): number of sparrows who perceive the danger, default = 0.1
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "ST", "PD", "SD"],
             sort_flag=True,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -85,14 +84,14 @@ cdef class DevSSA(LegacyNativeOptimizer):
         self.n1 = int(self.PD * self.pop_size)
         self.n2 = int(self.SD * self.pop_size)
 
-    cdef object amend_solution(self, object solution):
+    cdef object _amend_solution(self, object solution):
         condition = np.logical_and(
-            self.problem.lb <= solution, solution <= self.problem.ub
+            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
-        pos_rand = self.generator.uniform(self.problem.lb, self.problem.ub, size=np.shape(solution))
+        pos_rand = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, size=np.shape(solution))
         return np.where(condition, solution, pos_rand)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
@@ -101,7 +100,7 @@ cdef class DevSSA(LegacyNativeOptimizer):
         r2 = rng.uniform()  # R2 in [0, 1], the alarm value
         best_x = np.array(X[ops.best_row(self, self.pop)])
         F = np.asarray(pop.F)
-        worst_x = np.array(X[int(F.argmax() if self.problem.minmax == "min" else F.argmin())])
+        worst_x = np.array(X[int(F.argmax() if self.problem.sense == "min" else F.argmin())])
         # producers (the first n1 sparrows) and scroungers
         des = epoch_c / (rng.uniform(size=(n, 1)) * self.epoch + self.EPSILON)
         des = np.where(des > 5, rng.normal(size=(n, 1)), des)

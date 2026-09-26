@@ -7,11 +7,11 @@
 import numpy as np
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 
 
-cdef class OriginalAVOA(LegacyNativeOptimizer):
+cdef class OriginalAVOA(VectorizeOptimizer):
     """
     The original version of: African Vultures Optimization Algorithm (AVOA)
 
@@ -29,15 +29,15 @@ cdef class OriginalAVOA(LegacyNativeOptimizer):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.swarm_based import AVOA    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
     >>>     "obj_func": objective_function,
-    >>>     "minmax": "min",
+    >>>     "sense": "min",
     >>> }
     >>>
     >>> model = AVOA.OriginalAVOA(epoch=1000, pop_size=50, p1=0.6, p2=0.4, p3=0.6, alpha=0.8, gama=2.5)
@@ -75,11 +75,10 @@ cdef class OriginalAVOA(LegacyNativeOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyNativeOptimizer.__init__(
+        VectorizeOptimizer.__init__(
             self,
             parameters=["epoch", "pop_size", "p1", "p2", "p3", "alpha", "gama"],
             sort_flag=False,
-            parallelizable=True,
             name=name,
             mode=mode,
         )
@@ -91,13 +90,13 @@ cdef class OriginalAVOA(LegacyNativeOptimizer):
         self.alpha = cy.validator(float, alpha, (0, 1), "alpha")
         self.gama = cy.validator(float, gama, (0, 5.0), "gama")
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         a = rng.uniform(-2, 2) * ((np.sin((np.pi / 2) * (epoch / self.epoch)) ** self.gama) + np.cos((np.pi / 2) * (epoch / self.epoch)) - 1)
         ppp = (2 * rng.random() + 1) * (1 - epoch / self.epoch) + a
         order = self.sorted_order(pop)
@@ -112,7 +111,7 @@ cdef class OriginalAVOA(LegacyNativeOptimizer):
         # exploitation, phase 1 (|F| < 0.5)
         A = best[0] - ((best[0] * X) / (best[0] - X ** 2 + self.EPSILON)) * F
         B = best[1] - ((best[1] * X) / (best[1] - X ** 2 + self.EPSILON)) * F
-        levy = self.get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, X.shape[1]), case=-1)
+        levy = self._get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, X.shape[1]), case=-1)
         phase1 = np.where(R[:, 4] < self.p2, (A + B) / 2, rand_pos - np.abs(rand_pos - X) * F * levy)
         # exploitation, phase 2 (0.5 <= |F| < 1)
         s = rand_pos * (R[:, 6] * X / (2 * np.pi))

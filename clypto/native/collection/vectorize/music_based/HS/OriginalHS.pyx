@@ -7,7 +7,7 @@
 from clypto.native.collection.vectorize.music_based.HS.DevHS cimport DevHS
 from clypto.optimizer.native cimport utils as cy
 from clypto.optimizer.native import ops
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 import numpy as np
 
@@ -26,14 +26,14 @@ cdef class OriginalHS(DevHS):
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.music_based import HS    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> problem_dict = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="delta"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function
     >>> }
     >>>
@@ -67,21 +67,21 @@ cdef class OriginalHS(DevHS):
         """
         super().__init__(epoch, pop_size, c_r, pa_r, name=name, mode=mode)
 
-    cdef void evolve(self, int epoch_c):
+    def _evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
-        lb, ub = self.problem.lb, self.problem.ub
+        lb, ub = self.problem.bounds.low, self.problem.bounds.up
         mean = (lb + ub) / 2
         std_dev = abs(ub - lb) / 6  # This assumes a range of +/- 3 standard deviations
         pos = rng.uniform(lb, ub, (n, d))
         pos = np.where(rng.uniform(size=(n, d)) <= self.c_r, X[rng.integers(0, n, size=(n, d)), np.arange(d)[None, :]], pos)
         pos = np.where(rng.uniform(size=(n, d)) <= self.pa_r, pos + self.dyn_fw * rng.normal(mean, std_dev, (n, d)), pos)
         cand = pop.empty_like()
-        cand.X[:] = self.correct_solution(pos)
+        cand.X[:] = self._correct_solution(pos)
         self.evaluate(cand, 0, n)
         self.dyn_fw = self.dyn_fw * self.fw_damp
         merged = pop.concat(cand)
