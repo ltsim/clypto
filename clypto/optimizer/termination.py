@@ -33,14 +33,14 @@ class Termination:
     Examples
     ~~~~~~~~
     >>> from clypto.native.collection.vectorize.bio_based import BBO    >>> import numpy as np
-    >>> from clypto import FloatVar
+    >>> from clypto import NumberBounds
     >>>
     >>> def objective_function(solution):
     >>>     return np.sum(solution**2)
     >>>
     >>> p1 = {
-    >>>     "bounds": FloatVar(lb=(-10.,) * 30, ub=(10.,) * 30, name="C-params"),
-    >>>     "minmax": "min",
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="C-params"),
+    >>>     "sense": "min",
     >>>     "obj_func": objective_function,
     >>>     "name": "Test Function"
     >>> }

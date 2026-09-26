@@ -1,9 +1,5 @@
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 
 
-cdef class AgentListOptimizer(LegacyNativeOptimizer):
+cdef class AgentListOptimizer(VectorizeOptimizer):
     cdef public object objs
-
-    cdef void initialization(self)
-    cdef void after_initialization(self)
-    cdef void evolve(self, int epoch)

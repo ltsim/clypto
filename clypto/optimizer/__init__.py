@@ -9,23 +9,20 @@ from clypto.optimizer.precompile import (
     precompile,
 )
 from clypto.optimizer.agents import Attribute, LegacyAgent, RuntimeAgent, agent
-from clypto.optimizer.history import Tracker
-from clypto.optimizer.legacy import LegacyOptimizer
-from clypto.optimizer.population import Population
-from clypto.optimizer.problem import Problem
-from clypto.optimizer.space import (
-    BinaryVar,
-    BoolVar,
-    CategoricalVar,
-    FloatVar,
-    IntegerVar,
-    PermutationVar,
-    SequenceVar,
-    StringVar,
-    TransferBinaryVar,
-    TransferBoolVar,
+from clypto.optimizer.bounds import (
+    BaseBounds,
+    Bounds,
+    NumberBounds,
+    PermutationBounds,
+    SequenceBounds,
+    StringBounds,
+    TransferBounds,
 )
-from clypto.optimizer.target import Target
+from clypto.optimizer.history import Tracker
+from clypto.optimizer.native.legacy import LegacyOptimizer
+from clypto.optimizer.native.population import Population
+from clypto.optimizer.native.problem import Problem
+from clypto.optimizer.native.target import NativeTarget as Target
 from clypto.optimizer.termination import Termination
 from clypto.optimizer.validator import Validator
 
@@ -34,25 +31,22 @@ Optimizer = LegacyOptimizer
 __all__ = [
     "Argument",
     "Attribute",
-    "BinaryVar",
-    "BoolVar",
-    "CategoricalVar",
+    "BaseBounds",
+    "Bounds",
     "DecoratedOptimizer",
-    "FloatVar",
-    "IntegerVar",
     "LegacyAgent",
     "LegacyOptimizer",
+    "NumberBounds",
     "Optimizer",
-    "PermutationVar",
+    "PermutationBounds",
     "Population",
     "Problem",
     "RuntimeAgent",
-    "SequenceVar",
-    "StringVar",
+    "SequenceBounds",
+    "StringBounds",
     "Target",
     "Termination",
-    "TransferBinaryVar",
-    "TransferBoolVar",
+    "TransferBounds",
     "Tracker",
     "Validator",
     "agent",

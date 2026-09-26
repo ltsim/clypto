@@ -4,7 +4,7 @@ import inspect
 import sys
 import textwrap
 
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer.native.legacy import LegacyOptimizer
 from clypto.optimizer.precompile import _runtime, _builder
 
 __all__ = ["precompile", "compile_decorated", "is_precompiling"]

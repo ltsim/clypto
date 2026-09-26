@@ -13,7 +13,7 @@ import typing
 
 import numpy as np
 from clypto.hints.array import NDArrayType
-from clypto.optimizer.target import Target
+from clypto.optimizer.native.target import NativeTarget as Target
 
 __all__ = ["RuntimeAgent"]
 
@@ -26,7 +26,6 @@ class RuntimeAgent:
     carry arbitrary declared attributes.
     """
 
-    id: typing.Optional[int]
     _solution: typing.Optional[NDArrayType]
     _target: typing.Optional[Target]
     _evaluator: typing.Optional[typing.Callable[[NDArrayType], Target]]
@@ -37,7 +36,6 @@ class RuntimeAgent:
         target: typing.Optional[Target] = None,
         **attributes: typing.Any,
     ) -> None:
-        object.__setattr__(self, "id", None)
         object.__setattr__(self, "_solution", None)
         object.__setattr__(self, "_target", target)
         object.__setattr__(self, "_evaluator", None)
@@ -77,7 +75,6 @@ class RuntimeAgent:
             self._solution,
             self._target.copy() if self._target is not None else None,
         )
-        new.id = self.id
         object.__setattr__(new, "_evaluator", self._evaluator)
 
         for name in getattr(type(self), "_attributes", {}):

@@ -1,49 +1,52 @@
-"""Native ``Problem`` used by the Cython collection (see ``clypto.optimizer.problem``)."""
+"""The optimization problem: an objective over a :class:`Bounds` search space."""
 import numbers
 
 import numpy as np
+from cython.parallel cimport prange
 
-from clypto.optimizer.problem import Problem
-from clypto.optimizer.space import BaseVar, FloatVar
+from clypto.optimizer.bounds import Bounds
+from clypto.optimizer.native.nogil cimport _NogilEvaluator
 
 cdef tuple SUPPORTED_ARRAYS = (list, tuple, np.ndarray)
 
 
-cdef class NativeProblem:
-    def __init__(self, bounds, minmax="min", obj_func=None, name="Problem",
-                 evaluator=None, obj_weights=None, vectorized=False):
+cdef class Problem:
+    """``Problem(bounds, sense="min", obj_func=f)``.
+
+    ``bounds`` is a :class:`Bounds`, one block or a list of blocks.
+    ``vectorized=True``: ``obj_func`` takes an ``(n, n_dims)`` matrix and returns
+    ``(n,)`` or ``(n, n_objs)``. ``evaluator`` is an optional nogil batch
+    evaluator used by ``evaluate(X, parallel=True)``. ``obj_weights`` turn
+    several objectives into one fitness (default: all ones).
+    """
+
+    def __init__(self, bounds, sense="min", obj_func=None, name="Problem",
+                 evaluator=None, obj_weights=None, vectorized=False, seed=None):
+        if sense not in ("min", "max"):
+            raise ValueError(f'sense must be "min" or "max", got {sense!r}.')
+        self.bounds = bounds if isinstance(bounds, Bounds) else Bounds(bounds)
+        self.sense = sense
         self._obj_func = (lambda _: 0) if obj_func is None else obj_func
-        self._name = name
+        self.name = name
         self.evaluator = evaluator
-        self.vectorized = vectorized
-        self.minmax = minmax
-        self._seed = None
         self._obj_weights = obj_weights
+        self.vectorized = vectorized
         self._n_objs = -1
-        self.set_bounds(bounds)
+        self.seed = seed
 
     @staticmethod
-    def coerce(problem):
-        """Return ``problem`` as a ``NativeProblem`` (accepts a dict or a ``Problem``)."""
-        if isinstance(problem, NativeProblem):
-            return problem
-        if isinstance(problem, Problem):
-            # Bind the instance's obj_func so a Problem subclass override still runs;
-            # a vectorized problem needs the raw batch function instead of the
-            # single-row wrapper that Problem.obj_func applies.
-            obj_func = problem._Problem__obj_func if problem.vectorized else problem.obj_func
-            return NativeProblem(
-                problem.bounds, problem.minmax, obj_func,
-                problem.get_name(), problem.evaluator, None, problem.vectorized,
-            )
+    def coerce(problem, seed=None):
+        """``problem`` (a ``Problem`` or the dict of its arguments) seeded with ``seed``."""
         if type(problem) is dict:
-            # Like Problem(**dict): unknown keys (e.g. "seed") are ignored.
-            return NativeProblem(
-                problem["bounds"], problem.get("minmax", "min"), problem.get("obj_func"),
-                problem.get("name", "Problem"), problem.get("evaluator"),
-                None, problem.get("vectorized", False),
-            )
-        raise ValueError("problem needs to be a dict or an instance of Problem class.")
+            return Problem(**{**problem, "seed": seed})
+        if not isinstance(problem, Problem):
+            raise ValueError("problem needs to be a dict or an instance of Problem class.")
+        problem.seed = seed
+        return problem
+
+    @property
+    def n_dims(self):
+        return self.bounds.n_dims
 
     @property
     def seed(self):
@@ -52,17 +55,18 @@ cdef class NativeProblem:
     @seed.setter
     def seed(self, seed):
         self._seed = seed
-        for var in self.bounds:
-            var.seed = seed
+        self.bounds.seed = seed
 
     @property
     def obj_weights(self):
+        """The objective weights (materialized by the first ``n_objs`` access)."""
         if self._n_objs < 0:
             _ = self.n_objs
         return self._obj_weights
 
     @property
     def n_objs(self):
+        """Number of objectives; the first access evaluates one random solution."""
         if self._n_objs < 0:
             result = self.obj_func(self.generate_solution(True))
             if isinstance(result, SUPPORTED_ARRAYS):
@@ -80,60 +84,62 @@ cdef class NativeProblem:
                 )
         return self._n_objs
 
-    def set_bounds(self, bounds):
-        if isinstance(bounds, BaseVar):
-            bounds = [bounds]
-        elif type(bounds) not in SUPPORTED_ARRAYS:
-            raise TypeError(
-                f"Invalid bounds. It should be type of {SUPPORTED_ARRAYS} or an instance of BaseVar"
-            )
-        for var in bounds:
-            if not isinstance(var, BaseVar):
-                raise ValueError("Invalid bounds. All variables in bounds should be a BaseVar.")
-            var.seed = self._seed
-        self.bounds = list(bounds)
-        self.lb = np.concatenate([var.lb for var in self.bounds])
-        self.ub = np.concatenate([var.ub for var in self.bounds])
-        self.n_dims = len(self.lb)
-        self._all_float = all(type(var) is FloatVar for var in self.bounds)
-
-    def get_name(self):
-        return self._name
-
     cpdef object obj_func(self, object x):
         if self.vectorized:
             return self._obj_func(np.asarray(x)[None, :])[0]
         return self._obj_func(x)
 
-    def encode_solution(self, x):
-        return Problem.encode_solution_with_bounds(x, self.bounds)
+    def encode_solution(self, values):
+        return self.bounds.encode(values)
 
     def decode_solution(self, x):
-        return Problem.decode_solution_with_bounds(x, self.bounds)
+        return self.bounds.decode(x)
 
     cpdef object correct_solution(self, object x):
-        cdef list x_new = []
-        cdef Py_ssize_t n_vars = 0
-        for var in self.bounds:
-            x_new += list(var.correct(x[n_vars : n_vars + var.n_vars]))
-            n_vars += var.n_vars
-        return np.array(x_new)
-
-    cpdef object correct_solutions(self, object X):
-        """``correct_solution`` for one row or, row by row, an ``(n, n_dims)`` matrix."""
-        cdef Py_ssize_t i
-        if self._all_float:
-            # FloatVar.correct is np.clip, which is element-wise: same values as per row.
-            return np.clip(X, self.lb, self.ub)
-        if np.ndim(X) == 1:
-            return self.correct_solution(X)
-        return np.array([self.correct_solution(X[i]) for i in range(X.shape[0])])
+        """A valid solution, or ``(n, n_dims)`` matrix of them."""
+        return self.bounds.correct(x)
 
     cpdef object generate_solution(self, bint encoded=True):
-        x = [var.generate() for var in self.bounds]
         if encoded:
-            return Problem.encode_solution_with_bounds(x, self.bounds)
-        return x
+            return self.bounds.generate()
+        return [block.generate() for block in self.bounds.blocks]
 
     cpdef NativeTarget get_target(self, object solution):
         return NativeTarget(self.obj_func(solution), self._obj_weights)
+
+    cpdef object fitness(self, object objectives):
+        """Fitness of each ``(k, n_objs)`` objective row, computed like a ``Target``."""
+        cdef Py_ssize_t i, k = objectives.shape[0], m = objectives.shape[1]
+        w = self._obj_weights
+        fw = (1.0,) * m if w is None else np.array(w).flatten()
+        if len(fw) != m:
+            fw = (1.0,) * m
+        if m == 1:
+            return objectives[:, 0] * fw[0]
+        return np.array([np.dot(fw, objectives[i]) for i in range(k)])
+
+    cpdef tuple evaluate(self, object X, bint parallel=False):
+        """``(fitness, objectives)`` of every row of ``X``: ``(k,)`` and ``(k, n_objs)``.
+
+        ``parallel=True`` with a nogil ``evaluator`` (single objective) runs the rows
+        on OpenMP threads; otherwise ``obj_func`` is called once per row, or once
+        for the whole matrix when the problem is ``vectorized``.
+        """
+        cdef _NogilEvaluator evaluator
+        cdef double[:, ::1] Xv
+        cdef double[:, ::1] Ov
+        cdef Py_ssize_t i, k = X.shape[0], d
+        if parallel and self.evaluator is not None and self.n_objs == 1:
+            evaluator = <_NogilEvaluator>self.evaluator
+            Xv = np.ascontiguousarray(X, dtype=np.float64)
+            O = np.empty((k, 1))
+            Ov = O
+            d = Xv.shape[1]
+            with nogil:
+                for i in prange(k, schedule="static"):
+                    evaluator.row(&Xv[i, 0], d, &Ov[i, 0])
+        elif self.vectorized:
+            O = np.asarray(self._obj_func(X), dtype=float).reshape(k, -1)
+        else:
+            O = np.array([np.array(self.obj_func(X[i])).flatten() for i in range(k)], dtype=float)
+        return self.fitness(O), O

@@ -20,7 +20,7 @@ import typing
 
 from clypto.optimizer.agents.runtime import RuntimeAgent
 from clypto.optimizer.agents.declaration import Attribute
-from clypto.optimizer.legacy import LegacyOptimizer
+from clypto.optimizer.native.legacy import LegacyOptimizer
 from clypto.optimizer.precompile.declaration import Argument
 from clypto.optimizer.precompile.base import DecoratedOptimizer
 from clypto.optimizer.precompile.decoration import (

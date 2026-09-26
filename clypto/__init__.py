@@ -14,29 +14,28 @@ import pkgutil
 from clypto.optimizer import (
     Argument,
     Attribute,
-    BinaryVar,
-    BoolVar,
-    CategoricalVar,
+    BaseBounds,
+    Bounds,
     DecoratedOptimizer,
-    FloatVar,
-    IntegerVar,
+    LegacyAgent,
     LegacyOptimizer,
+    NumberBounds,
     Optimizer,
-    PermutationVar,
+    PermutationBounds,
     Population,
     Problem,
     RuntimeAgent,
-    SequenceVar,
-    StringVar,
+    SequenceBounds,
+    StringBounds,
+    Target,
     Termination,
-    TransferBinaryVar,
-    TransferBoolVar,
+    TransferBounds,
     agent,
     legacy,
     optimizer,
 )
-from clypto.optimizer.native.legacy import _LegacyOptimizer
-from clypto.optimizer.native.optimizer import LegacyNativeOptimizer
+from clypto.optimizer.native.optimizer import NativeOptimizer
+from clypto.optimizer.native.vectorize import VectorizeOptimizer
 
 ENGINES = ("vectorize", "legacy")
 
@@ -61,8 +60,8 @@ def _optimizer_classes(module):
         if (
                 inspect.isclass(cls_obj)
                 and not cls_name.startswith("_")
-                and issubclass(cls_obj, (_LegacyOptimizer, LegacyNativeOptimizer))
-                and cls_obj is not Optimizer
+                and issubclass(cls_obj, NativeOptimizer)
+                and cls_obj not in (LegacyOptimizer, VectorizeOptimizer)
         ):
             yield cls_name, cls_obj
 
@@ -142,18 +141,9 @@ def get_optimizer_by_name(name: str, verbose=False, *, engine="vectorize"):
 
 
 __all__ = [
-    "Problem", "Optimizer", "LegacyOptimizer",
-    "agent", "optimizer", "legacy", "Attribute", "Argument", "Population",
+    "Problem", "Optimizer", "NativeOptimizer", "LegacyOptimizer", "VectorizeOptimizer",
+    "agent", "optimizer", "legacy", "Attribute", "Argument", "Population", "LegacyAgent", "Target", "Termination",
     "DecoratedOptimizer", "RuntimeAgent",
     "get_all_optimizers", "get_optimizer_by_name", "get_optimizer_by_class",
-    "IntegerVar",
-    "FloatVar",
-    "StringVar",
-    "BinaryVar",
-    "BoolVar",
-    "CategoricalVar",
-    "SequenceVar",
-    "PermutationVar",
-    "TransferBinaryVar",
-    "TransferBoolVar",
+    "Bounds", "BaseBounds", "NumberBounds", "TransferBounds", "StringBounds", "SequenceBounds", "PermutationBounds",
 ]

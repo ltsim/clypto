@@ -1,6 +1,8 @@
-"""Structure-of-arrays population for the native collection.
+"""Populations: ``Population`` (a sequence of agent objects) and ``NativePopulation``.
 
-Every agent is one row of a single C-contiguous ``float64`` buffer::
+``Population`` is the legacy engine's ``self.pop`` and the decorator API's
+``self.population``. ``NativePopulation`` is the vectorize engine's buffer:
+every agent is one row of a single C-contiguous ``float64`` buffer::
 
     [ F | O (m) | X (d) | algorithm fields ... ]
 
@@ -8,9 +10,122 @@ Algorithm fields are declared as ``(name, width)`` pairs (e.g. PSO's velocity,
 personal best and its objectives/fitness) and live in the same row, so copying
 an agent is copying a row and sorting is one fancy-index.
 """
+from collections.abc import MutableSequence
+from typing import Generic, TypeVar
+
 import numpy as np
 
 from cython.parallel cimport prange
+
+AgentT = TypeVar("AgentT")
+
+
+class Population(MutableSequence, Generic[AgentT]):
+    """Ordered, mutable sequence of agents ranked by ``sense`` (``"min"``/``"max"``).
+
+    ``Population[MyAgent](agents, sense="max")``; slices and ``+`` give new
+    populations. ``fitness``/``solutions`` are arrays built from the agents;
+    assigning ``solutions`` writes each row back to its agent.
+    """
+
+    def __init__(self, agents=(), sense="min"):
+        # A list is wrapped, not copied, so code holding the list sees the same agents.
+        self._agents = agents if type(agents) is list else list(agents)
+        self.sense = sense
+        self.idx = None  # set by sort(): positions of the ranked agents in the source
+
+    # -- sequence protocol -------------------------------------------------------
+    def __len__(self):
+        return len(self._agents)
+
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            return Population(self._agents[index], self.sense)
+        return self._agents[index]
+
+    def __setitem__(self, index, value):
+        self._agents[index] = value
+
+    def __delitem__(self, index):
+        del self._agents[index]
+
+    def insert(self, index, agent):
+        self._agents.insert(index, agent)
+
+    def __iter__(self):
+        return iter(self._agents)
+
+    def __add__(self, other):
+        return Population(self._agents + list(other), self.sense)
+
+    def __radd__(self, other):
+        return Population(list(other) + self._agents, self.sense)
+
+    def __repr__(self):
+        return f"Population(sense={self.sense!r}, {self._agents!r})"
+
+    def popleft(self):
+        return self._agents.pop(0)
+
+    def copy(self):
+        """Shallow copy: the same agent objects."""
+        return Population(list(self._agents), self.sense)
+
+    def duplicate(self):
+        """Deep copy: a copy of every agent."""
+        return Population([agent.copy() for agent in self._agents], self.sense)
+
+    # -- arrays ------------------------------------------------------------------
+    @property
+    def fitness(self):
+        """``(n,)`` fitness of every agent."""
+        return np.array([agent.target.fitness for agent in self._agents], dtype=float)
+
+    @property
+    def solutions(self):
+        """``(n, n_dims)`` solution matrix."""
+        return np.array([agent.solution for agent in self._agents], dtype=float)
+
+    @solutions.setter
+    def solutions(self, values):
+        values = np.atleast_2d(np.asarray(values, dtype=float))
+        if values.shape[0] != len(self._agents):
+            raise ValueError(f"Expected {len(self._agents)} solutions, got {values.shape[0]}.")
+        for agent, row in zip(self._agents, values):
+            agent.solution = row
+
+    # -- ranking -----------------------------------------------------------------
+    def argsort(self):
+        """Positions best first (``np.argsort`` of the fitness, reversed when maximizing)."""
+        order = np.argsort(self.fitness).tolist()
+        return order[::-1] if self.sense == "max" else order
+
+    def sort(self):
+        """New population, best first; ``.idx`` holds the source positions."""
+        order = self.argsort()
+        ranked = Population([self._agents[i] for i in order], self.sense)
+        ranked.idx = order
+        return ranked
+
+    @property
+    def best(self):
+        fitness = self.fitness
+        return self._agents[int(np.argmax(fitness) if self.sense == "max" else np.argmin(fitness))]
+
+    @property
+    def worst(self):
+        fitness = self.fitness
+        return self._agents[int(np.argmin(fitness) if self.sense == "max" else np.argmax(fitness))]
+
+    def greedy(self, candidates):
+        """Per position, the candidate when strictly better, else the current agent."""
+        if len(candidates) != len(self._agents):
+            raise ValueError("Greedy selection of two population with different length.")
+        if self.sense == "max":
+            agents = [new if new.target.fitness > old.target.fitness else old for old, new in zip(self._agents, candidates)]
+        else:
+            agents = [new if new.target.fitness < old.target.fitness else old for old, new in zip(self._agents, candidates)]
+        return Population(agents, self.sense)
 
 # Rows x columns below which OpenMP threads cost more than they save.
 cdef Py_ssize_t PARALLEL_MIN_WORK = 20000

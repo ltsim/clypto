@@ -1,4 +1,4 @@
-"""Native ``Target`` used by the Cython collection (see ``clypto.optimizer.target``)."""
+"""``Target``: the objectives of a solution and their weighted fitness (exported as ``clypto.Target``)."""
 import numbers
 
 import numpy as np

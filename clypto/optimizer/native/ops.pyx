@@ -2,26 +2,26 @@
 import numpy as np
 
 from clypto.optimizer.native.agent cimport LegacyNativeAgent
-from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.optimizer.native.target cimport NativeTarget
 
 
-def accept(LegacyNativeOptimizer opt, NativePopulation cand, Py_ssize_t start=0, Py_ssize_t stop=-1,
+def accept(VectorizeOptimizer opt, NativePopulation cand, Py_ssize_t start=0, Py_ssize_t stop=-1,
            NativePopulation dst=None, bint old_first=False):
     """Row-wise survivor selection of ``cand`` into ``dst`` (default ``opt.pop``) over rows ``[start, stop)``.
 
-    Sequential mode (``mode=None``) reproduces ``get_better_agent(new, old)``: min ``new < old``,
-    max ``not (new < old)``. ``swarm``/``parallel`` modes reproduce ``greedy_selection_population``:
+    Sequential mode (``mode=None``) reproduces ``_get_better_agent(new, old)``: min ``new < old``,
+    max ``not (new < old)``. ``swarm``/``parallel`` modes reproduce ``_greedy_selection_population``:
     min ``new < old``, max ``new > old``. Whole rows (fitness, objectives, position, fields) are copied.
-    ``old_first`` is ``get_better_agent(old, new)``: min ``not (old < new)``, max ``old < new``.
+    ``old_first`` is ``_get_better_agent(old, new)``: min ``not (old < new)``, max ``old < new``.
     """
     cdef NativePopulation pop = opt.pop if dst is None else dst
     if stop < 0:
         stop = pop.n
     new = cand.buf[start:stop, cand.cF]
     old = pop.buf[start:stop, pop.cF]
-    minimize = opt.problem.minmax == "min"
+    minimize = opt.problem.sense == "min"
     if opt.mode in opt.AVAILABLE_MODES:
         better = new < old if minimize else new > old
     elif old_first:
@@ -50,12 +50,12 @@ def set_row(NativePopulation pop, Py_ssize_t i, object x, NativeTarget target):
     _write(pop, i, x, target)
 
 
-def commit(LegacyNativeOptimizer opt, NativePopulation pop, NativePopulation cand, Py_ssize_t idx, object x, bint swarm,
+def commit(VectorizeOptimizer opt, NativePopulation pop, NativePopulation cand, Py_ssize_t idx, object x, bint swarm,
            bint old_first=False):
     """One agent of a loop that reads the rows updated before it.
 
     Sequential mode (``swarm`` false): evaluate ``x`` and replace row ``idx`` when it is better
-    (``get_better_agent(new, old)``). ``swarm``/``parallel`` modes: only store ``x`` in ``cand``;
+    (``_get_better_agent(new, old)``). ``swarm``/``parallel`` modes: only store ``x`` in ``cand``;
     call :func:`finish` after the loop to evaluate the block and apply the greedy selection.
     """
     cdef NativeTarget target
@@ -64,10 +64,10 @@ def commit(LegacyNativeOptimizer opt, NativePopulation pop, NativePopulation can
     if swarm:
         cand.buf[idx, cand.cX:cand.cX + cand.d] = x
         return
-    target = opt.get_target(x)
+    target = opt._get_target(x)
     old = pop.view[idx, pop.cF]
     new = target.fitness
-    minimize = opt.problem.minmax == "min"
+    minimize = opt.problem.sense == "min"
     if old_first:  # get_better_agent(old, new)
         better = not (old < new) if minimize else old < new
     else:
@@ -76,21 +76,21 @@ def commit(LegacyNativeOptimizer opt, NativePopulation pop, NativePopulation can
         _write(pop, idx, x, target)
 
 
-def finish(LegacyNativeOptimizer opt, NativePopulation cand, Py_ssize_t start, Py_ssize_t stop):
+def finish(VectorizeOptimizer opt, NativePopulation cand, Py_ssize_t start, Py_ssize_t stop):
     """Batched evaluation of ``cand[start:stop]`` and greedy selection (``swarm``/``parallel`` modes)."""
     opt.evaluate(cand, start, stop)
     accept(opt, cand, start, stop)
 
 
-def greedy(LegacyNativeOptimizer opt, NativePopulation cand, Py_ssize_t start=0, Py_ssize_t stop=-1,
+def greedy(VectorizeOptimizer opt, NativePopulation cand, Py_ssize_t start=0, Py_ssize_t stop=-1,
            NativePopulation dst=None):
-    """``greedy_selection_population(old, new)`` in every mode: min ``new < old``, max ``new > old``."""
+    """``_greedy_selection_population(old, new)`` in every mode: min ``new < old``, max ``new > old``."""
     cdef NativePopulation pop = opt.pop if dst is None else dst
     if stop < 0:
         stop = pop.n
     new = cand.buf[start:stop, cand.cF]
     old = pop.buf[start:stop, pop.cF]
-    better = new < old if opt.problem.minmax == "min" else new > old
+    better = new < old if opt.problem.sense == "min" else new > old
     rows = start + np.flatnonzero(better)
     pop.buf[rows] = cand.buf[rows]
 
@@ -110,45 +110,45 @@ def population_of(NativePopulation template, agents):
     return pop
 
 
-def better_agent(LegacyNativeOptimizer opt, x, y):
-    """``get_better_agent(x, y)``: a copy of the winner (ties go to ``y`` for min, ``x`` for max)."""
-    if opt.problem.minmax == "min":
+def better_agent(VectorizeOptimizer opt, x, y):
+    """``_get_better_agent(x, y)``: a copy of the winner (ties go to ``y`` for min, ``x`` for max)."""
+    if opt.problem.sense == "min":
         return x.copy() if x.target.fitness < y.target.fitness else y.copy()
     return y.copy() if x.target.fitness < y.target.fitness else x.copy()
 
 
-def sorted_agents(LegacyNativeOptimizer opt, agents):
+def sorted_agents(VectorizeOptimizer opt, agents):
     """``get_sorted_population``: best first, the classic argsort order."""
     order = np.argsort([agent.target.fitness for agent in agents]).tolist()
-    if opt.problem.minmax == "max":
+    if opt.problem.sense == "max":
         order = order[::-1]
     return [agents[i] for i in order]
 
 
-def update_targets(LegacyNativeOptimizer opt, agents):
+def update_targets(VectorizeOptimizer opt, agents):
     """``update_target_for_population``: swarm/parallel modes evaluate every agent, sequential mode does nothing."""
     if opt.mode in opt.AVAILABLE_MODES:
         for agent in agents:
-            agent.target = opt.get_target(agent.solution, counted=False)
+            agent.target = opt._get_target(agent.solution, counted=False)
         opt._nfe_counter += len(agents)
     return agents
 
 
-def greedy_agents(LegacyNativeOptimizer opt, old, new):
-    """``greedy_selection_population(old, new)`` for agent lists."""
+def greedy_agents(VectorizeOptimizer opt, old, new):
+    """``_greedy_selection_population(old, new)`` for agent lists."""
     if len(old) != len(new):
         raise ValueError("Greedy selection of two population with different length.")
-    if opt.problem.minmax == "min":
+    if opt.problem.sense == "min":
         return [new[i] if new[i].target.fitness < old[i].target.fitness else old[i] for i in range(len(old))]
     return [new[i] if new[i].target.fitness > old[i].target.fitness else old[i] for i in range(len(old))]
 
 
-def new_agent(LegacyNativeOptimizer opt, x, evaluate=True):
+def new_agent(VectorizeOptimizer opt, x, evaluate=True):
     """``generate_agent(x)`` (evaluated) or ``generate_empty_agent(x)`` (``evaluate=False``)."""
-    return LegacyNativeAgent(x, opt.get_target(x) if evaluate else None)
+    return LegacyNativeAgent(x, opt._get_target(x) if evaluate else None)
 
 
-def build_population(LegacyNativeOptimizer opt, agents):
+def build_population(VectorizeOptimizer opt, agents):
     """A new population (no template needed) holding the position/target of each agent."""
     # (problem.n_objs is not read: its first access draws a random solution from the seeded stream)
     cdef Py_ssize_t m = np.asarray(agents[0].target.objectives).size if len(agents) else 1
@@ -162,47 +162,47 @@ def build_population(LegacyNativeOptimizer opt, agents):
 
 # -- whole-population steps for the vectorized collection (synchronous updates, strict comparisons) --
 
-def better(LegacyNativeOptimizer opt, a, b):
+def better(VectorizeOptimizer opt, a, b):
     """Element-wise "a is better than b" (strict): ``a < b`` for min, ``a > b`` for max."""
-    return a < b if opt.problem.minmax == "min" else a > b
+    return a < b if opt.problem.sense == "min" else a > b
 
 
-def step(LegacyNativeOptimizer opt, pos, NativePopulation dst=None, Py_ssize_t stop=-1, Py_ssize_t start=0):
+def step(VectorizeOptimizer opt, pos, NativePopulation dst=None, Py_ssize_t stop=-1, Py_ssize_t start=0):
     """One synchronous phase: bound ``pos`` (rows ``[start, stop)``, default all), evaluate the block once, keep the better rows of ``dst`` (default ``opt.pop``)."""
     cdef NativePopulation pop = opt.pop if dst is None else dst
     cdef NativePopulation cand = pop.empty_like()
     if stop < 0:
         stop = pop.n
     cand.buf[:] = pop.buf  # the candidates carry the agents' extra fields
-    cand.X[start:stop] = opt.correct_solution(pos)
+    cand.X[start:stop] = opt._correct_solution(pos)
     opt.evaluate(cand, start, stop)
     greedy(opt, cand, start, stop, pop)
 
 
-def replace(LegacyNativeOptimizer opt, pos):
+def replace(VectorizeOptimizer opt, pos):
     """Every agent moves to its (bounded, evaluated) candidate."""
     cdef NativePopulation pop = opt.pop
     cdef NativePopulation cand = pop.empty_like()
-    cand.X[:] = opt.correct_solution(pos)
+    cand.X[:] = opt._correct_solution(pos)
     opt.evaluate(cand, 0, pop.n)
     opt.pop = cand
 
 
-def others(LegacyNativeOptimizer opt, Py_ssize_t n, Py_ssize_t k=1):
+def others(VectorizeOptimizer opt, Py_ssize_t n, Py_ssize_t k=1):
     """``k`` random agent indices per agent, never the agent itself (n, k); with replacement among the others."""
     return (np.arange(n)[:, None] + opt.generator.integers(1, n, size=(n, k))) % n
 
 
-def better_pick(LegacyNativeOptimizer opt, NativePopulation pop):
+def better_pick(VectorizeOptimizer opt, NativePopulation pop):
     """For each agent, a random agent that is strictly better than it: ``(index, has_one)``, both shaped ``(n,)``."""
     F = np.ascontiguousarray(pop.F)
-    B = F[None, :] < F[:, None] if opt.problem.minmax == "min" else F[None, :] > F[:, None]
+    B = F[None, :] < F[:, None] if opt.problem.sense == "min" else F[None, :] > F[:, None]
     keys = opt.generator.random(B.shape)
     keys[~B] = -1.0
     return keys.argmax(axis=1), B.any(axis=1)
 
 
-def roulette(LegacyNativeOptimizer opt, fitness, Py_ssize_t size):
+def roulette(VectorizeOptimizer opt, fitness, Py_ssize_t size):
     """``size`` indices drawn by roulette wheel on ``fitness`` (min or max problems, negative values allowed), as ``get_index_roulette_wheel_selection``."""
     f = np.asarray(fitness, dtype=float).ravel()
     n = len(f)
@@ -210,12 +210,12 @@ def roulette(LegacyNativeOptimizer opt, fitness, Py_ssize_t size):
         return opt.generator.integers(0, n, size=size)
     if np.any(f < 0):
         f = f - np.min(f)
-    if opt.problem.minmax == "min":
+    if opt.problem.sense == "min":
         f = np.max(f) - f
     return opt.generator.choice(n, size=size, p=f / np.sum(f))
 
 
-def two_others(LegacyNativeOptimizer opt, Py_ssize_t n, Py_ssize_t k):
+def two_others(VectorizeOptimizer opt, Py_ssize_t n, Py_ssize_t k):
     """Two random agent indices per (agent, column): ``(a, b)`` shaped ``(n, k)``, both different from the agent and from each other."""
     rng = opt.generator
     me = np.arange(n)[:, None]
@@ -228,12 +228,12 @@ def two_others(LegacyNativeOptimizer opt, Py_ssize_t n, Py_ssize_t k):
     return a, b
 
 
-def scatter(LegacyNativeOptimizer opt, NativePopulation cand, targets, NativePopulation dst=None):
+def scatter(VectorizeOptimizer opt, NativePopulation cand, targets, NativePopulation dst=None):
     """Row ``i`` of ``cand`` competes with row ``targets[i]`` of ``dst`` (default ``opt.pop``); when several candidates aim at the same row the best one wins."""
     cdef NativePopulation pop = opt.pop if dst is None else dst
     targets = np.asarray(targets)
     cf = np.asarray(cand.F)
-    key = cf if opt.problem.minmax == "min" else -cf
+    key = cf if opt.problem.sense == "min" else -cf
     order = np.argsort(key, kind="stable")
     _, first = np.unique(targets[order], return_index=True)
     win = order[first]
@@ -242,7 +242,7 @@ def scatter(LegacyNativeOptimizer opt, NativePopulation cand, targets, NativePop
     pop.buf[tgt[ok]] = cand.buf[win[ok]]
 
 
-def k_others(LegacyNativeOptimizer opt, Py_ssize_t n, Py_ssize_t k):
+def k_others(VectorizeOptimizer opt, Py_ssize_t n, Py_ssize_t k):
     """``k`` distinct random agent indices per agent, none of them the agent itself: ``(n, k)`` (unordered)."""
     keys = opt.generator.random((n, n))
     keys[np.arange(n), np.arange(n)] = 2.0
@@ -266,7 +266,7 @@ def exclude(r, excluded):
     return r
 
 
-def pick_range(LegacyNativeOptimizer opt, Py_ssize_t lo, Py_ssize_t hi, idx, size=None):
+def pick_range(VectorizeOptimizer opt, Py_ssize_t lo, Py_ssize_t hi, idx, size=None):
     """A random index in ``[lo, hi)`` per agent, never the agent itself (``idx``, per-row); shape ``size`` (default ``idx``'s)."""
     idx = np.asarray(idx)
     inside = (idx >= lo) & (idx < hi)
@@ -274,7 +274,7 @@ def pick_range(LegacyNativeOptimizer opt, Py_ssize_t lo, Py_ssize_t hi, idx, siz
     return r + (inside & (r >= idx))
 
 
-def best_row(LegacyNativeOptimizer opt, NativePopulation pop):
+def best_row(VectorizeOptimizer opt, NativePopulation pop):
     """Index of the best agent of ``pop`` right now (the engine only refreshes ``g_best`` at the end of the epoch)."""
     F = np.asarray(pop.F)
-    return int(F.argmin() if opt.problem.minmax == "min" else F.argmax())
+    return int(F.argmin() if opt.problem.sense == "min" else F.argmax())

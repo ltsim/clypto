@@ -62,7 +62,7 @@ class Tracker:
         self._capture_population = False
         self._n_dims = 0
         self._n_objs: typing.Optional[int] = None
-        self._minmax = "min"
+        self._sense = "min"
         self._max_pop = 0
         self._epoch_capacity = 0
         self._n_recorded = 0
@@ -104,7 +104,7 @@ class Tracker:
         self._capture_population = bool(capture_population)
         self._n_dims = int(problem.n_dims)
         self._n_objs = None
-        self._minmax = problem.minmax
+        self._sense = problem.sense
         self._max_pop = max(int(optimizer.pop_size), 1)
         self._epoch_capacity = max(int(optimizer.epoch or 1), 1)
         self._n_recorded = 0
@@ -113,11 +113,11 @@ class Tracker:
         self._group.attrs.update(
             {
                 "optimizer": str(optimizer.name),
-                "problem": str(problem.get_name()),
+                "problem": str(problem.name),
                 "seed": seed,
                 "pop_size": int(optimizer.pop_size),
                 "n_dims": self._n_dims,
-                "minmax": str(self._minmax),
+                "sense": str(self._sense),
                 "capture_population": self._capture_population,
             }
         )
@@ -156,7 +156,7 @@ class Tracker:
                 self._group["objectives"][idx, :n_agents] = self._objectives(pop)
 
         fits = self._fitnesses(pop)
-        if self._minmax == "min":
+        if self._sense == "min":
             c_best, c_worst = float(np.min(fits)), float(np.max(fits))
         else:
             c_best, c_worst = float(np.max(fits)), float(np.min(fits))

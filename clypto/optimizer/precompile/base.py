@@ -9,23 +9,16 @@ import typing
 import numpy as np
 from clypto.optimizer.agents.runtime import RuntimeAgent
 from clypto.hints.array import NDArrayType
+from clypto.optimizer.bounds import Bounds
+from clypto.optimizer.native.population import Population
+from clypto.optimizer.native.problem import Problem
+from clypto.optimizer.native.target import NativeTarget as Target
 from clypto.optimizer.precompile.declaration import Argument
 from clypto.optimizer.precompile.decoration import collect_declarations
-from clypto.optimizer.population import Population
-from clypto.optimizer.problem import Problem
-from clypto.optimizer.target import Target
 from clypto.optimizer.termination import Termination
 from clypto.optimizer.validator import Validator
 
 __all__ = ["DecoratedOptimizer"]
-
-
-class _Bounds(typing.NamedTuple):
-    """A tiny ``lb``/``ub``/``ndim`` view of the bound problem."""
-
-    lb: NDArrayType
-    ub: NDArrayType
-    ndim: int
 
 
 def _coerce_argument(name: str, declaration: Argument, value: typing.Any) -> typing.Any:
@@ -71,7 +64,7 @@ class DecoratedOptimizer:
     rng: np.random.Generator
     population: Population
     g_best: RuntimeAgent
-    bounds: _Bounds
+    bounds: Bounds
     termination: typing.Optional[Termination]
 
     def __init__(self, **kwargs: typing.Any) -> None:
@@ -119,7 +112,7 @@ class DecoratedOptimizer:
         epochs = typing.cast(int, self.epoch)
         self.rng = np.random.default_rng(seed)
         self.termination = self._build_termination(termination)
-        self.population = Population(pop_size, self.bounds.ndim, self, self.problem.minmax)
+        self.population = Population([self.generate_agent() for _ in range(pop_size)], self.problem.sense)
 
         self.initialize()
         self.g_best = self.population.best
@@ -165,19 +158,8 @@ class DecoratedOptimizer:
         return agent
 
     def _bind_problem(self, problem: dict | Problem, seed: typing.Optional[int]) -> None:
-        if isinstance(problem, Problem):
-            problem.seed = seed
-            self.problem = problem
-        elif isinstance(problem, dict):
-            self.problem = Problem(**{**problem, "seed": seed})
-        else:
-            raise ValueError("problem needs to be a dict or an instance of Problem class.")
-
-        self.bounds = _Bounds(
-            np.asarray(self.problem.lb, dtype=float),
-            np.asarray(self.problem.ub, dtype=float),
-            self.problem.n_dims,
-        )
+        self.problem = Problem.coerce(problem, seed)
+        self.bounds = self.problem.bounds
 
     def _build_termination(
         self, termination: typing.Optional[Termination | dict]
