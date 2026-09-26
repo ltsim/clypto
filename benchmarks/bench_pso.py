@@ -36,7 +36,7 @@ HEAVY_REPEATS = 200
 
 _EVALUATOR_PYX = """
 from libc.math cimport cos, M_PI
-from clypto.optimizer._native.nogil cimport _NogilEvaluator
+from clypto.optimizer.native.nogil cimport _NogilEvaluator
 
 cdef void heavy(const double* x, Py_ssize_t n, double* out) noexcept nogil:
     cdef Py_ssize_t i, r

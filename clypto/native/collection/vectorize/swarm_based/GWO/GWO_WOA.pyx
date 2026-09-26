@@ -7,9 +7,9 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.swarm_based.GWO.OriginalGWO cimport OriginalGWO
-from clypto.optimizer._native cimport utils as cy
-from clypto.optimizer._native import ops
-from clypto.optimizer._native.population cimport NativePopulation
+from clypto.optimizer.native cimport utils as cy
+from clypto.optimizer.native import ops
+from clypto.optimizer.native.population cimport NativePopulation
 
 
 cdef class GWO_WOA(OriginalGWO):

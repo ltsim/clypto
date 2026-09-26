@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer._native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport _LegacyOptimizer
 
 
 cdef class ImprovedSFO(_LegacyOptimizer):

@@ -1,4 +1,4 @@
-from clypto.optimizer._native.agent import _LegacyAgent
+from clypto.optimizer.native.agent import _LegacyAgent
 from clypto.optimizer.termination import Termination
 from clypto.optimizer.validator import Validator
 

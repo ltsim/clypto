@@ -6,7 +6,7 @@
 """Public classic agent used by the ``@cy.legacy`` decorator API.
 
 This is intentionally a plain Python class, separate from the private compiled
-``clypto.optimizer._native.agent._LegacyAgent`` used by the built-in algorithm collection.
+``clypto.optimizer.native.agent._LegacyAgent`` used by the built-in algorithm collection.
 """
 import typing
 

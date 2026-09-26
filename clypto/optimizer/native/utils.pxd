@@ -1,6 +1,6 @@
 # Cython-only helpers for the native collection:
-#     from clypto.optimizer._native cimport utils as cy
-from clypto.optimizer._native.target cimport NativeTarget
+#     from clypto.optimizer.native cimport utils as cy
+from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef object validator(object dtype, object value, object bound=*, str name=*)

@@ -24,8 +24,8 @@ from time import perf_counter
 import numpy as np
 from cython.parallel cimport prange
 
-from clypto.optimizer._native.nogil cimport _NogilEvaluator
-from clypto.optimizer._native.problem import NativeProblem as _NativeProblemPy
+from clypto.optimizer.native.nogil cimport _NogilEvaluator
+from clypto.optimizer.native.problem import NativeProblem as _NativeProblemPy
 from clypto.optimizer.history import Tracker
 from clypto.optimizer.problem import Problem
 from clypto.optimizer.termination import Termination

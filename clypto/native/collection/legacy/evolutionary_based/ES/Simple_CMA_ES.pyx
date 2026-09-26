@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from clypto.optimizer._native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport _LegacyOptimizer
 
 
 cdef class Simple_CMA_ES(_LegacyOptimizer):

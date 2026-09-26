@@ -7,7 +7,7 @@
 import numpy as np
 from scipy.stats import cauchy, norm
 
-from clypto.optimizer._native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport _LegacyOptimizer
 
 
 cdef class OriginalLSHADEcnEpSin(_LegacyOptimizer):

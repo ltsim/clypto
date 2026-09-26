@@ -1,4 +1,4 @@
-from clypto.optimizer._native.agent_list cimport AgentListOptimizer
+from clypto.optimizer.native.agent_list cimport AgentListOptimizer
 
 
 cdef class ModifiedSLO(AgentListOptimizer):

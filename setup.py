@@ -11,7 +11,7 @@ from setuptools import setup
 # expressed declaratively in pyproject.toml.
 #
 # Only native .pyx is compiled: the algorithm collections (clypto/native/collection/{vectorize,legacy})
-# and the Cython-only engine they cimport (clypto/optimizer/_native). The public optimizer API ships
+# and the Cython-only engine they cimport (clypto/optimizer/native). The public optimizer API ships
 # as plain Python. CLYPTO_LEGACY=0 skips the frozen legacy collection (development builds).
 
 COMPILER_DIRECTIVES = {
@@ -51,7 +51,7 @@ def openmp_flags():
 
 
 def get_ext_modules():
-    sources = ["clypto/native/collection/vectorize/**/*.pyx", "clypto/optimizer/_native/*.pyx"]
+    sources = ["clypto/native/collection/vectorize/**/*.pyx", "clypto/optimizer/native/*.pyx"]
     if os.environ.get("CLYPTO_LEGACY", "1") != "0":
         sources.append("clypto/native/collection/legacy/**/*.pyx")
     extensions = cythonize(sources, compiler_directives=COMPILER_DIRECTIVES, quiet=True)

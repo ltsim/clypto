@@ -8,8 +8,8 @@
 from math import gamma
 import numpy as np
 
-from clypto.optimizer._native.agent cimport _LegacyAgent
-from clypto.optimizer._native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.legacy cimport _LegacyOptimizer
 
 
 cdef class _ModifiedSLOAgent(_LegacyAgent):

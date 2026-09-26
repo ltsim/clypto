@@ -41,7 +41,7 @@ the median guard (`WARN`), 11 are significantly *better* than legacy (`INVESTIGA
 slightly worse (`FAIL`: DevEPC, MultiGA, OriginalServalOA, OriginalDMOA, LevyTWO, OriginalDO; the synchronous update loses the
 chained improvements of the classic loop).
 
-## Helpers (`clypto.optimizer._native.ops`)
+## Helpers (`clypto.optimizer.native.ops`)
 
 | Helper | Use |
 | --- | --- |

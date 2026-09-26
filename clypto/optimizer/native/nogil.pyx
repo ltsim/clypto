@@ -8,9 +8,9 @@ Python ``obj_func`` cannot, so the parallel path stays sequential unless the
 problem carries an evaluator built from a compiled nogil function.
 
 Compiled users subclass :class:`_NogilEvaluator` in a ``.pyx`` module, cimport
-it from ``clypto.optimizer._native.nogil``, and assign their function to ``_func``:
+it from ``clypto.optimizer.native.nogil``, and assign their function to ``_func``:
 
-    from clypto.optimizer._native.nogil cimport _NogilEvaluator
+    from clypto.optimizer.native.nogil cimport _NogilEvaluator
 
     cdef void sphere(const double* x, Py_ssize_t n, double* out) noexcept nogil:
         cdef Py_ssize_t i

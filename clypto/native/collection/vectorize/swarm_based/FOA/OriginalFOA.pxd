@@ -1,4 +1,4 @@
-from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
 
 
 cdef class OriginalFOA(LegacyNativeOptimizer):

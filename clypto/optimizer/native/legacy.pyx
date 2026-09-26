@@ -18,8 +18,8 @@ import numpy.random as npr
 import numpy.typing as npt
 from cython.parallel cimport parallel, prange
 
-from clypto.optimizer._native.agent cimport _LegacyAgent
-from clypto.optimizer._native.nogil cimport _NogilEvaluator
+from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.nogil cimport _NogilEvaluator
 from clypto.optimizer.history import Tracker
 from clypto.optimizer.problem import Problem
 from clypto.optimizer.target import Target

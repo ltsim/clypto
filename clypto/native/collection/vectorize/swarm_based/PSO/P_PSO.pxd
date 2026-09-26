@@ -1,4 +1,4 @@
-from clypto.optimizer._native.population cimport NativePopulation
+from clypto.optimizer.native.population cimport NativePopulation
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
 

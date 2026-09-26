@@ -7,7 +7,7 @@
 import math
 import numpy as np
 
-from clypto.optimizer._native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport _LegacyOptimizer
 
 
 cdef class OriginalNRO(_LegacyOptimizer):

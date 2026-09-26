@@ -5,9 +5,9 @@
 # --------------------------------------------------%
 import numpy as np
 
-from clypto.optimizer._native cimport utils as cy
-from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.optimizer._native.population cimport NativePopulation
+from clypto.optimizer.native cimport utils as cy
+from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.population cimport NativePopulation
 from clypto.native.collection.vectorize.swarm_based.PSO.P_PSO cimport P_PSO
 
 

@@ -5,9 +5,9 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer._native.fuzzy import FuzzySystem as FS
+from clypto.optimizer.native.fuzzy import FuzzySystem as FS
 
-from clypto.optimizer._native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.legacy cimport _LegacyOptimizer
 
 
 cdef class FuzzyGWO(_LegacyOptimizer):

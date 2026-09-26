@@ -1,4 +1,4 @@
-from clypto.optimizer._native.target cimport NativeTarget
+from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class NativeProblem:

@@ -8,8 +8,8 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from clypto.optimizer._native.agent cimport _LegacyAgent
-from clypto.optimizer._native.legacy cimport _LegacyOptimizer
+from clypto.optimizer.native.agent cimport _LegacyAgent
+from clypto.optimizer.native.legacy cimport _LegacyOptimizer
 
 
 cdef class _DevBROAgent(_LegacyAgent):

@@ -1,10 +1,10 @@
-"""Batch helpers shared by the vectorized collection (``from clypto.optimizer._native import ops``)."""
+"""Batch helpers shared by the vectorized collection (``from clypto.optimizer.native import ops``)."""
 import numpy as np
 
-from clypto.optimizer._native.agent cimport LegacyNativeAgent
-from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.target cimport NativeTarget
+from clypto.optimizer.native.agent cimport LegacyNativeAgent
+from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.population cimport NativePopulation
+from clypto.optimizer.native.target cimport NativeTarget
 
 
 def accept(LegacyNativeOptimizer opt, NativePopulation cand, Py_ssize_t start=0, Py_ssize_t stop=-1,

@@ -7,7 +7,7 @@
 
 import numpy as np
 
-from clypto.optimizer._native.agent cimport _LegacyAgent
+from clypto.optimizer.native.agent cimport _LegacyAgent
 from clypto.native.collection.legacy.math_based.SCA.DevSCA cimport DevSCA
 
 

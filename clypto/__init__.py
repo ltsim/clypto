@@ -183,8 +183,8 @@ from clypto.optimizer import (
     legacy,
     optimizer,
 )
-from clypto.optimizer._native.legacy import _LegacyOptimizer
-from clypto.optimizer._native.optimizer import LegacyNativeOptimizer
+from clypto.optimizer.native.legacy import _LegacyOptimizer
+from clypto.optimizer.native.optimizer import LegacyNativeOptimizer
 
 ENGINES = ("vectorize", "legacy")
 

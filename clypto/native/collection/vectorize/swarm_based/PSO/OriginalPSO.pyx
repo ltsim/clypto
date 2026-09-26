@@ -7,9 +7,9 @@ import numpy as np
 
 from cython.parallel cimport prange
 
-from clypto.optimizer._native cimport utils as cy
-from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.optimizer._native.population cimport NativePopulation, np_clip
+from clypto.optimizer.native cimport utils as cy
+from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.population cimport NativePopulation, np_clip
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
 # Rows x dims below which OpenMP threads cost more than they save.

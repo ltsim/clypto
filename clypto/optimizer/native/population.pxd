@@ -1,5 +1,5 @@
-from clypto.optimizer._native.agent cimport LegacyNativeAgent
-from clypto.optimizer._native.target cimport NativeTarget
+from clypto.optimizer.native.agent cimport LegacyNativeAgent
+from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class NativePopulation:

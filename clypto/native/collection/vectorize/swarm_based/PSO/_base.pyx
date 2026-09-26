@@ -5,8 +5,8 @@
 # --------------------------------------------------%
 import numpy as np
 
-from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.optimizer._native.population cimport NativePopulation, select_better
+from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.population cimport NativePopulation, select_better
 
 
 cdef class _PSOBase(LegacyNativeOptimizer):

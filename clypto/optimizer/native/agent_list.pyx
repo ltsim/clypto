@@ -9,9 +9,9 @@ every epoch, so ``g_best`` tracking, termination, history and ``solve()`` are th
 """
 import numpy as np
 
-from clypto.optimizer._native.agent cimport LegacyNativeAgent
-from clypto.optimizer._native.population cimport NativePopulation
-from clypto.optimizer._native.target cimport NativeTarget
+from clypto.optimizer.native.agent cimport LegacyNativeAgent
+from clypto.optimizer.native.population cimport NativePopulation
+from clypto.optimizer.native.target cimport NativeTarget
 
 
 class FieldAgent(LegacyNativeAgent):

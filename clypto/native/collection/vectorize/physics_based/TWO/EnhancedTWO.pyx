@@ -7,8 +7,8 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.physics_based.TWO.OriginalTWO cimport OriginalTWO
-from clypto.optimizer._native.optimizer cimport LegacyNativeOptimizer
-from clypto.optimizer._native.population cimport NativePopulation
+from clypto.optimizer.native.optimizer cimport LegacyNativeOptimizer
+from clypto.optimizer.native.population cimport NativePopulation
 
 
 class _TWOAgent:
