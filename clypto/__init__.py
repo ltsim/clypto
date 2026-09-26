@@ -72,6 +72,9 @@ def get_all_optimizers(verbose=False, *, engine="vectorize"):
     """
     Get all available optimizer classes in clypto library
 
+    The collections are native: the classes are discovered by walking
+    ``clypto/native/collection/<engine>/<category>/<Module>/<Class>.pyx``.
+
     Args:
         verbose (bool): whether to print the optimizer information
         engine (str): ``"vectorize"`` (default, the vectorized collection) or ``"legacy"`` (the classic collection)
@@ -113,32 +116,27 @@ def get_optimizer_by_class(class_name: str, verbose=False, *, engine="vectorize"
 
 def get_optimizer_by_name(name: str, verbose=False, *, engine="vectorize"):
     """
-    Get an optimizer class by name
+    Get the optimizer classes of one algorithm module, by module name
 
     Args:
-        name (str): the classname of the optimizer (e.g, OriginalGA, OriginalWOA), don't pass the module name (e.g, ABC, WOA, GA)
+        name (str): the module name of the algorithm (e.g, PSO, GA, WOA)
         verbose (bool): whether to print the optimizer information
         engine (str): ``"vectorize"`` (default) or ``"legacy"``
 
     Returns:
-        dict_optimizers (dict): key is the string optimizer class name, value is the actual optimizer class
+        dict_optimizers (dict): key is the optimizer class name, value is the class (empty if the module is unknown)
     """
     cls = {}
-    flag = False
-
     for module_name, module in _engine_modules(engine):
         if module_name == name:
-            flag = True
             cls.update(_optimizer_classes(module))
     if verbose:
-        if not flag:
+        if not cls:
             print(f"clypto doesn't support optimizer named: {name}.\n")
-            return None
-
-        print(f"Found algorithm: {name}, the supported variants are:")
-
-        for name, optimizer in cls.items():
-            print(f"Optimizer: {name} - {optimizer} - {optimizer()}")
+        else:
+            print(f"Found algorithm: {name}, the supported variants are:")
+            for cls_name, optimizer in cls.items():
+                print(f"Optimizer: {cls_name} - {optimizer} - {optimizer()}")
 
     return cls
 
@@ -147,6 +145,7 @@ __all__ = [
     "Problem", "Optimizer", "LegacyOptimizer",
     "agent", "optimizer", "legacy", "Attribute", "Argument", "Population",
     "DecoratedOptimizer", "RuntimeAgent",
+    "get_all_optimizers", "get_optimizer_by_name", "get_optimizer_by_class",
     "IntegerVar",
     "FloatVar",
     "StringVar",

@@ -6,9 +6,25 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Public collection paths, lookup-only top level (2026-09)
+
++ **`clypto/collection/` is gone.** The shim layer that re-exported the vectorized tree has been deleted; the Cython sources are now the public API: `from clypto.native.collection.vectorize.swarm_based import PSO` (or `...legacy...` for the classic classes). Every class docstring, example, benchmark and doc page uses the direct native path.
++ **`clypto.optimizer._native` -> `clypto.optimizer.native`** (public): custom optimizers legitimately cimport `agent`, `utils as cy`, `ops`, `nogil`, so the engine is not private. The `setup.py` sources glob and every cimport/import were updated.
++ **Top-level algorithm names removed**: `clypto/__init__.py` no longer eagerly imports ~480 extensions, so `import clypto` stays light and `cy.PSO` / `from clypto import PSO` no longer exist. The lookup helpers are the entry point (now listed in `__all__`): `get_all_optimizers()`, `get_optimizer_by_name("PSO")`, `get_optimizer_by_class("OriginalPSO")`, each with `engine="vectorize"` (default) or `engine="legacy"`.
++ **`get_optimizer_by_name()` always returns a dict** (empty when the module is unknown) instead of returning `None` under `verbose=True`, and its `name` argument is documented as the *module* name (`"PSO"`, `"GA"`) to match what it actually matches.
+
+| Old | New |
+|-----|-----|
+| `from clypto.collection.<cat> import <Module>` | `from clypto.native.collection.vectorize.<cat> import <Module>` (or `...legacy...`) |
+| `from clypto.collection.<cat>.<Module> import <Class>` | `from clypto.native.collection.vectorize.<cat>.<Module> import <Class>` |
+| `cy.<Module>.<Class>(...)` / `from clypto import <Module>` | `cy.get_optimizer_by_name("<Module>")["<Class>"](...)` or the direct native import |
+| `clypto.optimizer._native.<mod>` | `clypto.optimizer.native.<mod>` |
+
+The 2026 entries below describe the intermediate `clypto.collection` shim layer and the `clypto.optimizer._native` path; both no longer exist.
+
 ### Legacy and vectorize collections (2026-09)
 
-+ **`clypto/native/collection/{legacy,vectorize}`**: the Cythonized collection now lives in two trees with the same classes and module layout (`<category>/<Module>/<Class>.pyx`). `legacy` is the frozen classic per-agent implementation (on `_LegacyOptimizer`, regenerated from the pre-native sources and checked against the golden baselines); `vectorize` is the vectorized collection. `clypto.collection.<category>.<Module>` and `get_all_optimizers()` resolve to `vectorize`; `get_all_optimizers(engine="legacy")` / `get_optimizer_by_name(name, engine="legacy")` return the classic classes (`engine` is keyword-only).
++ **`clypto/native/collection/{legacy,vectorize}`**: the Cythonized collection now lives in two trees with the same classes and module layout (`<category>/<Module>/<Class>.pyx`). `legacy` is the frozen classic per-agent implementation (on `_LegacyOptimizer`, regenerated from the pre-native sources and checked against the golden baselines); `vectorize` is the vectorized collection. `clypto.native.collection.vectorize.<category>.<Module>` is the vectorized tree and `get_all_optimizers()` resolves to `vectorize`; `get_all_optimizers(engine="legacy")` / `get_optimizer_by_name(name, engine="legacy")` return the classic classes (`engine` is keyword-only).
 + **Free vectorization**: `vectorize` no longer has to be bit-identical to `legacy`. Algorithms that updated agents one at a time now draw block random numbers, update the whole population per phase and evaluate each phase in one batch (`ops.step`, `ops.scatter`, `ops.replace`, `ops.roulette`, ...). Classes that are not bit-identical are listed in `tests/golden/vectorize_exactness.json` and checked by `benchmarks/compare_engines.py` (30 seeds, four functions, Mann-Whitney U with Holm correction, median guard, NFE budget) instead of golden hashes.
 + **Determinism**: JADE and SHADE (scipy's global RNG in legacy) now draw from `self.generator`; the same seed gives the same result.
 + **Build**: `setup.py` compiles both trees (about 490 extensions); `CLYPTO_LEGACY=0` skips `legacy`.
@@ -28,7 +44,7 @@
 ### One file per algorithm variant (2026-09)
 
 + **`collection/<category>/<Module>/<Class>.pyx`**: every catalog module became a package with one `.pyx` per optimizer class (236 files for the 146 modules, plus the 7 PSO variants), instead of all variants in one `<Module>.pyx`. The class bodies were moved verbatim; results are bit-identical to the golden baseline.
-+ **Imports keep working**: each package `__init__.py` re-exports its classes, so `from clypto.collection.swarm_based import PSO`, `PSO.OriginalPSO` and `from clypto.collection.swarm_based.ARO import OriginalARO` are unchanged, as are `get_all_optimizers()` and `get_optimizer_by_name()`.
++ **Imports keep working**: each package `__init__.py` re-exports its classes, so `from clypto.native.collection.vectorize.swarm_based import PSO`, `PSO.OriginalPSO` and `from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO` are unchanged, as are `get_all_optimizers()` and `get_optimizer_by_name()`.
 + **Layout rules**: a variant that subclasses a sibling `cdef class` cimports it through a `<Class>.pxd` (e.g. `GWO/OriginalGWO.pxd`); a private agent class used by one variant lives in that variant's file, one shared by several goes to `_base.pyx` (PSO: `_PSOBase`).
 + **Docs**: the catalog generator scans the per-class `.pyx` files (native bodies are not parsed as Python) and links each class to its own source file.
 
