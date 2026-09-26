@@ -30,7 +30,7 @@ cdef class OriginalWCA(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.system_based import WCA    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.system_based import WCA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

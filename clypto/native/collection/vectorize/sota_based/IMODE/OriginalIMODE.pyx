@@ -26,7 +26,7 @@ cdef class OriginalIMODE(AgentListOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.sota_based import IMODE    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.sota_based import IMODE    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

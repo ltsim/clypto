@@ -24,7 +24,7 @@ cdef class OriginalEFO(DevEFO):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.physics_based import EFO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.physics_based import EFO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

@@ -1,1 +1,1 @@
-"""``legacy``: classic algorithms; ``vectorize``: vectorized algorithms. ``clypto.collection`` re-exports ``vectorize``."""
+"""The two Cythonized algorithm trees: ``legacy`` (classic per-agent) and ``vectorize`` (NumPy-vectorized)."""

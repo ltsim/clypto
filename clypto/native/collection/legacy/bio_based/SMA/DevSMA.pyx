@@ -22,7 +22,7 @@ cdef class DevSMA(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.bio_based import SMA    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.bio_based import SMA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

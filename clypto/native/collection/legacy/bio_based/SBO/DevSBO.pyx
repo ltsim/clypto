@@ -27,7 +27,7 @@ cdef class DevSBO(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.bio_based import SBO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.bio_based import SBO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

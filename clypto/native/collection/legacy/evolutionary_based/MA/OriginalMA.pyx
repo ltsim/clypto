@@ -44,7 +44,7 @@ cdef class OriginalMA(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.evolutionary_based import MA    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.evolutionary_based import MA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

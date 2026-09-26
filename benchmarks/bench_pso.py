@@ -78,7 +78,7 @@ def worker(reps):
     import numpy as np
 
     import clypto as cy
-    from clypto.collection.swarm_based import PSO
+    from clypto.native.collection.vectorize.swarm_based import PSO
 
     # Vectorized objectives and the OpenMP evaluator in PSO arrived together.
     new_api = hasattr(cy.Problem(bounds=cy.FloatVar(lb=[0.0], ub=[1.0])), "vectorized")

@@ -20,7 +20,7 @@ cdef class OriginalTLO(DevTLO):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.human_based import TLO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.human_based import TLO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

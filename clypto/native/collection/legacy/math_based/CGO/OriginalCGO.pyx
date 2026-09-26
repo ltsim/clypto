@@ -22,7 +22,7 @@ cdef class OriginalCGO(_LegacyOptimizer):
     Examples
     ~~~~~~~~
 
-    >>> from clypto.collection.math_based import CGO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.math_based import CGO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

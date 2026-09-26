@@ -24,7 +24,7 @@ cdef class DevGCO(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.system_based import GCO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.system_based import GCO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

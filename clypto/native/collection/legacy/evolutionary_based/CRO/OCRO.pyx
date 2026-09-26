@@ -30,7 +30,7 @@ cdef class OCRO(OriginalCRO):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.evolutionary_based import CRO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.evolutionary_based import CRO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

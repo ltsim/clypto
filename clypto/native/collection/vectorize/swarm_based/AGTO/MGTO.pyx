@@ -20,7 +20,7 @@ cdef class MGTO(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.swarm_based import AGTO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.swarm_based import AGTO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

@@ -57,7 +57,7 @@ def _problem(evaluator=None):
 
 
 def test_parallel_mode_runs_with_compiled_evaluator(sphere_evaluator):
-    from clypto.collection.swarm_based.ARO import OriginalARO
+    from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO
 
     model = OriginalARO(epoch=15, pop_size=12, mode="parallel")
     g_best = model.solve(_problem(sphere_evaluator), seed=1)
@@ -70,7 +70,7 @@ def test_parallel_mode_runs_with_compiled_evaluator(sphere_evaluator):
 
 
 def test_parallel_mode_without_evaluator_falls_back():
-    from clypto.collection.swarm_based.ARO import OriginalARO
+    from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO
 
     model = OriginalARO(epoch=15, pop_size=12, mode="parallel")
     g_best = model.solve(_problem(None), seed=1)
@@ -79,7 +79,7 @@ def test_parallel_mode_without_evaluator_falls_back():
 
 
 def test_default_mode_is_unchanged():
-    from clypto.collection.swarm_based.ARO import OriginalARO
+    from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO
 
     default = OriginalARO(epoch=15, pop_size=12).solve(_problem(None), seed=1)
     identical = OriginalARO(epoch=15, pop_size=12).solve(_problem(None), seed=1)

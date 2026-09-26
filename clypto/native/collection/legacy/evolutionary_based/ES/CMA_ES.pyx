@@ -36,7 +36,7 @@ cdef class CMA_ES(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.evolutionary_based import ES    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.evolutionary_based import ES    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

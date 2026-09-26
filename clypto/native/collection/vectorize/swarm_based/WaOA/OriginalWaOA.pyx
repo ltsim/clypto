@@ -26,7 +26,7 @@ cdef class OriginalWaOA(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.swarm_based import WaOA    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.swarm_based import WaOA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

@@ -32,7 +32,7 @@ cdef class OriginalDE(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.evolutionary_based import DE    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.evolutionary_based import DE    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

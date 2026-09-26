@@ -29,7 +29,7 @@ cdef class CMA_ES(AgentListOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.evolutionary_based import ES    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.evolutionary_based import ES    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

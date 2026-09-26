@@ -21,7 +21,7 @@ cdef class DevLCO(OriginalLCO):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.human_based import LCO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.human_based import LCO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

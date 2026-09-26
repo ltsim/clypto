@@ -21,7 +21,7 @@ cdef class HPSO_TVAC(P_PSO):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.swarm_based import PSO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.swarm_based import PSO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

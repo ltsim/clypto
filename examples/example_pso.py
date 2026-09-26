@@ -1,6 +1,6 @@
 from opfunu.name_based.a_func import Ackley01
 
-from clypto.collection.swarm_based import PSO
+from clypto.native.collection.vectorize.swarm_based import PSO
 from clypto import FloatVar, Problem
 
 # 1. Define the benchmark function from Opfunu

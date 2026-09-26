@@ -19,7 +19,7 @@ cdef class OriginalLSHADEcnEpSin(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.sota_based import LSHADEcnEpSin    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.sota_based import LSHADEcnEpSin    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

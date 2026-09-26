@@ -23,7 +23,7 @@ cdef class OriginalFBIO(DevFBIO):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.human_based import FBIO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.human_based import FBIO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

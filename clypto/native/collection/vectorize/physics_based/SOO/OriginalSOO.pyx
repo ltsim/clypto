@@ -35,7 +35,7 @@ cdef class OriginalSOO(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.physics_based import SOO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.physics_based import SOO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

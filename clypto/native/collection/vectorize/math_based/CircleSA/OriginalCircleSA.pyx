@@ -21,7 +21,7 @@ cdef class OriginalCircleSA(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.math_based import CircleSA    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.math_based import CircleSA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

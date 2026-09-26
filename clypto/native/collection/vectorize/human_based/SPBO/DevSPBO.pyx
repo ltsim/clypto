@@ -23,7 +23,7 @@ cdef class DevSPBO(OriginalSPBO):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.human_based import SPBO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.human_based import SPBO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

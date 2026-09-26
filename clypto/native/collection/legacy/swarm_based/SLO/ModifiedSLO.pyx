@@ -44,7 +44,7 @@ cdef class ModifiedSLO(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.swarm_based import SLO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.swarm_based import SLO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

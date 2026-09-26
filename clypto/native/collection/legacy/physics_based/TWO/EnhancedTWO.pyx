@@ -19,7 +19,7 @@ class EnhancedTWO(OppoTWO, LevyTWO):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.physics_based import TWO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.physics_based import TWO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

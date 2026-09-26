@@ -17,7 +17,7 @@ cdef class P_PSO(_PSOBase):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.swarm_based import PSO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.swarm_based import PSO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

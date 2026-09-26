@@ -27,7 +27,7 @@ cdef class DevVCS(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.bio_based import VCS    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.bio_based import VCS    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

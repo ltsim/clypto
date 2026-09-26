@@ -24,7 +24,7 @@ cdef class OriginalEVO(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.physics_based import EVO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.physics_based import EVO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

@@ -24,7 +24,7 @@ cdef class OriginalBBO(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.bio_based import BBO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.bio_based import BBO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

@@ -3,8 +3,8 @@ import pytest
 import zarr
 
 import clypto as cy
-from clypto.collection.evolutionary_based import DE
-from clypto.collection.swarm_based import PSO
+from clypto.native.collection.vectorize.evolutionary_based import DE
+from clypto.native.collection.vectorize.swarm_based import PSO
 
 N_DIMS = 5
 

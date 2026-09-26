@@ -1,6 +1,6 @@
 from opfunu.name_based.a_func import Ackley01
 
-from clypto.collection.bio_based import IWO
+from clypto.native.collection.vectorize.bio_based import IWO
 from clypto import FloatVar
 
 # 1. Define the benchmark function from Opfunu

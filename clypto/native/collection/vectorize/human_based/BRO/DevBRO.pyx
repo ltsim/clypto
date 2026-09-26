@@ -33,7 +33,7 @@ cdef class DevBRO(AgentListOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.human_based import BRO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.human_based import BRO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

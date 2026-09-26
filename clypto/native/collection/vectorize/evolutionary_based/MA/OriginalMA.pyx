@@ -37,7 +37,7 @@ cdef class OriginalMA(AgentListOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.evolutionary_based import MA    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.evolutionary_based import MA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

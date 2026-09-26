@@ -25,7 +25,7 @@ cdef class OriginalGSKA(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.human_based import GSKA    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.human_based import GSKA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

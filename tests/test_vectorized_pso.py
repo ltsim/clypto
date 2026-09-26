@@ -8,11 +8,11 @@ import numpy as np
 import pytest
 
 import clypto as cy
-from clypto.collection.swarm_based import PSO
+from clypto.native.collection.vectorize.swarm_based import PSO
 
 _RUN = """
 import hashlib, numpy as np, clypto as cy
-from clypto.collection.swarm_based import PSO
+from clypto.native.collection.vectorize.swarm_based import PSO
 problem = cy.Problem(obj_func=lambda s: float(np.sum(s**2)),
                      bounds=cy.FloatVar(lb=[-5.0] * 60, ub=[5.0] * 60))
 g = PSO.{name}(epoch=5, pop_size=500).solve(problem, seed=3)
@@ -50,7 +50,7 @@ def test_vectorized_objective_matches_scalar(name):
 
 def test_vectorized_objective_on_agent_list_engine():
     # Algorithms kept on the agent-list compatibility layer evaluate one row at a time.
-    from clypto.collection.swarm_based import GTO
+    from clypto.native.collection.vectorize.swarm_based import GTO
 
     scalar, vector = _problems()
     a = GTO.OriginalGTO(epoch=10, pop_size=10).solve(scalar, seed=2)

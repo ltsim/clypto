@@ -32,7 +32,7 @@ cdef class DevTPO(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.bio_based import TPO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.bio_based import TPO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

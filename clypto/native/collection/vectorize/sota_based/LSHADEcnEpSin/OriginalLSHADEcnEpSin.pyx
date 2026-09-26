@@ -25,7 +25,7 @@ cdef class OriginalLSHADEcnEpSin(AgentListOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.sota_based import LSHADEcnEpSin    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.sota_based import LSHADEcnEpSin    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

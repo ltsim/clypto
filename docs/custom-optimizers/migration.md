@@ -35,7 +35,7 @@ import clypto as cy
 assert cy.Optimizer is cy.LegacyOptimizer
 ```
 
-Every class in `clypto.collection.*` was migrated with this rename only — no
+Every class in `clypto/native/collection/{legacy,vectorize}/*` was migrated with this rename only — no
 algorithm body, variable, or hyper-parameter was changed. If you subclass a
 catalog optimizer, you do not need to change anything.
 

@@ -22,7 +22,7 @@ cdef class OriginalSA(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.physics_based import SA    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.physics_based import SA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

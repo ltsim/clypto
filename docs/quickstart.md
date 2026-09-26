@@ -35,7 +35,7 @@ Optimizers live in category packages. Import the module (`PSO`) and instantiate
 the variant you want (`OriginalPSO`):
 
 ```python
-from clypto.collection.swarm_based import PSO
+from clypto.native.collection.vectorize.swarm_based import PSO
 
 model = PSO.OriginalPSO(epoch=500, pop_size=50)
 g_best = model.solve(problem, seed=42)
@@ -46,7 +46,8 @@ print(f"Best fitness:  {g_best.target.fitness}")
 
 ### Engines: `vectorize` and `legacy`
 
-The collection ships twice, both Cythonized. `clypto.collection.*` and `cy.get_all_optimizers()` return the
+The collection ships twice, both Cythonized. `cy.get_all_optimizers()` and
+`clypto.native.collection.vectorize.*` return the
 **vectorized** classes (`clypto/native/collection/vectorize`). The classic per-agent implementations are frozen in
 `clypto/native/collection/legacy` and reachable with `cy.get_all_optimizers(engine="legacy")` or
 `from clypto.native.collection.legacy.swarm_based import PSO`. Class names are the same in both.
@@ -56,7 +57,7 @@ The collection ships twice, both Cythonized. `clypto.collection.*` and `cy.get_a
 ```python
 import numpy as np
 import clypto as cy
-from clypto.collection.swarm_based import PSO
+from clypto.native.collection.vectorize.swarm_based import PSO
 
 
 def objective(solution):

@@ -26,7 +26,7 @@ cdef class LevyEP(OriginalEP):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.evolutionary_based import EP    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.evolutionary_based import EP    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

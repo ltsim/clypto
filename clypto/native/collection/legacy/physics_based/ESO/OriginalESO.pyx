@@ -15,7 +15,7 @@ cdef class OriginalESO(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.physics_based import ESO    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.physics_based import ESO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

@@ -7,7 +7,8 @@ clypto ships every algorithm twice, both Cythonized:
 | `vectorize` (default) | `clypto.native.collection.vectorize` | whole-population NumPy/C code on the native engine (`NativePopulation`) |
 | `legacy` | `clypto.native.collection.legacy` | the classic per-agent algorithms on `_LegacyOptimizer`, frozen |
 
-`clypto.collection.<category>.<Module>` and `cy.get_all_optimizers()` return the vectorized classes. The classic ones are
+`clypto.native.collection.vectorize.<category>.<Module>` and `cy.get_all_optimizers()` return the vectorized
+classes. The classic ones are
 reachable with `cy.get_all_optimizers(engine="legacy")`, `cy.get_optimizer_by_name("PSO", engine="legacy")` or
 `from clypto.native.collection.legacy.swarm_based import PSO`. Class names are identical in both trees.
 

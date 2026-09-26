@@ -250,7 +250,7 @@ def _generate_category(category: str) -> tuple[int, int]:
     lines: list[str] = [
         f"# {label} algorithms",
         "",
-        f"`clypto.collection.{category}` ships **{len(catalog)} optimizer "
+        f"`clypto.native.collection.vectorize.{category}` ships **{len(catalog)} optimizer "
         f"{'class' if len(catalog) == 1 else 'classes'}** across "
         f"**{len(modules)} {'module' if len(modules) == 1 else 'modules'}**.",
         "",

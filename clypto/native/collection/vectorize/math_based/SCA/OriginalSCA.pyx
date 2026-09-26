@@ -24,7 +24,7 @@ cdef class OriginalSCA(DevSCA):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.math_based import SCA    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.math_based import SCA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

@@ -33,7 +33,7 @@ cdef class OriginalWHO(LegacyNativeOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.bio_based import WHO    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.bio_based import WHO    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

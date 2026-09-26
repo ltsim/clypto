@@ -22,7 +22,7 @@ cdef class LevyQSA(DevQSA):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.human_based import QSA    >>> import numpy as np
+    >>> from clypto.native.collection.vectorize.human_based import QSA    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):

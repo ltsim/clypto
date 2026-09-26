@@ -26,7 +26,7 @@ cdef class DevHS(_LegacyOptimizer):
 
     Examples
     ~~~~~~~~
-    >>> from clypto.collection.music_based import HS    >>> import numpy as np
+    >>> from clypto.native.collection.legacy.music_based import HS    >>> import numpy as np
     >>> from clypto import FloatVar
     >>>
     >>> def objective_function(solution):
