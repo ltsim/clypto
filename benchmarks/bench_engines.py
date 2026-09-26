@@ -28,7 +28,7 @@ import numpy as np
 warnings.filterwarnings("ignore")
 import importlib, inspect, pkgutil
 import mealpy
-from mealpy import FloatVar, Problem
+from mealpy import NumberBounds, Problem
 from mealpy.optimizer import Optimizer
 cfg = json.loads(sys.argv[1])
 def sphere(x):
@@ -54,7 +54,7 @@ for name in cfg["names"]:
     best = None
     try:
         for _ in range(cfg["repeats"]):
-            prob = Problem(obj_func=sphere, bounds=FloatVar(lb=[-5.0] * cfg["dim"], ub=[5.0] * cfg["dim"]), minmax="min", log_to=None)
+            prob = Problem(obj_func=sphere, bounds=NumberBounds(float, low=[-5.0] * cfg["dim"], up=[5.0] * cfg["dim"]), sense="min", log_to=None)
             t = time.perf_counter()
             cls(epoch=cfg["epoch"], pop_size=cfg["pop"]).solve(prob, seed=cfg["seed"])
             dt = time.perf_counter() - t
@@ -127,8 +127,8 @@ def main():
 
     legacy, vec = optimizers(args.legacy), optimizers(args.vectorize)
     names = sorted(n for n in vec if n in legacy and re.search(args.only, n))
-    scalar = cy.Problem(obj_func=sphere, bounds=cy.FloatVar(lb=[-5.0] * args.dim, ub=[5.0] * args.dim), minmax="min")
-    batch = cy.Problem(obj_func=sphere_batch, bounds=cy.FloatVar(lb=[-5.0] * args.dim, ub=[5.0] * args.dim), minmax="min", vectorized=True)
+    scalar = cy.Problem(obj_func=sphere, bounds=cy.NumberBounds(float, low=[-5.0] * args.dim, up=[5.0] * args.dim), sense="min")
+    batch = cy.Problem(obj_func=sphere_batch, bounds=cy.NumberBounds(float, low=[-5.0] * args.dim, up=[5.0] * args.dim), sense="min", vectorized=True)
 
     rows = json.loads(Path(args.from_json).read_text())["rows"] if args.from_json else {}
     for name in [] if args.from_json else names:

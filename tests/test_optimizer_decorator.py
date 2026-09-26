@@ -35,7 +35,7 @@ class CountingSearch:
 @cy.optimizer
 class CenteredSearch:
     def initialize(self):
-        self.population.solutions = np.zeros((len(self.population), self.bounds.ndim))
+        self.population.solutions = np.zeros((len(self.population), self.bounds.n_dims))
 
     def evolve(self, epoch):
         pass
@@ -84,8 +84,8 @@ class DefaultedSearch:
 def problem():
     return cy.Problem(
         obj_func=objective,
-        bounds=cy.FloatVar(lb=[-5.0] * N_DIMS, ub=[5.0] * N_DIMS),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-5.0] * N_DIMS, up=[5.0] * N_DIMS),
+        sense="min",
     )
 
 
@@ -146,9 +146,9 @@ def test_bounds_view(problem):
     optimizer = RandomSearch(epoch=1, pop_size=5)
     optimizer._bind_problem(problem, seed=1)
 
-    assert optimizer.bounds.ndim == N_DIMS
-    assert np.allclose(optimizer.bounds.lb, [-5.0] * N_DIMS)
-    assert np.allclose(optimizer.bounds.ub, [5.0] * N_DIMS)
+    assert optimizer.bounds.n_dims == N_DIMS
+    assert np.allclose(optimizer.bounds.low, [-5.0] * N_DIMS)
+    assert np.allclose(optimizer.bounds.up, [5.0] * N_DIMS)
 
 
 def test_initialize_override_is_used(problem):
@@ -200,8 +200,8 @@ def test_public_decorator_api_is_exported():
 def test_solve_respects_maximization():
     problem = cy.Problem(
         obj_func=objective,
-        bounds=cy.FloatVar(lb=[-5.0] * N_DIMS, ub=[5.0] * N_DIMS),
-        minmax="max",
+        bounds=cy.NumberBounds(float, low=[-5.0] * N_DIMS, up=[5.0] * N_DIMS),
+        sense="max",
     )
     optimizer = RandomSearch(epoch=20, pop_size=10)
     g_best = optimizer.solve(problem, seed=1)

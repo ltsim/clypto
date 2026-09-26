@@ -81,10 +81,10 @@ def worker(reps):
     from clypto.native.collection.vectorize.swarm_based import PSO
 
     # Vectorized objectives and the OpenMP evaluator in PSO arrived together.
-    new_api = hasattr(cy.Problem(bounds=cy.FloatVar(lb=[0.0], ub=[1.0])), "vectorized")
+    new_api = hasattr(cy.Problem(bounds=cy.NumberBounds(float, low=[0.0], up=[1.0])), "vectorized")
     results = []
     for label, algo, n, d, epochs, objective in SCENARIOS:
-        bounds = cy.FloatVar(lb=[-5.12] * d, ub=[5.12] * d)
+        bounds = cy.NumberBounds(float, low=[-5.12] * d, up=[5.12] * d)
         kwargs, used, mode = {}, objective, None
         if objective == "vectorized" and new_api:
             kwargs = {"obj_func": lambda X: np.sum(X**2, axis=1), "vectorized": True}
@@ -100,7 +100,7 @@ def worker(reps):
             used = "python"
         best, fitness = float("inf"), None
         for _ in range(reps):
-            problem = cy.Problem(bounds=bounds, minmax="min", **kwargs)
+            problem = cy.Problem(bounds=bounds, sense="min", **kwargs)
             model = getattr(PSO, algo)(epoch=epochs, pop_size=n, mode=mode)
             start = time.perf_counter()
             g_best = model.solve(problem, seed=7)

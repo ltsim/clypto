@@ -22,19 +22,18 @@ class RandomSearch(cy.LegacyOptimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
-        self.is_parallelizable = False
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         for idx in range(self.pop_size):
-            pos_new = self.correct_solution(
+            pos_new = self._correct_solution(
                 self.problem.generate_solution(encoded=True)
             )
-            agent = self.generate_empty_agent(pos_new)
-            agent.target = self.get_target(pos_new)
-            self.pop[idx] = self.get_better_agent(
-                self.pop[idx], agent, self.problem.minmax
+            agent = self._generate_empty_agent(pos_new)
+            agent.target = self._get_target(pos_new)
+            self.pop[idx] = self._get_better_agent(
+                self.pop[idx], agent, self.problem.sense
             )
 
 
@@ -42,8 +41,8 @@ class RandomSearch(cy.LegacyOptimizer):
 def problem():
     return cy.Problem(
         obj_func=objective,
-        bounds=cy.FloatVar(lb=[-5.0] * N_DIMS, ub=[5.0] * N_DIMS),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-5.0] * N_DIMS, up=[5.0] * N_DIMS),
+        sense="min",
     )
 
 
@@ -58,7 +57,7 @@ def test_precompile_actually_compiled():
     extension = sys.modules[RandomSearch.__module__]
     assert extension.__file__.endswith(tuple(importlib.machinery.EXTENSION_SUFFIXES))
 
-    assert type(RandomSearch.evolve).__name__ == "cython_function_or_method"
+    assert type(RandomSearch._evolve).__name__ == "cython_function_or_method"
     assert type(RandomSearch.__init__).__name__ == "cython_function_or_method"
 
 
@@ -74,7 +73,7 @@ def test_precompile_raises_without_cython(monkeypatch):
     runtime = sys.modules["clypto.optimizer.precompile._runtime"]
 
     class TempOptimizer(cy.LegacyOptimizer):
-        def evolve(self, epoch):
+        def _evolve(self, epoch):
             pass
 
     def no_cython():

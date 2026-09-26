@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 import clypto as cy
-from clypto.optimizer.target import Target
+from clypto import Target
 
 
 @cy.agent

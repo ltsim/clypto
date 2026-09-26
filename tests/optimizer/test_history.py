@@ -35,8 +35,8 @@ def multi_objective(solution):
 def problem():
     return cy.Problem(
         obj_func=objective,
-        bounds=cy.FloatVar(lb=[-1] * N_DIMS, ub=[1] * N_DIMS),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-1] * N_DIMS, up=[1] * N_DIMS),
+        sense="min",
     )
 
 
@@ -96,8 +96,8 @@ def test_population_capture_and_nan_padding(problem):
 def test_multi_objective_population():
     multi = cy.Problem(
         obj_func=multi_objective,
-        bounds=cy.FloatVar(lb=[-1] * N_DIMS, ub=[1] * N_DIMS),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-1] * N_DIMS, up=[1] * N_DIMS),
+        sense="min",
     )
     model = PSO.OriginalPSO(epoch=4, pop_size=6)
     model.solve(multi, seed=1, track_population=True)

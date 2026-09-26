@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Unit tests for the decorator API's :class:`clypto.Population` container."""
+"""Unit tests for :class:`clypto.Population`."""
 
 import numpy as np
 import pytest
@@ -13,6 +13,10 @@ def objective(solution):
     return np.sum(solution**2)
 
 
+def agents(*fitness):
+    return [cy.LegacyAgent(np.full(N_DIMS, f), cy.Target(f)) for f in fitness]
+
+
 @cy.agent
 class CountingAgent:
     v: cy.Attribute[int, (1, 100), 5]
@@ -20,7 +24,7 @@ class CountingAgent:
 
 @cy.optimizer(agent=CountingAgent)
 class Search:
-    """A trivial optimizer used only to exercise the Population container."""
+    """A trivial optimizer used only to build a decorator-API population."""
 
     def evolve(self, epoch):
         pass
@@ -30,128 +34,119 @@ class Search:
         return agent
 
 
-def build_population(problem, pop_size=6, minmax="min"):
-    optimizer = Search(epoch=1, pop_size=pop_size)
-    optimizer._bind_problem(problem, seed=1)
-    optimizer.rng = np.random.default_rng(1)
-    return cy.Population(pop_size, optimizer.bounds.ndim, optimizer, minmax)
-
-
 @pytest.fixture(scope="module")
 def problem():
     return cy.Problem(
         obj_func=objective,
-        bounds=cy.FloatVar(lb=[-5.0] * N_DIMS, ub=[5.0] * N_DIMS),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-5.0] * N_DIMS, up=[5.0] * N_DIMS),
+        sense="min",
     )
 
 
-def test_population_is_created_and_evaluated(problem):
-    population = build_population(problem, pop_size=6)
-
-    assert len(population) == 6
-    assert population.solutions.shape == (6, N_DIMS)
-    assert population.fitness.shape == (6,)
-    assert np.isfinite(population.fitness).all()
-    assert all(agent.fitness is not None for agent in population)
+def runtime_population(problem, pop_size=6):
+    optimizer = Search(epoch=1, pop_size=pop_size)
+    optimizer._bind_problem(problem, seed=1)
+    optimizer.rng = np.random.default_rng(1)
+    return optimizer, cy.Population([optimizer.generate_agent() for _ in range(pop_size)], "min")
 
 
-def test_population_indexing_and_iteration(problem):
-    population = build_population(problem)
+def test_generic_alias_builds_a_population():
+    population = cy.Population[cy.LegacyAgent](agents(3.0, 1.0), sense="max")
 
-    assert population[0] is list(population)[0]
-    assert population[-1] is list(population)[-1]
+    assert isinstance(population, cy.Population)
+    assert population.sense == "max"
+    assert len(population) == 2
 
 
-def test_population_solutions_setter_reevaluates(problem):
-    population = build_population(problem)
-    new_solutions = np.zeros((len(population), N_DIMS))
+def test_indexing_and_slices():
+    items = agents(3.0, 1.0, 2.0, 5.0)
+    population = cy.Population(items)
 
-    population.solutions = new_solutions
+    assert population[0] is items[0] and population[-1] is items[-1]
+    part = population[1:3]
+    assert isinstance(part, cy.Population) and list(part) == items[1:3]
 
+
+def test_mutable_sequence_operations():
+    a, b, c, d = agents(3.0, 1.0, 2.0, 5.0)
+    population = cy.Population([a, b])
+
+    population.append(c)
+    population += [d]
+    assert list(population) == [a, b, c, d]
+    assert population.popleft() is a
+    population.remove(c)
+    assert list(population) == [b, d]
+    assert list([a] + population) == [a, b, d]
+    assert isinstance(population + [a], cy.Population)
+
+
+def test_wrapping_a_list_shares_it():
+    items = agents(3.0, 1.0)
+    population = cy.Population(items)
+
+    population.append(agents(2.0)[0])
+    assert len(items) == 3
+
+
+@pytest.mark.parametrize("sense, best, worst", [("min", 1.0, 5.0), ("max", 5.0, 1.0)])
+def test_best_worst_and_sort_follow_sense(sense, best, worst):
+    population = cy.Population(agents(3.0, 1.0, 2.0, 5.0), sense)
+
+    assert population.best.target.fitness == best
+    assert population.worst.target.fitness == worst
+    ranked = population.sort()
+    assert ranked[0].target.fitness == best
+    assert [population[i] for i in ranked.idx] == list(ranked)
+    assert ranked.idx == population.argsort()
+
+
+def test_argsort_matches_numpy():
+    population = cy.Population(agents(3.0, 1.0, 1.0, 5.0), "max")
+
+    assert population.argsort() == np.argsort([3.0, 1.0, 1.0, 5.0]).tolist()[::-1]
+
+
+@pytest.mark.parametrize("sense, expected", [("min", [1.0, 2.0, 2.0]), ("max", [3.0, 4.0, 2.0])])
+def test_greedy_keeps_strict_improvements(sense, expected):
+    population = cy.Population(agents(3.0, 2.0, 2.0), sense)
+
+    kept = population.greedy(agents(1.0, 4.0, 2.0))
+    assert kept.fitness.tolist() == expected
+
+
+def test_arrays():
+    population = cy.Population(agents(3.0, 1.0))
+
+    assert population.fitness.tolist() == [3.0, 1.0]
+    assert population.solutions.shape == (2, N_DIMS)
+
+
+def test_copy_is_shallow_duplicate_is_deep():
+    population = cy.Population(agents(3.0, 1.0))
+
+    shallow, deep = population.copy(), population.duplicate()
+    assert shallow[0] is population[0]
+    assert deep[0] is not population[0] and deep[0].target.fitness == 3.0
+    shallow.append(agents(2.0)[0])
+    assert len(population) == 2
+
+
+def test_solutions_setter_reevaluates_runtime_agents(problem):
+    _, population = runtime_population(problem)
+
+    population.solutions = np.zeros((len(population), N_DIMS))
     assert np.allclose(population.solutions, 0.0)
     assert np.allclose(population.fitness, 0.0)
-
-
-def test_population_solutions_shape_is_validated(problem):
-    population = build_population(problem)
-
     with pytest.raises(ValueError):
         population.solutions = np.zeros((len(population) + 1, N_DIMS))
 
 
-def test_agent_solution_assignment_updates_fitness(problem):
-    population = build_population(problem)
-    agent = population[0]
-
-    agent.solution = np.array([3.0, 4.0, 0.0])
-
-    assert agent.fitness == pytest.approx(25.0)
-    assert population.fitness[0] == pytest.approx(25.0)
-
-
-def test_agent_fitness_is_read_only(problem):
-    population = build_population(problem)
-
-    with pytest.raises(AttributeError):
-        population[0].fitness = 100.0
-
-
-def test_in_place_solution_operator_updates_fitness(problem):
-    population = build_population(problem)
-    agent = population[0]
-    agent.solution = np.array([4.0, 4.0, 4.0])
-
-    population[0].solution /= 2.0
-
-    assert agent.fitness == pytest.approx(np.sum(np.array([2.0, 2.0, 2.0]) ** 2))
-
-
-def test_best_and_worst_follow_minmax(problem):
-    min_population = build_population(problem, minmax="min")
-    min_population.solutions = np.array(
-        [[1.0, 0.0, 0.0], [5.0, 0.0, 0.0], [3.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
-    )
-    assert min_population.best.fitness == pytest.approx(0.0)
-    assert min_population.worst.fitness == pytest.approx(25.0)
-
-    max_population = build_population(problem, minmax="max")
-    max_population.solutions = np.array(
-        [[1.0, 0.0, 0.0], [5.0, 0.0, 0.0], [3.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
-    )
-    assert max_population.best.fitness == pytest.approx(25.0)
-    assert max_population.worst.fitness == pytest.approx(0.0)
-
-
-def test_remove_and_append(problem):
-    population = build_population(problem)
-    worst = population.worst
-    original_size = len(population)
-
-    removed = population.remove(worst.id)
-
-    assert removed is worst
-    assert len(population) == original_size - 1
-    assert all(agent.id != worst.id for agent in population)
-
-    generated = population.generate()
-    population.append(generated)
-
-    assert len(population) == original_size
-    assert generated.id is not None
-    assert generated.fitness is not None
-
-
-def test_remove_unknown_id_raises(problem):
-    population = build_population(problem)
-
-    with pytest.raises(KeyError):
-        population.remove(10_000)
-
-
-def test_custom_agent_attributes(problem):
-    population = build_population(problem)
+def test_runtime_agents_keep_their_attributes(problem):
+    optimizer, population = runtime_population(problem)
 
     assert all(agent.v == 1 for agent in population)
-    population[0].v = 42
-    assert population[0].v == 42
+    population.remove(population.worst)
+    population.append(optimizer.generate_agent())
+    assert len(population) == 6
+    assert np.isfinite(population.fitness).all()

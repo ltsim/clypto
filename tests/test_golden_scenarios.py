@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 import clypto as cy
-from tests._engines import ENGINES, skip_if_not_bit_identical
+from tests._engines import CHANGED, ENGINES, skip_if_not_bit_identical
 
 BASELINE_PATH = Path(__file__).parent / "golden" / "baseline_scenarios_2026a0.json"
 
@@ -38,7 +38,7 @@ SCENARIOS = {
 
 def _cases():
     baseline = json.loads(BASELINE_PATH.read_text())
-    return [(name, label) for name in sorted(baseline) for label in SCENARIOS if "fitness" in baseline[name].get(label, {})]
+    return [(name, label) for name in sorted(baseline.keys() - CHANGED.keys()) for label in SCENARIOS if "fitness" in baseline[name].get(label, {})]
 
 
 @pytest.mark.parametrize("engine", ENGINES)
@@ -47,7 +47,7 @@ def test_matches_classic_scenario(engine, name, label):
     skip_if_not_bit_identical(engine, name)
     expected = json.loads(BASELINE_PATH.read_text())[name][label]
     s = SCENARIOS[label]
-    problem = cy.Problem(obj_func=s["f"], bounds=cy.FloatVar(lb=[-5.0] * s["d"], ub=[5.0] * s["d"]), minmax=s["mm"])
+    problem = cy.Problem(obj_func=s["f"], bounds=cy.NumberBounds(float, low=[-5.0] * s["d"], up=[5.0] * s["d"]), sense=s["mm"])
     kwargs = {"epoch": s["ep"], "pop_size": s["n"]}
     if s["mode"]:
         kwargs["mode"] = s["mode"]

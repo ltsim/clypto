@@ -50,8 +50,8 @@ def sphere_evaluator():
 def _problem(evaluator=None):
     return cy.Problem(
         obj_func=lambda s: float(np.sum(s**2)),
-        bounds=cy.FloatVar(lb=[-1.0] * N_DIMS, ub=[1.0] * N_DIMS),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-1.0] * N_DIMS, up=[1.0] * N_DIMS),
+        sense="min",
         evaluator=evaluator,
     )
 

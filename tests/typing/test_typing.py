@@ -50,8 +50,8 @@ def test_typed_optimizer_api_has_no_mypy_errors():
 def problem():
     return cy.Problem(
         obj_func=lambda solution: float(np.sum(solution**2)),
-        bounds=cy.FloatVar(lb=[-5.0] * 3, ub=[5.0] * 3),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-5.0] * 3, up=[5.0] * 3),
+        sense="min",
     )
 
 

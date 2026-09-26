@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 import clypto as cy
-from tests._engines import statistical_only
+from tests._engines import NO_EVOLVE, statistical_only
 
 VECTORIZE = cy.get_all_optimizers(engine="vectorize")
 # Still on scipy's global RNG (nondeterministic like legacy); remove a name from this set once its vectorize
@@ -27,10 +27,11 @@ def _sphere(x):
 
 @pytest.mark.parametrize(
     "name",
-    [pytest.param(n, marks=pytest.mark.xfail(reason="uses scipy's global RNG", strict=False)) if n in NONDETERMINISTIC_TODO else n for n in sorted(VECTORIZE)],
+    [pytest.param(n, marks=pytest.mark.xfail(reason="uses scipy's global RNG", strict=False)) if n in NONDETERMINISTIC_TODO else n
+     for n in sorted(VECTORIZE.keys() - NO_EVOLVE)],
 )
 def test_same_seed_same_result(name):
-    problem = cy.Problem(obj_func=_sphere, bounds=cy.FloatVar(lb=[-3.0] * 6, ub=[3.0] * 6), minmax="min")
+    problem = cy.Problem(obj_func=_sphere, bounds=cy.NumberBounds(float, low=[-3.0] * 6, up=[3.0] * 6), sense="min")
     runs = [VECTORIZE[name](epoch=50, pop_size=25).solve(problem, seed=7) for _ in range(2)]
     assert runs[0].target.fitness == runs[1].target.fitness
     np.testing.assert_array_equal(runs[0].solution, runs[1].solution)

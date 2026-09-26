@@ -14,7 +14,7 @@ _RUN = """
 import hashlib, numpy as np, clypto as cy
 from clypto.native.collection.vectorize.swarm_based import PSO
 problem = cy.Problem(obj_func=lambda s: float(np.sum(s**2)),
-                     bounds=cy.FloatVar(lb=[-5.0] * 60, ub=[5.0] * 60))
+                     bounds=cy.NumberBounds(float, low=[-5.0] * 60, up=[5.0] * 60))
 g = PSO.{name}(epoch=5, pop_size=500).solve(problem, seed=3)
 print(g.target.fitness, hashlib.sha1(g.solution.tobytes()).hexdigest())
 """
@@ -33,7 +33,7 @@ def test_result_does_not_depend_on_openmp_threads(name):
 
 
 def _problems():
-    bounds = cy.FloatVar(lb=[-3.0] * 8, ub=[3.0] * 8)
+    bounds = cy.NumberBounds(float, low=[-3.0] * 8, up=[3.0] * 8)
     scalar = cy.Problem(obj_func=lambda x: float(np.sum(x**2)), bounds=bounds)
     vector = cy.Problem(obj_func=lambda X: np.sum(X**2, axis=1), bounds=bounds, vectorized=True)
     return scalar, vector

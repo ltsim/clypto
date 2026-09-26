@@ -45,7 +45,7 @@ FUNCTIONS = {"sphere": (sphere, 5.0), "rastrigin": (rastrigin, 5.12), "ackley": 
 
 
 def run(cls, fn, bound, dim, seed, epoch, pop):
-    problem = cy.Problem(obj_func=fn, bounds=cy.FloatVar(lb=[-bound] * dim, ub=[bound] * dim), minmax="min")
+    problem = cy.Problem(obj_func=fn, bounds=cy.NumberBounds(float, low=[-bound] * dim, up=[bound] * dim), sense="min")
     model = cls(epoch=epoch, pop_size=pop)
     best = model.solve(problem, seed=seed)
     return float(best.target.fitness), int(model.nf_counter)

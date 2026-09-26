@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 import clypto as cy
-from tests._engines import ENGINES, skip_if_not_bit_identical
+from tests._engines import CHANGED, ENGINES, skip_if_not_bit_identical
 
 N_DIMS = 5
 BASELINE_PATH = Path(__file__).parent / "golden" / "baseline_2026a0.json"
@@ -41,8 +41,8 @@ def _baseline():
 def problem():
     return cy.Problem(
         obj_func=lambda s: float(np.sum(s**2)),
-        bounds=cy.FloatVar(lb=[-1.0] * N_DIMS, ub=[1.0] * N_DIMS),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-1.0] * N_DIMS, up=[1.0] * N_DIMS),
+        sense="min",
     )
 
 
@@ -57,7 +57,7 @@ def test_no_new_optimizers_missing(engine):
 @pytest.mark.parametrize("engine", ENGINES)
 @pytest.mark.parametrize(
     "name",
-    sorted(n for n in _baseline() if n not in NONDETERMINISTIC),
+    sorted(n for n in _baseline() if n not in NONDETERMINISTIC | CHANGED.keys()),
 )
 def test_optimizer_matches_baseline(engine, name, problem):
     expected = _baseline()[name]
