@@ -44,6 +44,8 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 - `OriginalFOA`, `BaseFOA` — **weak**; `WhaleFOA` performs better.
 - `OriginalCHIO` — **too weak**; `BaseCHIO` uses a mixed strategy.
 - `HGSO`, `EHO`, `PFA`, `SSO` — sensitive to population ordering.
+- `DS_GWO` — has no evolve step (not even in the pre-Cython sources); it
+  raises `NotImplementedError`.
 
 ### Fixed in 2026
 
@@ -104,6 +106,9 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 
 - `TWO` (`OppoTWO`) — odd-`pop_size` population-halving `IndexError`.
 - `MSO` — `self.nfe_counter` typo (the real attribute is `self.nf_counter`).
+- `MSO` — `nf_counter` now starts at 0 on every `solve()` (it started at 1 and
+  accumulated across runs), so results changed. Its equations still use the
+  evaluation count where the iteration count (`epoch`) looks intended.
 
 ---
 
@@ -114,6 +119,8 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 - `DE` (`BaseDE`, `JADE`, `SADE`, `SHADE`, `L_SHADE`, `SAP_DE`), `GA`, `CRO`,
   `FPA` — selection picks random or roulette-wheel agents, so runs are more
   sensitive to population ordering.
+- `OriginalGA` — has no evolve step (not even in the pre-Cython sources); it
+  raises `NotImplementedError`. Use `BaseGA` (same parameters).
 
 ### Fixed in 2026
 

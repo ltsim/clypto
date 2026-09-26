@@ -12,13 +12,14 @@ The optimizer's solutions live in `self.population`, a `cy.Population`. The same
 The most useful operations on `self.population`:
 
 ```python
-self.population.solutions        # (n_pop, ndim) matrix; assigning re-evaluates all
+self.population.solutions        # (n_pop, n_dims) matrix; assigning re-evaluates all
 self.population.fitness          # (n_pop,) vector
-self.population.best             # best agent (minmax-aware)
+self.population.best             # best agent (sense-aware)
 self.population.worst            # worst agent
-self.population.remove(agent.id) # drop one agent
+self.population.sort()           # new Population, best first; .idx = source positions
+self.population.remove(agent)    # drop one agent (it is a MutableSequence)
 self.population.append(agent)    # add an agent
-self.population.generate()       # create a fresh, evaluated agent (not appended)
+self.generate_agent()            # create a fresh, evaluated agent (not appended)
 ```
 
 The typical search loop removes the worst agent and replaces it:
@@ -26,8 +27,8 @@ The typical search loop removes the worst agent and replaces it:
 ```python
 def evolve(self, epoch):
     worst = self.population.worst
-    self.population.remove(worst.id)
-    self.population.append(self.population.generate())
+    self.population.remove(worst)
+    self.population.append(self.generate_agent())
 ```
 
 ## Seeding the population
@@ -39,8 +40,8 @@ You can also set the whole matrix at once, which is convenient in `initialize`:
 class Seeded:
     def initialize(self):
         self.population.solutions = self.rng.uniform(
-            self.bounds.lb, self.bounds.ub,
-            (len(self.population), self.bounds.ndim),
+            self.bounds.low, self.bounds.up,
+            (len(self.population), self.bounds.n_dims),
         )
 
     def evolve(self, epoch):

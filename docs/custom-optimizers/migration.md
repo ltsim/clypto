@@ -56,15 +56,15 @@ class MyAlgorithm:
         super().__init__(**kwargs)          # reaches LegacyOptimizer
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         for idx in range(self.pop_size):
-            pos_new = self.correct_solution(self.problem.generate_solution(encoded=True))
-            agent = self.generate_empty_agent(pos_new)
-            agent.target = self.get_target(pos_new)
-            self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+            pos_new = self._correct_solution(self.problem.generate_solution(encoded=True))
+            agent = self._generate_empty_agent(pos_new)
+            agent.target = self._get_target(pos_new)
+            self.pop[idx] = self._get_better_agent(self.pop[idx], agent, self.problem.sense)
 ```
 
 The old `@cy.precompile` decorator is replaced by the compilation flags on the
@@ -79,15 +79,16 @@ legacy `self.pop` list. The mapping is mechanical:
 | --- | --- |
 | `class X(Optimizer)` | `@cy.optimizer` on a plain class |
 | `__init__` + `self.validator.check_int/...` | `name: cy.Argument[type, bound, default]` |
-| `self.set_parameters([...])` | automatic (`optimizer.parameters`) |
+| `self._set_parameters([...])` | automatic (`optimizer.parameters`) |
 | `self.pop` (list) | `self.population` (`Population`) |
 | `self.generator` (NumPy) / `self.rng` (random) | `self.rng` (`numpy.random.Generator`) |
-| `initialization()` / `before_main_loop()` | `initialize()` |
-| `agent.target = self.get_target(pos)` | `agent.solution = pos` (evaluates automatically) |
+| `_initialization()` / `_before_main_loop()` | `initialize()` |
+| `_evolve(epoch)` | `evolve(epoch)` |
+| `agent.target = self._get_target(pos)` | `agent.solution = pos` (evaluates automatically) |
 | `agent.solution` / `agent.target.fitness` | `agent.solution` / `agent.fitness` |
-| `self.generate_empty_agent(...)` | `self.generate_agent(...)` |
-| `self.get_better_agent(a, b, minmax)` | compare `a.fitness` / `b.fitness` |
-| `correct_solution(...)` | `problem.correct_solution(...)` |
+| `self._generate_empty_agent(...)` | `self.generate_agent(...)` |
+| `self._get_better_agent(a, b, sense)` | compare `a.fitness` / `b.fitness` |
+| `self._correct_solution(...)` | `problem.correct_solution(...)` |
 
 Before:
 
@@ -100,15 +101,15 @@ class RandomSearch(LegacyOptimizer):
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         for idx in range(self.pop_size):
-            pos_new = self.correct_solution(self.problem.generate_solution(encoded=True))
-            agent = self.generate_empty_agent(pos_new)
-            agent.target = self.get_target(pos_new)
-            self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+            pos_new = self._correct_solution(self.problem.generate_solution(encoded=True))
+            agent = self._generate_empty_agent(pos_new)
+            agent.target = self._get_target(pos_new)
+            self.pop[idx] = self._get_better_agent(self.pop[idx], agent, self.problem.sense)
 ```
 
 After:
@@ -144,8 +145,8 @@ which runs after the population exists:
 class Seeded:
     def initialize(self):
         self.population.solutions = self.rng.uniform(
-            self.bounds.lb, self.bounds.ub,
-            (len(self.population), self.bounds.ndim),
+            self.bounds.low, self.bounds.up,
+            (len(self.population), self.bounds.n_dims),
         )
 
     def evolve(self, epoch):
@@ -169,12 +170,12 @@ class Particle:
 @cy.optimizer(agent=Particle)
 class MyPSO:
     def generate(self, agent, solution):
-        agent.velocity = self.rng.normal(0, 1, self.bounds.ndim)
+        agent.velocity = self.rng.normal(0, 1, self.bounds.n_dims)
         return agent
 
     def evolve(self, epoch):
         for agent in self.population:
-            agent.velocity += self.rng.normal(0, 1, self.bounds.ndim)
+            agent.velocity += self.rng.normal(0, 1, self.bounds.n_dims)
             agent.solution = agent.solution + agent.velocity
 ```
 

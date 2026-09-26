@@ -28,18 +28,44 @@ def _pythonize_pyx(text: str) -> str:
     are unaffected, so the rest of this script still works on the parsed tree.
     """
     out: list[str] = []
-    for line in text.splitlines():
+    lines = iter(text.splitlines())
+    for line in lines:
         if re.match(r"^\s*(from\s+\S+\s+cimport\s+.+|cimport\s+.+)$", line):
             out.append("pass")
         elif re.match(r"^\s*cdef class ", line):
             out.append(re.sub(r"^(\s*)cdef class ", r"\1class ", line))
+        elif re.match(r"^\s*(def|cpdef|cdef)\s[^=]*\(", line):
+            while not line.rstrip().endswith(":"):  # multi-line signature
+                line = line.rstrip() + " " + next(lines).strip()
+            out.append(_pythonize_signature(line))
         elif re.match(r"^\s*cdef\s+", line):
+            while line.count("(") > line.count(")"):  # multi-line declaration
+                line += next(lines)
             out.append(re.sub(r"^(\s*)cdef\s+.*$", r"\1pass", line))
-        elif re.match(r"^\s*cpdef\s+", line):
-            out.append(re.sub(r"^(\s*)cpdef\s+(?:\w+\s+)?(\w+\s*\()", r"\1def \2", line))
         else:
-            out.append(line)
+            out.append(re.sub(r"<\w+>|&(?=\w)", "", line))  # casts and address-of
     return "\n".join(out)
+
+
+def _pythonize_signature(line: str) -> str:
+    """``cpdef object f(self, Py_ssize_t n=*, ...) noexcept nogil:`` -> ``def f(self, n=..., ...):``.
+
+    A ``cdef`` function is C-only, so it becomes private (``_f``) and stays off the API page.
+    """
+    indent, kind, name, params = re.match(r"^(\s*)(def|cpdef|cdef)\s+(?:.*?\s)?(\w+)\s*\((.*)\)[^)]*:\s*$", line).groups()
+    if kind == "cdef" and not name.startswith("_"):
+        name = "_" + name  # C-only: not part of the Python API
+    kept, depth, current = [], 0, ""
+    for ch in params + ",":
+        depth += ch in "[(" and 1 or ch in "])" and -1 or 0
+        if ch == "," and depth == 0:
+            head, eq, default = current.partition("=")
+            if head.strip():
+                kept.append(head.split()[-1] + (eq + default.strip().replace("*", "...") if eq else ""))
+            current = ""
+        else:
+            current += ch
+    return f"{indent}def {name}({', '.join(kept)}):"
 
 
 def _parse(path: Path):
@@ -64,8 +90,14 @@ CATEGORY_LABELS = {
 CATEGORY_ORDER = list(CATEGORY_LABELS)
 
 CORE_MODULES = [
-    "clypto/optimizer/base.py",
-    "clypto/optimizer/legacy.py",
+    "clypto/optimizer/native/optimizer.pyx",
+    "clypto/optimizer/native/legacy.pyx",
+    "clypto/optimizer/native/vectorize.pyx",
+    "clypto/optimizer/native/problem.pyx",
+    "clypto/optimizer/bounds.py",
+    "clypto/optimizer/native/population.pyx",
+    "clypto/optimizer/native/agent.pyx",
+    "clypto/optimizer/native/target.pyx",
     "clypto/optimizer/precompile/declaration.py",
     "clypto/optimizer/precompile/base.py",
     "clypto/optimizer/precompile/decorator.py",
@@ -74,20 +106,8 @@ CORE_MODULES = [
     "clypto/optimizer/agents/decorator.py",
     "clypto/optimizer/precompile/compiler.py",
     "clypto/optimizer/precompile/decoration.py",
-    "clypto/optimizer/problem.py",
     "clypto/optimizer/termination.py",
     "clypto/optimizer/validator.py",
-    "clypto/optimizer/target.py",
-    "clypto/optimizer/population.py",
-    "clypto/optimizer/space/base.py",
-    "clypto/optimizer/space/floats.py",
-    "clypto/optimizer/space/integers.py",
-    "clypto/optimizer/space/strings.py",
-    "clypto/optimizer/space/binary.py",
-    "clypto/optimizer/space/boolean.py",
-    "clypto/optimizer/space/categorical.py",
-    "clypto/optimizer/space/sequence.py",
-    "clypto/optimizer/space/permutation.py",
     "clypto/hints/array.py",
     "clypto/hints/primitives.py",
     "clypto/hints/sense.py",

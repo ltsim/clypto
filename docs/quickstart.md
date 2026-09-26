@@ -4,8 +4,8 @@ This page gets you from zero to a solved optimization problem in a few lines.
 
 ## 1. Define the objective
 
-The search space is described with one or more `*Var` objects. For a continuous
-problem, use `FloatVar`:
+The search space is described with one or more bounds blocks. For a continuous
+problem, use `NumberBounds`:
 
 ```python
 import numpy as np
@@ -24,8 +24,8 @@ import clypto as cy
 
 problem = cy.Problem(
     obj_func=objective,
-    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
-    minmax="min",  # "min" to minimize, "max" to maximize
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",  # "min" to minimize, "max" to maximize
 )
 ```
 
@@ -66,8 +66,8 @@ def objective(solution):
 
 problem = cy.Problem(
     obj_func=objective,
-    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
-    minmax="min",
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",
 )
 
 model = PSO.OriginalPSO(epoch=500, pop_size=50)

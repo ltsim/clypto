@@ -6,6 +6,34 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### Optimizer core refactor (2026-09)
+
++ **One engine hierarchy.** `NativeOptimizer` (`clypto.optimizer.native.optimizer`) owns `solve()`, the RNGs, termination, tracking and the list-of-agents helpers. `LegacyOptimizer` (the classic per-agent engine, `native/legacy.pyx`) and `VectorizeOptimizer` (the former `LegacyNativeOptimizer`, `native/vectorize.pyx`) derive from it; each refreshes `g_best` in `_after_evolve()`. The pure-Python duplicate engine (`clypto/optimizer/{base,legacy}.py`) is deleted: `cy.LegacyOptimizer` / `@cy.legacy` now run on the compiled class. `AgentListOptimizer` keeps only its list lifecycle (the helpers come from `NativeOptimizer`).
++ **Private hooks and helpers.** `solve()` is the only public method. Lifecycle hooks and helpers gained a `_` prefix (`_evolve`, `_initialization`, `_get_target`, `_correct_solution`, `_amend_solution`, `_generate_agent`, `_get_better_agent`, `_set_parameters`, ...) in both collections. Vectorize hooks moved from `cdef void` to `def _...`: a compiled `def` override of a `cdef`/`cpdef` base method is skipped when the base calls it from C, and one Python call per epoch is noise next to the NumPy work.
++ **`LegacyAgent`** (`native/agent.pyx`) only stores data; `copy()`/`update(**fields)` work for any subclass, so the 30 hand-written `copy()`/`update()` overrides in the legacy collection are gone (subclasses only declare `cdef public` fields). The comparison logic is in module functions: `duplicate_agent`, `sync_if_duplicate`, `compare_fitness`, `get_better_solution`, `is_better_than`. `cy.LegacyAgent` is the compiled class (the Python copy is deleted).
++ **`Problem` is compiled** (`native/problem.pyx`, replaces `problem.py` and `NativeProblem`): `Problem(bounds, sense="min", obj_func=..., name=..., evaluator=..., obj_weights=..., vectorized=..., seed=...)`. `Problem.evaluate(X, parallel=False)` returns `(fitness, objectives)` for a matrix (nogil evaluator on OpenMP threads when `parallel`); both engines use it. A problem given as a dict is now seeded by `solve(seed=...)` (it was not, so its initial population was not reproducible).
++ **`Bounds` replaces `*Var`** (`clypto.optimizer.bounds`): `NumberBounds(float | int | bool, low, up, n_vars=)`, `TransferBounds`, `StringBounds` (any hashable label), `SequenceBounds`, `PermutationBounds`, concatenated by `Bounds(*blocks)` (`low`, `up`, `n_dims`, `dtype == float64`, unique names, per-block seeded streams, `encode`/`correct`/`decode`/`generate`). Integers and booleans are searched on `[low - 0.5, up + 0.5]` so both ends get a full cell. This also fixes 8 of the 11 `*Var` classes that raised on construction, `TransferBinaryVar` ignoring `lb`, and `decode_solution` failing for every type (it read the name-mangled `var.__name`).
++ **`Population`** (`native/population.pyx`) is a `MutableSequence` (and `Generic`): `Population[Agent](agents, sense)`, slices and `+` give populations, `best`/`worst`, `sort()` (with `.idx`), `argsort()`, `greedy(candidates)`, `fitness`/`solutions` arrays (assigning `solutions` writes the rows back), `copy()`/`duplicate()`, `popleft()`. The legacy engine keeps `self.pop` as a `Population` and ranks through it; the decorator API uses the same class.
++ **`minmax` is `sense`** everywhere (problems, helpers, `Population`, tracker metadata key `"sense"`). `cy.Target` is the compiled `NativeTarget` (the Python `Target` is deleted).
++ **Fixes**: `nf_counter` starts at 0 on every `solve()` (it started at 1 and accumulated across runs; `OriginalMSO` reads it, so its results change). `OriginalGA` and `DS_GWO`, which never had an evolve step (not even in the pre-Cython sources), raise `NotImplementedError` instead of silently returning the best random initial agent.
++ **Removed**: `duplicate_pop`, `get_worst_agent`, `improved_ms` (no callers), `get_name`/`get_parameters`/`get_attributes` (use `name`/`parameters`), the `is_parallelizable` flag (written, never read) and `parallelizable=`, the unused `save` argument of `_update_global_best_agent`, `RuntimeAgent.id`, `Population.generate()`, the `LabelEncoder`.
++ **Results**: a seeded `min` and `max` run of every optimizer on both engines (972 runs) is bit-identical to the pre-refactor build except `OriginalGA`, `DS_GWO` and `OriginalMSO` (and the scipy-RNG classes, which differ between any two runs).
+
+| Before | After |
+| --- | --- |
+| `Problem(bounds, minmax=..., **kwargs)` | `Problem(bounds, sense=..., obj_func=..., ...)` |
+| `problem.lb`, `problem.ub`, `problem.minmax`, `problem.get_name()` | `problem.bounds.low`, `problem.bounds.up`, `problem.sense`, `problem.name` |
+| `FloatVar(lb=..., ub=...)` / `IntegerVar` / `BinaryVar` / `BoolVar` | `NumberBounds(float, low=..., up=...)` / `NumberBounds(int, ...)` / `NumberBounds(int, 0, 1, n_vars=n)` / `NumberBounds(bool, n_vars=n)` |
+| `TransferBinaryVar` / `TransferBoolVar` | `TransferBounds(int / bool, n_vars, tf_func)` |
+| `StringVar` / `CategoricalVar`, `SequenceVar`, `PermutationVar` | `StringBounds(valid_sets)`, `SequenceBounds(valid_sets, return_type)`, `PermutationBounds(valid_set)` |
+| `def evolve(self, epoch)` in classic optimizers | `def _evolve(self, epoch)` |
+| `self.get_target(...)`, `self.correct_solution(...)`, `self.set_parameters(...)`, ... | `self._get_target(...)`, `self._correct_solution(...)`, `self._set_parameters(...)`, ... |
+| `model.get_name()`, `model.get_parameters()` | `model.name`, `model.parameters` |
+| `_LegacyAgent`, `LegacyNativeOptimizer`, `NativeProblem` | `LegacyAgent`, `VectorizeOptimizer`, `Problem` |
+| decorator API `population.remove(agent.id)`, `population.generate()` | `population.remove(agent)`, `self.generate_agent()` |
+| decorator API `self.bounds.lb` / `ub` / `ndim` | `self.bounds.low` / `up` / `n_dims` |
+| history metadata `"minmax"` | `"sense"` |
+
 ### Public collection paths, lookup-only top level (2026-09)
 
 + **`clypto/collection/` is gone.** The shim layer that re-exported the vectorized tree has been deleted; the Cython sources are now the public API: `from clypto.native.collection.vectorize.swarm_based import PSO` (or `...legacy...` for the classic classes). Every class docstring, example, benchmark and doc page uses the direct native path.

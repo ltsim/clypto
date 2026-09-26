@@ -157,8 +157,8 @@ class MyOptimizer:
 
 problem = cy.Problem(
     obj_func=lambda x: np.sum(x ** 2),
-    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
-    minmax="min",
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",
 )
 g_best = MyOptimizer(epoch=200, pop_size=50).solve(problem, seed=7)
 ```
@@ -176,15 +176,15 @@ class MyClassicOptimizer:
         super().__init__(**kwargs)          # LegacyOptimizer is injected
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         ...
 ```
 
-The classic base class was renamed `Optimizer` → `LegacyOptimizer`; `cy.Optimizer`
-is kept as an alias. See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
+The classic base class is the compiled `LegacyOptimizer` (`cy.Optimizer` is an
+alias); its hooks and helpers are private (`_evolve`, `_get_target`, ...). See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
 
 Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or
 `precompile=True` to `@cy.legacy`, and install the `compile` extra:

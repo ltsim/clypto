@@ -10,7 +10,7 @@ variables:
 
 ```python
 import numpy as np
-from clypto import FloatVar
+from clypto import NumberBounds
 from clypto.native.collection.vectorize.bio_based import BBO
 
 def objective(solution):
@@ -18,8 +18,8 @@ def objective(solution):
 
 problem = {
     "obj_func": objective,
-    "bounds": [FloatVar(lb=(-10.0,) * 30, ub=(10.0,) * 30)],
-    "minmax": "min",
+    "bounds": [NumberBounds(float, low=(-10.0,) * 30, up=(10.0,) * 30)],
+    "sense": "min",
     "name": "Sphere",
 }
 
@@ -28,25 +28,25 @@ g_best = model.solve(problem, seed=1)
 ```
 
 For anything more complex — custom data, non-float variables, extra logic —
-subclass `Problem`. The only requirement is that `__init__` sets `bounds` and
-`minmax` and that `obj_func` is defined:
+subclass `Problem`. The only requirement is that `__init__` passes `bounds` and
+`sense` on and that `obj_func` is defined:
 
 ```python
 import numpy as np
-from clypto import Problem, FloatVar
+from clypto import Problem, NumberBounds
 from clypto.native.collection.vectorize.system_based import AEO
 
 class Squared(Problem):
-    def __init__(self, bounds=None, minmax="min", data=None, **kwargs):
-        super().__init__(bounds, minmax, **kwargs)
+    def __init__(self, bounds=None, sense="min", data=None, **kwargs):
+        super().__init__(bounds, sense, **kwargs)
         self.data = data
 
     def obj_func(self, solution):
         return np.sum(solution ** 2)
 
 problem = Squared(
-    bounds=FloatVar(lb=[-10.0] * 20, ub=[10.0] * 20, name="my_var"),
-    minmax="min",
+    bounds=NumberBounds(float, low=[-10.0] * 20, up=[10.0] * 20, name="my_var"),
+    sense="min",
     name="Squared",
     data="anything you need",
 )
@@ -54,25 +54,26 @@ problem = Squared(
 
 ## Decision variables
 
-`Problem.bounds` accepts a single `*Var` or a list of them. Each variable type
-maps to a class of problem:
+`Problem(bounds=...)` takes a `Bounds`, one block or a list of blocks; they are
+concatenated into `problem.bounds` (`low`, `up`, `n_dims`). Each block maps to a
+class of problem:
 
-| Class | Constructor sketch | Typical use |
+| Block | Constructor sketch | Typical use |
 | --- | --- | --- |
-| `FloatVar` | `FloatVar(lb=[-10.]*7, ub=[10.]*7, name="delta")` | Continuous problems |
-| `IntegerVar` | `IntegerVar(lb=[-10]*7, ub=[10]*7, name="delta")` | LP / IP / NLP / QP / MIP |
-| `StringVar` | `StringVar(valid_sets=(("auto","forward"),), name="delta")` | ML / AI hyper-parameters |
-| `BinaryVar` | `BinaryVar(n_vars=11, name="delta")` | Networks |
-| `BoolVar` | `BoolVar(n_vars=11, name="delta")` | ML / AI, feature toggles |
-| `PermutationVar` | `PermutationVar(valid_set=(-10, -4, 10, 6, -2), name="delta")` | Combinatorial optimization |
-| `CategoricalVar` | `CategoricalVar(valid_sets=((...), (...)), name="delta")` | MIP / MILP |
-| `SequenceVar` | `SequenceVar(valid_sets=((1,), {2, 3}), return_type=list, name="delta")` | Hyper-parameter tuning |
-| `TransferBinaryVar` | `TransferBinaryVar(n_vars=11, tf_func="vstf_04", name="delta")` | Feature selection |
-| `TransferBoolVar` | `TransferBoolVar(n_vars=11, tf_func="sstf_02", name="delta")` | Feature selection |
+| `NumberBounds(float, ...)` | `NumberBounds(float, low=[-10.]*7, up=[10.]*7, name="delta")` | Continuous problems |
+| `NumberBounds(int, ...)` | `NumberBounds(int, low=[-10]*7, up=[10]*7, name="delta")` | LP / IP / NLP / QP / MIP |
+| `NumberBounds(int, 0, 1, ...)` | `NumberBounds(int, 0, 1, n_vars=11, name="delta")` | Networks (binary) |
+| `NumberBounds(bool, ...)` | `NumberBounds(bool, n_vars=11, name="delta")` | ML / AI, feature toggles |
+| `StringBounds` | `StringBounds(valid_sets=(("auto", "forward"),), name="delta")` | Hyper-parameters, categorical (any hashable label) |
+| `PermutationBounds` | `PermutationBounds(valid_set=(-10, -4, 10, 6, -2), name="delta")` | Combinatorial optimization |
+| `SequenceBounds` | `SequenceBounds(valid_sets=((1,), (2, 3)), return_type=list, name="delta")` | Hyper-parameter tuning |
+| `TransferBounds` | `TransferBounds(int, n_vars=11, tf_func="vstf_04", name="delta")` | Feature selection |
 
-The optimizer always works on an encoded, flat float vector. Use
-`problem.decode_solution(x)` to recover real-world values and
-`problem.encode_solution(x)` for the reverse.
+The optimizer always works on an encoded, flat `float64` vector
+(`problem.bounds.dtype`). Integers and booleans are searched on
+`[low - 0.5, up + 0.5]` and rounded, so every value owns an equal share of the
+space. Use `problem.decode_solution(x)` to recover `{name: value}` and
+`problem.encode_solution(values)` for the reverse.
 
 ## Discovering optimizers
 
@@ -101,9 +102,8 @@ Each algorithm lives in a module (e.g. `PSO`) that exposes one or more variants
 ```python
 model = PSO.OriginalPSO(epoch=100, pop_size=50)
 
-model.get_name()          # "OriginalPSO"
-model.get_parameters()    # ordered hyper-parameters for this instance
-model.get_attributes()    # the full internal state
+model.name          # "OriginalPSO"
+model.parameters    # ordered hyper-parameters for this instance
 ```
 
 ## Writing your own optimizer

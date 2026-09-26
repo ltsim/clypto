@@ -13,15 +13,15 @@ class ClassicRandomSearch:
         super().__init__(**kwargs)
         self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
         self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
+        self._set_parameters(["epoch", "pop_size"])
         self.sort_flag = True
 
-    def evolve(self, epoch):
+    def _evolve(self, epoch):
         for idx in range(self.pop_size):
-            pos_new = self.correct_solution(self.problem.generate_solution(encoded=True))
-            agent = self.generate_empty_agent(pos_new)
-            agent.target = self.get_target(pos_new)
-            self.pop[idx] = self.get_better_agent(self.pop[idx], agent, self.problem.minmax)
+            pos_new = self._correct_solution(self.problem.generate_solution(encoded=True))
+            agent = self._generate_empty_agent(pos_new)
+            agent.target = self._get_target(pos_new)
+            self.pop[idx] = self._get_better_agent(self.pop[idx], agent, self.problem.sense)
 ```
 
 ## Compile it

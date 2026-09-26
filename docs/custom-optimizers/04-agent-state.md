@@ -19,13 +19,13 @@ class MyPSO:
     inertia: cy.Argument[float, (0.0, 1.5), 0.7]
 
     def generate(self, agent, solution):
-        agent.velocity = self.rng.normal(0, 1, self.bounds.ndim)
+        agent.velocity = self.rng.normal(0, 1, self.bounds.n_dims)
         return agent
 
     def evolve(self, epoch):
         for agent in self.population:
             agent.velocity = (self.inertia * agent.velocity
-                              + self.rng.normal(0, 1, self.bounds.ndim))
+                              + self.rng.normal(0, 1, self.bounds.n_dims))
             agent.solution = agent.solution + agent.velocity
 ```
 

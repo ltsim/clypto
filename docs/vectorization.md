@@ -4,8 +4,8 @@ clypto ships every algorithm twice, both Cythonized:
 
 | Tree | Package | What it is |
 | --- | --- | --- |
-| `vectorize` (default) | `clypto.native.collection.vectorize` | whole-population NumPy/C code on the native engine (`NativePopulation`) |
-| `legacy` | `clypto.native.collection.legacy` | the classic per-agent algorithms on `_LegacyOptimizer`, frozen |
+| `vectorize` (default) | `clypto.native.collection.vectorize` | whole-population NumPy/C code on `VectorizeOptimizer` (`NativePopulation`) |
+| `legacy` | `clypto.native.collection.legacy` | the classic per-agent algorithms on `LegacyOptimizer`, frozen |
 
 `clypto.native.collection.vectorize.<category>.<Module>` and `cy.get_all_optimizers()` return the vectorized
 classes. The classic ones are
@@ -18,7 +18,7 @@ reachable with `cy.get_all_optimizers(engine="legacy")`, `cy.get_optimizer_by_na
   thread. The same seed always gives the same result; no OpenMP kernel draws random numbers.
 * **Synchronous phases.** Classic code updates agents one at a time and lets later agents read the rows already updated.
   The vectorized code computes all candidates of a phase from the same population, evaluates them in **one** batch
-  (`evolve` calls `ops.step`, `ops.replace` or `ops.scatter`) and keeps the better rows.
+  (`_evolve` calls `ops.step`, `ops.replace` or `ops.scatter`) and keeps the better rows.
 * **One objective call per phase** with `Problem(vectorized=True)`.
 
 Because of the synchronous update the results are *statistically* equivalent to legacy, not bit-identical. The classes
@@ -59,6 +59,6 @@ native engine (roughly the speed of legacy). Their update rules cannot be batche
 single-trajectory searches and state machines whose next step depends on the outcome of the previous agent (QSA family,
 HBO, BRO, SARO, CHIO), per-agent sub-populations and groups (CSO, ESOA, ICA, SRSR, SSpiderA/O, SFO family, BSO, BFO/ABFO,
 SquirrelSA, FFA), adaptive or shrinking populations (IMODE, LSHADEcnEpSin, CMA-ES, MA) and `OriginalGA`, which has no
-`evolve` in the classic code either.
+evolve step in the classic code either (it raises `NotImplementedError`).
 
 `ABFO`, `CMA_ES`, `DevBRO`, `DevCHIO`, `DevQSA`, `DevSARO`, `DevSMO`, `ImprovedBSO`, `ImprovedQSA`, `ImprovedSFO`, `ImprovedSLO`, `ImprovedTLO`, `LevyQSA`, `ModifiedSLO`, `OppoQSA`, `OriginalBFO`, `OriginalBRO`, `OriginalBSA`, `OriginalBSO`, `OriginalCHIO`, `OriginalCSO`, `OriginalESOA`, `OriginalFFA`, `OriginalGA`, `OriginalHBO`, `OriginalICA`, `OriginalIMODE`, `OriginalLSHADEcnEpSin`, `OriginalMA`, `OriginalQSA`, `OriginalSARO`, `OriginalSFO`, `OriginalSRSR`, `OriginalSSpiderA`, `OriginalSSpiderO`, `OriginalSquirrelSA`, `WMQIMRFO`
