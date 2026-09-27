@@ -1,6 +1,6 @@
 """Regression: the public bases keep the injected API visible to mypy.
 
-``@cy.optimizer``/``@cy.legacy`` inject a base at runtime, which a type checker
+``@cy.optimizer`` injects a base at runtime, which a type checker
 cannot see. Typed algorithms should inherit ``cy.DecoratedOptimizer`` /
 ``cy.LegacyOptimizer`` instead; this test runs mypy over the fixtures in
 ``typed_optimizer_api.py`` and asserts those members resolve.
@@ -62,4 +62,4 @@ def test_typed_patterns_solve(problem):
     assert new.solve(problem, seed=1).fitness is not None
 
     classic = fixture.ClassicSearch(epoch=5, pop_size=6)
-    assert classic.solve(problem, seed=1).target.fitness is not None
+    assert classic.solve(problem, seed=1).fitness is not None

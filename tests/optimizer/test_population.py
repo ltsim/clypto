@@ -14,7 +14,16 @@ def objective(solution):
 
 
 def agents(*fitness):
-    return [cy.LegacyAgent(np.full(N_DIMS, f), cy.Target(f)) for f in fitness]
+    return [cy.Agent(np.full(N_DIMS, f), f) for f in fitness]
+
+
+def bound(items=(), sense="min", size=None):
+    """A population of ``items`` bound to a small problem of the given sense."""
+    problem = cy.Problem(bounds=cy.NumberBounds(float, low=[-5.0] * N_DIMS, up=[5.0] * N_DIMS), sense=sense, obj_func=objective)
+    population = cy.population(size or max(len(items), 5))
+    population.bind(problem, np.random.default_rng(1))
+    population.extend(items)
+    return population
 
 
 @cy.agent
@@ -47,20 +56,41 @@ def runtime_population(problem, pop_size=6):
     optimizer = Search(epoch=1, pop_size=pop_size)
     optimizer._bind_problem(problem, seed=1)
     optimizer.rng = np.random.default_rng(1)
-    return optimizer, cy.Population([optimizer.generate_agent() for _ in range(pop_size)], "min")
+    return optimizer, bound([optimizer.generate_agent() for _ in range(pop_size)])
 
 
 def test_generic_alias_builds_a_population():
-    population = cy.Population[cy.LegacyAgent](agents(3.0, 1.0), sense="max")
+    population = cy.Population[cy.Agent](10, agents(3.0, 1.0))
 
     assert isinstance(population, cy.Population)
-    assert population.sense == "max"
-    assert len(population) == 2
+    assert population.sense == "min"  # unbound
+    assert len(population) == 2 and population.size() == 10
+
+
+def test_population_validates_its_size_and_binds_later():
+    population = cy.population(30, range=[5, 100])
+
+    assert population.size() == 30 and len(population) == 0
+    with pytest.raises(TypeError):
+        cy.population(3)
+    population.bind(bound().problem, np.random.default_rng(1))
+    generated = population.generate()
+    assert len(generated) == 30 and generated.size() == 30 and population.problem.n_evals == 30
+
+
+def test_subclass_state_survives_slices_and_sort():
+    class Tagged(cy.Population):
+        pass
+
+    population = Tagged(4, agents(3.0, 1.0))
+    population.tag = "kept"
+    for derived in (population[:1], population.sort(), population + agents(2.0), population.copy()):
+        assert type(derived) is Tagged and derived.tag == "kept" and derived.size() == 4
 
 
 def test_indexing_and_slices():
     items = agents(3.0, 1.0, 2.0, 5.0)
-    population = cy.Population(items)
+    population = bound(items)
 
     assert population[0] is items[0] and population[-1] is items[-1]
     part = population[1:3]
@@ -69,7 +99,7 @@ def test_indexing_and_slices():
 
 def test_mutable_sequence_operations():
     a, b, c, d = agents(3.0, 1.0, 2.0, 5.0)
-    population = cy.Population([a, b])
+    population = bound([a, b])
 
     population.append(c)
     population += [d]
@@ -83,7 +113,7 @@ def test_mutable_sequence_operations():
 
 def test_wrapping_a_list_shares_it():
     items = agents(3.0, 1.0)
-    population = cy.Population(items)
+    population = cy.Population(5, items)
 
     population.append(agents(2.0)[0])
     assert len(items) == 3
@@ -91,43 +121,43 @@ def test_wrapping_a_list_shares_it():
 
 @pytest.mark.parametrize("sense, best, worst", [("min", 1.0, 5.0), ("max", 5.0, 1.0)])
 def test_best_worst_and_sort_follow_sense(sense, best, worst):
-    population = cy.Population(agents(3.0, 1.0, 2.0, 5.0), sense)
+    population = bound(agents(3.0, 1.0, 2.0, 5.0), sense)
 
-    assert population.best.target.fitness == best
-    assert population.worst.target.fitness == worst
+    assert population.best.fitness == best
+    assert population.worst.fitness == worst
     ranked = population.sort()
-    assert ranked[0].target.fitness == best
+    assert ranked[0].fitness == best
     assert [population[i] for i in ranked.idx] == list(ranked)
     assert ranked.idx == population.argsort()
 
 
 def test_argsort_matches_numpy():
-    population = cy.Population(agents(3.0, 1.0, 1.0, 5.0), "max")
+    population = bound(agents(3.0, 1.0, 1.0, 5.0), "max")
 
     assert population.argsort() == np.argsort([3.0, 1.0, 1.0, 5.0]).tolist()[::-1]
 
 
 @pytest.mark.parametrize("sense, expected", [("min", [1.0, 2.0, 2.0]), ("max", [3.0, 4.0, 2.0])])
 def test_greedy_keeps_strict_improvements(sense, expected):
-    population = cy.Population(agents(3.0, 2.0, 2.0), sense)
+    population = bound(agents(3.0, 2.0, 2.0), sense)
 
     kept = population.greedy(agents(1.0, 4.0, 2.0))
     assert kept.fitness.tolist() == expected
 
 
 def test_arrays():
-    population = cy.Population(agents(3.0, 1.0))
+    population = bound(agents(3.0, 1.0))
 
     assert population.fitness.tolist() == [3.0, 1.0]
     assert population.solutions.shape == (2, N_DIMS)
 
 
 def test_copy_is_shallow_duplicate_is_deep():
-    population = cy.Population(agents(3.0, 1.0))
+    population = bound(agents(3.0, 1.0))
 
     shallow, deep = population.copy(), population.duplicate()
     assert shallow[0] is population[0]
-    assert deep[0] is not population[0] and deep[0].target.fitness == 3.0
+    assert deep[0] is not population[0] and deep[0].fitness == 3.0
     shallow.append(agents(2.0)[0])
     assert len(population) == 2
 
@@ -150,3 +180,25 @@ def test_runtime_agents_keep_their_attributes(problem):
     population.append(optimizer.generate_agent())
     assert len(population) == 6
     assert np.isfinite(population.fitness).all()
+
+
+def test_agent_factory_repair_and_evaluation():
+    population = bound()
+    agent = population.generate_agent(np.array([1.0, 2.0, 0.0]))
+
+    assert agent.fitness == 5.0 and agent.objectives.tolist() == [5.0]
+    assert population.amend_solution(np.array([9.0, -9.0, 0.0])).tolist() == [5.0, -5.0, 0.0]
+    candidate = population.evaluate_solution(np.zeros(N_DIMS))
+    assert type(candidate) is cy.Agent and candidate.fitness == 0.0
+    with pytest.raises(AttributeError):
+        agent.fitness = 1.0
+    agent.update_solution(candidate)
+    assert agent.fitness == 0.0 and agent.solution is not candidate.solution
+
+
+def test_reset_population_redraws_out_of_bounds_values():
+    population = cy.population(5, range=[5, 10000], cls=cy.ResetPopulation)
+    population.bind(bound().problem, np.random.default_rng(3))
+
+    fixed = population.amend_solution(np.array([9.0, 1.0, -9.0]))
+    assert fixed[1] == 1.0 and -5.0 <= fixed[0] <= 5.0 and fixed[0] != 5.0

@@ -53,5 +53,5 @@ def test_matches_classic_scenario(engine, name, label):
         kwargs["mode"] = s["mode"]
     g_best = cy.get_all_optimizers(engine=engine)[name](**kwargs).solve(problem, seed=s["seed"])
     digest = hashlib.sha1(np.asarray(g_best.solution, dtype=np.float64).tobytes()).hexdigest()
-    assert float(g_best.target.fitness) == pytest.approx(expected["fitness"], abs=1e-9)
+    assert float(g_best.fitness) == pytest.approx(expected["fitness"], abs=1e-9)
     assert digest == expected["solution_sha1"]

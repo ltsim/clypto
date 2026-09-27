@@ -63,8 +63,8 @@ def test_parallel_mode_runs_with_compiled_evaluator(sphere_evaluator):
     g_best = model.solve(_problem(sphere_evaluator), seed=1)
 
     assert np.all(np.isfinite(g_best.solution))
-    assert np.isfinite(g_best.target.fitness)
-    assert g_best.target.fitness == pytest.approx(
+    assert np.isfinite(g_best.fitness)
+    assert g_best.fitness == pytest.approx(
         float(np.sum(np.asarray(g_best.solution) ** 2))
     )
 
@@ -84,4 +84,4 @@ def test_default_mode_is_unchanged():
     default = OriginalARO(epoch=15, pop_size=12).solve(_problem(None), seed=1)
     identical = OriginalARO(epoch=15, pop_size=12).solve(_problem(None), seed=1)
 
-    assert default.target.fitness == identical.target.fitness
+    assert default.fitness == identical.fitness

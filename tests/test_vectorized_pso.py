@@ -16,7 +16,7 @@ from clypto.native.collection.vectorize.swarm_based import PSO
 problem = cy.Problem(obj_func=lambda s: float(np.sum(s**2)),
                      bounds=cy.NumberBounds(float, low=[-5.0] * 60, up=[5.0] * 60))
 g = PSO.{name}(epoch=5, pop_size=500).solve(problem, seed=3)
-print(g.target.fitness, hashlib.sha1(g.solution.tobytes()).hexdigest())
+print(g.fitness, hashlib.sha1(g.solution.tobytes()).hexdigest())
 """
 
 
@@ -44,7 +44,7 @@ def test_vectorized_objective_matches_scalar(name):
     scalar, vector = _problems()
     a = getattr(PSO, name)(epoch=20, pop_size=20).solve(scalar, seed=5)
     b = getattr(PSO, name)(epoch=20, pop_size=20).solve(vector, seed=5)
-    assert a.target.fitness == b.target.fitness
+    assert a.fitness == b.fitness
     np.testing.assert_array_equal(a.solution, b.solution)
 
 
@@ -55,7 +55,7 @@ def test_vectorized_objective_on_agent_list_engine():
     scalar, vector = _problems()
     a = GTO.OriginalGTO(epoch=10, pop_size=10).solve(scalar, seed=2)
     b = GTO.OriginalGTO(epoch=10, pop_size=10).solve(vector, seed=2)
-    assert a.target.fitness == b.target.fitness
+    assert a.fitness == b.fitness
 
 
 def test_population_is_a_buffer():
@@ -64,4 +64,4 @@ def test_population_is_a_buffer():
     pop = model.pop
     assert pop.buf.shape == (6, pop.width) and pop.buf.flags.c_contiguous
     assert np.array_equal(pop.F, np.sum(pop.X**2, axis=1))
-    assert pop[0].target.fitness == pop.F[0]
+    assert pop[0].fitness == pop.F[0]

@@ -6,7 +6,7 @@
 
 import pytest
 
-from clypto.optimizer import validator
+import clypto as cy
 
 
 @pytest.mark.parametrize(
@@ -18,10 +18,7 @@ from clypto.optimizer import validator
     ],
 )
 def test_check_bound(value, bound, output):
-    valid_model = validator.Validator()
-
-    value_new = valid_model.check_int("value", value, bound)
-    assert value_new == output
+    assert cy.validator(int, value, bound, "value") == output
 
 
 @pytest.mark.parametrize(
@@ -36,6 +33,5 @@ def test_check_bound(value, bound, output):
 )
 def test_check_float(value, bound, output):
     with pytest.raises(TypeError) as e:
-        valid_model = validator.Validator()
-        valid_model.check_float("value", value, bound)
+        cy.validator(float, value, bound, "value")
     assert e.type == TypeError

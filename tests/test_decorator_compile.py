@@ -19,23 +19,6 @@ def objective(solution):
     return np.sum(solution**2)
 
 
-@cy.legacy(precompile=True)
-class LegacyRS:
-    def __init__(self, epoch=50, pop_size=25, **kwargs):
-        super().__init__(**kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
-
-    def _evolve(self, epoch):
-        for idx in range(self.pop_size):
-            pos_new = self._correct_solution(self.problem.generate_solution(encoded=True))
-            agent = self._generate_empty_agent(pos_new)
-            agent.target = self._get_target(pos_new)
-            self.pop[idx] = self._get_better_agent(self.pop[idx], agent, self.problem.sense)
-
-
 @cy.agent(compile=True)
 class FastAgent:
     v: cy.Attribute[float, (0.0, 1.0), 0.5]
@@ -82,7 +65,7 @@ def problem():
 
 
 @pytest.mark.parametrize(
-    "cls", [LegacyRS, FastAgent, FastSearch, DirectImportSearch, ExplicitBaseSearch]
+    "cls", [FastAgent, FastSearch, DirectImportSearch, ExplicitBaseSearch]
 )
 def test_classes_are_compiled(cls):
     assert cls.__clypto_precompiled__ is True
@@ -93,15 +76,7 @@ def test_classes_are_compiled(cls):
 
 
 def test_decorated_methods_are_native():
-    assert type(LegacyRS._evolve).__name__ == "cython_function_or_method"
     assert type(FastSearch.evolve).__name__ == "cython_function_or_method"
-
-
-def test_compiled_legacy_decorator_solves(problem):
-    g_best = LegacyRS(epoch=30, pop_size=15).solve(problem, seed=1)
-
-    assert g_best.solution.shape == (N_DIMS,)
-    assert np.isfinite(g_best.target.fitness)
 
 
 def test_compiled_directly_imported_declaration():

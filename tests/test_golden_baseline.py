@@ -68,7 +68,7 @@ def test_optimizer_matches_baseline(engine, name, problem):
     cls = cy.get_all_optimizers(engine=engine)[name]
     g_best = cls(epoch=50, pop_size=25).solve(problem, seed=1)
 
-    fitness = float(g_best.target.fitness)
+    fitness = float(g_best.fitness)
     digest = hashlib.sha1(
         np.asarray(g_best.solution, dtype=np.float64).tobytes()
     ).hexdigest()

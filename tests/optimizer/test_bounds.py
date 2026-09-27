@@ -141,7 +141,7 @@ def test_problem_binds_bounds_sense_and_evaluates_a_matrix():
     assert problem.sense == "max" and problem.n_dims == 3 and problem.n_objs == 2
     assert objectives.tolist() == [[1.5, 1.25], [3.0, 3.0]]
     assert fitness.tolist() == [4.0, 9.0]
-    assert problem.get_target(X[0]).fitness == 4.0
+    assert cy.Agent(X[0]).evaluate(problem).fitness == 4.0
 
 
 def test_problem_rejects_unknown_sense():
@@ -155,7 +155,7 @@ def test_problem_subclass_overrides_obj_func():
             return float(np.sum((x - 0.5) ** 2))
 
     problem = Shifted(cy.NumberBounds(float, low=[0.0] * 2, up=[1.0] * 2))
-    assert problem.get_target(np.array([0.5, 0.5])).fitness == 0.0
+    assert cy.Agent(np.array([0.5, 0.5])).evaluate(problem).fitness == 0.0
 
 
 def test_dict_problem_is_seeded_by_solve():
@@ -166,30 +166,33 @@ def test_dict_problem_is_seeded_by_solve():
 
 
 def test_agent_functions():
-    better, worse = cy.LegacyAgent(np.zeros(2), cy.Target(1.0)), cy.LegacyAgent(np.ones(2), cy.Target(2.0))
+    better, worse = cy.Agent(np.zeros(2), 1.0), cy.Agent(np.ones(2), 2.0)
 
     from clypto.optimizer.native import agent as fn
 
-    assert fn.compare_fitness(better, worse) == -1 and fn.compare_fitness(better, worse, "max") == 1
-    assert fn.get_better_solution(better, worse) is better
-    assert fn.get_better_solution(better, worse, "max") is worse
-    assert fn.is_better_than(better, worse) and not fn.is_better_than(better, worse, "max")
-    twin = cy.LegacyAgent(np.zeros(2), cy.Target(5.0))
-    assert fn.sync_if_duplicate(twin, better) and twin.target is better.target
+    assert fn.is_better(better, worse, "min") and not fn.is_better(better, worse, "max")
+    assert fn.better_fitness(1.0, 1.0, "max") and not fn.better_fitness(1.0, 1.0, "min")
+    assert fn.get_better_agent(better, worse, "min").fitness == 1.0
+    assert fn.get_better_agent(better, worse, "max").fitness == 2.0
+    assert fn.sort_agents([worse, better], "min") == [better, worse]
+    assert fn.greedy_agents([worse, better], [better, worse], "min") == [better, better]
+    twin = cy.Agent(np.zeros(2), 5.0)
+    assert fn.sync_if_duplicate(twin, better) and twin.fitness == 1.0 and twin.objectives is better.objectives
 
 
-def test_copy_shares_fields_and_copies_the_target():
-    from clypto.native.collection.legacy.swarm_based.PSO.OriginalPSO import _OriginalPSOAgent
+def test_copy_shares_fields_and_the_evaluation():
+    from clypto.native.collection.legacy.swarm_based.PSO._base import PSOAgent
 
-    class Tagged(cy.LegacyAgent):
+    class Tagged(cy.Agent):
         pass
 
-    compiled = _OriginalPSOAgent(np.zeros(2), cy.Target(1.0), velocity=np.ones(2))
-    python = Tagged(np.zeros(2), cy.Target(1.0), tag=[1])
+    compiled = PSOAgent(np.zeros(2), 1.0, velocity=np.ones(2))
+    python = Tagged(np.zeros(2), 1.0, tag=[1])
     for agent, field in ((compiled, "velocity"), (python, "tag")):
         copy = agent.copy()
         assert type(copy) is type(agent) and getattr(copy, field) is getattr(agent, field)
-        assert copy.solution is agent.solution and copy.target is not agent.target
-        assert copy.target.fitness == 1.0
+        assert copy.solution is agent.solution and copy.fitness == 1.0
     compiled.update(velocity=None, solution=np.ones(2))
     assert compiled.velocity is None and compiled.solution.tolist() == [1.0, 1.0]
+    with pytest.raises(AttributeError):
+        compiled.fitness = 3.0

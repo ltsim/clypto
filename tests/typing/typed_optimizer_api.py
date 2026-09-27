@@ -31,20 +31,12 @@ class DecoratedSearch(cy.DecoratedOptimizer):
 
 
 class ClassicSearch(cy.LegacyOptimizer):
-    """The classic base already types ``self.pop``, ``self.problem``, etc."""
+    """The classic base already types ``self.population``, ``self.problem``, etc."""
 
     def __init__(self, epoch: int = 100, pop_size: int = 30, **kwargs: object) -> None:
-        super().__init__(**kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000])
 
-    def _evolve(self, epoch: int) -> None:
-        self.g_best = self._get_best_agent(self.pop, self.problem.sense)
-
-
-@cy.legacy
-class DecoratedClassic(ClassicSearch):
-    """The legacy decorator on an explicit base keeps the base members typed."""
-
-    def _evolve(self, epoch: int) -> None:
-        _ = len(self.pop)
+    def evolve(self, epoch: int) -> None:
+        self.g_best = self.population.sort()[0]

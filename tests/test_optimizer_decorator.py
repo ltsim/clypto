@@ -131,7 +131,7 @@ def test_solve_returns_best_agent(problem):
     assert g_best.solution.shape == (N_DIMS,)
     assert np.all(np.isfinite(g_best.solution))
     assert np.isfinite(g_best.fitness)
-    assert optimizer._nfe > optimizer.pop_size
+    assert optimizer.problem.n_evals > optimizer.pop_size
 
 
 def test_solve_is_reproducible(problem):
@@ -191,7 +191,7 @@ def test_ellipsis_skips_bound_and_keeps_default():
 
 
 def test_public_decorator_api_is_exported():
-    for name in ("agent", "optimizer", "legacy", "Attribute", "Argument", "Population", "LegacyOptimizer"):
+    for name in ("agent", "optimizer", "Attribute", "Argument", "Agent", "Population", "population", "validator", "LegacyOptimizer"):
         assert hasattr(cy, name)
 
     assert cy.Optimizer is cy.LegacyOptimizer

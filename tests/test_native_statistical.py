@@ -33,7 +33,7 @@ def _sphere(x):
 def test_same_seed_same_result(name):
     problem = cy.Problem(obj_func=_sphere, bounds=cy.NumberBounds(float, low=[-3.0] * 6, up=[3.0] * 6), sense="min")
     runs = [VECTORIZE[name](epoch=50, pop_size=25).solve(problem, seed=7) for _ in range(2)]
-    assert runs[0].target.fitness == runs[1].target.fitness
+    assert runs[0].fitness == runs[1].fitness
     np.testing.assert_array_equal(runs[0].solution, runs[1].solution)
 
 

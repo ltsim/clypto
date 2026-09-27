@@ -47,6 +47,6 @@ def test_all_optimizers_run(optimizer, problem):
     # Short runs can overshoot bounds by ~2% (OriginalHBO), so allow a small slack.
     assert np.all(problem.bounds.low - 0.05 <= solution) and np.all(solution <= problem.bounds.up + 0.05)
 
-    target = np.asarray(g_best.target.objectives).flatten()
+    target = np.asarray(g_best.objectives).flatten()
     assert target.size == 1
     assert np.all(np.isfinite(target))
