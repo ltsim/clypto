@@ -1,1 +1,1 @@
-"""The two Cythonized algorithm trees: ``legacy`` (classic per-agent) and ``vectorize`` (NumPy-vectorized)."""
+"""The Cythonized algorithm collection: ``<category>/<Module>/<Class>.pyx``."""
