@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevEFO(LegacyOptimizer):
+cdef class DevEFO(cy.Optimizer):
     """
     The developed version: Electromagnetic Field Optimization (EFO)
 
@@ -35,8 +35,8 @@ cdef class DevEFO(LegacyOptimizer):
     >>>
     >>> model = EFO.DevEFO(epoch=1000, pop_size=50, r_rate = 0.3, ps_rate = 0.85, p_field = 0.1, n_field = 0.45)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -58,46 +58,43 @@ cdef class DevEFO(LegacyOptimizer):
             p_field (float): default = 0.1     portion of population, positive field
             n_field (float): default = 0.45    portion of population, negative field
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.r_rate = self.validator.check_float("r_rate", r_rate, (0, 1.0))
-        self.ps_rate = self.validator.check_float("ps_rate", ps_rate, (0, 1.0))
-        self.p_field = self.validator.check_float("p_field", p_field, (0, 1.0))
-        self.n_field = self.validator.check_float("n_field", n_field, (0, 1.0))
-        self._set_parameters(
-            ["epoch", "pop_size", "r_rate", "ps_rate", "p_field", "n_field"]
-        )
+        super().__init__(parameters=["epoch", "pop_size", "r_rate", "ps_rate", "p_field", "n_field"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.r_rate = cy.validator(float, r_rate, (0, 1.0), "r_rate")
+        self.ps_rate = cy.validator(float, ps_rate, (0, 1.0), "ps_rate")
+        self.p_field = cy.validator(float, p_field, (0, 1.0), "p_field")
+        self.n_field = cy.validator(float, n_field, (0, 1.0), "n_field")
         self.phi = (1 + np.sqrt(5)) / 2  # golden ratio
-        self.sort_flag = True
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             r_idx1 = self.generator.integers(
-                0, int(self.pop_size * self.p_field)
+                0, int(pop_size * self.p_field)
             )  # top
             r_idx2 = self.generator.integers(
-                int(self.pop_size * (1 - self.n_field)), self.pop_size
+                int(pop_size * (1 - self.n_field)), pop_size
             )  # bottom
             r_idx3 = self.generator.integers(
-                int((self.pop_size * self.p_field) + 1),
-                int(self.pop_size * (1 - self.n_field)),
+                int((pop_size * self.p_field) + 1),
+                int(pop_size * (1 - self.n_field)),
             )  # middle
             if self.generator.random() < self.ps_rate:
                 pos_new = (
-                        self.pop[r_idx1].solution
+                        self.population[r_idx1].solution
                         + self.phi
                         * self.generator.random()
-                        * (self.g_best.solution - self.pop[r_idx3].solution)
+                        * (self.g_best.solution - self.population[r_idx3].solution)
                         + self.generator.random()
-                        * (self.g_best.solution - self.pop[r_idx2].solution)
+                        * (self.g_best.solution - self.population[r_idx2].solution)
                 )
             else:
                 pos_new = self.problem.generate_solution()
@@ -109,16 +106,12 @@ cdef class DevEFO(LegacyOptimizer):
                     self.generator.uniform(self.problem.bounds.low[RI], self.problem.bounds.up[RI])
                 )
             # checking whether the generated number is inside boundary or not
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSSO(LegacyOptimizer):
+cdef class OriginalSSO(cy.Optimizer):
     """
     The original version of: Salp Swarm Optimization (SSO)
 
@@ -32,8 +32,8 @@ cdef class OriginalSSO(LegacyOptimizer):
     >>>
     >>> model = SSO.OriginalSSO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -49,24 +49,23 @@ cdef class OriginalSSO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Eq. (3.2) in the paper
         c1 = 2 * np.exp(-((4 * epoch / self.epoch) ** 2))
         pop_new = []
-        for idx in range(0, self.pop_size):
-            if idx < self.pop_size / 2:
+        for idx in range(0, pop_size):
+            if idx < pop_size / 2:
                 c2_list = self.generator.random(self.problem.n_dims)
                 c3_list = self.generator.random(self.problem.n_dims)
                 pos_new_1 = self.g_best.solution + c1 * (
@@ -78,18 +77,14 @@ cdef class OriginalSSO(LegacyOptimizer):
                 pos_new = np.where(c3_list < 0.5, pos_new_1, pos_new_2)
             else:
                 # Eq. (3.4) in the paper
-                pos_new = (self.pop[idx].solution + self.pop[idx - 1].solution) / 2
+                pos_new = (self.population[idx].solution + self.population[idx - 1].solution) / 2
             # Check if salps go out of the search space and bring it back then re-calculate its fitness value
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

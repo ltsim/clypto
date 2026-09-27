@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSOO(LegacyOptimizer):
+cdef class OriginalSOO(cy.Optimizer):
     """
     The original version of: Stellar Oscillation Optimizer (SOO)
 
@@ -47,8 +47,8 @@ cdef class OriginalSOO(LegacyOptimizer):
     >>>
     >>> model = SOO.OriginalSOO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -64,22 +64,21 @@ cdef class OriginalSOO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.initial_period = 3
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Update period and angular frequency
         caf = 2 * np.pi / (self.initial_period + 0.001 * epoch)
 
@@ -88,7 +87,7 @@ cdef class OriginalSOO(LegacyOptimizer):
 
         # Update positions of star oscillators
         pop_new = []
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             r1 = self.generator.random(size=self.problem.n_dims)
             r2 = self.generator.random(size=self.problem.n_dims)
             r3 = self.generator.random(size=self.problem.n_dims)
@@ -98,7 +97,7 @@ cdef class OriginalSOO(LegacyOptimizer):
                     scaler
                     * (caf * r1 - 1)
                     * (
-                            self.pop[idx].solution
+                            self.population[idx].solution
                             - np.abs(r1 * np.sin(r2) * np.abs(r3 * self.g_best.solution))
                     )
             )
@@ -107,65 +106,56 @@ cdef class OriginalSOO(LegacyOptimizer):
                     scaler
                     * (caf * r1 - 1)
                     * (
-                            self.pop[idx].solution
+                            self.population[idx].solution
                             - np.abs(r1 * np.cos(r2) * np.abs(r3 * self.g_best.solution))
                     )
             )
             osc2_pos = self.g_best.solution - r2 * r3 * osc2
             pos_new = r3 * (osc1_pos + osc2_pos) / 2
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
 
         # Get top 3 stars
-        _, best3, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
+        ranked = self.population.sort()
+        best3 = [agent.copy() for agent in ranked[:3]]
 
         # Perform oscillatory movement update
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             # Average of top star positions
             avg3 = np.mean([agent.solution for agent in best3], axis=0)
 
             # Select 3 random indices different from current
             r1, r2, r3 = self.generator.choice(
-                list(set(range(self.pop_size)) - {idx}), size=3, replace=False
+                list(set(range(pop_size)) - {idx}), size=3, replace=False
             )
 
             # Generate new position based on oscillatory movement
             rf = self.generator.random()
             pos_new = avg3 + 0.5 * (
-                    np.sin(rf * np.pi) * (self.pop[r1].solution - self.pop[r2].solution)
+                    np.sin(rf * np.pi) * (self.population[r1].solution - self.population[r2].solution)
                     + np.cos((1 - rf) * np.pi)
-                    * (self.pop[r1].solution - self.pop[r3].solution)
+                    * (self.population[r1].solution - self.population[r3].solution)
             )
             ## Probabilistic update
             pos_new = np.where(
                 self.generator.random(size=self.problem.n_dims) <= 0.5,
                 pos_new,
-                self.pop[idx].solution,
+                self.population[idx].solution,
             )
             # Apply boundary constraints
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

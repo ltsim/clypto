@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.system_based.AEO.OriginalAEO cimport OriginalAEO
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -37,8 +37,8 @@ cdef class ImprovedAEO(OriginalAEO):
     >>>
     >>> model = AEO.ImprovedAEO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -61,7 +61,7 @@ cdef class ImprovedAEO(OriginalAEO):
         """
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d, m = pop.n - 1
@@ -71,8 +71,8 @@ cdef class ImprovedAEO(OriginalAEO):
         g = np.array(self.g_best_x())
         ## Production: the worst agent (last row) is replaced by a new random-mixed agent
         a = (1.0 - epoch / self.epoch) * rng.uniform()
-        pos = self._correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
-        ops.set_row(pop, n - 1, pos, self._get_target(pos))
+        pos = self.correct_solution((1 - a) * X[n - 1] + a * rng.uniform(lb, ub))
+        ops.set_row(pop, n - 1, pos, self.evaluate_solution(pos))
         X = pop.X
         ## Consumption: the other agents feed on the producer, a random previous agent or both
         rand = rng.random(m)

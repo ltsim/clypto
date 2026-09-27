@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalWDO(LegacyOptimizer):
+cdef class OriginalWDO(cy.Optimizer):
     """
     The original version of: Wind Driven Optimization (WDO)
 
@@ -43,8 +43,8 @@ cdef class OriginalWDO(LegacyOptimizer):
     >>>
     >>> model = WDO.OriginalWDO(epoch=1000, pop_size=50, RT = 3, g_c = 0.2, alp = 0.4, c_e = 0.4, max_v = 0.3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -52,6 +52,12 @@ cdef class OriginalWDO(LegacyOptimizer):
     technique and its application in electromagnetics. IEEE transactions on antennas and
     propagation, 61(5), pp.2745-2757.
     """
+
+    cdef public int RT
+    cdef public double alp
+    cdef public double c_e
+    cdef public double g_c
+    cdef public double max_v
 
     def __init__(
             self,
@@ -74,55 +80,51 @@ cdef class OriginalWDO(LegacyOptimizer):
             c_e (float): coriolis effect, default=0.4
             max_v (float): maximum allowed speed, default=0.3
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.RT = self.validator.check_int("RT", RT, [1, 4])
-        self.g_c = self.validator.check_float("g_c", g_c, (0, 1.0))
-        self.alp = self.validator.check_float("alp", alp, (0, 1.0))
-        self.c_e = self.validator.check_float("c_e", c_e, (0, 1.0))
-        self.max_v = self.validator.check_float("max_v", max_v, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "RT", "g_c", "alp", "c_e", "max_v"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "RT", "g_c", "alp", "c_e", "max_v"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
+        self.RT = cy.validator(int, RT, [1, 4], "RT")
+        self.g_c = cy.validator(float, g_c, (0, 1.0), "g_c")
+        self.alp = cy.validator(float, alp, (0, 1.0), "alp")
+        self.c_e = cy.validator(float, c_e, (0, 1.0), "c_e")
+        self.max_v = cy.validator(float, max_v, (0, 1.0), "max_v")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
+        pop_size = self.population.size()
         self.dyn_list_velocity = self.max_v * self.generator.uniform(
-            self.problem.bounds.low, self.problem.bounds.up, (self.pop_size, self.problem.n_dims)
+            self.problem.bounds.low, self.problem.bounds.up, (pop_size, self.problem.n_dims)
         )
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             rand_dim = self.generator.integers(0, self.problem.n_dims)
             temp = self.dyn_list_velocity[idx][rand_dim] * np.ones(self.problem.n_dims)
             vel = (
                     (1 - self.alp) * self.dyn_list_velocity[idx]
-                    - self.g_c * self.pop[idx].solution
+                    - self.g_c * self.population[idx].solution
                     + (1 - 1.0 / (idx + 1))
                     * self.RT
-                    * (self.g_best.solution - self.pop[idx].solution)
+                    * (self.g_best.solution - self.population[idx].solution)
                     + self.c_e * temp / (idx + 1)
             )
             vel = np.clip(vel, -self.max_v, self.max_v)
             # Update air parcel positions, check the bound and calculate pressure (fitness)
             self.dyn_list_velocity[idx] = vel
-            pos = self.pop[idx].solution + vel
-            pos_new = self._correct_solution(pos)
-            agent = self._generate_empty_agent(pos_new)
+            pos = self.population[idx].solution + vel
+            pos_new = self.population.correct_solution(pos)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

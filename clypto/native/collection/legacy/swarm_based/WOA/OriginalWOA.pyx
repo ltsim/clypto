@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalWOA(LegacyOptimizer):
+cdef class OriginalWOA(cy.Optimizer):
     """
     The original version of: Whale Optimization Algorithm (WOA)
 
@@ -33,8 +33,8 @@ cdef class OriginalWOA(LegacyOptimizer):
     >>>
     >>> model = WOA.OriginalWOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -49,23 +49,22 @@ cdef class OriginalWOA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         a = 2 - 2 * epoch / self.epoch  # linearly decreased from 2 to 0
         a2 = -1 + epoch * ((-1) / self.epoch)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             r1, r2 = self.generator.random(size=2)
             A = a * (2 * r1 - a)
             C = 2 * r2
@@ -73,33 +72,34 @@ cdef class OriginalWOA(LegacyOptimizer):
             l = (a2 - 1) * self.generator.random() + 1
             p = self.generator.random()
 
-            pos_new = self.pop[idx].solution.copy()
+            pos_new = self.population[idx].solution.copy()
             for jdx in range(0, self.problem.n_dims):
                 if p < 0.5:
                     if np.abs(A) >= 1:
                         id_r = self.generator.choice(
-                            list(set(range(0, self.pop_size)) - {idx})
+                            list(set(range(0, pop_size)) - {idx})
                         )
                         D_X_rand = abs(
-                            C * self.pop[id_r].solution[jdx]
-                            - self.pop[idx].solution[jdx]
+                            C * self.population[id_r].solution[jdx]
+                            - self.population[idx].solution[jdx]
                         )
-                        pos_new[jdx] = self.pop[id_r].solution[jdx] - A * D_X_rand
+                        pos_new[jdx] = self.population[id_r].solution[jdx] - A * D_X_rand
                     else:
                         D_Leader = abs(
-                            C * self.g_best.solution[jdx] - self.pop[idx].solution[jdx]
+                            C * self.g_best.solution[jdx] - self.population[idx].solution[jdx]
                         )
                         pos_new[jdx] = self.g_best.solution[jdx] - A * D_Leader
                 else:
-                    D1 = abs(self.g_best.solution[jdx] - self.pop[idx].solution[jdx])
+                    D1 = abs(self.g_best.solution[jdx] - self.population[idx].solution[jdx])
                     pos_new[jdx] = (
                             D1 * np.exp(b * l) * np.cos(l * 2 * np.pi)
                             + self.g_best.solution[jdx]
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop[idx].target = self._get_target(pos_new)
+                # the classic code evaluates pos_new, not self.population[idx].solution (MEALPY behaviour, kept)
+                self.population[idx].update_solution(self.population.evaluate_solution(pos_new), self.population[idx].solution)
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self._update_target_for_population(pop_new)
+            self.population = self.population.evaluate(pop_new, self.mode)

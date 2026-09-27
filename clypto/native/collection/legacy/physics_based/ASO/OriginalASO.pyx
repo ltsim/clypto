@@ -3,20 +3,28 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalASOAgent(LegacyAgent):
+
+cdef class OriginalASOAgent(cy.Agent):
     cdef public object velocity
     cdef public object mass
 
 
-cdef class OriginalASO(LegacyOptimizer):
+cdef class OriginalASOPopulation(cy.ResetPopulation):
+    """Agents of :class:`OriginalASO`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        mass = 0.0
+        return OriginalASOAgent(solution=solution, velocity=velocity, mass=mass)
+
+
+cdef class OriginalASO(cy.Optimizer):
     """
     The original version of: Atom Search Optimization (ASO)
 
@@ -44,14 +52,17 @@ cdef class OriginalASO(LegacyOptimizer):
     >>>
     >>> model = ASO.OriginalASO(epoch=1000, pop_size=50, alpha = 50, beta = 0.2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Zhao, W., Wang, L. and Zhang, Z., 2019. Atom search optimization and its application to solve a
     hydrogeologic parameter estimation problem. Knowledge-Based Systems, 163, pp.283-304.
     """
+
+    cdef public int alpha
+    cdef public double beta
 
     def __init__(
         self,
@@ -68,36 +79,21 @@ cdef class OriginalASO(LegacyOptimizer):
             alpha (int): [2, 20], Depth weight, default = 10
             beta (float): [0.1, 1.0], Multiplier weight, default = 0.2
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.alpha = self.validator.check_int("alpha", alpha, [1, 100])
-        self.beta = self.validator.check_float("beta", beta, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "alpha", "beta"])
-        self.sort_flag = False
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        mass = 0.0
-        return _OriginalASOAgent(solution=solution, velocity=velocity, mass=mass)
-
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(
-            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
-        )
-        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        return np.where(condition, solution, rand_pos)
+        super().__init__(parameters=["epoch", "pop_size", "alpha", "beta"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalASOPopulation)
+        self.alpha = cy.validator(int, alpha, [1, 100], "alpha")
+        self.beta = cy.validator(float, beta, (0, 1.0), "beta")
 
     def update_mass__(self, population):
-        list_fit = np.array([agent.target.fitness for agent in population])
+        pop_size = self.population.size()
+        list_fit = np.array([agent.fitness for agent in population])
         list_fit = np.exp(
             -(list_fit - np.max(list_fit))
             / (np.max(list_fit) - np.min(list_fit) + self.EPSILON)
         )
         list_fit = list_fit / np.sum(list_fit)
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             population[idx].mass = list_fit[idx]
         return population
 
@@ -117,11 +113,12 @@ cdef class OriginalASO(LegacyOptimizer):
         return potential
 
     def acceleration__(self, population, g_best, iteration):
+        pop_size = self.population.size()
         eps = 2 ** (-52)
         pop = self.update_mass__(population)
         G = np.exp(-20.0 * iteration / self.epoch)
         k_best = (
-            int(self.pop_size - (self.pop_size - 2) * (iteration / self.epoch) ** 0.5)
+            int(pop_size - (pop_size - 2) * (iteration / self.epoch) ** 0.5)
             + 1
         )
         if self.problem.sense == "min":
@@ -131,8 +128,8 @@ cdef class OriginalASO(LegacyOptimizer):
         else:
             k_best_pop = sorted(pop, key=lambda agent: agent.mass)[:k_best].copy()
         mk_average = np.mean([agent.solution for agent in k_best_pop])
-        acc_list = np.zeros((self.pop_size, self.problem.n_dims))
-        for idx in range(0, self.pop_size):
+        acc_list = np.zeros((pop_size, self.problem.n_dims))
+        for idx in range(0, pop_size):
             dist_average = np.linalg.norm(pop[idx].solution - mk_average)
             temp = np.zeros((self.problem.n_dims))
             for atom in k_best_pop:
@@ -150,40 +147,35 @@ cdef class OriginalASO(LegacyOptimizer):
             acc_list[idx] = acc
         return acc_list
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Calculate acceleration.
-        atom_acc_list = self.acceleration__(self.pop, self.g_best, iteration=epoch)
+        atom_acc_list = self.acceleration__(self.population, self.g_best, iteration=epoch)
         # Update velocity based on random dimensions and position of global best
         pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             velocity = (
-                self.generator.random(self.problem.n_dims) * self.pop[idx].velocity
+                self.generator.random(self.problem.n_dims) * self.population[idx].velocity
                 + atom_acc_list[idx]
             )
-            pos_new = self.pop[idx].solution + velocity
+            pos_new = self.population[idx].solution + velocity
             # Relocate atom out of range
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        current_best = self._get_best_agent(pop_new, self.problem.sense)
-        if self._compare_target(
-            self.g_best.target, current_best.target, self.problem.sense
-        ):
-            self.pop[self.generator.integers(0, self.pop_size)] = self.g_best.copy()
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        current_best = cy.sort_agents(pop_new, self.problem.sense)[0].copy()
+        if cy.is_better(self.g_best, current_best, self.problem.sense):
+            self.population[self.generator.integers(0, pop_size)] = self.g_best.copy()

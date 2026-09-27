@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.evolutionary_based.CRO.OriginalCRO cimport OriginalCRO
 
@@ -44,8 +45,8 @@ cdef class OCRO(OriginalCRO):
     >>>
     >>> model = CRO.OCRO(epoch=1000, pop_size=50, po = 0.4, Fb = 0.9, Fa = 0.1, Fd = 0.1, Pd = 0.5, GCR = 0.1, gamma_min = 0.02, gamma_max = 0.2, n_trials = 5, restart_count = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -53,6 +54,8 @@ cdef class OCRO(OriginalCRO):
     neural network and opposition-based coral reefs optimization. International Journal of Computational
     Intelligence Systems, 12(2), p.1144.
     """
+
+    cdef public int restart_count
 
     def __init__(
             self,
@@ -99,28 +102,11 @@ cdef class OCRO(OriginalCRO):
             n_trials,
             **kwargs
         )
-        self.restart_count = self.validator.check_int(
-            "restart_count", restart_count, [2, int(epoch / 2)]
-        )
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "po",
-                "Fb",
-                "Fa",
-                "Fd",
-                "Pd",
-                "GCR",
-                "gamma_min",
-                "gamma_max",
-                "n_trials",
-                "restart_count",
-            ]
-        )
+        self.restart_count = cy.validator(int, restart_count, [2, int(epoch / 2)], "restart_count")
+        self.parameters = [ "epoch", "pop_size", "po", "Fb", "Fa", "Fd", "Pd", "GCR", "gamma_min", "gamma_max", "n_trials", "restart_count", ]
         self.sort_flag = False
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.reset_count = 0
 
     def local_search__(self, pop=None):
@@ -129,29 +115,28 @@ cdef class OCRO(OriginalCRO):
             random_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             condition = self.generator.random(self.problem.n_dims) < 0.5
             pos_new = np.where(condition, self.g_best.solution, random_pos)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        return self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        return self.population.evaluate(pop_new, self.mode)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Broadcast Spawning Brooding
         larvae = self.broadcast_spawning_brooding__()
         self.larvae_setting__(larvae)
         ## Asexual Reproduction
         num_duplicate = int(len(self.occupied_idx_list) * self.Fa)
-        pop_best = [self.pop[idx] for idx in self.occupied_idx_list]
-        pop_best = self._get_sorted_and_trimmed_population(
-            pop_best, num_duplicate, self.problem.sense
-        )
+        pop_best = [self.population[idx] for idx in self.occupied_idx_list]
+        pop_best = cy.sort_agents(pop_best, self.problem.sense)[:num_duplicate]
         pop_local_search = self.local_search__(pop_best)
         self.larvae_setting__(pop_local_search)
         ## Depredation
@@ -161,12 +146,10 @@ cdef class OCRO(OriginalCRO):
             selected_depredator = idx_list_sorted[-num__depredation__:]
             for idx in selected_depredator:
                 ### Using opposition-based leanring
-                pos_oppo = self._generate_opposition_solution(self.pop[idx], self.g_best)
-                agent = self._generate_agent(pos_oppo)
-                if self._compare_target(
-                        agent.target, self.pop[idx].target, self.problem.sense
-                ):
-                    self.pop[idx] = agent
+                pos_oppo = self.population.opposite_solution(self.population[idx], self.g_best)
+                agent = self.population.generate_agent(pos_oppo)
+                if cy.is_better(agent, self.population[idx], self.problem.sense):
+                    self.population[idx] = agent
                 else:
                     self.occupied_idx_list = self.occupied_idx_list[
                         ~np.isin(self.occupied_idx_list, [idx])
@@ -177,16 +160,14 @@ cdef class OCRO(OriginalCRO):
         if self.G1 >= self.gamma_min:
             self.G1 -= self.gama
         self.reset_count += 1
-        local_best = self._get_best_agent(self.pop, self.problem.sense)
-        if self._compare_target(
-                local_best.target, self.g_best.target, self.problem.sense
-        ):
+        local_best = self.population.sort()[0].copy()
+        if cy.is_better(local_best, self.g_best, self.problem.sense):
             self.reset_count = 0
         if self.reset_count == self.restart_count:
-            self.pop = self._generate_population(self.pop_size)
-            self.occupied_list = np.zeros(self.pop_size)
+            self.population = self.population.generate(pop_size)
+            self.occupied_list = np.zeros(pop_size)
             self.occupied_idx_list = self.generator.choice(
-                range(self.pop_size), self.num_occupied, replace=False
+                range(pop_size), self.num_occupied, replace=False
             )
             self.occupied_list[self.occupied_idx_list] = 1
             self.reset_count = 0

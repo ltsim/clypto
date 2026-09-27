@@ -3,14 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +37,8 @@ cdef class OriginalSSDO(VectorizeOptimizer):
     >>>
     >>> model = SSDO.OriginalSSDO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -73,11 +70,11 @@ cdef class OriginalSSDO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         self.local_v = np.array(self.pop.X)  # local solution of every agent (its previous position)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -91,7 +88,7 @@ cdef class OriginalSSDO(VectorizeOptimizer):
         vel = c * trig * (self.local_v - X) + (2 - c) * trig * (pos_mean - X)
         pos = rng.normal(0, 1, (n, d)) * X + rng.random((n, 1)) * vel
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
         ok = ops.better(self, np.asarray(cand.F), np.asarray(pop.F))
         self.local_v = np.where(ok[:, None], X, self.local_v)

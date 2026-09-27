@@ -8,4 +8,4 @@ cdef class DevSSA(VectorizeOptimizer):
     cdef public object n1
     cdef public object n2
 
-    cdef object _amend_solution(self, object solution)
+    cdef object amend_solution(self, object solution)

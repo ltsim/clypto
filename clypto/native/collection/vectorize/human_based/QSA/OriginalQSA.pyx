@@ -8,7 +8,7 @@
 
 from clypto.native.collection.vectorize.human_based.QSA.DevQSA cimport DevQSA
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class OriginalQSA(DevQSA):
     >>>
     >>> model = QSA.OriginalQSA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -76,22 +76,18 @@ cdef class OriginalQSA(DevQSA):
                     X1 = pop[i1].solution
                     X2 = pop[i2].solution
                     pos_new[jdx] = X1[jdx] + e * (X2[jdx] - pop[idx].solution[jdx])
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                pop_new[-1] = self._get_better_agent(
-                    agent, pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                pop_new[-1] = cy.get_better_agent(agent, pop[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            pop_new = self._greedy_selection_population(
-                pop, pop_new, self.problem.sense
-            )
+            pop_new = self.evaluate_agents(pop_new)
+            pop_new = cy.greedy_agents(pop, pop_new, self.problem.sense)
         return pop_new
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         pop = self.update_business_1__(self.objs, epoch)
         pop = self.update_business_2__(pop)
         self.objs = self.update_business_3__(pop, self.g_best)

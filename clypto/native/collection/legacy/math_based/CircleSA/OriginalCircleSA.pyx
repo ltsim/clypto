@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCircleSA(LegacyOptimizer):
+cdef class OriginalCircleSA(cy.Optimizer):
     """
     The original version of: Circle Search Algorithm (CircleSA)
 
@@ -33,8 +33,8 @@ cdef class OriginalCircleSA(LegacyOptimizer):
     >>>
     >>> model = CircleSA.OriginalCircleSA(epoch=1000, pop_size=50, c_factor=0.8)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -42,38 +42,39 @@ cdef class OriginalCircleSA(LegacyOptimizer):
     Circle Search Algorithm: A Geometry-Based Metaheuristic Optimization Algorithm. Mathematics, 10(10), 1626.
     """
 
-    def __init__(self, epoch=10000, pop_size=100, c_factor=0.8, **kwargs):
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c_factor = self.validator.check_float("c_factor", c_factor, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "c_factor"])
-        self.sort_flag = False
+    cdef public double c_factor
 
-    def _evolve(self, epoch):
+    def __init__(self, epoch=10000, pop_size=100, c_factor=0.8, **kwargs):
+        super().__init__(parameters=["epoch", "pop_size", "c_factor"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.c_factor = cy.validator(float, c_factor, (0, 1.0), "c_factor")
+
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         a = np.pi - np.pi * (epoch / self.epoch) ** 2  # Eq. 8
         p = 1 - 0.9 * (epoch / self.epoch) ** 0.5
         threshold = self.c_factor * self.epoch
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             w = a * self.generator.random() - a
             if epoch > threshold:
                 x_new = self.g_best.solution + (
-                        self.g_best.solution - self.pop[idx].solution
+                        self.g_best.solution - self.population[idx].solution
                 ) * np.tan(w * self.generator.random())
             else:
                 x_new = self.g_best.solution - (
-                        self.g_best.solution - self.pop[idx].solution
+                        self.g_best.solution - self.population[idx].solution
                 ) * np.tan(w * p)
-            pos_new = self._correct_solution(x_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(x_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        self.pop = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        self.population = self.population.evaluate(pop_new, self.mode)

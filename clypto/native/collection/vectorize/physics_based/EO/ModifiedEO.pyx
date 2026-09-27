@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.physics_based.EO.OriginalEO cimport OriginalEO
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -36,8 +36,8 @@ cdef class ModifiedEO(OriginalEO):
     >>>
     >>> model = EO.ModifiedEO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -64,14 +64,14 @@ cdef class ModifiedEO(OriginalEO):
         self.sort_flag = False
         self.pop_len = int(self.pop_size / 3)
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef NativePopulation pop_s1, pop_s2, pop_s2_new, pop_s3
         cdef Py_ssize_t idx, n = pop.n, d = pop.d
         # ---------------- Memory saving-------------------  make equilibrium pool
         c_pool = self.make_equilibrium_pool__(pop.take(self.sorted_order(pop)[:4]))
-        cand.X[:] = self._correct_solution(self.candidates__(pop, c_pool, epoch))
+        cand.X[:] = self.correct_solution(self.candidates__(pop, c_pool, epoch))
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)
         ## Sort the updated population based on fitness
@@ -79,7 +79,7 @@ cdef class ModifiedEO(OriginalEO):
         ## Mutation scheme
         pop_s2 = pop_s1.take(np.arange(pop_s1.n))
         pop_s2_new = pop_s1.empty_like()
-        pop_s2_new.X[:] = self._correct_solution(pop_s2.X * (1 + self.generator.normal(0, 1, (self.pop_len, d))))  # Eq. 12
+        pop_s2_new.X[:] = self.correct_solution(pop_s2.X * (1 + self.generator.normal(0, 1, (self.pop_len, d))))  # Eq. 12
         self.evaluate(pop_s2_new, 0, pop_s2_new.n)
         if self.mode in self.AVAILABLE_MODES:
             # greedy_selection_population(pop_s2_new, pop_s2): the mutated agent stays unless the original is strictly better
@@ -92,7 +92,7 @@ cdef class ModifiedEO(OriginalEO):
         pos_s1_mean = np.mean(np.ascontiguousarray(pop_s1.X), axis=0)
         R = self.generator.random((self.pop_len, 2))
         pop_s3 = pop_s1.empty_like()
-        pop_s3.X[:] = self._correct_solution(
+        pop_s3.X[:] = self.correct_solution(
             (c_pool.X[0] - pos_s1_mean) - R[:, 0:1] * (self.problem.bounds.low + R[:, 1:2] * (self.problem.bounds.up - self.problem.bounds.low))
         )
         self.evaluate(pop_s3, 0, pop_s3.n)

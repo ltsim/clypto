@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -38,8 +38,8 @@ cdef class OriginalFPA(VectorizeOptimizer):
     >>>
     >>> model = FPA.OriginalFPA(epoch=1000, pop_size=50, p_s = 0.8, levy_multiplier = 0.2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -79,18 +79,18 @@ cdef class OriginalFPA(VectorizeOptimizer):
         self.p_s = cy.validator(float, p_s, (0, 1.0), "p_s")
         self.levy_multiplier = cy.validator(float, levy_multiplier, (-10000, 10000), "levy_multiplier")
 
-    cdef object _amend_solution(self, object solution):
+    cdef object amend_solution(self, object solution):
         condition = np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up)
         random_pos = self.problem.bounds.low + self.generator.random(np.shape(solution)) * (self.problem.bounds.up - self.problem.bounds.low)
         return np.where(condition, solution, random_pos)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        levy = self._get_levy_flight_step(multiplier=self.levy_multiplier, size=(n, d), case=-1)
+        levy = cy.levy_flight(self.generator, beta=1.0, multiplier=self.levy_multiplier, size=(n, d), case=-1)
         pos_levy = X + 1.0 / np.sqrt(epoch_c) * levy * (X - g)  # global pollination
         i1, i2 = ops.two_others(self, n, 1)
         pos_local = X + rng.uniform(size=(n, 1)) * (X[i1[:, 0]] - X[i2[:, 0]])  # local pollination

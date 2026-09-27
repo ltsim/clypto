@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.swarm_based.GWO.OriginalGWO cimport OriginalGWO
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -41,8 +41,8 @@ cdef class IGWO(OriginalGWO):
     >>>
     >>> model = GWO.IGWO(epoch=1000, pop_size=50, a_min = 0.02, a_max = 2.2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -86,7 +86,7 @@ cdef class IGWO(OriginalGWO):
         self.growth_alpha = 2
         self.growth_delta = 3
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -99,6 +99,6 @@ cdef class IGWO(OriginalGWO):
         A = a * (2 * R[:, :3] - 1)
         C = 2 * R[:, 3:]
         Xs = best - A * np.abs(C * best - pop.X[:, None, :])
-        cand.X[:] = self._correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
+        cand.X[:] = self.correct_solution((Xs[:, 0] + Xs[:, 1] + Xs[:, 2]) / 3.0)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

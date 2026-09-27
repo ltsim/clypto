@@ -8,7 +8,7 @@
 
 import numpy as np
 from scipy.stats import cauchy, norm
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalLSHADEcnEpSin(AgentListOptimizer):
     >>> model = LSHADEcnEpSin.OriginalLSHADEcnEpSin(epoch=1000, pop_size=50, miu_f = 0.5, miu_cr = 0.5,
     >>>                                freq = 0.5, memory_size = 5, ps = 0.5, pc = 0.4, pop_size_min = 10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -128,7 +128,7 @@ cdef class OriginalLSHADEcnEpSin(AgentListOptimizer):
         self.pc = cy.validator(float, pc, (0.1, 1.0), "pc")
         self.pop_size_min = cy.validator(int, pop_size_min, [4, 1000], "pop_size_min")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.NP_init = self.pop_size if self.pop_size else 18 * self.problem.n_dims
         self.NP_min = self.pop_size_min  # Minimum population size
         self.NP = self.NP_init  # population size will be updated in each iteration
@@ -151,7 +151,7 @@ cdef class OriginalLSHADEcnEpSin(AgentListOptimizer):
         self.nf1_history = []  # Failure history for config 1
         self.nf2_history = []  # Failure history for config 2
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Initialize archive with initial population
         self.archive = self.objs.copy()
 
@@ -196,7 +196,7 @@ cdef class OriginalLSHADEcnEpSin(AgentListOptimizer):
 
     def current_to_pbest_mutation(self, idx, F, p=0.1):
         # Select pbest from top p*NP individuals
-        pop_sorted = self._get_sorted_population(self.objs, self.problem.sense)
+        pop_sorted = cy.sort_agents(self.objs, self.problem.sense)
         p_size = max(1, int(p * self.NP))
         pbest_idx = self.generator.choice(range(p_size))
 
@@ -213,7 +213,7 @@ cdef class OriginalLSHADEcnEpSin(AgentListOptimizer):
             + F * (self.objs[r1].solution - pop_combined[r2].solution)
         )
         # Ensure the new position is within bounds
-        pos_new = self._correct_solution(pos_new)
+        pos_new = self.correct_solution(pos_new)
         return pos_new
 
     def binomial_crossover(self, target, mutant, CR=None):
@@ -301,15 +301,13 @@ cdef class OriginalLSHADEcnEpSin(AgentListOptimizer):
         new_NP = max(self.NP_min, new_NP)
         if new_NP < self.NP:
             # Sort population by fitness and keep the best individuals
-            _, indices = self._get_sorted_indices_population(
-                self.objs, self.problem.sense
-            )
+            _, indices = (cy.sort_agents(self.objs, self.problem.sense), cy.argsort_agents(self.objs, self.problem.sense))
             tt = indices[:new_NP]
             self.generator.shuffle(tt)
             self.objs = [self.objs[idx] for idx in tt]
         self.NP = new_NP
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         # Clear successful parameters for this generation
         S_F = []
         S_CR = []
@@ -358,14 +356,12 @@ cdef class OriginalLSHADEcnEpSin(AgentListOptimizer):
                 pos_new = self.binomial_crossover(self.objs[idx].solution, pos_new, CR)
 
             # Calculate fitness
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.generate_agent(pos_new)
 
             # Selection
-            if self._compare_target(
-                agent.target, self.objs[idx].target, self.problem.sense
-            ):  # Success
-                delta = abs(self.objs[idx].target.fitness - agent.target.fitness)
+            if cy.is_better(agent, self.objs[idx], self.problem.sense):  # Success
+                delta = abs(self.objs[idx].fitness - agent.fitness)
                 S_F.append(F)
                 S_CR.append(CR)
                 delta_f.append(delta)

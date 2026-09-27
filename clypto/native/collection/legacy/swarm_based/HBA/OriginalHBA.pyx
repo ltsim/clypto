@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHBA(LegacyOptimizer):
+cdef class OriginalHBA(cy.Optimizer):
     """
     The original version of: Honey Badger Algorithm (HBA)
 
@@ -33,8 +33,8 @@ cdef class OriginalHBA(LegacyOptimizer):
     >>>
     >>> model = HBA.OriginalHBA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -50,13 +50,11 @@ cdef class OriginalHBA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.beta = 6  # the ability of HB to get the food  Eq.(4)
         self.C = 2  # constant in Eq. (3)
 
@@ -70,32 +68,33 @@ cdef class OriginalHBA(LegacyOptimizer):
                       ) ** 2
             if idx == size - 1:
                 si[idx] = (
-                                  np.linalg.norm(pop[idx].solution - self.pop[0].solution)
+                                  np.linalg.norm(pop[idx].solution - self.population[0].solution)
                                   + self.EPSILON
                           ) ** 2
             else:
                 si[idx] = (
-                                  np.linalg.norm(pop[idx].solution - self.pop[idx + 1].solution)
+                                  np.linalg.norm(pop[idx].solution - self.population[idx + 1].solution)
                                   + self.EPSILON
                           ) ** 2
         r2 = self.generator.random(size)
         return r2 * si / (4 * np.pi * di)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         tt = self.epoch
         alpha = self.C * np.exp(-tt / self.epoch)  # density factor in Eq. (3)
-        I = self.get_intensity__(self.g_best, self.pop)  # intensity in Eq. (2)
+        I = self.get_intensity__(self.g_best, self.population)  # intensity in Eq. (2)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             r = self.generator.random()
             F = self.generator.choice([1, -1])
-            di = self.g_best.solution - self.pop[idx].solution
+            di = self.g_best.solution - self.population[idx].solution
             r3 = self.generator.random(self.problem.n_dims)
             r4 = self.generator.random(self.problem.n_dims)
             r5 = self.generator.random(self.problem.n_dims)
@@ -112,16 +111,12 @@ cdef class OriginalHBA(LegacyOptimizer):
             )
             temp2 = self.g_best.solution + F * r7 * alpha * di
             pos_new = np.where(r6 < 0.5, temp1, temp2)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

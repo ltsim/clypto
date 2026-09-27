@@ -1,5 +1,6 @@
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class OriginalBBO(LegacyOptimizer):
-    pass
+cdef class OriginalBBO(cy.Optimizer):
+    cdef public int n_elites
+    cdef public double p_m

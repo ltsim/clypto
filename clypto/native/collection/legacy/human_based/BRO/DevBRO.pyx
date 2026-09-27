@@ -3,20 +3,27 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 from scipy.spatial.distance import cdist
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _DevBROAgent(LegacyAgent):
+
+cdef class DevBROAgent(cy.Agent):
     cdef public object damage
 
 
-cdef class DevBRO(LegacyOptimizer):
+cdef class DevBROPopulation(cy.Population):
+    """Agents of :class:`DevBRO`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        damage = 0
+        return DevBROAgent(solution=solution, damage=damage)
+
+
+cdef class DevBRO(cy.Optimizer):
     """
     The developed version: Battle Royale Optimization (BRO)
 
@@ -42,8 +49,8 @@ cdef class DevBRO(LegacyOptimizer):
     >>>
     >>> model = BRO.DevBRO(epoch=1000, pop_size=50, threshold = 3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -59,24 +66,16 @@ cdef class DevBRO(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             threshold (int): dead threshold, default=3
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.threshold = self.validator.check_float("threshold", threshold, [1, 10])
-        self._set_parameters(["epoch", "pop_size", "threshold"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "threshold"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=DevBROPopulation)
+        self.threshold = cy.validator(float, threshold, [1, 10], "threshold")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         shrink = np.ceil(np.log10(self.epoch))
         self.dyn_delta = np.round(self.epoch / shrink)
         self.lb_updated = self.problem.bounds.low.copy()
         self.ub_updated = self.problem.bounds.up.copy()
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        damage = 0
-        return _DevBROAgent(solution=solution, damage=damage)
 
     def get_idx_min__(self, data):
         k_zero = np.count_nonzero(data == 0)
@@ -88,71 +87,71 @@ cdef class DevBRO(LegacyOptimizer):
         return np.where(data == np.min(data[data != 0]))[0][0]
 
     def find_idx_min_distance__(self, target_pos=None, pop=None):
-        list_pos = np.array([pop[idx].solution for idx in range(0, self.pop_size)])
+        pop_size = self.population.size()
+        list_pos = np.array([pop[idx].solution for idx in range(0, pop_size)])
         target_pos = np.reshape(target_pos, (1, -1))
         dist_list = cdist(list_pos, target_pos, "euclidean")
         dist_list = np.reshape(dist_list, (-1))
         return self.get_idx_min__(dist_list)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        for idx in range(self.pop_size):
+        pop_size = self.population.size()
+        for idx in range(pop_size):
             # Compare ith soldier with nearest one (jth)
-            jdx = self.find_idx_min_distance__(self.pop[idx].solution, self.pop)
-            if self._compare_target(
-                self.pop[idx].target, self.pop[jdx].target, self.problem.sense
-            ):
+            jdx = self.find_idx_min_distance__(self.population[idx].solution, self.population)
+            if cy.is_better(self.population[idx], self.population[jdx], self.problem.sense):
                 ## Update Winner based on global best solution
-                pos_new = self.pop[idx].solution + self.generator.normal(
+                pos_new = self.population[idx].solution + self.generator.normal(
                     0, 1
                 ) * np.mean(
-                    np.array([self.pop[idx].solution, self.g_best.solution]), axis=0
+                    np.array([self.population[idx].solution, self.g_best.solution]), axis=0
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
                 dam_new = (
-                    self.pop[idx].damage - 1
+                    self.population[idx].damage - 1
                 )  ## Substract damaged hurt -1 to go next battle
                 agent.damage = dam_new
-                self.pop[idx] = agent
+                self.population[idx] = agent
                 ## Update Loser
                 if (
-                    self.pop[jdx].damage < self.threshold
+                    self.population[jdx].damage < self.threshold
                 ):  ## If loser not dead yet, move it based on general
                     pos_new = self.generator.uniform() * (
-                        np.maximum(self.pop[jdx].solution, self.g_best.solution)
-                        - np.minimum(self.pop[jdx].solution, self.g_best.solution)
-                    ) + np.maximum(self.pop[jdx].solution, self.g_best.solution)
-                    dam_new = self.pop[jdx].damage + 1
-                    self.pop[jdx].target = self._get_target(self.pop[jdx].solution)
+                        np.maximum(self.population[jdx].solution, self.g_best.solution)
+                        - np.minimum(self.population[jdx].solution, self.g_best.solution)
+                    ) + np.maximum(self.population[jdx].solution, self.g_best.solution)
+                    dam_new = self.population[jdx].damage + 1
+                    self.population[jdx].evaluate(self.problem)
                 else:  ## Loser dead and respawn again
                     pos_new = self.generator.uniform(
                         self.lb_updated, self.ub_updated
                     )
                     dam_new = 0
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
                 agent.damage = dam_new
-                self.pop[jdx] = agent
+                self.population[jdx] = agent
             else:
                 ## Update Loser by following position of Winner
-                self.pop[idx] = self.pop[jdx].copy()
+                self.population[idx] = self.population[jdx].copy()
                 ## Update Winner by following position of General to protect the King and General
-                pos_new = self.pop[jdx].solution + self.generator.uniform() * (
-                    self.g_best.solution - self.pop[jdx].solution
+                pos_new = self.population[jdx].solution + self.generator.uniform() * (
+                    self.g_best.solution - self.population[jdx].solution
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
                 agent.damage = 0
-                self.pop[jdx] = agent
+                self.population[jdx] = agent
         if epoch >= self.dyn_delta:  # max_epoch = 1000 -> delta = 300, 450, >500,....
             pos_list = np.array(
-                [self.pop[idx].solution for idx in range(0, self.pop_size)]
+                [self.population[idx].solution for idx in range(0, pop_size)]
             )
             pos_std = np.std(pos_list, axis=0)
             lb = self.g_best.solution - pos_std

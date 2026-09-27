@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class GaussianSA(LegacyOptimizer):
+cdef class GaussianSA(cy.Optimizer):
     """
     The developed version of: Gaussian Simulated Annealing (GaussianSA)
 
@@ -38,9 +38,13 @@ cdef class GaussianSA(LegacyOptimizer):
     >>>
     >>> model = SA.GaussianSA(epoch=1000, pop_size=2, temp_init = 100, cooling_rate = 0.99, scale = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
+
+    cdef public double cooling_rate
+    cdef public double scale
+    cdef public double temp_init
 
     def __init__(
             self,
@@ -59,22 +63,19 @@ cdef class GaussianSA(LegacyOptimizer):
             cooling_rate (float): cooling rate, default=0.99
             scale (float): the scale in gaussian random, default=0.1
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
-        self.temp_init = self.validator.check_float("temp_init", temp_init, [1, 10000])
-        self.cooling_rate = self.validator.check_float(
-            "cooling_rate", cooling_rate, (0.0, 1.0)
-        )
-        self.scale = self.validator.check_float("scale", scale, (0.0, 100.0))
-        self._set_parameters(["epoch", "temp_init", "cooling_rate", "scale"])
+        super().__init__(parameters=["epoch", "temp_init", "cooling_rate", "scale"], **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[2, 10000])
+        self.temp_init = cy.validator(float, temp_init, [1, 10000], "temp_init")
+        self.cooling_rate = cy.validator(float, cooling_rate, (0.0, 1.0), "cooling_rate")
+        self.scale = cy.validator(float, scale, (0.0, 100.0), "scale")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Initialize the system
         self.temp_current = self.temp_init
         self.agent_current = self.g_best.copy()
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -85,20 +86,18 @@ cdef class GaussianSA(LegacyOptimizer):
         pos_new = self.agent_current.solution + self.generator.normal(
             scale=self.scale, size=self.problem.n_dims
         )
-        agent = self._generate_agent(pos_new)
+        agent = self.population.generate_agent(pos_new)
         # Accept or reject the new solution
-        if self._compare_target(
-                agent.target, self.agent_current.target, self.problem.sense
-        ):
+        if cy.is_better(agent, self.agent_current, self.problem.sense):
             self.agent_current = agent
         else:
             # Calculate the energy difference
             delta_energy = np.abs(
-                self.agent_current.target.fitness - agent.target.fitness
+                self.agent_current.fitness - agent.fitness
             )
             p_accept = np.exp(-delta_energy / self.temp_current)
             if self.generator.random() < p_accept:
                 self.agent_current = agent
         # Reduce the temperature
         self.temp_current *= self.cooling_rate
-        self.pop = [self.g_best.copy(), self.agent_current.copy()]
+        self.population = [self.g_best.copy(), self.agent_current.copy()]

@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -43,8 +43,8 @@ cdef class CleverBookBeesA(VectorizeOptimizer):
     >>> model = BeesA.CleverBookBeesA(epoch=1000, pop_size=50, n_elites = 16, n_others = 4,
     >>>             patch_size = 5.0, patch_reduction = 0.985, n_sites = 3, n_elite_sites = 1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -109,7 +109,7 @@ cdef class CleverBookBeesA(VectorizeOptimizer):
         self.n_sites = cy.validator(int, n_sites, [2, 5], "n_sites")
         self.n_elite_sites = cy.validator(int, n_elite_sites, [1, 3], "n_elite_sites")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, fresh
         cdef Py_ssize_t n = pop.n, d = pop.d, ns = self.n_sites
@@ -124,7 +124,7 @@ cdef class CleverBookBeesA(VectorizeOptimizer):
         shift = rng.uniform(size=m) * self.patch_size * np.where(rng.uniform(size=m) < 0.5, 1.0, -1.0)
         pos[np.arange(m), rng.integers(0, d - 1, size=m)] += shift
         cand = pop.take(parent)
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, m)
         ops.scatter(self, cand, parent)
         # the other bees scout random sources, kept only if they beat the bee they replace

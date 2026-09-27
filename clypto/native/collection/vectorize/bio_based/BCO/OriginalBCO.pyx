@@ -5,12 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
 
 
 cdef class OriginalBCO(VectorizeOptimizer):
@@ -40,8 +38,8 @@ cdef class OriginalBCO(VectorizeOptimizer):
     >>>
     >>> model = BCO.OriginalBCO(epoch=1000, pop_size=50, p_m=0.01, n_elites=2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -114,24 +112,24 @@ cdef class OriginalBCO(VectorizeOptimizer):
         """Copy the agents into the population the engine sorts and reports."""
         cdef NativePopulation pop = self.pop.take(np.zeros(len(self.objs), dtype=int))
         for i, agent in enumerate(self.objs):
-            ops.set_row(pop, i, agent.solution, agent.target)
+            ops.set_row(pop, i, agent.solution, agent)
         return pop
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.energy = self.generator.uniform(0, 1, self.pop_size)
 
-    def _initialization(self):
+    def initialization(self):
         # The classic algorithm shares agents (and their solution arrays) between its lists and edits
         # them in place, so it keeps agent objects and mirrors them into ``self.pop``.
         cdef NativePopulation base
-        VectorizeOptimizer._initialization(self)
+        VectorizeOptimizer.initialization(self)
         base = self.pop
         self.objs = [base.agent(i) for i in range(base.n)]
         self.pop_local = list(self.objs)  # pop.copy(): the same agents
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef Py_ssize_t idx, jdx
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
         minimize = self.problem.sense == "min"
@@ -141,7 +139,7 @@ cdef class OriginalBCO(VectorizeOptimizer):
             g_best = pop[self._g_best_row]
         else:
             best = pop[self.sorted_order(self.pop)[0]]
-            g_best = LegacyNativeAgent(best.solution, best.target.copy())
+            g_best = cy.Agent(best.solution, best.objectives, best.weights)
 
         # Calculate adaptive chemotaxis step size
         step = (
@@ -163,25 +161,24 @@ cdef class OriginalBCO(VectorizeOptimizer):
                 # Swimming (no turbulence)
                 pos_new = f_i * global_direction + (1 - f_i) * personal_direction
             pos_new = pop[idx].solution + step * pos_new
-            pos_new = self._correct_solution(pos_new)
-            agent_new = LegacyNativeAgent(pos_new, None)
+            pos_new = self.correct_solution(pos_new)
+            agent_new = cy.Agent(pos_new)
             pop_new.append(agent_new)
             if not swarm:
-                agent_new.target = self._get_target(pos_new)
+                agent_new.evaluate(self.problem)
                 # get_better_agent(old, new): copies of the winner
                 old = pop[idx]
                 if minimize:
-                    pop[idx] = old.copy() if old.target.fitness < agent_new.target.fitness else agent_new.copy()
+                    pop[idx] = old.copy() if old.fitness < agent_new.fitness else agent_new.copy()
                 else:
-                    pop[idx] = agent_new.copy() if old.target.fitness < agent_new.target.fitness else old.copy()
+                    pop[idx] = agent_new.copy() if old.fitness < agent_new.fitness else old.copy()
         if swarm:
             for agent in pop_new:
-                agent.target = self._get_target(agent.solution, counted=False)
-            self._nfe_counter += len(pop_new)
+                agent.evaluate(self.problem)
             if minimize:
-                pop = [pop_new[i] if pop_new[i].target.fitness < pop[i].target.fitness else pop[i] for i in range(len(pop))]
+                pop = [pop_new[i] if pop_new[i].fitness < pop[i].fitness else pop[i] for i in range(len(pop))]
             else:
-                pop = [pop_new[i] if pop_new[i].target.fitness > pop[i].target.fitness else pop[i] for i in range(len(pop))]
+                pop = [pop_new[i] if pop_new[i].fitness > pop[i].fitness else pop[i] for i in range(len(pop))]
 
         ## Perform interactive exchange between bacteria
         for idx in range(0, self.pop_size):
@@ -200,16 +197,15 @@ cdef class OriginalBCO(VectorizeOptimizer):
                     neighbor = self.generator.choice(list(set(range(self.pop_size)) - {idx}))
 
                 # Exchange information if neighbor is better
-                if pop[neighbor].target.fitness < pop[idx].target.fitness:
+                if pop[neighbor].fitness < pop[idx].fitness:
                     pop[idx] = pop[neighbor]
             else:
                 # Group exchange
-                if pop[idx].target.fitness < g_best.target.fitness:
+                if pop[idx].fitness < g_best.fitness:
                     # Move towards global best
                     pop[idx].solution += 0.1 * (g_best.solution - pop[idx].solution)
         if swarm:
             for agent in pop:
-                agent.target = self._get_target(agent.solution, counted=False)
-            self._nfe_counter += len(pop)
+                agent.evaluate(self.problem)
         self.objs = pop
         self.pop = self.mirror__()

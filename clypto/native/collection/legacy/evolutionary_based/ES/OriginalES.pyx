@@ -3,19 +3,27 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalESAgent(LegacyAgent):
+
+cdef class OriginalESAgent(cy.Agent):
     cdef public object strategy
 
 
-cdef class OriginalES(LegacyOptimizer):
+cdef class OriginalESPopulation(cy.Population):
+    """Agents of :class:`OriginalES`."""
+    cdef public object distance
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        strategy = self.generator.uniform(0, self.distance)
+        return OriginalESAgent(solution=solution, strategy=strategy)
+
+
+cdef class OriginalES(cy.Optimizer):
     """
     The original version of: Evolution Strategies (ES)
 
@@ -41,8 +49,8 @@ cdef class OriginalES(LegacyOptimizer):
     >>>
     >>> model = ES.OriginalES(epoch=1000, pop_size=50, lamda = 0.75)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -62,48 +70,40 @@ cdef class OriginalES(LegacyOptimizer):
             pop_size (int): number of population size (miu in the paper), default = 100
             lamda (float): Percentage of child agents evolving in the next generation, default=0.75
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.lamda = self.validator.check_float("lamda", lamda, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "lamda"])
-        self.n_child = int(self.lamda * self.pop_size)
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "lamda"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalESPopulation)
+        self.lamda = cy.validator(float, lamda, (0, 1.0), "lamda")
+        self.n_child = int(self.lamda * self.population.size())
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
+        self.population.distance = self.distance
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        strategy = self.generator.uniform(0, self.distance)
-        return _OriginalESAgent(solution=solution, strategy=strategy)
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         child = []
         for idx in range(0, self.n_child):
-            pos_new = self.pop[idx].solution + self.pop[
+            pos_new = self.population[idx].solution + self.population[
                 idx
             ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             tau = np.sqrt(2.0 * self.problem.n_dims) ** (-1.0)
             tau_p = np.sqrt(2.0 * np.sqrt(self.problem.n_dims)) ** (-1.0)
             strategy = np.exp(
                 tau_p * self.generator.normal(0, 1.0, self.problem.n_dims)
                 + tau * self.generator.normal(0, 1.0, self.problem.n_dims)
             )
-            agent = self._generate_empty_agent(pos_new)
+            agent = self.population.create_agent(pos_new)
             agent.update(solution=pos_new, strategy=strategy)
             child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                child[-1].target = self._get_target(pos_new)
-        child = self._update_target_for_population(child)
-        self.pop = self._get_sorted_and_trimmed_population(
-            child + self.pop, self.pop_size, self.problem.sense
-        )
+                child[-1].evaluate(self.problem)
+        child = self.population.evaluate(child, self.mode)
+        self.population = cy.sort_agents(child + self.population, self.problem.sense)[:pop_size]

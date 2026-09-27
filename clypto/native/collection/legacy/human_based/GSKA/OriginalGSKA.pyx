@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 16:58, 08/04/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalGSKA(LegacyOptimizer):
+cdef class OriginalGSKA(cy.Optimizer):
     """
     The original version of: Gaining Sharing Knowledge-based Algorithm (GSKA)
 
@@ -36,14 +36,19 @@ cdef class OriginalGSKA(LegacyOptimizer):
     >>>
     >>> model = GSKA.OriginalGSKA(epoch=1000, pop_size=50, pb = 0.1, kf = 0.5, kr = 0.9, kg = 5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Mohamed, A.W., Hadi, A.A. and Mohamed, A.K., 2020. Gaining-sharing knowledge based algorithm for solving
     optimization problems: a novel nature-inspired algorithm. International Journal of Machine Learning and Cybernetics, 11(7), pp.1501-1529.
     """
+
+    cdef public double kf
+    cdef public int kg
+    cdef public double kr
+    cdef public double pb
 
     def __init__(
             self,
@@ -65,103 +70,90 @@ cdef class OriginalGSKA(LegacyOptimizer):
             kr (float): knowledge ratio, default = 0.9
             kg (int): Number of generations effect to D-dimension, default = 5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.pb = self.validator.check_float("pb", pb, (0, 1.0))
-        self.kf = self.validator.check_float("kf", kf, (0, 1.0))
-        self.kr = self.validator.check_float("kr", kr, (0, 1.0))
-        self.kg = self.validator.check_int("kg", kg, [1, 1 + int(epoch / 2)])
-        self._set_parameters(["epoch", "pop_size", "pb", "kf", "kr", "kg"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "pb", "kf", "kr", "kg"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.pb = cy.validator(float, pb, (0, 1.0), "pb")
+        self.kf = cy.validator(float, kf, (0, 1.0), "kf")
+        self.kr = cy.validator(float, kr, (0, 1.0), "kr")
+        self.kg = cy.validator(int, kg, [1, 1 + int(epoch / 2)], "kg")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         dd = int(self.problem.n_dims * (1 - epoch / self.epoch) ** self.kg)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # If it is the best it chooses best+2, best+1
             if idx == 0:
                 previ, nexti = idx + 2, idx + 1
             # If it is the worse it chooses worst-2, worst-1
-            elif idx == self.pop_size - 1:
+            elif idx == pop_size - 1:
                 previ, nexti = idx - 2, idx - 1
             # Other case it chooses i-1, i+1
             else:
                 previ, nexti = idx - 1, idx + 1
             # The random individual is for all dimension values
             rand_idx = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {previ, idx, nexti})
+                list(set(range(0, pop_size)) - {previ, idx, nexti})
             )
-            pos_new = self.pop[idx].solution.copy()
+            pos_new = self.population[idx].solution.copy()
 
             for j in range(0, self.problem.n_dims):
                 if j < dd:  # junior gaining and sharing
                     if self.generator.uniform() <= self.kr:
-                        if self._compare_target(
-                                self.pop[rand_idx].target,
-                                self.pop[idx].target,
-                                self.problem.sense,
-                        ):
-                            pos_new[j] = self.pop[idx].solution[j] + self.kf * (
-                                    self.pop[previ].solution[j]
-                                    - self.pop[nexti].solution[j]
-                                    + self.pop[rand_idx].solution[j]
-                                    - self.pop[idx].solution[j]
+                        if cy.is_better(self.population[rand_idx], self.population[idx], self.problem.sense):
+                            pos_new[j] = self.population[idx].solution[j] + self.kf * (
+                                    self.population[previ].solution[j]
+                                    - self.population[nexti].solution[j]
+                                    + self.population[rand_idx].solution[j]
+                                    - self.population[idx].solution[j]
                             )
                         else:
-                            pos_new[j] = self.pop[idx].solution[j] + self.kf * (
-                                    self.pop[previ].solution[j]
-                                    - self.pop[nexti].solution[j]
-                                    + self.pop[idx].solution[j]
-                                    - self.pop[rand_idx].solution[j]
+                            pos_new[j] = self.population[idx].solution[j] + self.kf * (
+                                    self.population[previ].solution[j]
+                                    - self.population[nexti].solution[j]
+                                    + self.population[idx].solution[j]
+                                    - self.population[rand_idx].solution[j]
                             )
                 else:  # senior gaining and sharing
                     if self.generator.uniform() <= self.kr:
-                        id1 = int(self.pb * self.pop_size)
-                        id2 = int(id1 + self.pop_size * (1 - 2 * self.pb))
+                        id1 = int(self.pb * pop_size)
+                        id2 = int(id1 + pop_size * (1 - 2 * self.pb))
                         rand_best = self.generator.choice(
                             list(set(range(0, id1)) - {idx})
                         )
                         rand_worst = self.generator.choice(
-                            list(set(range(id2, self.pop_size)) - {idx})
+                            list(set(range(id2, pop_size)) - {idx})
                         )
                         rand_mid = self.generator.choice(
                             list(set(range(id1, id2)) - {idx})
                         )
-                        if self._compare_target(
-                                self.pop[rand_mid].target,
-                                self.pop[idx].target,
-                                self.problem.sense,
-                        ):
-                            pos_new[j] = self.pop[idx].solution[j] + self.kf * (
-                                    self.pop[rand_best].solution[j]
-                                    - self.pop[rand_worst].solution[j]
-                                    + self.pop[rand_mid].solution[j]
-                                    - self.pop[idx].solution[j]
+                        if cy.is_better(self.population[rand_mid], self.population[idx], self.problem.sense):
+                            pos_new[j] = self.population[idx].solution[j] + self.kf * (
+                                    self.population[rand_best].solution[j]
+                                    - self.population[rand_worst].solution[j]
+                                    + self.population[rand_mid].solution[j]
+                                    - self.population[idx].solution[j]
                             )
                         else:
-                            pos_new[j] = self.pop[idx].solution[j] + self.kf * (
-                                    self.pop[rand_best].solution[j]
-                                    - self.pop[rand_worst].solution[j]
-                                    + self.pop[idx].solution[j]
-                                    - self.pop[rand_mid].solution[j]
+                            pos_new[j] = self.population[idx].solution[j] + self.kf * (
+                                    self.population[rand_best].solution[j]
+                                    - self.population[rand_worst].solution[j]
+                                    + self.population[idx].solution[j]
+                                    - self.population[rand_mid].solution[j]
                             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

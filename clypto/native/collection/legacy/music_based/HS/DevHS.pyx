@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevHS(LegacyOptimizer):
+cdef class DevHS(cy.Optimizer):
     """
     The developed version: Harmony Search (HS)
 
@@ -40,8 +40,8 @@ cdef class DevHS(LegacyOptimizer):
     >>>
     >>> model = HS.DevHS(epoch=1000, pop_size=50, c_r = 0.95, pa_r = 0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -59,28 +59,27 @@ cdef class DevHS(LegacyOptimizer):
             c_r (float): Harmony Memory Consideration Rate, default = 0.15
             pa_r (float): Pitch Adjustment Rate, default=0.5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c_r = self.validator.check_float("c_r", c_r, (0, 1.0))
-        self.pa_r = self.validator.check_float("pa_r", pa_r, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "c_r", "pa_r"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "c_r", "pa_r"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.c_r = cy.validator(float, c_r, (0, 1.0), "c_r")
+        self.pa_r = cy.validator(float, pa_r, (0, 1.0), "pa_r")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.fw = 0.0001 * (self.problem.bounds.up - self.problem.bounds.low)  # Fret Width (Bandwidth)
         self.fw_damp = 0.9995  # Fret Width Damp Ratio
         self.dyn_fw = self.fw
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Create New Harmony Position
             pos_new = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             delta = self.dyn_fw * self.generator.normal(
@@ -97,15 +96,13 @@ cdef class DevHS(LegacyOptimizer):
             pos_new = np.where(
                 self.generator.random(self.problem.n_dims) < self.pa_r, x_new, pos_new
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
         # Update Damp Fret Width
         self.dyn_fw = self.dyn_fw * self.fw_damp
         # Merge Harmony Memory and New Harmonies, Then sort them, Then truncate extra harmonies
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, sense=self.problem.sense
-        )
+        self.population = cy.sort_agents(self.population + pop_new, self.problem.sense)[:pop_size]

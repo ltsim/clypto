@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -38,8 +38,8 @@ cdef class DevSMA(VectorizeOptimizer):
     >>>
     >>> model = SMA.DevSMA(epoch=1000, pop_size=50, p_t = 0.03)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
 
@@ -69,17 +69,17 @@ cdef class DevSMA(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.p_t = cy.validator(float, p_t, (0, 1.0), "p_t")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.weights = np.zeros((self.pop_size, self.problem.n_dims))
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        gb_fit = self.current_g_best().target.fitness
+        gb_fit = self.current_g_best().fitness
         ss = gb_fit - pop.F[-1] + self.EPSILON
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
         # weights (Eq. 2.5): the better half is amplified, the worse half is damped

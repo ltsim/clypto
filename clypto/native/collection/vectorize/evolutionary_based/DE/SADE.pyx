@@ -3,15 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class SADE(VectorizeOptimizer):
@@ -37,8 +33,8 @@ cdef class SADE(VectorizeOptimizer):
     >>>
     >>> model = DE.SADE(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -80,7 +76,7 @@ cdef class SADE(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.loop_probability = 50
         self.loop_cr = 5
         self.ns1 = self.ns2 = self.nf1 = self.nf2 = 0
@@ -88,7 +84,7 @@ cdef class SADE(VectorizeOptimizer):
         self.p1 = 0.5
         self.dyn_list_cr = list()
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +42,8 @@ cdef class OriginalAVOA(VectorizeOptimizer):
     >>>
     >>> model = AVOA.OriginalAVOA(epoch=1000, pop_size=50, p1=0.6, p2=0.4, p3=0.6, alpha=0.8, gama=2.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -90,7 +90,7 @@ cdef class OriginalAVOA(VectorizeOptimizer):
         self.alpha = cy.validator(float, alpha, (0, 1), "alpha")
         self.gama = cy.validator(float, gama, (0, 5.0), "gama")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -111,7 +111,7 @@ cdef class OriginalAVOA(VectorizeOptimizer):
         # exploitation, phase 1 (|F| < 0.5)
         A = best[0] - ((best[0] * X) / (best[0] - X ** 2 + self.EPSILON)) * F
         B = best[1] - ((best[1] * X) / (best[1] - X ** 2 + self.EPSILON)) * F
-        levy = self._get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, X.shape[1]), case=-1)
+        levy = cy.levy_flight(self.generator, beta=1.5, multiplier=1.0, size=(n, X.shape[1]), case=-1)
         phase1 = np.where(R[:, 4] < self.p2, (A + B) / 2, rand_pos - np.abs(rand_pos - X) * F * levy)
         # exploitation, phase 2 (0.5 <= |F| < 1)
         s = rand_pos * (R[:, 6] * X / (2 * np.pi))

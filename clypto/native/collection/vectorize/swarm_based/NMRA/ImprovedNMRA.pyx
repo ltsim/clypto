@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class ImprovedNMRA(VectorizeOptimizer):
     >>>
     >>> model = NMRA.ImprovedNMRA(epoch=1000, pop_size=50, pb = 0.75, pm = 0.01)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     cdef public object pb
@@ -78,7 +78,7 @@ cdef class ImprovedNMRA(VectorizeOptimizer):
         self.pm = cy.validator(float, pm, (0, 1.0), "pm")
         self.size_b = int(self.pop_size / 5)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d, b = self.size_b
         cdef object rng = self.generator
@@ -87,7 +87,7 @@ cdef class ImprovedNMRA(VectorizeOptimizer):
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
         me = np.arange(n)
         # breeding operators (the first size_b agents)
-        levy = self._get_levy_flight_step(beta=1, multiplier=0.001, size=(n, 1), case=-1)
+        levy = cy.levy_flight(self.generator, beta=1, multiplier=0.001, size=(n, 1), case=-1)
         breed = np.where((rng.uniform(size=n) < self.pb)[:, None], X + rng.normal(0, 1, (n, d)) * (g - X),
                          X + 1.0 / np.sqrt(epoch_c) * np.sign(rng.random((n, 1)) - 0.5) * levy * (X - g))
         # working operators: a difference of two workers, or a crossover of the best with a random partner

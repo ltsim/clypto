@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHBO(LegacyOptimizer):
+cdef class OriginalHBO(cy.Optimizer):
     """
     The original version of: Heap-based optimizer (HBO)
 
@@ -36,14 +36,16 @@ cdef class OriginalHBO(LegacyOptimizer):
     >>>
     >>> model = HBO.OriginalHBO(epoch=1000, pop_size=50, degree = 3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Askari, Q., Saeed, M., & Younas, I. (2020). Heap-based optimizer inspired by corporate rank hierarchy
     for global optimization. Expert Systems with Applications, 161, 113702.
     """
+
+    cdef public int degree
 
     def __init__(
             self, epoch: int = 10000, pop_size: int = 100, degree: int = 2, **kwargs: object
@@ -54,14 +56,12 @@ cdef class OriginalHBO(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             degree (int): the degree level in Corporate Rank Hierarchy (CRH), default=2
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.degree = self.validator.check_int("degree", degree, [2, 10])
-        self._set_parameters(["epoch", "pop_size", "degree"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "degree"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.degree = cy.validator(int, degree, [2, 10], "degree")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.cycles = np.floor(self.epoch / 25)
         self.it_per_cycle = self.epoch / self.cycles
         self.qtr_cycle = self.it_per_cycle / 4
@@ -80,44 +80,44 @@ cdef class OriginalHBO(LegacyOptimizer):
         pop_size = len(pop)
         heap = []
         for c in range(pop_size):
-            heap.append([pop[c].target, c])
+            heap.append([pop[c].copy(), c])
             # Heapifying
             t = c
             while t > 0:
                 parent_id = int(np.floor((t + 1) / degree) - 1)
-                if self._compare_target(
-                        pop[parent_id].target, pop[t].target, self.problem.sense
-                ):
+                if cy.is_better(pop[parent_id], pop[t], self.problem.sense):
                     break
                 else:
                     heap[t], heap[parent_id] = heap[parent_id], heap[t]
                 t = parent_id
         return heap
 
-    def _before_main_loop(self):
-        self.heap = self.heapifying__(self.pop, self.degree)
+    def before_main_loop(self):
+        pop_size = self.population.size()
+        self.heap = self.heapifying__(self.population, self.degree)
         self.friend_limits = self.colleagues_limits_generator__(
-            self.pop_size, self.degree
+            pop_size, self.degree
         )
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         gama = (np.mod(epoch, self.it_per_cycle) + 1) / self.qtr_cycle
         gama = np.abs(2 - gama)
         p1 = 1.0 - epoch / self.epoch
         p2 = p1 + (1 - p1) / 2
-        for c in range(self.pop_size - 1, 0, -1):
+        for c in range(pop_size - 1, 0, -1):
             if c == 0:  # Dealing with root
                 continue
             else:
                 parent_id = int(np.floor((c + 1) / self.degree) - 1)
-                cur_agent = self.pop[self.heap[c][1]].copy()  # Sol to be updated
-                par_agent = self.pop[
+                cur_agent = self.population[self.heap[c][1]].copy()  # Sol to be updated
+                par_agent = self.population[
                     self.heap[parent_id][1]
                 ]  # Sol to be updated with reference to
                 # Sol to be updated with reference to
@@ -134,7 +134,7 @@ cdef class OriginalHBO(LegacyOptimizer):
                             - {c}
                         )
                     )
-                fri_agent = self.pop[self.heap[friend_idx][1]]
+                fri_agent = self.population[self.heap[friend_idx][1]]
                 # Position Updating
                 rr = self.generator.random(self.problem.n_dims)
                 rn = 2 * self.generator.random(self.problem.n_dims) - 1
@@ -148,11 +148,7 @@ cdef class OriginalHBO(LegacyOptimizer):
                             par_agent.solution[jdx] - cur_agent.solution[jdx]
                         )
                     else:
-                        if self._compare_target(
-                                self.heap[friend_idx][0],
-                                self.heap[c][0],
-                                self.problem.sense,
-                        ):
+                        if cy.is_better(self.heap[friend_idx][0], self.heap[c][0], self.problem.sense):
                             cur_agent.solution[jdx] = fri_agent.solution[jdx] + rn[
                                 jdx
                             ] * gama * np.abs(
@@ -166,20 +162,16 @@ cdef class OriginalHBO(LegacyOptimizer):
                                 fri_agent.solution[jdx] - cur_agent.solution[jdx]
                             )
                             )
-                pos_new = self._correct_solution(cur_agent.solution)
-                cur_agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        cur_agent.target, self.heap[c][0], self.problem.sense
-                ):
-                    self.pop[self.heap[c][1]] = cur_agent
-                    self.heap[c][0] = cur_agent.target.copy()
+                pos_new = self.population.correct_solution(cur_agent.solution)
+                cur_agent = self.population.generate_agent(pos_new)
+                if cy.is_better(cur_agent, self.heap[c][0], self.problem.sense):
+                    self.population[self.heap[c][1]] = cur_agent
+                    self.heap[c][0] = cur_agent.copy()
             # Heapifying
             t = c
             while t > 1:
                 parent_id = int((t + 1) / self.degree)
-                if self._compare_target(
-                        self.heap[parent_id][0], self.heap[t][0], self.problem.sense
-                ):
+                if cy.is_better(self.heap[parent_id][0], self.heap[t][0], self.problem.sense):
                     break
                 else:
                     self.heap[t], self.heap[parent_id] = (

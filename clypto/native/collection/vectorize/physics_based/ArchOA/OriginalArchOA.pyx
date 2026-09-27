@@ -3,15 +3,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalArchOA(VectorizeOptimizer):
@@ -45,8 +42,8 @@ cdef class OriginalArchOA(VectorizeOptimizer):
     >>>
     >>> model = ArchOA.OriginalArchOA(epoch=1000, pop_size=50, c1 = 2, c2 = 5, c3 = 2, c4 = 0.5, acc_max = 0.9, acc_min = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -112,12 +109,12 @@ cdef class OriginalArchOA(VectorizeOptimizer):
         pop.field("VOL")[:] = lb + (ub - lb) * R[:, 1]  # Volume
         pop.field("ACC")[:] = lb + (lb + (ub - lb) * R[:, 2]) * (ub - lb)  # Acceleration
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         # Densities and volumes are updated in place and read by the agents after them, so the
         # first loop runs on the buffer rows; in sequential mode so does the position loop.
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef Py_ssize_t idx, b, n = pop.n
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
         Xp = pop.X
@@ -170,13 +167,13 @@ cdef class OriginalArchOA(VectorizeOptimizer):
                 f = 1 if p <= 0.5 else -1
                 t = self.c3 * tf
                 pos_new = g_best + f * self.c2 * self.generator.random() * ACC[idx] * ddf * (t * g_best - Xp[idx])
-            pos_c = self._correct_solution(pos_new)
+            pos_c = self.correct_solution(pos_new)
             if swarm:
                 cand.X[idx] = pos_c
             else:
                 # the classic sequential path evaluates the *uncorrected* position
-                tar = self._get_target(pos_new)
-                if self._compare_fitness(tar.fitness, pop.F[idx], self.problem.sense):
+                tar = self.evaluate_solution(pos_new)
+                if cy.better_fitness(tar.fitness, pop.F[idx], self.problem.sense):
                     ops.set_row(pop, idx, pos_c, tar)
         if swarm:
             ops.finish(self, cand, 0, n)

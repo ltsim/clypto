@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSeaHO(LegacyOptimizer):
+cdef class OriginalSeaHO(cy.Optimizer):
     """
     The original version of: Sea-Horse Optimization (SeaHO)
 
@@ -33,8 +33,8 @@ cdef class OriginalSeaHO(LegacyOptimizer):
     >>>
     >>> model = SeaHO.OriginalSeaHO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -50,55 +50,49 @@ cdef class OriginalSeaHO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.uu = 0.05
         self.vv = 0.05
         self.ll = 0.05
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # The motor behavior of sea horses
-        step_length = self._get_levy_flight_step(
-            beta=1.5,
-            multiplier=0.01,
-            size=(self.pop_size, self.problem.n_dims),
-            case=-1,
-        )
+        step_length = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=(pop_size, self.problem.n_dims), case=-1)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             beta = self.generator.normal(0, 1, self.problem.n_dims)
             theta = 2 * np.pi * self.generator.random(self.problem.n_dims)
             row = self.uu * np.exp(theta * self.vv)
             xx, yy, zz = row * np.cos(theta), row * np.sin(theta), row * theta
             if self.generator.normal(0, 1) > 0:  # Eq. 4
-                pos_new = self.pop[idx].solution + step_length[idx] * (
-                        (self.g_best.solution - self.pop[idx].solution) * xx * yy * zz
+                pos_new = self.population[idx].solution + step_length[idx] * (
+                        (self.g_best.solution - self.population[idx].solution) * xx * yy * zz
                         + self.g_best.solution
                 )
             else:  # Eq. 7
-                pos_new = self.pop[idx].solution + self.generator.random(
+                pos_new = self.population[idx].solution + self.generator.random(
                     self.problem.n_dims
                 ) * self.ll * beta * (
                                   self.g_best.solution - beta * self.g_best.solution
                           )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             pop_new.append(pos_new)
 
         # The predation behavior of sea horses
         pop_child = []
         alpha = (1 - epoch / self.epoch) ** (2 * epoch / self.epoch)
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             r1 = self.generator.random(self.problem.n_dims)
             if self.generator.random() >= 0.1:
                 pos_new = (
@@ -111,32 +105,28 @@ cdef class OriginalSeaHO(LegacyOptimizer):
                 ) + alpha * pop_new[
                               idx
                           ]  # Eq. 11
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_child[-1].target = self._get_target(pos_new)
+                pop_child[-1].evaluate(self.problem)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-        pop_child = self._get_sorted_population(
-            pop_child, self.problem.sense
-        )  # Sorted population
+            pop_child = self.population.evaluate(pop_child, self.mode)
+        pop_child = cy.sort_agents(pop_child, self.problem.sense)  # Sorted population
 
         # The reproductive behavior of sea horses
-        dads = pop_child[: int(self.pop_size / 2)]
-        moms = pop_child[int(self.pop_size / 2):]
+        dads = pop_child[: int(pop_size / 2)]
+        moms = pop_child[int(pop_size / 2):]
         pop_offspring = []
-        for kdx in range(0, int(self.pop_size / 2)):
+        for kdx in range(0, int(pop_size / 2)):
             r3 = self.generator.random()
             pos_new = r3 * dads[kdx].solution + (1 - r3) * moms[kdx].solution  # Eq. 13
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_offspring.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_offspring[-1].target = self._get_target(pos_new)
+                pop_offspring[-1].evaluate(self.problem)
         if self.mode in self.AVAILABLE_MODES:
-            pop_offspring = self._update_target_for_population(pop_offspring)
+            pop_offspring = self.population.evaluate(pop_offspring, self.mode)
         # Sea horses selection
-        self.pop = self._get_sorted_and_trimmed_population(
-            pop_child + pop_offspring, self.pop_size, self.problem.sense
-        )
+        self.population = cy.sort_agents(pop_child + pop_offspring, self.problem.sense)[:pop_size]

@@ -3,12 +3,10 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
 from clypto.native.collection.vectorize.evolutionary_based.ES.OriginalES cimport OriginalES
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -41,8 +39,8 @@ cdef class LevyES(OriginalES):
     >>>
     >>> model = ES.LevyES(epoch=1000, pop_size=50, lamda = 0.75)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -66,12 +64,12 @@ cdef class LevyES(OriginalES):
         """
         super().__init__(epoch, pop_size, lamda, name=name, mode=mode)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation kids, kids_levy, both
         nc = self.n_child
         X, S = np.asarray(pop.X), np.asarray(pop.field("S"))
         kids = self.children__(pop, X[:nc] + S[:nc] * self.generator.normal(0, 1.0, (nc, pop.d)))
-        kids_levy = self.children__(pop, X[:nc] + self._get_levy_flight_step(multiplier=0.001, size=(nc, pop.d), case=-1))
+        kids_levy = self.children__(pop, X[:nc] + cy.levy_flight(self.generator, beta=1.0, multiplier=0.001, size=(nc, pop.d), case=-1))
         both = kids.concat(kids_levy).concat(pop)
         self.pop = both.take(self.sorted_order(both)[:self.pop_size])

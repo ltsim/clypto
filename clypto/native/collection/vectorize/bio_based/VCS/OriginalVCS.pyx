@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.bio_based.VCS.DevVCS cimport DevVCS
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalVCS(DevVCS):
     >>>
     >>> model = VCS.OriginalVCS(epoch=1000, pop_size=50, lamda = 0.5, sigma = 0.3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -68,12 +68,12 @@ cdef class OriginalVCS(DevVCS):
         """
         super().__init__(epoch, pop_size, lamda, sigma, name=name, mode=mode)
 
-    cdef object _amend_solution(self, object solution):
+    cdef object amend_solution(self, object solution):
         condition = np.clip(solution, self.problem.bounds.low, self.problem.bounds.up)
         rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, rand_pos)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand

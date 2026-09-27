@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalTHRO(LegacyOptimizer):
+cdef class OriginalTHRO(cy.Optimizer):
     """
     The original version of: Tianji's Horse Racing Optimization (THRO)
 
@@ -37,8 +37,8 @@ cdef class OriginalTHRO(LegacyOptimizer):
     >>>
     >>> model = THRO.OriginalTHRO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -55,19 +55,18 @@ cdef class OriginalTHRO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
+        pop_size = self.population.size()
         # Split to two groups: tianji and king (50%-50%)
-        self.n_pop = self.pop_size // 2
-        self.pop_tianji = self.pop[: self.n_pop]
-        self.pop_king = self.pop[self.n_pop:]
+        self.n_pop = pop_size // 2
+        self.pop_tianji = self.population[: self.n_pop]
+        self.pop_king = self.population[self.n_pop:]
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -77,15 +76,13 @@ cdef class OriginalTHRO(LegacyOptimizer):
 
         ### """Main racing phase with five scenarios"""
         # Randomly shuffle and redistribute populations
-        self.pop = self.rng.sample(self.pop, len(self.pop))
-        self.pop_tianji = self.pop[: self.n_pop].copy()
-        self.pop_king = self.pop[self.n_pop:].copy()
+        self.population = self.rng.sample(self.population, len(self.population))
+        self.pop_tianji = self.population[: self.n_pop].copy()
+        self.pop_king = self.population[self.n_pop:].copy()
 
         # Sort populations by fitness
-        self.pop_tianji = self._get_sorted_population(
-            self.pop_tianji, self.problem.sense
-        )
-        self.pop_king = self._get_sorted_population(self.pop_king, self.problem.sense)
+        self.pop_tianji = cy.sort_agents(self.pop_tianji, self.problem.sense)
+        self.pop_king = cy.sort_agents(self.pop_king, self.problem.sense)
 
         # Generate binary matrices T_B and K_B
         t_b = np.zeros((self.n_pop, self.problem.n_dims))
@@ -141,16 +138,16 @@ cdef class OriginalTHRO(LegacyOptimizer):
             )
 
             tianji_r = (
-                    self._get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
+                    cy.levy_flight(self.generator, beta=1.5, multiplier=1, size=None, case=-1)
                     * t_b[idx]
             )
             king_r = (
-                    self._get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
+                    cy.levy_flight(self.generator, beta=1.5, multiplier=1, size=None, case=-1)
                     * k_b[idx]
             )
 
-            fit_t = self.pop_tianji[tianji_slowest_id].target.fitness
-            fit_k = self.pop_king[king_slowest_id].target.fitness
+            fit_t = self.pop_tianji[tianji_slowest_id].fitness
+            fit_k = self.pop_king[king_slowest_id].fitness
             if self.problem.sense == "min":
                 if fit_t < fit_k:
                     case = 1
@@ -184,13 +181,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * tianji_alpha + t_beta
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        agent.target,
-                        self.pop_tianji[tianji_slowest_id].target,
-                        self.problem.sense,
-                ):
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+                if cy.is_better(agent, self.pop_tianji[tianji_slowest_id], self.problem.sense):
                     self.pop_tianji[tianji_slowest_id] = agent
 
                 # Update King's slowest horse
@@ -206,13 +199,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * king_alpha + k_beta
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        agent.target,
-                        self.pop_king[king_slowest_id].target,
-                        self.problem.sense,
-                ):
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+                if cy.is_better(agent, self.pop_king[king_slowest_id], self.problem.sense):
                     self.pop_king[king_slowest_id] = agent
 
                 tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -236,13 +225,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * tianji_alpha + t_beta
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        agent.target,
-                        self.pop_tianji[tianji_slowest_id].target,
-                        self.problem.sense,
-                ):
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+                if cy.is_better(agent, self.pop_tianji[tianji_slowest_id], self.problem.sense):
                     self.pop_tianji[tianji_slowest_id] = agent
 
                 # Update King's fastest horse
@@ -258,21 +243,17 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * king_alpha + k_beta
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        agent.target,
-                        self.pop_king[king_fastest_id].target,
-                        self.problem.sense,
-                ):
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+                if cy.is_better(agent, self.pop_king[king_fastest_id], self.problem.sense):
                     self.pop_king[king_fastest_id] = agent
 
                 tianji_slowest_id = max(0, tianji_slowest_id - 1)
                 king_fastest_id = min(self.n_pop - 1, king_fastest_id + 1)
 
             else:  # Equal slowest speeds
-                fit_t = self.pop_tianji[tianji_fastest_id].target.fitness
-                fit_k = self.pop_king[king_fastest_id].target.fitness
+                fit_t = self.pop_tianji[tianji_fastest_id].fitness
+                fit_k = self.pop_king[king_fastest_id].fitness
                 if self.problem.sense == "min":
                     if fit_t < fit_k:
                         case_fast = 1
@@ -303,13 +284,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                            agent.target,
-                            self.pop_tianji[tianji_fastest_id].target,
-                            self.problem.sense,
-                    ):
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
+                    if cy.is_better(agent, self.pop_tianji[tianji_fastest_id], self.problem.sense):
                         self.pop_tianji[tianji_fastest_id] = agent
 
                     # Update King's fastest horse
@@ -325,13 +302,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                            agent.target,
-                            self.pop_king[king_fastest_id].target,
-                            self.problem.sense,
-                    ):
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
+                    if cy.is_better(agent, self.pop_king[king_fastest_id], self.problem.sense):
                         self.pop_king[king_fastest_id] = agent
 
                     tianji_fastest_id = min(self.n_pop - 1, tianji_fastest_id + 1)
@@ -356,13 +329,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                            agent.target,
-                            self.pop_tianji[tianji_slowest_id].target,
-                            self.problem.sense,
-                    ):
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
+                    if cy.is_better(agent, self.pop_tianji[tianji_slowest_id], self.problem.sense):
                         self.pop_tianji[tianji_slowest_id] = agent
 
                     # Update King's fastest horse
@@ -378,13 +347,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                            agent.target,
-                            self.pop_king[king_fastest_id].target,
-                            self.problem.sense,
-                    ):
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
+                    if cy.is_better(agent, self.pop_king[king_fastest_id], self.problem.sense):
                         self.pop_king[king_fastest_id] = agent
 
                     tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -409,13 +374,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                            agent.target,
-                            self.pop_tianji[tianji_slowest_id].target,
-                            self.problem.sense,
-                    ):
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
+                    if cy.is_better(agent, self.pop_tianji[tianji_slowest_id], self.problem.sense):
                         self.pop_tianji[tianji_slowest_id] = agent
 
                     # Update King's fastest horse
@@ -431,24 +392,19 @@ cdef class OriginalTHRO(LegacyOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                            agent.target,
-                            self.pop_king[king_fastest_id].target,
-                            self.problem.sense,
-                    ):
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
+                    if cy.is_better(agent, self.pop_king[king_fastest_id], self.problem.sense):
                         self.pop_king[king_fastest_id] = agent
 
                     tianji_slowest_id = max(0, tianji_slowest_id - 1)
                     king_fastest_id = min(self.n_pop - 1, king_fastest_id + 1)
 
         ## Update global best
-        self._update_global_best_agent(self.pop_tianji + self.pop_king)
 
         # Training phase
-        best_tianji = self._get_best_agent(self.pop_tianji, self.problem.sense)
-        best_king = self._get_best_agent(self.pop_king, self.problem.sense)
+        best_tianji = cy.sort_agents(self.pop_tianji, self.problem.sense)[0].copy()
+        best_king = cy.sort_agents(self.pop_king, self.problem.sense)[0].copy()
 
         for idx in range(self.n_pop):
             # Training for Tianji's population
@@ -458,9 +414,7 @@ cdef class OriginalTHRO(LegacyOptimizer):
                     tr4, tr5 = self.generator.choice(
                         list(set(range(self.n_pop)) - {idx}), size=2, replace=False
                     )
-                    lt = self._get_levy_flight_step(
-                        beta=1.5, multiplier=0.2, size=None, case=-1
-                    )
+                    lt = cy.levy_flight(self.generator, beta=1.5, multiplier=0.2, size=None, case=-1)
                     pos_new[jdx] = pos_new[jdx] + lt * (
                             self.pop_tianji[tr4].solution[jdx]
                             - self.pop_tianji[tr5].solution[jdx]
@@ -475,11 +429,9 @@ cdef class OriginalTHRO(LegacyOptimizer):
                     pos_new[jdx] = best_tianji.solution[jdx] + mt * (
                             best_tianji.solution[jdx] - pos_new[jdx]
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop_tianji[idx].target, self.problem.sense
-            ):
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.pop_tianji[idx], self.problem.sense):
                 self.pop_tianji[idx] = agent
 
             # Training for King's population
@@ -489,9 +441,7 @@ cdef class OriginalTHRO(LegacyOptimizer):
                     kr1, kr2 = self.generator.choice(
                         list(set(range(self.n_pop)) - {idx}), size=2, replace=False
                     )
-                    lk = self._get_levy_flight_step(
-                        beta=1.5, multiplier=0.2, size=None, case=-1
-                    )
+                    lk = cy.levy_flight(self.generator, beta=1.5, multiplier=0.2, size=None, case=-1)
                     pos_new[jdx] = pos_new[jdx] + lk * (
                             self.pop_king[kr1].solution[jdx]
                             - self.pop_king[kr2].solution[jdx]
@@ -506,12 +456,10 @@ cdef class OriginalTHRO(LegacyOptimizer):
                     pos_new[jdx] = best_king.solution[jdx] + mk * (
                             best_king.solution[jdx] - pos_new[jdx]
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop_king[idx].target, self.problem.sense
-            ):
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.pop_king[idx], self.problem.sense):
                 self.pop_king[idx] = agent
 
         # Merge populations back
-        self.pop = self.pop_tianji + self.pop_king
+        self.population = self.pop_tianji + self.pop_king

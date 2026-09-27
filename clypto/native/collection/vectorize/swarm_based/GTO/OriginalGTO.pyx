@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalGTO(VectorizeOptimizer):
     >>>
     >>> model = GTO.OriginalGTO(epoch=1000, pop_size=50, A=0.4, H=2.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -81,14 +81,14 @@ cdef class OriginalGTO(VectorizeOptimizer):
         self.A = cy.validator(float, A, [-10.0, 10.0], "A")
         self.H = cy.validator(float, H, [1.0, 10.0], "H")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
         # Step 1: extensive search, Eq.(4)
         g = np.array(self.g_best_x())
-        levy = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
+        levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=(n, d), case=-1)
         ops.step(self, g * rng.random((n, 1)) + ((ub - lb) * rng.random((n, 1)) + lb) * levy)
         # Step 2: choosing area, Eq. 7 (around the current best)
         X = pop.X

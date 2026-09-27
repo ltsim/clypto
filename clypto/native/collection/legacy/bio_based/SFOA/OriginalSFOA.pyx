@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSFOA(LegacyOptimizer):
+cdef class OriginalSFOA(cy.Optimizer):
     """
     The original version: Starfish Optimization Algorithm (SFOA)
 
@@ -43,13 +43,15 @@ cdef class OriginalSFOA(LegacyOptimizer):
     >>>
     >>> model = SFOA.OriginalSFOA(epoch=1000, pop_size=50, gp = 0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     [1] Zhong, C., Li, G., Meng, Z., Li, H., Yildiz, A. R., & Mirjalili, S. (2025).
     Starfish optimization algorithm (SFOA): a bio-inspired metaheuristic algorithm for global
     optimization compared with 100 optimizers. Neural Computing and Applications, 37(5), 3641-3683.
     """
+
+    cdef public double gp
 
     def __init__(
             self, epoch: int = 10000, pop_size: int = 100, gp: float = 0.5, **kwargs: object
@@ -60,27 +62,26 @@ cdef class OriginalSFOA(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             gp (float): the exploration of starfish, default=0.5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.gp = self.validator.check_float("gp", gp, [0, 1.0])
-        self._set_parameters(["epoch", "pop_size", "gp"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "gp"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.gp = cy.validator(float, gp, [0, 1.0], "gp")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         theta = np.pi / 2 * epoch / self.epoch
         tEO = (self.epoch - epoch) / self.epoch * np.cos(theta)
 
         pop_new = []
         if self.generator.random() < self.gp:  # exploration of starfish
-            for idx in range(self.pop_size):
-                pos_new = self.pop[idx].solution.copy()
+            for idx in range(pop_size):
+                pos_new = self.population[idx].solution.copy()
                 if self.problem.n_dims > 5:
                     # for nD is larger than 5
                     jp1 = self.generator.choice(self.problem.n_dims, 5, replace=False)
@@ -103,15 +104,15 @@ cdef class OriginalSFOA(LegacyOptimizer):
                     pos_new[jp1] = np.where(
                         (pos_new[jp1] < self.problem.bounds.low[jp1])
                         | (pos_new[jp1] > self.problem.bounds.up[jp1]),
-                        self.pop[idx].solution[jp1],
+                        self.population[idx].solution[jp1],
                         pos_new[jp1],
                     )
                 else:
                     # for nD is not larger than 5
                     jp2 = self.generator.integers(0, self.problem.n_dims)
-                    im = self.generator.choice(self.pop_size, 2, replace=False)
-                    diff1 = self.pop[im[0]].solution[jp2] - pos_new[jp2]
-                    diff2 = self.pop[im[1]].solution[jp2] - pos_new[jp2]
+                    im = self.generator.choice(pop_size, 2, replace=False)
+                    diff1 = self.population[im[0]].solution[jp2] - pos_new[jp2]
+                    diff2 = self.population[im[1]].solution[jp2] - pos_new[jp2]
                     rand1 = 2 * self.generator.random() - 1
                     rand2 = 2 * self.generator.random() - 1
                     pos_new[jp2] = tEO * pos_new[jp2] + rand1 * diff1 + rand2 * diff2
@@ -120,42 +121,40 @@ cdef class OriginalSFOA(LegacyOptimizer):
                             pos_new[jp2] > self.problem.bounds.up[jp2]
                             or pos_new[jp2] < self.problem.bounds.low[jp2]
                     ):
-                        pos_new[jp2] = self.pop[idx].solution[jp2]
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                        pos_new[jp2] = self.population[idx].solution[jp2]
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self._get_target(pos_new)
+                    pop_new[-1].evaluate(self.problem)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self._update_target_for_population(pop_new)
+                pop_new = self.population.evaluate(pop_new, self.mode)
         else:  # exploitation of starfish
-            df = self.generator.choice(self.pop_size, 5, replace=False)
+            df = self.generator.choice(pop_size, 5, replace=False)
             # five arms of starfish
-            dm1 = self.g_best.solution - self.pop[df[0]].solution
-            dm2 = self.g_best.solution - self.pop[df[1]].solution
-            dm3 = self.g_best.solution - self.pop[df[2]].solution
-            dm4 = self.g_best.solution - self.pop[df[3]].solution
-            dm5 = self.g_best.solution - self.pop[df[4]].solution
+            dm1 = self.g_best.solution - self.population[df[0]].solution
+            dm2 = self.g_best.solution - self.population[df[1]].solution
+            dm3 = self.g_best.solution - self.population[df[2]].solution
+            dm4 = self.g_best.solution - self.population[df[3]].solution
+            dm5 = self.g_best.solution - self.population[df[4]].solution
             dm = [dm1, dm2, dm3, dm4, dm5]
-            for idx in range(self.pop_size):
+            for idx in range(pop_size):
                 r1, r2 = self.generator.random(size=2)
                 kp = self.generator.choice(5, size=2, replace=False)
                 pos_new = (
-                        self.pop[idx].solution + r1 * dm[kp[0]] + r2 * dm[kp[1]]
+                        self.population[idx].solution + r1 * dm[kp[0]] + r2 * dm[kp[1]]
                 )  # exploitation
-                if idx == self.pop_size - 1:  # last individual
+                if idx == pop_size - 1:  # last individual
                     pos_new = (
-                            np.exp(-epoch * self.pop_size / self.epoch)
-                            * self.pop[idx].solution
+                            np.exp(-epoch * pop_size / self.epoch)
+                            * self.population[idx].solution
                     )  # regeneration of starfish
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self._get_target(pos_new)
+                    pop_new[-1].evaluate(self.problem)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self._update_target_for_population(pop_new)
+                pop_new = self.population.evaluate(pop_new, self.mode)
         # Update population with greedy strategy
-        self.pop = self._greedy_selection_population(
-            self.pop, pop_new, self.problem.sense
-        )
+        self.population = self.population.greedy(pop_new)

@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalGBO(VectorizeOptimizer):
@@ -37,8 +36,8 @@ cdef class OriginalGBO(VectorizeOptimizer):
     >>>
     >>> model = GBO.OriginalGBO(epoch=1000, pop_size=50, pr = 0.5, beta_min = 0.2, beta_max = 1.2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -82,12 +81,12 @@ cdef class OriginalGBO(VectorizeOptimizer):
         self.beta_min = cy.validator(float, beta_min, (0, 2.0), "beta_min")
         self.beta_max = cy.validator(float, beta_max, (0, 5.0), "beta_max")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         # Agents read the population they just updated (random members), so in sequential
         # mode the loop runs on the buffer rows; swarm/parallel modes batch the evaluation.
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef Py_ssize_t idx
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
         Xp, Xc = pop.X, cand.X
@@ -195,12 +194,12 @@ cdef class OriginalGBO(VectorizeOptimizer):
                             / 2
                     )
             # Check if solutions go outside the search space and bring them back
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.correct_solution(pos_new)
             if swarm:
                 Xc[idx] = pos_new
             else:
-                tar = self._get_target(pos_new)
-                if self._compare_fitness(tar.fitness, pop.F[idx], self.problem.sense):
+                tar = self.evaluate_solution(pos_new)
+                if cy.better_fitness(tar.fitness, pop.F[idx], self.problem.sense):
                     ops.set_row(pop, idx, pos_new, tar)
         if swarm:
             self.evaluate(cand, 0, pop.n)

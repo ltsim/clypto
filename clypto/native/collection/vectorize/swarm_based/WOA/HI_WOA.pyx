@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -37,8 +37,8 @@ cdef class HI_WOA(VectorizeOptimizer):
     >>>
     >>> model = WOA.HI_WOA(epoch=1000, pop_size=50, feedback_max = 10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -76,11 +76,11 @@ cdef class HI_WOA(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.feedback_max = cy.validator(int, feedback_max, [2, 2 + int(self.epoch / 2)], "feedback_max")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.n_changes = int(self.pop_size / 2)
         self.dyn_feedback_count = 0
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
@@ -89,7 +89,7 @@ cdef class HI_WOA(VectorizeOptimizer):
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
         Xp = pop.X
         g_best = np.array(self.g_best_x())
-        gb_fit = self.current_g_best().target.fitness
+        gb_fit = self.current_g_best().fitness
         a = 2 + 2 * np.cos(np.pi / 2 * (1 + epoch / self.epoch))  # Eq. 8
         for idx in range(0, self.pop_size):
             r = self.generator.random()
@@ -109,7 +109,7 @@ cdef class HI_WOA(VectorizeOptimizer):
             else:
                 D1 = np.abs(g_best - Xp[idx])
                 pos_new = g_best + np.exp(b * l) * np.cos(2 * np.pi * l) * D1
-            ops.commit(self, pop, cand, idx, self._correct_solution(pos_new), swarm)
+            ops.commit(self, pop, cand, idx, self.correct_solution(pos_new), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)
         ## Feedback Mechanism

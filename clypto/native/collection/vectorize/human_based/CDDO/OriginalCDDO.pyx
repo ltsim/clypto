@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -43,8 +43,8 @@ cdef class OriginalCDDO(VectorizeOptimizer):
     >>>
     >>> model = CDDO.OriginalCDDO(epoch=1000, pop_size=50, pattern_size=10, creativity_rate=0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -88,7 +88,7 @@ cdef class OriginalCDDO(VectorizeOptimizer):
         self.pattern_size = cy.validator(int, pattern_size, [1, 1000], "pattern_size")
         self.creativity_rate = cy.validator(float, creativity_rate, [0.0, 1.0], "creativity_rate")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
@@ -100,7 +100,7 @@ cdef class OriginalCDDO(VectorizeOptimizer):
         x1, x2 = pop.X[np.arange(n), p1], pop.X[np.arange(n), p2]
         self.list_gr = np.where(x1 == 0, x2, x1 + x2 / np.where(x1 == 0, 1, x1))
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

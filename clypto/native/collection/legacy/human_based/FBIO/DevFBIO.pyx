@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevFBIO(LegacyOptimizer):
+cdef class DevFBIO(cy.Optimizer):
     """
     The developed : Forensic-Based Investigation Optimization (FBIO)
 
@@ -32,8 +32,8 @@ cdef class DevFBIO(LegacyOptimizer):
     >>>
     >>> model = FBIO.DevFBIO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -44,11 +44,9 @@ cdef class DevFBIO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
     def probability__(
             self, list_fitness=None
@@ -57,135 +55,118 @@ cdef class DevFBIO(LegacyOptimizer):
         min1 = np.min(list_fitness)
         return (max1 - list_fitness) / (max1 - min1 + self.EPSILON)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Investigation team - team A
         # Step A1
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             n_change = self.generator.integers(0, self.problem.n_dims)
             nb1, nb2 = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+                list(set(range(0, pop_size)) - {idx}), 2, replace=False
             )
             # Eq.(2) in FBI Inspired Meta - Optimization
-            pos_a = self.pop[idx].solution.copy()
-            pos_a[n_change] = self.pop[idx].solution[
+            pos_a = self.population[idx].solution.copy()
+            pos_a[n_change] = self.population[idx].solution[
                                   n_change
                               ] + self.generator.normal() * (
-                                      self.pop[idx].solution[n_change]
-                                      - (self.pop[nb1].solution[n_change] + self.pop[nb2].solution[n_change])
+                                      self.population[idx].solution[n_change]
+                                      - (self.population[nb1].solution[n_change] + self.population[nb2].solution[n_change])
                                       / 2
                               )
-            pos_a = self._correct_solution(pos_a)
-            agent = self._generate_empty_agent(pos_a)
+            pos_a = self.population.correct_solution(pos_a)
+            agent = self.population.create_agent(pos_a)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_a)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        list_fitness = np.array([agent.target.fitness for agent in self.pop])
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        list_fitness = np.array([agent.fitness for agent in self.population])
         prob = self.probability__(list_fitness)
 
         # Step A2
         pop_child = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if self.generator.random() > prob[idx]:
                 r1, r2, r3 = self.generator.choice(
-                    list(set(range(0, self.pop_size)) - {idx}), 3, replace=False
+                    list(set(range(0, pop_size)) - {idx}), 3, replace=False
                 )
                 ## Remove third loop here, the condition also not good, need to remove also. No need Rnd variable
                 temp = (
                         self.g_best.solution
-                        + self.pop[r1].solution
+                        + self.population[r1].solution
                         + self.generator.uniform()
-                        * (self.pop[r2].solution - self.pop[r3].solution)
+                        * (self.population[r2].solution - self.population[r3].solution)
                 )
                 condition = self.generator.random(self.problem.n_dims) < 0.5
-                pos_new = np.where(condition, temp, self.pop[idx].solution)
+                pos_new = np.where(condition, temp, self.population[idx].solution)
             else:
                 pos_new = self.problem.generate_solution()
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            self.pop = self._greedy_selection_population(
-                pop_child, self.pop, self.problem.sense
-            )
+            pop_child = self.population.evaluate(pop_child, self.mode)
+            self.population = cy.greedy_agents(pop_child, self.population, self.problem.sense)
         ## Persuing team - team B
         ## Step B1
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ### Remove third loop here also
             ### Eq.(6) in FBI Inspired Meta-Optimization
-            pos_b = self.generator.uniform(0, 1, self.problem.n_dims) * self.pop[
+            pos_b = self.generator.uniform(0, 1, self.problem.n_dims) * self.population[
                 idx
             ].solution + self.generator.uniform(0, 1, self.problem.n_dims) * (
-                            self.g_best.solution - self.pop[idx].solution
+                            self.g_best.solution - self.population[idx].solution
                     )
-            pos_b = self._correct_solution(pos_b)
-            agent = self._generate_empty_agent(pos_b)
+            pos_b = self.population.correct_solution(pos_b)
+            agent = self.population.create_agent(pos_b)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_b)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
         ## Step B2
         pop_child = []
-        for idx in range(0, self.pop_size):
-            rr = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            if self._compare_target(
-                    self.pop[idx].target, self.pop[rr].target, self.problem.sense
-            ):
+        for idx in range(0, pop_size):
+            rr = self.generator.choice(list(set(range(0, pop_size)) - {idx}))
+            if cy.is_better(self.population[idx], self.population[rr], self.problem.sense):
                 ## Eq.(7) in FBI Inspired Meta-Optimization
                 pos_b = (
-                        self.pop[idx].solution
+                        self.population[idx].solution
                         + self.generator.uniform(0, 1, self.problem.n_dims)
-                        * (self.pop[rr].solution - self.pop[idx].solution)
+                        * (self.population[rr].solution - self.population[idx].solution)
                         + self.generator.uniform()
-                        * (self.g_best.solution - self.pop[rr].solution)
+                        * (self.g_best.solution - self.population[rr].solution)
                 )
             else:
                 ## Eq.(8) in FBI Inspired Meta-Optimization
                 pos_b = (
-                        self.pop[idx].solution
+                        self.population[idx].solution
                         + self.generator.uniform(0, 1, self.problem.n_dims)
-                        * (self.pop[idx].solution - self.pop[rr].solution)
+                        * (self.population[idx].solution - self.population[rr].solution)
                         + self.generator.uniform()
-                        * (self.g_best.solution - self.pop[idx].solution)
+                        * (self.g_best.solution - self.population[idx].solution)
                 )
-            pos_b = self._correct_solution(pos_b)
-            agent = self._generate_empty_agent(pos_b)
+            pos_b = self.population.correct_solution(pos_b)
+            agent = self.population.create_agent(pos_b)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_b)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            self.pop = self._greedy_selection_population(
-                pop_child, self.pop, self.problem.sense
-            )
+            pop_child = self.population.evaluate(pop_child, self.mode)
+            self.population = cy.greedy_agents(pop_child, self.population, self.problem.sense)

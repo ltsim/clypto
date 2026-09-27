@@ -3,21 +3,13 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
-
-
-cdef class _AIW_PSOAgent(LegacyAgent):
-    cdef public object velocity
-    cdef public object local_solution
-    cdef public object local_target
+from clypto.native.collection.legacy.swarm_based.PSO._base cimport PSOAgent, ResetPSOPopulation
 
 
-cdef class AIW_PSO(LegacyOptimizer):
+cdef class AIW_PSO(cy.Optimizer):
     """
     The original version of: Adaptive Inertia Weight Particle Swarm Optimization (AIW-PSO)
 
@@ -42,8 +34,8 @@ cdef class AIW_PSO(LegacyOptimizer):
     >>>
     >>> model = PSO.AIW_PSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, alpha=0.4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -51,6 +43,10 @@ cdef class AIW_PSO(LegacyOptimizer):
     Tadeusiewicz, R., Zadeh, L.A., Żurada, J.M. (eds) Artificial Intelligence and Soft Computing – ICAISC 2006. ICAISC 2006.
     Lecture Notes in Computer Science(), vol 4029. Springer, Berlin, Heidelberg. https://doi.org/10.1007/11785231_48
     """
+
+    cdef public double alpha
+    cdef public double c1
+    cdef public double c2
 
     def __init__(
         self,
@@ -69,76 +65,32 @@ cdef class AIW_PSO(LegacyOptimizer):
             c2: [0-2] global coefficient
             alpha: The positive constant, default = 0.4
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c1 = self.validator.check_float("c1", c1, (0, 5.0))
-        self.c2 = self.validator.check_float("c2", c2, (0, 5.0))
-        self.alpha = self.validator.check_float("alpha", alpha, [0.0, 1.0])
-        self._set_parameters(["epoch", "pop_size", "c1", "c2", "alpha"])
+        super().__init__(**kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=ResetPSOPopulation)
+        self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
+        self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
+        self.alpha = cy.validator(float, alpha, [0.0, 1.0], "alpha")
+        self.parameters = ["epoch", "pop_size", "c1", "c2", "alpha"]
         self.sort_flag = False
 
-    def _initialize_variables(self):
-        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
-        self.v_min = -self.v_max
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.v_min, self.v_max)
-        local_pos = solution.copy()
-        return _AIW_PSOAgent(
-            solution=solution, velocity=velocity, local_solution=local_pos
-        )
-
-    def _generate_agent(self, solution: np.ndarray | None = None):
-        agent = self._generate_empty_agent(solution)
-        agent.target = self._get_target(agent.solution)
-        agent.local_target = agent.target.copy()
-        return agent
-
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(
-            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
-        )
-        pos_rand = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        return np.where(condition, solution, pos_rand)
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        current_best = self._get_best_agent(self.pop, self.problem.sense)
-        for idx in range(0, self.pop_size):
-            denom = np.abs(self.pop[idx].local_solution - current_best.solution)
+        current_best = self.population.sort()[0].copy()
+        cdef PSOAgent agent
+        for agent in self.population:
+            denom = np.abs(agent.pbest_solution - current_best.solution)
             denom = np.where(denom == 0, 1e-6, denom)
-            isa = (
-                np.abs(self.pop[idx].solution - self.pop[idx].local_solution) / denom
-            )  # individual search ability
+            isa = np.abs(agent.solution - agent.pbest_solution) / denom  # individual search ability
             w = 1 - self.alpha * (1.0 / (1.0 + np.exp(-isa)))
-            cognitive = (
-                self.c1
-                * self.generator.random(self.problem.n_dims)
-                * (self.pop[idx].local_solution - self.pop[idx].solution)
-            )
-            social = (
-                self.c2
-                * self.generator.random(self.problem.n_dims)
-                * (self.g_best.solution - self.pop[idx].solution)
-            )
-            velocity = w * self.pop[idx].velocity + cognitive + social
-            self.pop[idx].velocity = np.clip(velocity, self.v_min, self.v_max)
-            pos_new = self.pop[idx].solution + self.pop[idx].velocity
-            pos_new = self._correct_solution(pos_new)
-            target = self._get_target(pos_new)
-            if self._compare_target(target, self.pop[idx].target, self.problem.sense):
-                self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self._compare_target(
-                target, self.pop[idx].local_target, self.problem.sense
-            ):
-                self.pop[idx].update(
-                    local_solution=pos_new.copy(), local_target=target.copy()
-                )
+            agent.update_velocity(self.g_best.solution, w, self.c1, self.c2, self.generator,
+                                  self.population.v_min, self.population.v_max)
+            candidate = self.population.evaluate_solution(self.population.correct_solution(agent.move()))
+            if cy.is_better(candidate, agent, self.problem.sense):
+                agent.update_solution(candidate)
+            agent.update_pbest(candidate, self.problem.sense)

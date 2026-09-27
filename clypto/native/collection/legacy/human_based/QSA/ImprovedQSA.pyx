@@ -6,6 +6,7 @@
 
 from clypto.native.collection.legacy.human_based.QSA.OppoQSA import OppoQSA
 from clypto.native.collection.legacy.human_based.QSA.LevyQSA import LevyQSA
+cimport clypto.core as cy
 
 
 class ImprovedQSA(OppoQSA, LevyQSA):
@@ -31,8 +32,8 @@ class ImprovedQSA(OppoQSA, LevyQSA):
     >>>
     >>> model = QSA.ImprovedQSA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -51,14 +52,14 @@ class ImprovedQSA(OppoQSA, LevyQSA):
         super().__init__(epoch, pop_size, **kwargs)
         self.sort_flag = True
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop = self.update_business_1__(self.pop, epoch)
+        pop = self.update_business_1__(self.population, epoch)
         pop = self.update_business_2__(pop, epoch)
         pop = self.update_business_3__(pop, self.g_best)
-        self.pop = self.opposition_based__(pop, self.g_best)
+        self.population = self.opposition_based__(pop, self.g_best)

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -47,8 +47,8 @@ cdef class OriginalTOA(VectorizeOptimizer):
     >>>
     >>> model = TOA.OriginalTOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -79,14 +79,14 @@ cdef class OriginalTOA(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sf
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        gb_fit = self.current_g_best().target.fitness
+        gb_fit = self.current_g_best().fitness
         # phase 1: towards the best
         ops.step(self, X + rng.random((n, 1)) * (g - rng.integers(1, 3, size=(n, 1)) * X))
         # phase 2: towards the mean of the agents that are better than the agent
@@ -100,7 +100,7 @@ cdef class OriginalTOA(VectorizeOptimizer):
         if has.any():
             rows = np.flatnonzero(has)
             sf = pop.take(rows)
-            sf.X[:] = self._correct_solution((B[rows].astype(float) @ X) / count[rows][:, None])
+            sf.X[:] = self.correct_solution((B[rows].astype(float) @ X) / count[rows][:, None])
             self.evaluate(sf, 0, len(rows))
             sf_pos[rows], sf_fit[rows] = sf.X, sf.F
         ops.step(self, X + rng.random((n, 1)) * (sf_pos - rng.integers(1, 3, size=(n, 1)) * X) * np.sign(F - sf_fit)[:, None])

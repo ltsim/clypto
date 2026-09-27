@@ -4,11 +4,10 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalSOS(VectorizeOptimizer):
@@ -34,8 +33,8 @@ cdef class OriginalSOS(VectorizeOptimizer):
     >>>
     >>> model = SOS.OriginalSOS(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -61,7 +60,7 @@ cdef class OriginalSOS(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
@@ -78,7 +77,7 @@ cdef class OriginalSOS(VectorizeOptimizer):
         xi_new = X + rng.random((n, 1)) * (g - bf[:, 0] * mutual)
         xj_new = X[j] + rng.random((n, 1)) * (g - bf[:, 1] * mutual)
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(xj_new)
+        cand.X[:] = self.correct_solution(xj_new)
         self.evaluate(cand, 0, n)
         ops.scatter(self, cand, j)  # the partners
         ops.step(self, xi_new)  # the agents

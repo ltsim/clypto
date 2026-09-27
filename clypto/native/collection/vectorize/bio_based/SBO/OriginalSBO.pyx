@@ -7,11 +7,10 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.bio_based.SBO.DevSBO cimport DevSBO
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalSBO(DevSBO):
@@ -43,8 +42,8 @@ cdef class OriginalSBO(DevSBO):
     >>>
     >>> model = SBO.OriginalSBO(epoch=1000, pop_size=50, alpha = 0.9, p_m=0.05, psw = 0.02)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -73,7 +72,7 @@ cdef class OriginalSBO(DevSBO):
         """
         super().__init__(epoch, pop_size, alpha, p_m, psw, name=name, mode=mode)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -92,7 +91,7 @@ cdef class OriginalSBO(DevSBO):
         # The classic code only refreshes the fitness of the population with the candidates' values in the
         # sequential mode (positions stay) and replaces the population in swarm modes; both are kept.
         cdef NativePopulation cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
         if self.mode in self.AVAILABLE_MODES:
             self.pop = cand

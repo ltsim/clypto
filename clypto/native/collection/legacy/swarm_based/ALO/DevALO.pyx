@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.swarm_based.ALO.OriginalALO cimport OriginalALO
 
@@ -32,8 +33,8 @@ cdef class DevALO(OriginalALO):
     >>>
     >>> model = ALO.DevALO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -47,6 +48,7 @@ cdef class DevALO(OriginalALO):
         super().__init__(epoch, pop_size, **kwargs)
 
     def random_walk_antlion__(self, solution, current_epoch):
+        pop_size = self.population.size()
         I = 1  # I is the ratio in Equations (2.10) and (2.11)
         if current_epoch > self.epoch / 10:
             I = 1 + 100 * (current_epoch / self.epoch)
@@ -68,7 +70,7 @@ cdef class DevALO(OriginalALO):
         ## Using matrix and vector for better performance
         X = np.array(
             [
-                np.cumsum(2 * (self.generator.random(self.pop_size) > 0.5) - 1)
+                np.cumsum(2 * (self.generator.random(pop_size) > 0.5) - 1)
                 for _ in range(0, self.problem.n_dims)
             ]
         )
@@ -79,35 +81,34 @@ cdef class DevALO(OriginalALO):
         X_norm = temp0 * temp1 + np.reshape(lb, (self.problem.n_dims, 1))
         return X_norm
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        list_fitness = np.array([item.target.fitness for item in self.pop])
+        pop_size = self.population.size()
+        list_fitness = np.array([item.fitness for item in self.population])
         # This for loop simulate random walks
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Select ant lions based on their fitness (the better anlion the higher chance of catching ant)
-            rolette_index = self._get_index_roulette_wheel_selection(list_fitness)
+            rolette_index = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
             # RA is the random walk around the selected antlion by rolette wheel
-            RA = self.random_walk_antlion__(self.pop[rolette_index].solution, epoch)
+            RA = self.random_walk_antlion__(self.population[rolette_index].solution, epoch)
             # RE is the random walk around the elite (the best antlion so far)
             RE = self.random_walk_antlion__(self.g_best.solution, epoch)
             temp = (RA[:, idx] + RE[:, idx]) / 2  # Equation(2.13) in the paper
             # Bound checking (bring back the antlions of ants inside search space if they go beyonds the boundaries
-            pos_new = self._correct_solution(temp)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(temp)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
         # Update antlion positions and fitnesses based on the ants (if an ant becomes fitter than an antlion
         # we assume it was caught by the antlion and the antlion update goes to its position to build the trap)
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, self.problem.sense
-        )
+        self.population = cy.sort_agents(self.population + pop_new, self.problem.sense)[:pop_size]
         # Keep the elite in the population
-        self.pop[-1] = self.g_best.copy()
+        self.population[-1] = self.g_best.copy()

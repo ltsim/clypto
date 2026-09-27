@@ -3,9 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.evolutionary_based.EP.OriginalEP cimport OriginalEP
 
@@ -36,8 +35,8 @@ cdef class LevyEP(OriginalEP):
     >>>
     >>> model = EP.LevyEP(epoch=1000, pop_size=50, bout_size = 0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -56,64 +55,59 @@ cdef class LevyEP(OriginalEP):
         super().__init__(epoch, pop_size, bout_size, **kwargs)
         self.sort_flag = True
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         child = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution + self.pop[
+        for idx in range(0, pop_size):
+            pos_new = self.population[idx].solution + self.population[
                 idx
             ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             s_old = (
-                self.pop[idx].strategy
+                self.population[idx].strategy
                 + self.generator.normal(0, 1.0, self.problem.n_dims)
-                * np.abs(self.pop[idx].strategy) ** 0.5
+                * np.abs(self.population[idx].strategy) ** 0.5
             )
-            agent = self._generate_empty_agent(pos_new)
+            agent = self.population.create_agent(pos_new)
             agent.update(solution=pos_new, strategy=s_old, win=0)
             child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                child[-1].target = self._get_target(pos_new)
-        child = self._update_target_for_population(child)
+                child[-1].evaluate(self.problem)
+        child = self.population.evaluate(child, self.mode)
         # Update the global best
-        children = self._get_sorted_population(child, self.problem.sense)
-        pop = children + self.pop
+        children = cy.sort_agents(child, self.problem.sense)
+        pop = children + self.population
         for i in range(0, len(pop)):
             ## Tournament winner (Tried with bout_size times)
             for idx in range(0, self.n_bout_size):
                 rand_idx = self.generator.integers(0, len(pop))
-                if self._compare_target(
-                    pop[i].target, pop[rand_idx].target, self.problem.sense
-                ):
+                if cy.is_better(pop[i], pop[rand_idx], self.problem.sense):
                     pop[i].win += 1
                 else:
                     pop[rand_idx].win += 1
         ## Keep the top population, but 50% of left population will make a comeback an take the good position
         pop = sorted(pop, key=lambda agent: agent.win, reverse=True)
-        pop_new = pop[: self.pop_size]
-        pop_left = pop[self.pop_size :]
+        pop_new = pop[: pop_size]
+        pop_left = pop[pop_size :]
         ## Choice random 50% of population left
         pop_comeback = []
         idx_list = self.generator.choice(
             range(0, len(pop_left)), int(0.5 * len(pop_left)), replace=False
         )
         for idx in idx_list:
-            pos_new = pop_left[idx].solution + self._get_levy_flight_step(
-                multiplier=0.01, size=self.problem.n_dims, case=0
-            )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = pop_left[idx].solution + cy.levy_flight(self.generator, beta=1.0, multiplier=0.01, size=self.problem.n_dims, case=0)
+            pos_new = self.population.correct_solution(pos_new)
             strategy = self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
-            agent = self._generate_empty_agent(pos_new)
+            agent = self.population.create_agent(pos_new)
             agent.update(solution=pos_new, strategy=strategy, win=0)
             pop_comeback.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_comeback[-1].target = self._get_target(pos_new)
-        pop_comeback = self._update_target_for_population(pop_comeback)
-        self.pop = self._get_sorted_and_trimmed_population(
-            pop_new + pop_comeback, self.pop_size, self.problem.sense
-        )
+                pop_comeback[-1].evaluate(self.problem)
+        pop_comeback = self.population.evaluate(pop_comeback, self.mode)
+        self.population = cy.sort_agents(pop_new + pop_comeback, self.problem.sense)[:pop_size]

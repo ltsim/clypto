@@ -7,12 +7,10 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.evolutionary_based.CRO.OriginalCRO cimport OriginalCRO
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OCRO(OriginalCRO):
@@ -50,8 +48,8 @@ cdef class OCRO(OriginalCRO):
     >>>
     >>> model = CRO.OCRO(epoch=1000, pop_size=50, po = 0.4, Fb = 0.9, Fa = 0.1, Fd = 0.1, Pd = 0.5, GCR = 0.1, gamma_min = 0.02, gamma_max = 0.2, n_trials = 5, restart_count = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -127,7 +125,7 @@ cdef class OCRO(OriginalCRO):
         self.sort_flag = False
         self.restart_count = cy.validator(int, restart_count, [2, int(epoch / 2)], "restart_count")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.reset_count = 0
 
     def local_search__(self, pop=None):
@@ -136,14 +134,14 @@ cdef class OCRO(OriginalCRO):
             random_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             condition = self.generator.random(self.problem.n_dims) < 0.5
             pos_new = np.where(condition, self.g_best.solution, random_pos)
-            pos_new = self._correct_solution(pos_new)
-            agent = LegacyNativeAgent(pos_new, None)
+            pos_new = self.correct_solution(pos_new)
+            agent = cy.Agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        return ops.update_targets(self, pop_new)
+                pop_new[-1].evaluate(self.problem)
+        return ops.evaluate_agents(self, pop_new)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         self.objs = ops.agents_of(self.pop)
         ## Broadcast Spawning Brooding
@@ -162,9 +160,9 @@ cdef class OCRO(OriginalCRO):
             selected_depredator = idx_list_sorted[-num__depredation__:]
             for idx in selected_depredator:
                 ### Using opposition-based leanring
-                pos_oppo = self._correct_solution(self.problem.bounds.low + self.problem.bounds.up - self.g_best.solution + self.generator.uniform() * (self.g_best.solution - self.objs[idx].solution))
+                pos_oppo = self.correct_solution(self.problem.bounds.low + self.problem.bounds.up - self.g_best.solution + self.generator.uniform() * (self.g_best.solution - self.objs[idx].solution))
                 agent = ops.new_agent(self, pos_oppo)
-                if self._compare_fitness(agent.target.fitness, self.objs[idx].target.fitness, self.problem.sense):
+                if cy.better_fitness(agent.fitness, self.objs[idx].fitness, self.problem.sense):
                     self.objs[idx] = agent
                 else:
                     self.occupied_idx_list = self.occupied_idx_list[
@@ -177,7 +175,7 @@ cdef class OCRO(OriginalCRO):
             self.G1 -= self.gama
         self.reset_count += 1
         local_best = ops.sorted_agents(self, self.objs)[0].copy()
-        if self._compare_fitness(local_best.target.fitness, self.g_best.target.fitness, self.problem.sense):
+        if cy.better_fitness(local_best.fitness, self.g_best.fitness, self.problem.sense):
             self.reset_count = 0
         if self.reset_count == self.restart_count:
             self.objs = ops.agents_of(self.generate_population(self.pop_size))

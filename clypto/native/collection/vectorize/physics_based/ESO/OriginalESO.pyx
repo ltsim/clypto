@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalESO(VectorizeOptimizer):
@@ -32,8 +31,8 @@ cdef class OriginalESO(VectorizeOptimizer):
     >>>
     >>> model = ESO.OriginalESO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -63,10 +62,10 @@ cdef class OriginalESO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation out = pop.empty_like()
-        cdef NativeTarget tar_a, tar_b
+        cdef cy.Agent tar_a, tar_b
         cdef Py_ssize_t idx
         ## Calculate storm parameters
         # Calculate field resistance based on population spread
@@ -141,9 +140,9 @@ cdef class OriginalESO(VectorizeOptimizer):
                     loc=0, scale=storm_power, size=self.problem.n_dims
                 )
                 pos_new = pop.X[alpha] + perturbation
-                pos_a = self._correct_solution(pos_new)
-                self._get_target(pos_a)  # generate_agent evaluates the position ...
-            tar_a = self._get_target(pos_a)  # ... and the classic code evaluates it once more
+                pos_a = self.correct_solution(pos_new)
+                self.evaluate_solution(pos_a)  # generate_agent evaluates the position ...
+            tar_a = self.evaluate_solution(pos_a)  # ... and the classic code evaluates it once more
 
             ## Branching and propagation
             # Simulate branching and propagation of lightning
@@ -170,8 +169,8 @@ cdef class OriginalESO(VectorizeOptimizer):
                     pos_new = self.generator.uniform(
                         self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                     )
-            pos_b = self._correct_solution(pos_new)
-            tar_b = self._get_target(pos_b)
+            pos_b = self.correct_solution(pos_new)
+            tar_b = self.evaluate_solution(pos_b)
 
             # Select better position (the classic code compares with the default sense="min")
             if tar_b.fitness < tar_a.fitness:

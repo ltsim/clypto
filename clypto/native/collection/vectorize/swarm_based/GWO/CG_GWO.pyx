@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class CG_GWO(VectorizeOptimizer):
@@ -39,8 +38,8 @@ cdef class CG_GWO(VectorizeOptimizer):
     >>>
     >>> model = GWO.CG_GWO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -85,7 +84,7 @@ cdef class CG_GWO(VectorizeOptimizer):
         # Apply mutation (equation 8)
         return leader_pos * (1 + eps1 * c_rand + eps2 * g_rand)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, sub
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -98,7 +97,7 @@ cdef class CG_GWO(VectorizeOptimizer):
         best_fit = np.array(pop.F[order])
         # Cauchy-Gaussian mutation of the three leaders, then greedy selection
         lead = pop.take(order)
-        lead.X[:] = self._correct_solution(np.array([self.cauchy_gaussian_mutation(best_fit[0], best_fit[k], best_pos[k], epoch_c) for k in range(3)]))
+        lead.X[:] = self.correct_solution(np.array([self.cauchy_gaussian_mutation(best_fit[0], best_fit[k], best_pos[k], epoch_c) for k in range(3)]))
         self.evaluate(lead, 0, 3)
         win = ops.better(self, lead.F, best_fit)
         best_pos[win] = lead.X[win]
@@ -109,7 +108,7 @@ cdef class CG_GWO(VectorizeOptimizer):
         pos_e = np.where(R[:, 4] >= 0.5, x_rand - R[:, 0] * np.abs(x_rand - 2 * R[:, 1] * X),
                          (best_pos[0] - x_avg) - R[:, 2] * (lb + R[:, 3] * (ub - lb)))
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(pos_e)
+        cand.X[:] = self.correct_solution(pos_e)
         self.evaluate(cand, 0, n)
         # where it is not an improvement: the original GWO update
         fail = np.flatnonzero(ops.better(self, pop.F, cand.F))
@@ -119,7 +118,7 @@ cdef class CG_GWO(VectorizeOptimizer):
             Xf = X[fail][:, None, :]
             Xs = best_pos[None] - (a * (2 * G[:, :3] - 1)) * np.abs(2 * G[:, 3:] * best_pos[None] - Xf)
             sub = pop.take(fail)
-            sub.X[:] = self._correct_solution(Xs.sum(axis=1) / 3.0)
+            sub.X[:] = self.correct_solution(Xs.sum(axis=1) / 3.0)
             self.evaluate(sub, 0, m)
             cand.buf[fail] = sub.buf
         ops.greedy(self, cand)

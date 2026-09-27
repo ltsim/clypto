@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 import numpy as np
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
@@ -36,8 +36,8 @@ cdef class AIW_PSO(_PSOBase):
     >>>
     >>> model = PSO.AIW_PSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, alpha=0.4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -82,7 +82,7 @@ cdef class AIW_PSO(_PSOBase):
         self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
         self.alpha = cy.validator(float, alpha, [0.0, 1.0], "alpha")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t start, stop, n = pop.n, d = pop.d

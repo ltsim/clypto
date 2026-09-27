@@ -5,12 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalCRO(VectorizeOptimizer):
@@ -47,8 +45,8 @@ cdef class OriginalCRO(VectorizeOptimizer):
     >>>
     >>> model = CRO.OriginalCRO(epoch=1000, pop_size=50, po = 0.4, Fb = 0.9, Fa = 0.1, Fd = 0.1, Pd = 0.5, GCR = 0.1, gamma_min = 0.02, gamma_max = 0.2, n_trials = 5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -119,8 +117,8 @@ cdef class OriginalCRO(VectorizeOptimizer):
         self.gamma_max = cy.validator(float, gamma_max, (0.15, 1.0), "gamma_max")
         self.n_trials = cy.validator(int, n_trials, [2, int(self.pop_size / 2)], "n_trials")
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         self.reef = np.array([])
         self.occupied_position = (
             []
@@ -142,13 +140,13 @@ cdef class OriginalCRO(VectorizeOptimizer):
         ) * self.generator.normal(0, 1, self.problem.n_dims)
         condition = self.generator.random(self.problem.n_dims) < self.GCR
         pos_new = np.where(condition, random_pos, position)
-        return self._correct_solution(pos_new)
+        return self.correct_solution(pos_new)
 
     def multi_point_cross__(self, pos1, pos2):
         p1, p2 = self.generator.choice(list(range(len(pos1))), 2, replace=False)
         start, end = min(p1, p2), max(p1, p2)
         pos_new = np.concatenate((pos1[:start], pos2[start:end], pos1[end:]), axis=0)
-        return self._correct_solution(pos_new)
+        return self.correct_solution(pos_new)
 
     def larvae_setting__(self, larvae):
         # Trial to land on a square of reefs
@@ -163,13 +161,13 @@ cdef class OriginalCRO(VectorizeOptimizer):
                     self.occupied_list[pdx] = 1  # Update occupied list
                     break
                 else:
-                    if self._compare_fitness(larva.target.fitness, self.objs[pdx].target.fitness, self.problem.sense):
+                    if cy.better_fitness(larva.fitness, self.objs[pdx].fitness, self.problem.sense):
                         self.objs[pdx] = larva
                         break
 
     def sort_occupied_reef__(self):
         def reef_fitness(idx):
-            return self.objs[idx].target.fitness
+            return self.objs[idx].fitness
 
         return sorted(self.occupied_idx_list, key=reef_fitness)
 
@@ -184,10 +182,10 @@ cdef class OriginalCRO(VectorizeOptimizer):
         for idx in self.occupied_idx_list:
             if idx not in selected_corals:
                 pos_new = self.gaussian_mutation__(self.objs[idx].solution)
-                agent = LegacyNativeAgent(pos_new, None)
+                agent = cy.Agent(pos_new)
                 larvae.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    larvae[-1].target = self._get_target(pos_new)
+                    larvae[-1].evaluate(self.problem)
         # Step 1b
         while len(selected_corals) >= 2:
             id1, id2 = self.generator.choice(
@@ -197,14 +195,14 @@ cdef class OriginalCRO(VectorizeOptimizer):
                 self.objs[selected_corals[id1]].solution,
                 self.objs[selected_corals[id2]].solution,
             )
-            agent = LegacyNativeAgent(pos_new, None)
+            agent = cy.Agent(pos_new)
             larvae.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                larvae[-1].target = self._get_target(pos_new)
+                larvae[-1].evaluate(self.problem)
             selected_corals = np.delete(selected_corals, [id1, id2])
-        return ops.update_targets(self, larvae)
+        return ops.evaluate_agents(self, larvae)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         self.objs = ops.agents_of(self.pop)
         ## Broadcast Spawning Brooding

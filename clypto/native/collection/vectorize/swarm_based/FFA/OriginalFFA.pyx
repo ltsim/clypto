@@ -7,7 +7,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -43,8 +43,8 @@ cdef class OriginalFFA(AgentListOptimizer):
     >>>
     >>> model = FFA.OriginalFFA(epoch=1000, pop_size=50, gamma = 0.001, beta_base = 2, alpha = 0.2, alpha_damp = 0.99, delta = 0.05, exponent = 2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -112,10 +112,10 @@ cdef class OriginalFFA(AgentListOptimizer):
         self.delta = cy.validator(float, delta, (0, 1.0), "delta")
         self.exponent = cy.validator(int, exponent, [2, 4], "exponent")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_alpha = self.alpha  # Initial Value of Mutation Coefficient
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         # Maximum Distance
         dmax = np.sqrt(self.problem.n_dims)
         for idx in range(0, self.pop_size):
@@ -123,9 +123,7 @@ cdef class OriginalFFA(AgentListOptimizer):
             pop_child = []
             for j in range(idx + 1, self.pop_size):
                 # Move Towards Better Solutions
-                if self._compare_target(
-                        self.objs[j].target, agent.target, self.problem.sense
-                ):
+                if cy.is_better(self.objs[j], agent, self.problem.sense):
                     # Calculate Radius and Attraction Level
                     rij = np.linalg.norm(agent.solution - self.objs[j].solution) / dmax
                     beta = self.beta_base * np.exp(-self.gamma * rij ** self.exponent)
@@ -142,16 +140,14 @@ cdef class OriginalFFA(AgentListOptimizer):
                     pos_new = (
                             agent.solution + self.dyn_alpha * mutation_vector + beta * temp
                     )
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
+                    pos_new = self.correct_solution(pos_new)
+                    agent = self.generate_agent(pos_new)
                     pop_child.append(agent)
             if len(pop_child) < self.pop_size:
-                pop_child += self._generate_agents(self.pop_size - len(pop_child))
-            local_best = self._get_best_agent(pop_child, self.problem.sense)
+                pop_child += self.generate_agents(self.pop_size - len(pop_child))
+            local_best = cy.sort_agents(pop_child, self.problem.sense)[0].copy()
             # Compare to Previous Solution
-            if self._compare_target(
-                    local_best.target, agent.target, self.problem.sense
-            ):
+            if cy.is_better(local_best, agent, self.problem.sense):
                 self.objs[idx] = local_best
         self.objs.append(self.g_best)
         self.dyn_alpha = self.alpha_damp * self.alpha

@@ -3,19 +3,26 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalHGSAgent(LegacyAgent):
+
+cdef class OriginalHGSAgent(cy.Agent):
     cdef public object hunger
 
 
-cdef class OriginalHGS(LegacyOptimizer):
+cdef class OriginalHGSPopulation(cy.Population):
+    """Agents of :class:`OriginalHGS`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        hunger = 1.0
+        return OriginalHGSAgent(solution=solution, hunger=hunger)
+
+
+cdef class OriginalHGS(cy.Optimizer):
     """
     The original version of: Hunger Games Search (HGS)
 
@@ -42,14 +49,17 @@ cdef class OriginalHGS(LegacyOptimizer):
     >>>
     >>> model = HGS.OriginalHGS(epoch=1000, pop_size=50, PUP = 0.08, LH = 10000)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Yang, Y., Chen, H., Heidari, A.A. and Gandomi, A.H., 2021. Hunger games search: Visions, conception, implementation,
     deep analysis, perspectives, and towards performance shifts. Expert Systems with Applications, 177, p.114864.
     """
+
+    cdef public double LH
+    cdef public double PUP
 
     def __init__(
         self,
@@ -66,19 +76,11 @@ cdef class OriginalHGS(LegacyOptimizer):
             PUP (float): The probability of updating position (L in the paper), default = 0.08
             LH (float): Largest hunger / threshold, default = 10000
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.PUP = self.validator.check_float("PUP", PUP, (0, 1.0))
-        self.LH = self.validator.check_float("LH", LH, [1, 20000])
-        self._set_parameters(["epoch", "pop_size", "PUP", "LH"])
-        self.sort_flag = False
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        hunger = 1.0
-        return _OriginalHGSAgent(solution=solution, hunger=hunger)
+        super().__init__(parameters=["epoch", "pop_size", "PUP", "LH"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalHGSPopulation)
+        self.PUP = cy.validator(float, PUP, (0, 1.0), "PUP")
+        self.LH = cy.validator(float, LH, [1, 20000], "LH")
 
     def sech__(self, x):
         if np.abs(x) > 50:
@@ -86,15 +88,16 @@ cdef class OriginalHGS(LegacyOptimizer):
         return 2 / (np.exp(x) + np.exp(-x))
 
     def update_hunger_value__(self, pop=None, g_best=None, g_worst=None):
-        # min_index = pop.index(min(pop, key=lambda x: x.target.fitness))
+        pop_size = self.population.size()
+        # min_index = pop.index(min(pop, key=lambda x: x.fitness))
         # Eq (2.8) and (2.9)
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             r = self.generator.random()
             # space: since we pass lower bound and upper bound as list. Better take the np.mean of them.
             space = np.mean(self.problem.bounds.up - self.problem.bounds.low)
             H = (
-                (pop[idx].target.fitness - g_best.target.fitness)
-                / (g_worst.target.fitness - g_best.target.fitness + self.EPSILON)
+                (pop[idx].fitness - g_best.fitness)
+                / (g_worst.fitness - g_best.fitness + self.EPSILON)
                 * r
                 * 2
                 * space
@@ -103,33 +106,34 @@ cdef class OriginalHGS(LegacyOptimizer):
                 H = self.LH * (1 + r)
             pop[idx].hunger += H
 
-            if g_best.target.fitness == pop[idx].target.fitness:
+            if g_best.fitness == pop[idx].fitness:
                 pop[idx].hunger = 0
         return pop
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Eq. (2.2)
         ### Find the current best and current worst
-        _, (g_best,), (g_worst,) = self._get_special_agents(
-            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
-        )
-        pop = self.update_hunger_value__(self.pop, g_best, g_worst)
+        ranked = self.population.sort()
+        (g_best,) = [agent.copy() for agent in ranked[:1]]
+        (g_worst,) = [agent.copy() for agent in ranked[::-1][:1]]
+        pop = self.update_hunger_value__(self.population, g_best, g_worst)
 
         ## Eq. (2.4)
         shrink = 2 * (1 - epoch / self.epoch)
-        total_hunger = np.sum([pop[idx].hunger for idx in range(0, self.pop_size)])
+        total_hunger = np.sum([pop[idx].hunger for idx in range(0, pop_size)])
 
         pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             #### Variation control
-            E = self.sech__(self.pop[idx].target.fitness - g_best.target.fitness)
+            E = self.sech__(self.population[idx].fitness - g_best.fitness)
 
             # R is a ranging controller added to limit the range of activity, in which the range of R is gradually reduced to 0
             R = 2 * shrink * self.generator.random() - shrink  # Eq. (2.3)
@@ -137,15 +141,15 @@ cdef class OriginalHGS(LegacyOptimizer):
             ## Calculate the hungry weight of each position
             if self.generator.random() < self.PUP:
                 W1 = (
-                    self.pop[idx].hunger
-                    * self.pop_size
+                    self.population[idx].hunger
+                    * pop_size
                     / (total_hunger + self.EPSILON)
                     * self.generator.random()
                 )
             else:
                 W1 = 1
             W2 = (
-                (1 - np.exp(-np.abs(self.pop[idx].hunger - total_hunger)))
+                (1 - np.exp(-np.abs(self.population[idx].hunger - total_hunger)))
                 * self.generator.random()
                 * 2
             )
@@ -154,26 +158,22 @@ cdef class OriginalHGS(LegacyOptimizer):
             r1 = self.generator.random()
             r2 = self.generator.random()
             if r1 < self.PUP:
-                pos_new = self.pop[idx].solution * (1 + self.generator.normal(0, 1))
+                pos_new = self.population[idx].solution * (1 + self.generator.normal(0, 1))
             else:
                 if r2 > E:
                     pos_new = W1 * g_best.solution + R * W2 * np.abs(
-                        g_best.solution - self.pop[idx].solution
+                        g_best.solution - self.population[idx].solution
                     )
                 else:
                     pos_new = W1 * g_best.solution - R * W2 * np.abs(
-                        g_best.solution - self.pop[idx].solution
+                        g_best.solution - self.population[idx].solution
                     )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

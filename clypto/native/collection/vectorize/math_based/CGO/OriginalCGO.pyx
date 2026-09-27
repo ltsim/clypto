@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class OriginalCGO(VectorizeOptimizer):
     >>>
     >>> model = CGO.OriginalCGO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -71,7 +71,7 @@ cdef class OriginalCGO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation seeds
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -99,7 +99,7 @@ cdef class OriginalCGO(VectorizeOptimizer):
         cand_pos[:, 2] = MG + alpha[:, 2] * (beta[:, 2] * X - gama[:, 2] * g)  # Eq. 5
         cand_pos[:, 3] = X + picked * rng.uniform(0, 1, (n, d))
         seeds = pop.take(np.repeat(me, 4))
-        seeds.X[:] = self._correct_solution(cand_pos.reshape(4 * n, d))
+        seeds.X[:] = self.correct_solution(cand_pos.reshape(4 * n, d))
         self.evaluate(seeds, 0, 4 * n)
         F = np.asarray(seeds.F).reshape(n, 4)
         best = (F.argmin(axis=1) if self.problem.sense == "min" else F.argmax(axis=1))

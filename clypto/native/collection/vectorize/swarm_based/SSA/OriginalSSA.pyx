@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.swarm_based.SSA.DevSSA cimport DevSSA
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +42,8 @@ cdef class OriginalSSA(DevSSA):
     >>>
     >>> model = SSA.OriginalSSA(epoch=1000, pop_size=50, ST = 0.8, PD = 0.2, SD = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -72,14 +72,14 @@ cdef class OriginalSSA(DevSSA):
         """
         super().__init__(epoch, pop_size, ST, PD, SD, name=name, mode=mode)
 
-    cdef object _amend_solution(self, object solution):
+    cdef object amend_solution(self, object solution):
         condition = np.logical_and(
             self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
         pos_rand = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, size=np.shape(solution))
         return np.where(condition, solution, pos_rand)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

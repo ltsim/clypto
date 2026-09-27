@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class ProbBeesA(LegacyOptimizer):
+cdef class ProbBeesA(cy.Optimizer):
     """
     The original version of: Probabilistic Bees Algorithm (P-BeesA)
 
@@ -33,14 +33,18 @@ cdef class ProbBeesA(LegacyOptimizer):
     >>>
     >>> model = BeesA.ProbBeesA(epoch=1000, pop_size=50, recruited_bee_ratio = 0.1, dance_radius = 0.1, dance_reduction = 0.99)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Pham, D.T. and Castellani, M., 2015. A comparative study of the Bees Algorithm as a tool for
     function optimisation. Cogent Engineering, 2(1), p.1091540.
     """
+
+    cdef public double dance_radius
+    cdef public double dance_reduction
+    cdef public double recruited_bee_ratio
 
     def __init__(
             self,
@@ -59,49 +63,34 @@ cdef class ProbBeesA(LegacyOptimizer):
             dance_radius (float): Bees Dance Radius, default=0.1
             dance_reduction (float): Bees Dance Radius Reduction Rate, default=0.99
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.recruited_bee_ratio = self.validator.check_float(
-            "recruited_bee_ratio", recruited_bee_ratio, (0, 1.0)
-        )
-        self.dance_radius = self.validator.check_float(
-            "dance_radius", dance_radius, (0, 1.0)
-        )
-        self.dance_reduction = self.validator.check_float(
-            "dance_reduction", dance_reduction, (0, 1.0)
-        )
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "recruited_bee_ratio",
-                "dance_radius",
-                "dance_reduction",
-            ]
-        )
-        self.sort_flag = True
+        super().__init__(parameters=[ "epoch", "pop_size", "recruited_bee_ratio", "dance_radius", "dance_reduction", ], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.recruited_bee_ratio = cy.validator(float, recruited_bee_ratio, (0, 1.0), "recruited_bee_ratio")
+        self.dance_radius = cy.validator(float, dance_radius, (0, 1.0), "dance_radius")
+        self.dance_reduction = cy.validator(float, dance_reduction, (0, 1.0), "dance_reduction")
         # Initial Value of Dance Radius
         self.dyn_radius = self.dance_radius
-        self.recruited_bee_count = int(round(self.recruited_bee_ratio * self.pop_size))
+        self.recruited_bee_count = int(round(self.recruited_bee_ratio * self.population.size()))
 
     def perform_dance__(self, position, r):
         jdx = self.generator.choice(list(range(0, self.problem.n_dims)))
         position[jdx] = position[jdx] + r * self.generator.uniform(-1, 1)
-        return self._correct_solution(position)
+        return self.population.correct_solution(position)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Calculate Scores
-        fit_list = np.array([agent.target.fitness for agent in self.pop])
+        fit_list = np.array([agent.fitness for agent in self.population])
         fit_list = 1.0 / (fit_list + self.EPSILON)
         d_fit = fit_list / np.mean(fit_list)
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Determine Rejection Probability based on Score
             if d_fit[idx] < 0.9:
                 reject_prob = 0.6
@@ -117,25 +106,23 @@ cdef class ProbBeesA(LegacyOptimizer):
                 bee_count = int(np.ceil(d_fit[idx] * self.recruited_bee_count))
                 if bee_count < 2:
                     bee_count = 2
-                if bee_count > self.pop_size:
-                    bee_count = self.pop_size
+                if bee_count > pop_size:
+                    bee_count = pop_size
                 # Create New Bees(Solutions)
                 pop_child = []
                 for j in range(0, bee_count):
                     pos_new = self.perform_dance__(
-                        self.pop[idx].solution, self.dyn_radius
+                        self.population[idx].solution, self.dyn_radius
                     )
-                    agent = self._generate_empty_agent(pos_new)
+                    agent = self.population.create_agent(pos_new)
                     pop_child.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self._get_target(pos_new)
-                pop_child = self._update_target_for_population(pop_child)
-                local_best = self._get_best_agent(pop_child, self.problem.sense)
-                if self._compare_target(
-                        local_best.target, self.pop[idx].target, self.problem.sense
-                ):
-                    self.pop[idx] = local_best
+                        pop_child[-1].evaluate(self.problem)
+                pop_child = self.population.evaluate(pop_child, self.mode)
+                local_best = cy.sort_agents(pop_child, self.problem.sense)[0].copy()
+                if cy.is_better(local_best, self.population[idx], self.problem.sense):
+                    self.population[idx] = local_best
             else:
-                self.pop[idx] = self._generate_agent()
+                self.population[idx] = self.population.generate_agent()
         # Damp Dance Radius
         self.dyn_radius = self.dance_reduction * self.dance_radius

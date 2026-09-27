@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -45,8 +45,8 @@ cdef class OriginalHCO(VectorizeOptimizer):
     >>>
     >>> model = HCO.OriginalHCO(epoch=1000, pop_size=50, wfp=0.65, wfv=0.05, c1=1.4, c2=1.4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -95,10 +95,10 @@ cdef class OriginalHCO(VectorizeOptimizer):
         self.c1 = cy.validator(float, c1, [0.0, 100.0], "c1")
         self.c2 = cy.validator(float, c2, [1.0, 100.0], "c2")
 
-    def _initialization(self):
+    def initialization(self):
         cdef NativePopulation pop, cand
         cdef Py_ssize_t n, d
-        VectorizeOptimizer._initialization(self)
+        VectorizeOptimizer.initialization(self)
         pop = self.pop
         n, d = pop.n, pop.d
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
@@ -121,13 +121,13 @@ cdef class OriginalHCO(VectorizeOptimizer):
         self.vec = self.generator.uniform(lb, ub, (n, d))
         self.pop_p = pop.take(np.arange(n))
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        gb_fit = self.current_g_best().target.fitness
+        gb_fit = self.current_g_best().fitness
         lamda = rng.random()
         neu = 2
         fits = np.array(pop.F)

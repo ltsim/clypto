@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalEVO(LegacyOptimizer):
+cdef class OriginalEVO(cy.Optimizer):
     """
     The original version of: Energy Valley Optimizer (EVO)
 
@@ -38,8 +38,8 @@ cdef class OriginalEVO(LegacyOptimizer):
     >>>
     >>> model = EVO.OriginalEVO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -55,39 +55,36 @@ cdef class OriginalEVO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_list = np.array([agent.solution for agent in self.pop])
-            fit_list = np.array([agent.target.fitness for agent in self.pop])
-            dis = np.sqrt(np.sum((self.pop[idx].solution - pos_list) ** 2, axis=1))
+        for idx in range(0, pop_size):
+            pos_list = np.array([agent.solution for agent in self.population])
+            fit_list = np.array([agent.fitness for agent in self.population])
+            dis = np.sqrt(np.sum((self.population[idx].solution - pos_list) ** 2, axis=1))
             idx_dis_sort = np.argsort(dis)
-            CnPtIdx = self.generator.choice(list(set(range(2, self.pop_size)) - {idx}))
+            CnPtIdx = self.generator.choice(list(set(range(2, pop_size)) - {idx}))
             x_team = pos_list[idx_dis_sort[1:CnPtIdx], :]
             x_avg_team = np.mean(x_team, axis=0)
             x_avg_pop = np.mean(pos_list, axis=0)
             eb = np.mean(fit_list)
-            sl = (fit_list[idx] - self.g_best.target.fitness) / (
-                    self.g_worst.target.fitness - self.g_best.target.fitness + self.EPSILON
+            sl = (fit_list[idx] - self.g_best.fitness) / (
+                    self.g_worst.fitness - self.g_best.fitness + self.EPSILON
             )
 
-            pos_new1 = self.pop[idx].solution.copy()
-            pos_new2 = self.pop[idx].solution.copy()
-            if self._compare_fitness(
-                    eb, self.pop[idx].target.fitness, self.problem.sense
-            ):
+            pos_new1 = self.population[idx].solution.copy()
+            pos_new2 = self.population[idx].solution.copy()
+            if cy.better_fitness(eb, self.population[idx].fitness, self.problem.sense):
                 if self.generator.random() > sl:
                     a1_idx = self.generator.integers(self.problem.n_dims)
                     a2_idx = self.generator.integers(
@@ -108,10 +105,10 @@ cdef class OriginalEVO(LegacyOptimizer):
                     ir = self.generator.uniform(0, 1, 2)
                     jr = self.generator.uniform(0, 1, self.problem.n_dims)
                     pos_new2 += jr * (ir[0] * self.g_best.solution - ir[1] * x_avg_team)
-                pos_new1 = self._correct_solution(pos_new1)
-                pos_new2 = self._correct_solution(pos_new2)
-                agent1 = self._generate_empty_agent(pos_new1)
-                agent2 = self._generate_empty_agent(pos_new2)
+                pos_new1 = self.population.correct_solution(pos_new1)
+                pos_new2 = self.population.correct_solution(pos_new2)
+                agent1 = self.population.create_agent(pos_new1)
+                agent2 = self.population.create_agent(pos_new2)
                 pop_new.append(agent1)
                 pop_new.append(agent2)
             else:
@@ -123,13 +120,11 @@ cdef class OriginalEVO(LegacyOptimizer):
                     self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
         if self.mode not in self.AVAILABLE_MODES:
             for idx in range(0, len(pop_new)):
-                pop_new[idx].target = self._get_target(pop_new[idx].solution)
-        pop_new = self._update_target_for_population(pop_new)
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, self.problem.sense
-        )
+                pop_new[idx].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        self.population = cy.sort_agents(self.population + pop_new, self.problem.sense)[:pop_size]

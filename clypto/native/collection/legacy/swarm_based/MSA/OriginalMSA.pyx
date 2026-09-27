@@ -6,11 +6,11 @@
 
 from math import gamma
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMSA(LegacyOptimizer):
+cdef class OriginalMSA(cy.Optimizer):
     """
     The original version: Moth Search Algorithm (MSA)
 
@@ -39,14 +39,18 @@ cdef class OriginalMSA(LegacyOptimizer):
     >>>
     >>> model = MSA.OriginalMSA(epoch=1000, pop_size=50, n_best = 5, partition = 0.5, max_step_size = 1.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Wang, G.G., 2018. Moth search algorithm: a bio-inspired metaheuristic algorithm for
     global optimization problems. Memetic Computing, 10(2), pp.151-164.
     """
+
+    cdef public double max_step_size
+    cdef public int n_best
+    cdef public double partition
 
     def __init__(
             self,
@@ -65,24 +69,16 @@ cdef class OriginalMSA(LegacyOptimizer):
             partition (float): The proportional of first partition, default=0.5
             max_step_size (float): Max step size used in Levy-flight technique, default=1.0
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.n_best = self.validator.check_int(
-            "n_best", n_best, [2, int(self.pop_size / 2)]
-        )
-        self.partition = self.validator.check_float("partition", partition, (0, 1.0))
-        self.max_step_size = self.validator.check_float(
-            "max_step_size", max_step_size, (0, 5.0)
-        )
-        self._set_parameters(
-            ["epoch", "pop_size", "n_best", "partition", "max_step_size"]
-        )
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "n_best", "partition", "max_step_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
+        self.n_best = cy.validator(int, n_best, [2, int(self.population.size() / 2)], "n_best")
+        self.partition = cy.validator(float, partition, (0, 1.0), "partition")
+        self.max_step_size = cy.validator(float, max_step_size, (0, 5.0), "max_step_size")
         # np1 in paper
-        self.n_moth1 = int(np.ceil(self.partition * self.pop_size))
+        self.n_moth1 = int(np.ceil(self.partition * self.population.size()))
         # np2 in paper, we actually don't need this variable
-        self.n_moth2 = self.pop_size - self.n_moth1
+        self.n_moth2 = self.population.size() - self.n_moth1
         # you can change this ratio so as to get much better performance
         self.golden_ratio = (np.sqrt(5) - 1) / 2.0
 
@@ -100,51 +96,48 @@ cdef class OriginalMSA(LegacyOptimizer):
         delta_x = scale * step
         return delta_x
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop_best = [agent.copy() for agent in self.pop[: self.n_best]]
+        pop_size = self.population.size()
+        pop_best = [agent.copy() for agent in self.population[: self.n_best]]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Migration operator
             if idx < self.n_moth1:
                 # scale = self.max_step_size / (epoch+1)       # Smaller step for local walk
-                pos_new = self.pop[idx].solution + self.generator.random(
+                pos_new = self.population[idx].solution + self.generator.random(
                     self.problem.n_dims
                 ) * self._levy_walk(epoch)
             else:
                 # Flying in a straight line
-                temp_case1 = self.pop[idx].solution + self.generator.random(
+                temp_case1 = self.population[idx].solution + self.generator.random(
                     self.problem.n_dims
-                ) * self.golden_ratio * (self.g_best.solution - self.pop[idx].solution)
-                temp_case2 = self.pop[idx].solution + self.generator.random(
+                ) * self.golden_ratio * (self.g_best.solution - self.population[idx].solution)
+                temp_case2 = self.population[idx].solution + self.generator.random(
                     self.problem.n_dims
                 ) * (1.0 / self.golden_ratio) * (
-                                     self.g_best.solution - self.pop[idx].solution
+                                     self.g_best.solution - self.population[idx].solution
                              )
                 pos_new = np.where(
                     self.generator.random(self.problem.n_dims) < 0.5,
                     temp_case2,
                     temp_case1,
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        self.pop = self._get_sorted_population(self.pop, self.problem.sense)
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        self.population = self.population.sort()
         # Replace the worst with the previous generation's elites.
         for idx in range(0, self.n_best):
-            self.pop[-1 - idx] = pop_best[idx].copy()
+            self.population[-1 - idx] = pop_best[idx].copy()

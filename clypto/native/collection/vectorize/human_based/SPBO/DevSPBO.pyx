@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.human_based.SPBO.OriginalSPBO cimport OriginalSPBO
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -37,8 +37,8 @@ cdef class DevSPBO(OriginalSPBO):
     >>>
     >>> model = SPBO.DevSPBO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -52,7 +52,7 @@ cdef class DevSPBO(OriginalSPBO):
         super().__init__(epoch, pop_size, name=name, mode=mode)
         self.sort_flag = True
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalIWO(LegacyOptimizer):
+cdef class OriginalIWO(cy.Optimizer):
     """
     The original version of: Invasive Weed Optimization (IWO)
 
@@ -43,14 +43,20 @@ cdef class OriginalIWO(LegacyOptimizer):
     >>>
     >>> model = IWO.OriginalIWO(epoch=1000, pop_size=50, seed_min = 3, seed_max = 9, exponent = 3, sigma_start = 0.6, sigma_end = 0.01)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Mehrabian, A.R. and Lucas, C., 2006. A novel numerical optimization algorithm inspired from weed colonization.
     Ecological informatics, 1(4), pp.355-366.
     """
+
+    cdef public int exponent
+    cdef public int seed_max
+    cdef public int seed_min
+    cdef public double sigma_end
+    cdef public double sigma_start
 
     def __init__(
             self,
@@ -73,70 +79,53 @@ cdef class OriginalIWO(LegacyOptimizer):
             sigma_start (float): The initial value of standard deviation
             sigma_end (float): The final value of standard deviation
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.seed_min = self.validator.check_int("seed_min", seed_min, [1, 3])
-        self.seed_max = self.validator.check_int(
-            "seed_max", seed_max, [4, int(self.pop_size / 2)]
-        )
-        self.exponent = self.validator.check_int("exponent", exponent, [2, 4])
-        self.sigma_start = self.validator.check_float(
-            "sigma_start", sigma_start, [0.5, 5.0]
-        )
-        self.sigma_end = self.validator.check_float("sigma_end", sigma_end, (0, 0.5))
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "seed_min",
-                "seed_max",
-                "exponent",
-                "sigma_start",
-                "sigma_end",
-            ]
-        )
-        self.sort_flag = True
+        super().__init__(parameters=[ "epoch", "pop_size", "seed_min", "seed_max", "exponent", "sigma_start", "sigma_end", ], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.seed_min = cy.validator(int, seed_min, [1, 3], "seed_min")
+        self.seed_max = cy.validator(int, seed_max, [4, int(self.population.size() / 2)], "seed_max")
+        self.exponent = cy.validator(int, exponent, [2, 4], "exponent")
+        self.sigma_start = cy.validator(float, sigma_start, [0.5, 5.0], "sigma_start")
+        self.sigma_end = cy.validator(float, sigma_end, (0, 0.5), "sigma_end")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Update Standard Deviation
         sigma = (1.0 - epoch / self.epoch) ** self.exponent * (
                 self.sigma_start - self.sigma_end
         ) + self.sigma_end
-        pop, list_best, list_worst = self._get_special_agents(
-            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
-        )
+        pop = self.population.sort()
+        list_best = [agent.copy() for agent in pop[:1]]
+        list_worst = [agent.copy() for agent in pop[::-1][:1]]
         best, worst = list_best[0], list_worst[0]
         pop_new = []
-        for idx in range(0, self.pop_size):
-            temp = best.target.fitness - worst.target.fitness
+        for idx in range(0, pop_size):
+            temp = best.fitness - worst.fitness
             if temp == 0:
                 ratio = self.generator.random()
             else:
-                ratio = (pop[idx].target.fitness - worst.target.fitness) / temp
+                ratio = (pop[idx].fitness - worst.fitness) / temp
             s = int(np.ceil(self.seed_min + (self.seed_max - self.seed_min) * ratio))
-            if s > int(np.sqrt(self.pop_size)):
-                s = int(np.sqrt(self.pop_size))
+            if s > int(np.sqrt(pop_size)):
+                s = int(np.sqrt(pop_size))
             pop_local = []
             for jdx in range(s):
                 # Initialize Offspring and Generate Random Location
                 pos_new = pop[idx].solution + sigma * self.generator.normal(
                     0, 1, self.problem.n_dims
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_local.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_local[-1].target = self._get_target(pos_new)
+                    pop_local[-1].evaluate(self.problem)
             if self.mode in self.AVAILABLE_MODES:
-                pop_local = self._update_target_for_population(pop_local)
+                pop_local = self.population.evaluate(pop_local, self.mode)
             pop_new += pop_local
-        self.pop = self._get_sorted_and_trimmed_population(
-            pop_new, self.pop_size, self.problem.sense
-        )
+        self.population = cy.sort_agents(pop_new, self.problem.sense)[:pop_size]

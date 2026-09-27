@@ -1,5 +1,5 @@
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class DevSMA(LegacyOptimizer):
-    pass
+cdef class DevSMA(cy.Optimizer):
+    cdef public double p_t

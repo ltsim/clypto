@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 22:24, 02/03/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCGO(LegacyOptimizer):
+cdef class OriginalCGO(cy.Optimizer):
     """
     The original version of: Chaos Game Optimization (CGO)
 
@@ -36,8 +36,8 @@ cdef class OriginalCGO(LegacyOptimizer):
     >>>
     >>> model = CGO.OriginalCGO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -53,26 +53,25 @@ cdef class OriginalCGO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             s1, s2, s3 = self.generator.choice(
-                range(0, self.pop_size), 3, replace=False
+                range(0, pop_size), 3, replace=False
             )
             MG = (
-                         self.pop[s1].solution + self.pop[s2].solution + self.pop[s3].solution
+                         self.population[s1].solution + self.population[s2].solution + self.population[s3].solution
                  ) / 3
             ## Calculating alpha based on Eq. 7
             alpha1 = self.generator.random()
@@ -89,30 +88,26 @@ cdef class OriginalCGO(LegacyOptimizer):
             k_idx = self.generator.choice(
                 range(0, self.problem.n_dims), k, replace=False
             )
-            seed1 = self.pop[idx].solution + alpha1 * (
+            seed1 = self.population[idx].solution + alpha1 * (
                     beta[0] * self.g_best.solution - gama[0] * MG
             )  # Eq. 3
             seed2 = self.g_best.solution + alpha2 * (
-                    beta[1] * self.pop[idx].solution - gama[1] * MG
+                    beta[1] * self.population[idx].solution - gama[1] * MG
             )  # Eq. 4
             seed3 = MG + alpha3 * (
-                    beta[2] * self.pop[idx].solution - gama[2] * self.g_best.solution
+                    beta[2] * self.population[idx].solution - gama[2] * self.g_best.solution
             )  # Eq. 5
-            seed4 = self.pop[idx].solution.copy().astype(float)
+            seed4 = self.population[idx].solution.copy().astype(float)
             seed4[k_idx] += self.generator.uniform(0, 1, k)
             # Check if solutions go outside the search space and bring them back
-            seed1 = self._correct_solution(seed1)
-            seed2 = self._correct_solution(seed2)
-            seed3 = self._correct_solution(seed3)
-            seed4 = self._correct_solution(seed4)
-            agent1 = self._generate_agent(seed1)
-            agent2 = self._generate_agent(seed2)
-            agent3 = self._generate_agent(seed3)
-            agent4 = self._generate_agent(seed4)
+            seed1 = self.population.correct_solution(seed1)
+            seed2 = self.population.correct_solution(seed2)
+            seed3 = self.population.correct_solution(seed3)
+            seed4 = self.population.correct_solution(seed4)
+            agent1 = self.population.generate_agent(seed1)
+            agent2 = self.population.generate_agent(seed2)
+            agent3 = self.population.generate_agent(seed3)
+            agent4 = self.population.generate_agent(seed4)
             ## Lots of grammar errors in this section, so confused to understand which strategy they are using
-            best_seed = self._get_best_agent(
-                [agent1, agent2, agent3, agent4], self.problem.sense
-            )
-            self.pop[idx] = self._get_better_agent(
-                best_seed, self.pop[idx], self.problem.sense
-            )
+            best_seed = cy.sort_agents([agent1, agent2, agent3, agent4], self.problem.sense)[0].copy()
+            self.population[idx] = cy.get_better_agent(best_seed, self.population[idx], self.problem.sense)

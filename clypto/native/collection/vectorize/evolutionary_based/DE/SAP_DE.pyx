@@ -3,31 +3,16 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-
-
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
 
 
-class _SAPAgent:
-    """A classic agent with its own crossover/mutation rates and population size."""
-
-    __slots__ = ("solution", "target", "crossover", "mutation", "pop_size")
-
-    def __init__(self, solution, target, crossover, mutation, pop_size):
-        self.solution, self.target = solution, target
-        self.crossover, self.mutation, self.pop_size = crossover, mutation, pop_size
-
-    def copy(self):
-        return _SAPAgent(self.solution, None if self.target is None else self.target.copy(),
-                         self.crossover, self.mutation, self.pop_size)
+class SAPAgent(cy.Agent):
+    """An agent with its own ``crossover``/``mutation`` rates and ``pop_size``."""
 
 
 cdef class SAP_DE(VectorizeOptimizer):
@@ -56,8 +41,8 @@ cdef class SAP_DE(VectorizeOptimizer):
     >>>
     >>> model = DE.SAP_DE(epoch=1000, pop_size=50, branch = "ABS")
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -106,15 +91,15 @@ cdef class SAP_DE(VectorizeOptimizer):
             pop_size = int(10 * self.problem.n_dims + self.generator.normal(0, 1))
         else:  # elif self.branch == "REL":
             pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
-        agent = _SAPAgent(solution, None, crossover_rate, mutation_rate, pop_size)
+        agent = SAPAgent(solution, crossover=crossover_rate, mutation=mutation_rate, pop_size=pop_size)
         if evaluate:
-            agent.target = self._get_target(agent.solution)
+            agent.evaluate(self.problem)
         return agent
 
     def mirror__(self):
         return ops.build_population(self, self.objs)
 
-    def _initialization(self):
+    def initialization(self):
         # every agent carries its own rates and population size, so the agents are kept as objects
         if self._starting is not None:
             self.objs = [self.new_agent__(x, True) for x in self._starting]
@@ -130,7 +115,7 @@ cdef class SAP_DE(VectorizeOptimizer):
                 var -= func_value()
         return var
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
         popl = self.objs
         pop = []
@@ -148,13 +133,13 @@ cdef class SAP_DE(VectorizeOptimizer):
                     ps_new = popl[idxs[0]].pop_size + int(self.F * (popl[idxs[1]].pop_size - popl[idxs[2]].pop_size))
                 else:  # elif self.branch == "REL":
                     ps_new = popl[idxs[0]].pop_size + self.F * (popl[idxs[1]].pop_size - popl[idxs[2]].pop_size)
-                pos_new = self._correct_solution(pos_new)
+                pos_new = self.correct_solution(pos_new)
                 cr_new = self.edit_to_range__(cr_new, 0, 1, self.generator.random)
                 mr_new = self.edit_to_range__(mr_new, 0, 1, self.generator.random)
                 agent = self.new_agent__(pos_new)
                 pop.append(agent)
                 if not swarm:
-                    agent.target = self._get_target(pos_new)
+                    agent.evaluate(self.problem)
                     agent.crossover, agent.mutation, agent.pop_size = cr_new, mr_new, ps_new
             else:
                 pop.append(popl[idx].copy())
@@ -167,13 +152,13 @@ cdef class SAP_DE(VectorizeOptimizer):
                     ps_new = popl[idx].pop_size + int(self.generator.normal(0.5, 1))
                 else:  # elif self.branch == "REL":
                     ps_new = popl[idx].pop_size + self.generator.normal(0, popl[idxs[0]].mutation)
-                pos_new = self._correct_solution(pos_new)
+                pos_new = self.correct_solution(pos_new)
                 agent = self.new_agent__(pos_new)
                 pop.append(agent)
                 if not swarm:
-                    agent.target = self._get_target(pos_new)
+                    agent.evaluate(self.problem)
                     agent.crossover, agent.mutation, agent.pop_size = cr_new, mr_new, ps_new
-        pop = ops.update_targets(self, pop)
+        pop = ops.evaluate_agents(self, pop)
         # Calculate new population size
         total = np.sum([pop[idx].pop_size for idx in range(0, self.pop_size)])
         if self.branch == "ABS":

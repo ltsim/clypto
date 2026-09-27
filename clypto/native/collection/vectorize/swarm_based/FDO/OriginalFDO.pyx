@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -38,8 +38,8 @@ cdef class OriginalFDO(VectorizeOptimizer):
     >>>
     >>> model = FDO.OriginalFDO(epoch=1000, pop_size=50, weight_factor=0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -88,41 +88,41 @@ cdef class OriginalFDO(VectorizeOptimizer):
         return np.zeros_like(current_fit) if best_fit == 0 else fw
 
     def get_into_levy_bound(self, pos_new):
-        levy = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=pos_new.shape, case=-1)
+        levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=pos_new.shape, case=-1)
         return np.select(
             [pos_new > self.problem.bounds.up, pos_new < self.problem.bounds.low],
             [self.problem.bounds.up * np.abs(levy), self.problem.bounds.low * np.abs(levy)],
             default=pos_new,
         )
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
         X = np.array(pop.X)
         g = np.array(self.g_best_x())
-        gb_fit = self.current_g_best().target.fitness
+        gb_fit = self.current_g_best().fitness
         fw = self.get_fit_weight(gb_fit, np.asarray(pop.F), self.weight_factor)[:, None]
         dist = g - X
-        levy = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
+        levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=(n, d), case=-1)
         pace = np.where(fw == 1, X * levy, np.where(fw == 0, dist * levy, dist * fw * np.sign(levy)))
         # three attempts per agent, each one only for the agents the previous attempt did not improve
-        pos1 = self._correct_solution(self.get_into_levy_bound(X + pace))
+        pos1 = self.correct_solution(self.get_into_levy_bound(X + pace))
         F0 = np.array(pop.F)
         ops.step(self, pos1)
         todo = np.flatnonzero(~ops.better(self, np.asarray(self.pop.F), F0))
         if len(todo):
             pos2 = pos1[todo] + (g - pos1[todo]) * fw[todo] + pace[todo]
             cand = self.pop.take(todo)
-            cand.X[:] = self._correct_solution(self.get_into_levy_bound(pos2))
+            cand.X[:] = self.correct_solution(self.get_into_levy_bound(pos2))
             self.evaluate(cand, 0, len(todo))
             F1 = np.array(self.pop.F)
             ops.scatter(self, cand, todo)
             todo = todo[~ops.better(self, np.asarray(self.pop.F)[todo], F1[todo])]
         if len(todo):
             Xt = np.array(self.pop.X[todo])
-            levy = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(len(todo), d), case=-1)
+            levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=(len(todo), d), case=-1)
             cand = self.pop.take(todo)
-            cand.X[:] = self._correct_solution(self.get_into_levy_bound(Xt + Xt * levy))
+            cand.X[:] = self.correct_solution(self.get_into_levy_bound(Xt + Xt * levy))
             self.evaluate(cand, 0, len(todo))
             ops.scatter(self, cand, todo)

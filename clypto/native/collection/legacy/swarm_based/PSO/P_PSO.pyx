@@ -3,21 +3,13 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
-
-
-cdef class _P_PSOAgent(LegacyAgent):
-    cdef public object velocity
-    cdef public object local_solution
-    cdef public object local_target
+from clypto.native.collection.legacy.swarm_based.PSO._base cimport PSOPopulation
 
 
-cdef class P_PSO(LegacyOptimizer):
+cdef class P_PSO(cy.Optimizer):
     """
     The original version of: Phasor Particle Swarm Optimization (P-PSO)
 
@@ -37,8 +29,8 @@ cdef class P_PSO(LegacyOptimizer):
     >>>
     >>> model = PSO.P_PSO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -54,60 +46,42 @@ cdef class P_PSO(LegacyOptimizer):
             epoch: maximum number of iterations, default = 10000
             pop_size: number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
+        super().__init__(**kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=PSOPopulation)
+        self.parameters = ["epoch", "pop_size"]
         self.sort_flag = False
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
+        pop_size = self.population.size()
         self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
-        self.dyn_delta_list = self.generator.uniform(0, 2 * np.pi, self.pop_size)
+        self.dyn_delta_list = self.generator.uniform(0, 2 * np.pi, pop_size)
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(-self.v_max, self.v_max)
-        local_pos = solution.copy()
-        return _P_PSOAgent(
-            solution=solution, velocity=velocity, local_solution=local_pos
-        )
-
-    def _generate_agent(self, solution: np.ndarray | None = None):
-        agent = self._generate_empty_agent(solution)
-        agent.target = self._get_target(agent.solution)
-        agent.local_target = agent.target.copy()
-        return agent
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        for idx in range(0, self.pop_size):
+        pop_size = self.population.size()
+        for idx in range(0, pop_size):
             aa = 2 * (np.sin(self.dyn_delta_list[idx]))
             bb = 2 * (np.cos(self.dyn_delta_list[idx]))
             ee = np.abs(np.cos(self.dyn_delta_list[idx])) ** aa
             tt = np.abs(np.sin(self.dyn_delta_list[idx])) ** bb
             v_new = ee * (
-                self.pop[idx].local_solution - self.pop[idx].solution
-            ) + tt * (self.g_best.solution - self.pop[idx].solution)
+                self.population[idx].pbest_solution - self.population[idx].solution
+            ) + tt * (self.g_best.solution - self.population[idx].solution)
             v_new = np.minimum(np.maximum(v_new, -self.v_max), self.v_max)
-            self.pop[idx].velocity = v_new
-            pos_new = self.pop[idx].solution + v_new
-            pos_new = self._correct_solution(pos_new)
+            self.population[idx].velocity = v_new
+            pos_new = self.population[idx].solution + v_new
+            pos_new = self.population.correct_solution(pos_new)
             self.dyn_delta_list[idx] += np.abs(aa + bb) * (2 * np.pi)
             self.v_max = (np.abs(np.cos(self.dyn_delta_list[idx])) ** 2) * (
                 self.problem.bounds.up - self.problem.bounds.low
             )
-            target = self._get_target(pos_new)
-            if self._compare_target(target, self.pop[idx].target, self.problem.sense):
-                self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self._compare_target(
-                target, self.pop[idx].local_target, self.problem.sense
-            ):
-                self.pop[idx].update(
-                    local_solution=pos_new.copy(), local_target=target.copy()
-                )
+            candidate = self.population.evaluate_solution(pos_new)
+            if cy.is_better(candidate, self.population[idx], self.problem.sense):
+                self.population[idx].update_solution(candidate)
+            self.population[idx].update_pbest(candidate, self.problem.sense)

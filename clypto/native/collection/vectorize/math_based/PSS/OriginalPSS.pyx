@@ -6,7 +6,7 @@
 
 import numpy as np
 from scipy.stats import qmc
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalPSS(VectorizeOptimizer):
     >>>
     >>> model = PSS.OriginalPSS(epoch=1000, pop_size=50, acceptance_rate = 0.8, sampling_method = "LHS")
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -83,7 +83,7 @@ cdef class OriginalPSS(VectorizeOptimizer):
         self.acceptance_rate = cy.validator(float, acceptance_rate, (0, 1.0), "acceptance_rate")
         self.sampling_method = cy.validator(str, sampling_method, ["MC", "LHS"], "sampling_method")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.step = 10e-10
         self.steps = np.ones(self.problem.n_dims) * self.step
         self.new_solution = True
@@ -95,18 +95,18 @@ cdef class OriginalPSS(VectorizeOptimizer):
         # default: "LHS" (the sampler draws from our generator, so a seed reproduces the run)
         return qmc.LatinHypercube(d=self.problem.n_dims, rng=self.generator).random(n=n)
 
-    def _initialization(self):
+    def initialization(self):
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
         pos = np.round((lb + self.create_population(self.pop_size) * (ub - lb)) / self.steps) * self.steps
-        self.pop = self.new_population(self._correct_solution(pos))
+        self.pop = self.new_population(self.correct_solution(pos))
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
         gb = self.current_g_best()
-        g, g_fit = np.array(gb.solution), gb.target.fitness
+        g, g_fit = np.array(gb.solution), gb.fitness
         rand = self.create_population(n)
         if self.new_solution:
             deviation = np.abs(0.5 * (1.0 - self.acceptance_rate) * (ub - lb)) * (1 - (epoch_c / self.epoch))

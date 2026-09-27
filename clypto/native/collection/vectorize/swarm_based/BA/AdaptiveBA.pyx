@@ -3,14 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -48,8 +45,8 @@ cdef class AdaptiveBA(VectorizeOptimizer):
     >>>
     >>> model = BA.AdaptiveBA(epoch=1000, pop_size=50, loudness_min = 1.0, loudness_max = 2.0, pr_min = -2.5, pr_max = 0.85, pf_min = 0.1, pf_max = 10.)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -120,14 +117,14 @@ cdef class AdaptiveBA(VectorizeOptimizer):
         self.pf_max = cy.validator(float, pf_max, [0.0, 10.0], "pf_max")
         self.alpha = self.gamma = 0.9
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         n, d = self.pop.n, self.pop.d
         self.velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (n, d))
         self.loudness_v = self.generator.uniform(self.loudness_min, self.loudness_max, n)
         self.pulse_rate_v = self.generator.uniform(self.pr_min, self.pr_max, n)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -139,7 +136,7 @@ cdef class AdaptiveBA(VectorizeOptimizer):
         x_new = X + self.velocity + pf * (X - g)
         x_new = np.where((rng.random(n) > self.pulse_rate_v)[:, None], g + mean_a * rng.normal(-1, 1, (n, 1)), x_new)
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(x_new)
+        cand.X[:] = self.correct_solution(x_new)
         self.evaluate(cand, 0, n)
         ok = ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) < self.loudness_v)
         pop.buf[ok] = cand.buf[ok]

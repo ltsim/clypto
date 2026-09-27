@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalGBO(LegacyOptimizer):
+cdef class OriginalGBO(cy.Optimizer):
     """
     The original version of: Gradient-Based Optimizer (GBO)
 
@@ -34,14 +34,18 @@ cdef class OriginalGBO(LegacyOptimizer):
     >>>
     >>> model = GBO.OriginalGBO(epoch=1000, pop_size=50, pr = 0.5, beta_min = 0.2, beta_max = 1.2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Ahmadianfar, I., Bozorg-Haddad, O. and Chu, X., 2020. Gradient-based optimizer:
     A new metaheuristic optimization algorithm. Information Sciences, 540, pp.131-159.
     """
+
+    cdef public double beta_max
+    cdef public double beta_min
+    cdef public double pr
 
     def __init__(
             self,
@@ -60,22 +64,21 @@ cdef class OriginalGBO(LegacyOptimizer):
             beta_min (float): Fixed parameter (no name in the paper), default = 0.2
             beta_max (float): Fixed parameter (no name in the paper), default = 1.2
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.pr = self.validator.check_float("pr", pr, (0, 1.0))
-        self.beta_min = self.validator.check_float("beta_min", beta_min, (0, 2.0))
-        self.beta_max = self.validator.check_float("beta_max", beta_max, (0, 5.0))
-        self._set_parameters(["epoch", "pop_size", "pr", "beta_min", "beta_max"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "pr", "beta_min", "beta_max"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.pr = cy.validator(float, pr, (0, 1.0), "pr")
+        self.beta_min = cy.validator(float, beta_min, (0, 2.0), "beta_min")
+        self.beta_max = cy.validator(float, beta_max, (0, 5.0), "beta_max")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Eq.(14.2), Eq.(14.1)
         beta = (
                 self.beta_min
@@ -84,49 +87,49 @@ cdef class OriginalGBO(LegacyOptimizer):
         alpha = np.abs(beta * np.sin(3 * np.pi / 2 + np.sin(beta * 3 * np.pi / 2)))
 
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             p1 = 2 * self.generator.random() * alpha - alpha
             p2 = 2 * self.generator.random() * alpha - alpha
             #  Four positions randomly selected from population
             r1, r2, r3, r4 = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), 4, replace=False
+                list(set(range(0, pop_size)) - {idx}), 4, replace=False
             )
             # Average of Four positions randomly selected from population
             r0 = (
-                         self.pop[r1].solution
-                         + self.pop[r2].solution
-                         + self.pop[r3].solution
-                         + self.pop[r4].solution
+                         self.population[r1].solution
+                         + self.population[r2].solution
+                         + self.population[r3].solution
+                         + self.population[r4].solution
                  ) / 4
             # Randomization Epsilon
             epsilon = 5e-3 * self.generator.random()
-            delta = 2 * self.generator.random() * np.abs(r0 - self.pop[idx].solution)
-            step = (self.g_best.solution - self.pop[r1].solution + delta) / 2
-            delta_x = self.generator.choice(range(0, self.pop_size)) * np.abs(step)
+            delta = 2 * self.generator.random() * np.abs(r0 - self.population[idx].solution)
+            step = (self.g_best.solution - self.population[r1].solution + delta) / 2
+            delta_x = self.generator.choice(range(0, pop_size)) * np.abs(step)
             x1 = (
-                    self.pop[idx].solution
+                    self.population[idx].solution
                     - self.generator.normal()
                     * p1
                     * 2
                     * delta_x
-                    * self.pop[idx].solution
+                    * self.population[idx].solution
                     / (self.g_worst.solution - self.g_best.solution + epsilon)
                     + self.generator.random()
                     * p2
-                    * (self.g_best.solution - self.pop[idx].solution)
+                    * (self.g_best.solution - self.population[idx].solution)
             )
-            z = self.pop[
+            z = self.population[
                     idx
-                ].solution - self.generator.normal() * 2 * delta_x * self.pop[
+                ].solution - self.generator.normal() * 2 * delta_x * self.population[
                     idx
                 ].solution / (
                         self.g_worst.solution - self.g_best.solution + epsilon
                 )
             y_p = self.generator.random() * (
-                    (z + self.pop[idx].solution) / 2 + self.generator.random() * delta_x
+                    (z + self.population[idx].solution) / 2 + self.generator.random() * delta_x
             )
             y_q = self.generator.random() * (
-                    (z + self.pop[idx].solution) / 2 - self.generator.random() * delta_x
+                    (z + self.population[idx].solution) / 2 - self.generator.random() * delta_x
             )
             x2 = (
                     self.g_best.solution
@@ -134,14 +137,14 @@ cdef class OriginalGBO(LegacyOptimizer):
                     * p1
                     * 2
                     * delta_x
-                    * self.pop[idx].solution
+                    * self.population[idx].solution
                     / (y_p - y_q + epsilon)
                     + self.generator.random()
                     * p2
-                    * (self.pop[r1].solution - self.pop[r2].solution)
+                    * (self.population[r1].solution - self.population[r2].solution)
             )
 
-            x3 = self.pop[idx].solution - p1 * (x2 - x1)
+            x3 = self.population[idx].solution - p1 * (x2 - x1)
             ra = self.generator.random()
             rb = self.generator.random()
             pos_new = ra * (rb * x1 + (1 - rb) * x2) + (1 - ra) * x3
@@ -156,7 +159,7 @@ cdef class OriginalGBO(LegacyOptimizer):
                 u3 = L1 * self.generator.random() + (1 - L1)
                 L2 = np.round(1 - self.generator.random())
                 x_rand = self.problem.generate_solution()
-                x_p = self.pop[self.generator.choice(range(0, self.pop_size))].solution
+                x_p = self.population[self.generator.choice(range(0, pop_size))].solution
                 x_m = L2 * x_p + (1 - L2) * x_rand
                 if self.generator.random() < 0.5:
                     pos_new = (
@@ -166,7 +169,7 @@ cdef class OriginalGBO(LegacyOptimizer):
                             * p1
                             * (
                                     u3 * (x2 - x1)
-                                    + u2 * (self.pop[r1].solution - self.pop[r2].solution)
+                                    + u2 * (self.population[r1].solution - self.population[r2].solution)
                             )
                             / 2
                     )
@@ -178,25 +181,21 @@ cdef class OriginalGBO(LegacyOptimizer):
                             * p1
                             * (
                                     u3 * (x2 - x1)
-                                    + u2 * (self.pop[r1].solution - self.pop[r2].solution)
+                                    + u2 * (self.population[r1].solution - self.population[r2].solution)
                             )
                             / 2
                     )
             # Check if solutions go outside the search space and bring them back
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        _, best, worst = self._get_special_agents(
-            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
-        )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        ranked = self.population.sort()
+        best = [agent.copy() for agent in ranked[:1]]
+        worst = [agent.copy() for agent in ranked[::-1][:1]]
         self.g_best, self.g_worst = best[0], worst[0]

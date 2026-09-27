@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class OriginalAOA(VectorizeOptimizer):
     >>>
     >>> model = AOA.OriginalAOA(epoch=1000, pop_size=50, alpha = 5, miu = 0.5, moa_min = 0.2, moa_max = 0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -88,7 +88,7 @@ cdef class OriginalAOA(VectorizeOptimizer):
         self.moa_min = cy.validator(float, moa_min, (0, 0.41), "moa_min")
         self.moa_max = cy.validator(float, moa_max, (0.41, 1.0), "moa_max")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -107,6 +107,6 @@ cdef class OriginalAOA(VectorizeOptimizer):
             np.where(r2 < 0.5, g / (mop + self.EPSILON) * span, g * mop * span),
             np.where(r3 < 0.5, g - mop * span, g + mop * span),  # Exploitation phase
         )
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

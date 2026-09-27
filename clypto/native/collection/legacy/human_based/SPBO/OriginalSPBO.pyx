@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSPBO(LegacyOptimizer):
+cdef class OriginalSPBO(cy.Optimizer):
     """
     The original version of: Student Psychology Based Optimization (SPBO)
 
@@ -37,8 +37,8 @@ cdef class OriginalSPBO(LegacyOptimizer):
     >>>
     >>> model = SPBO.OriginalSPBO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -49,65 +49,61 @@ cdef class OriginalSPBO(LegacyOptimizer):
     def __init__(
             self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
     ) -> None:
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         for jdx in range(0, self.problem.n_dims):
-            idx_best = self._get_index_best(self.pop, self.problem.sense)
-            mid = self.generator.integers(1, self.pop_size - 1)
-            x_mean = np.mean([agent.solution for agent in self.pop], axis=0)
+            fitness = self.population.fitness
+            idx_best = int(np.argmin(fitness) if self.problem.sense == "min" else np.argmax(fitness))
+            mid = self.generator.integers(1, pop_size - 1)
+            x_mean = np.mean([agent.solution for agent in self.population], axis=0)
             pop_new = []
-            for idx in range(0, self.pop_size):
+            for idx in range(0, pop_size):
                 if idx == idx_best:
                     k = self.generator.choice([1, 2])
                     j = self.generator.choice(
-                        list(set(range(0, self.pop_size)) - {idx})
+                        list(set(range(0, pop_size)) - {idx})
                     )
                     new_pos = self.g_best.solution + (-1) ** k * self.generator.random(
                         self.problem.n_dims
-                    ) * (self.g_best.solution - self.pop[j].solution)
+                    ) * (self.g_best.solution - self.population[j].solution)
                 elif idx < mid:
                     ## Good Student
                     if self.generator.random() > self.generator.random():
                         new_pos = self.g_best.solution + self.generator.random(
                             self.problem.n_dims
-                        ) * (self.g_best.solution - self.pop[idx].solution)
+                        ) * (self.g_best.solution - self.population[idx].solution)
                     else:
                         new_pos = (
-                                self.pop[idx].solution
+                                self.population[idx].solution
                                 + self.generator.random(self.problem.n_dims)
-                                * (self.g_best.solution - self.pop[idx].solution)
+                                * (self.g_best.solution - self.population[idx].solution)
                                 + self.generator.random()
-                                * (self.pop[idx].solution - x_mean)
+                                * (self.population[idx].solution - x_mean)
                         )
                 else:
                     ## Average Student
                     if self.generator.random() > self.generator.random():
-                        new_pos = self.pop[idx].solution + self.generator.random(
+                        new_pos = self.population[idx].solution + self.generator.random(
                             self.problem.n_dims
-                        ) * (x_mean - self.pop[idx].solution)
+                        ) * (x_mean - self.population[idx].solution)
                     else:
                         new_pos = self.problem.generate_solution()
-                new_pos = self._correct_solution(new_pos)
-                agent = self._generate_empty_agent(new_pos)
+                new_pos = self.population.correct_solution(new_pos)
+                agent = self.population.create_agent(new_pos)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(new_pos)
-                    self.pop[idx] = self._get_better_agent(
-                        agent, self.pop[idx], self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self._update_target_for_population(pop_new)
-                self.pop = self._greedy_selection_population(
-                    self.pop, pop_new, self.problem.sense
-                )
+                pop_new = self.population.evaluate(pop_new, self.mode)
+                self.population = self.population.greedy(pop_new)

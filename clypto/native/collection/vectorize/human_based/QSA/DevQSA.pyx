@@ -7,7 +7,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class DevQSA(AgentListOptimizer):
     >>>
     >>> model = QSA.DevQSA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -80,7 +80,7 @@ cdef class DevQSA(AgentListOptimizer):
 
     def update_business_1__(self, pop=None, current_epoch=None):
         A1, A2, A3 = pop[0].solution, pop[1].solution, pop[2].solution
-        t1, t2, t3 = pop[0].target.fitness, pop[1].target.fitness, pop[2].target.fitness
+        t1, t2, t3 = pop[0].fitness, pop[1].fitness, pop[2].fitness
         q1, q2, q3 = self.calculate_queue_length__(t1, t2, t3)
         case = None
         for idx in range(self.pop_size):
@@ -105,29 +105,25 @@ cdef class DevQSA(AgentListOptimizer):
             F2 = beta * alpha * (E * np.abs(A - pop[idx].solution))
             if case == 1:
                 pos_new = A + F1
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        agent.target, pop[idx].target, self.problem.sense
-                ):
+                pos_new = self.correct_solution(pos_new)
+                agent = self.generate_agent(pos_new)
+                if cy.is_better(agent, pop[idx], self.problem.sense):
                     pop[idx] = agent
                 else:
                     case = 2
             else:
                 pos_new = pop[idx].solution + F2
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        agent.target, pop[idx].target, self.problem.sense
-                ):
+                pos_new = self.correct_solution(pos_new)
+                agent = self.generate_agent(pos_new)
+                if cy.is_better(agent, pop[idx], self.problem.sense):
                     pop[idx] = agent
                 else:
                     case = 1
-        return self._get_sorted_population(pop, self.problem.sense)
+        return cy.sort_agents(pop, self.problem.sense)
 
     def update_business_2__(self, pop=None):
         A1, A2, A3 = pop[0].solution, pop[1].solution, pop[2].solution
-        t1, t2, t3 = pop[0].target.fitness, pop[1].target.fitness, pop[2].target.fitness
+        t1, t2, t3 = pop[0].fitness, pop[1].fitness, pop[2].fitness
         q1, q2, q3 = self.calculate_queue_length__(t1, t2, t3)
         pr = [idx / self.pop_size for idx in range(1, self.pop_size + 1)]
         if t1 > 1.0e-005:
@@ -154,22 +150,16 @@ cdef class DevQSA(AgentListOptimizer):
                     )
             else:
                 X_new = self.problem.generate_solution()
-            pos_new = self._correct_solution(X_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(X_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                pop_new[-1] = self._get_better_agent(
-                    agent, pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                pop_new[-1] = cy.get_better_agent(agent, pop[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            pop_new = self._greedy_selection_population(
-                pop, pop_new, self.problem.sense
-            )
-        return self._get_sorted_and_trimmed_population(
-            pop_new, self.pop_size, self.problem.sense
-        )
+            pop_new = self.evaluate_agents(pop_new)
+            pop_new = cy.greedy_agents(pop, pop_new, self.problem.sense)
+        return cy.sort_agents(pop_new, self.problem.sense)[:self.pop_size]
 
     def update_business_3__(self, pop, g_best):
         pr = np.array([idx / self.pop_size for idx in range(1, self.pop_size + 1)])
@@ -183,22 +173,18 @@ cdef class DevQSA(AgentListOptimizer):
             X_new = np.where(
                 self.generator.random(self.problem.n_dims) > pr[idx], temp, X_new
             )
-            pos_new = self._correct_solution(X_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(X_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                pop_new[-1] = self._get_better_agent(
-                    agent, pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                pop_new[-1] = cy.get_better_agent(agent, pop[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            pop_new = self._greedy_selection_population(
-                pop, pop_new, self.problem.sense
-            )
+            pop_new = self.evaluate_agents(pop_new)
+            pop_new = cy.greedy_agents(pop, pop_new, self.problem.sense)
         return pop_new
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         pop = self.update_business_1__(self.objs, epoch)
         pop = self.update_business_2__(pop)
         self.objs = self.update_business_3__(pop, self.g_best)

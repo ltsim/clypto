@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 18:22, 11/03/2023 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalPOA(LegacyOptimizer):
+cdef class OriginalPOA(cy.Optimizer):
     """
     The original version of: Pelican Optimization Algorithm (POA)
 
@@ -37,8 +37,8 @@ cdef class OriginalPOA(LegacyOptimizer):
     >>>
     >>> model = POA.OriginalPOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -54,52 +54,45 @@ cdef class OriginalPOA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## UPDATE location of food
-        kk = self.generator.permutation(self.pop_size)[0]
-        for idx in range(0, self.pop_size):
+        kk = self.generator.permutation(pop_size)[0]
+        for idx in range(0, pop_size):
             # PHASE 1: Moving towards prey (exploration phase)
-            if self._compare_target(
-                    self.pop[kk].target, self.pop[idx].target, self.problem.sense
-            ):  # Eq. 4
-                pos_new = self.pop[idx].solution + self.generator.random() * (
-                        self.pop[kk].solution
-                        - self.generator.integers(1, 3) * self.pop[idx].solution
+            if cy.is_better(self.population[kk], self.population[idx], self.problem.sense):  # Eq. 4
+                pos_new = self.population[idx].solution + self.generator.random() * (
+                        self.population[kk].solution
+                        - self.generator.integers(1, 3) * self.population[idx].solution
                 )
             else:
-                pos_new = self.pop[idx].solution + self.generator.random() * (
-                        self.pop[idx].solution - self.pop[kk].solution
+                pos_new = self.population[idx].solution + self.generator.random() * (
+                        self.population[idx].solution - self.population[kk].solution
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
 
             # PHASE 2: Winging on the water surface (exploitation phase)        # Eq. 6
             pos_new = (
-                    self.pop[idx].solution
+                    self.population[idx].solution
                     + 0.2
                     * (1 - epoch / self.epoch)
                     * (2 * self.generator.random(self.problem.n_dims) - 1)
-                    * self.pop[idx].solution
+                    * self.population[idx].solution
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent

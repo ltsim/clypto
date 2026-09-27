@@ -3,9 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.math_based.SCA.DevSCA cimport DevSCA
 
@@ -34,8 +33,8 @@ cdef class OriginalSCA(DevSCA):
     >>>
     >>> model = SCA.OriginalSCA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -51,29 +50,23 @@ cdef class OriginalSCA(DevSCA):
             pop_size (int): number of population size, default = 100
         """
         super().__init__(epoch, pop_size, **kwargs)
+        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.ResetPopulation)
         self.sort_flag = False
 
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        return np.where(
-            np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up),
-            solution,
-            rand_pos,
-        )
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Eq 3.4, r1 decreases linearly from a to 0
             a = 2.0
             r1 = a * (1.0 - epoch / self.epoch)
-            pos_new = self.pop[idx].solution.copy()
+            pos_new = self.population[idx].solution.copy()
             for jdx in range(self.problem.n_dims):  # j-th dimension
                 # Update r2, r3, and r4 for Eq. (3.3)
                 r2 = 2 * np.pi * self.generator.uniform()
@@ -89,16 +82,12 @@ cdef class OriginalSCA(DevSCA):
                         r3 * self.g_best.solution[jdx] - pos_new[jdx]
                     )
             # Check the bound
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

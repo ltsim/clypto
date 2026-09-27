@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalEVO(VectorizeOptimizer):
     >>>
     >>> model = EVO.OriginalEVO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -72,15 +72,15 @@ cdef class OriginalEVO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         # One or two candidates per agent depending on its branch (different draws): built agent
         # by agent from the unchanged population; evaluation and the merge are batched.
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t idx
         pos_list = np.array(pop.X)
         fit_list = np.array(pop.F)
-        gb_fit = self.current_g_best().target.fitness
-        gw_fit = self.g_worst.target.fitness
+        gb_fit = self.current_g_best().fitness
+        gw_fit = self.g_worst.fitness
         x_avg_pop = np.mean(pos_list, axis=0)
         eb = np.mean(fit_list)
         gb_pos = np.array(self.g_best_x())
@@ -95,7 +95,7 @@ cdef class OriginalEVO(VectorizeOptimizer):
 
             pos_new1 = pos_list[idx].copy()
             pos_new2 = pos_list[idx].copy()
-            if self._compare_fitness(eb, fit_list[idx], self.problem.sense):
+            if cy.better_fitness(eb, fit_list[idx], self.problem.sense):
                 if self.generator.random() > sl:
                     a1_idx = self.generator.integers(self.problem.n_dims)
                     a2_idx = self.generator.integers(0, self.problem.n_dims, size=a1_idx)
@@ -110,8 +110,8 @@ cdef class OriginalEVO(VectorizeOptimizer):
                     ir = self.generator.uniform(0, 1, 2)
                     jr = self.generator.uniform(0, 1, self.problem.n_dims)
                     pos_new2 += jr * (ir[0] * gb_pos - ir[1] * x_avg_team)
-                pop_new.append(self._correct_solution(pos_new1))
-                pop_new.append(self._correct_solution(pos_new2))
+                pop_new.append(self.correct_solution(pos_new1))
+                pop_new.append(self.correct_solution(pos_new2))
             else:
                 pos_new = (
                         pos_new1
@@ -119,6 +119,6 @@ cdef class OriginalEVO(VectorizeOptimizer):
                         * sl
                         * self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims)
                 )
-                pop_new.append(self._correct_solution(pos_new))
+                pop_new.append(self.correct_solution(pos_new))
         merged = pop.concat(self.new_population(np.array(pop_new)))
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

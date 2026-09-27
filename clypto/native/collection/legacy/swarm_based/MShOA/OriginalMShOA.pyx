@@ -16,11 +16,11 @@
 # not inter-iteration change. PTI update happens AFTER strategy application.
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMShOA(LegacyOptimizer):
+cdef class OriginalMShOA(cy.Optimizer):
     """
     The original version of: Mantis Shrimp Optimization Algorithm (MShOA)
 
@@ -59,8 +59,8 @@ cdef class OriginalMShOA(LegacyOptimizer):
     >>>
     >>> model = MShOA.OriginalMShOA(epoch=1000, pop_size=50, polarization_rate=0.5, strike_factor=1.5, k_value=0.3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -76,6 +76,10 @@ cdef class OriginalMShOA(LegacyOptimizer):
     - Strategy 2: Attack/Strike equation (Eq. 14)
     - Strategy 3: Defense/Burrow equation (Eq. 15)
     """
+
+    cdef public double k_value
+    cdef public double polarization_rate
+    cdef public double strike_factor
 
     def __init__(
             self,
@@ -96,21 +100,13 @@ cdef class OriginalMShOA(LegacyOptimizer):
             k_value: Upper bound for k parameter in defense/shelter phase (Strategy 3, Equation 15).
                     k is sampled from U(0, k_value). Default = 0.3 (matches paper value).
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
+        super().__init__(parameters=["epoch", "pop_size", "polarization_rate", "strike_factor", "k_value"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
         # Keep polarization_rate for backward compatibility but it's not used
-        self.polarization_rate = self.validator.check_float(
-            "polarization_rate", polarization_rate, (0.0, 1.0)
-        )
-        self.strike_factor = self.validator.check_float(
-            "strike_factor", strike_factor, (0.0, 5.0)
-        )
-        self.k_value = self.validator.check_float("k_value", k_value, (0.0, 1.0))
-        self._set_parameters(
-            ["epoch", "pop_size", "polarization_rate", "strike_factor", "k_value"]
-        )
-        self.sort_flag = False
+        self.polarization_rate = cy.validator(float, polarization_rate, (0.0, 1.0), "polarization_rate")
+        self.strike_factor = cy.validator(float, strike_factor, (0.0, 5.0), "strike_factor")
+        self.k_value = cy.validator(float, k_value, (0.0, 1.0), "k_value")
 
         # PTI (Polarization Type Indicator) vector: one value per agent ∈ {1, 2, 3}
         # Initialized randomly according to Algorithm 1 in the paper
@@ -119,19 +115,20 @@ cdef class OriginalMShOA(LegacyOptimizer):
         # PTI = 3: Defense/Burrow (circular polarized light)
         self.pti = None  # Will be initialized in before_main_loop
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         """
         Initialize PTI vector randomly (Algorithm 1, initialization step)
         PTI ∈ {1, 2, 3} for each agent using PTI_i = round(1 + 2 * rand_i)
         This produces distribution: ~25% for 1, ~50% for 2, ~25% for 3
         """
+        pop_size = self.population.size()
         # Initialize PTI according to paper: PTI_i = round(1 + 2 * rand_i)
-        u = self.generator.random(self.pop_size)  # uniform(0, 1) for each agent
+        u = self.generator.random(pop_size)  # uniform(0, 1) for each agent
         pti_raw = 1 + 2 * u  # produces values in [1, 3)
         self.pti = np.round(pti_raw).astype(int)  # round to nearest integer
         self.pti = np.clip(self.pti, 1, 3)  # ensure values are in {1, 2, 3}
 
-    def _evolve(self, epoch: int) -> None:
+    def evolve(self, epoch: int) -> None:
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
         Implements Algorithm 2 from the paper with PTI-based strategy selection.
@@ -146,20 +143,21 @@ cdef class OriginalMShOA(LegacyOptimizer):
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Step 1: Extract current positions X_i(t) before strategy application
-        pop_pos = np.array([agent.solution for agent in self.pop])  # X_i(t)
+        pop_pos = np.array([agent.solution for agent in self.population])  # X_i(t)
         g_best_pos = self.g_best.solution  # Shape: (n_dims,)
 
         # Initialize position update matrix (will become X'_i(t) after strategies)
         pos_new = pop_pos.copy()
 
         # Generate random indices for Strategy 1 (Foraging) - ensure r ≠ i
-        random_indices = self.generator.integers(0, self.pop_size, self.pop_size)
+        random_indices = self.generator.integers(0, pop_size, pop_size)
         # Ensure r ≠ i: if random_indices[i] == i, replace with another random index (excluding i)
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             if random_indices[idx] == idx:
                 # Generate random index from [0, pop_size) excluding idx
-                candidates = list(range(0, idx)) + list(range(idx + 1, self.pop_size))
+                candidates = list(range(0, idx)) + list(range(idx + 1, pop_size))
                 if len(candidates) > 0:
                     random_indices[idx] = self.generator.choice(candidates)
 
@@ -183,7 +181,7 @@ cdef class OriginalMShOA(LegacyOptimizer):
         v = pop_pos - g_best_pos  # velocity term: (x_i(t) - x_best)
         R_t = random_pop_pos - pop_pos  # random force: (x_r(t) - x_i(t))
         D = self.generator.uniform(
-            -1.0, 1.0, size=(self.pop_size, 1)
+            -1.0, 1.0, size=(pop_size, 1)
         )  # scalar diffusion coefficient per agent
         foraging_pos = g_best_pos - v + D * R_t  # D broadcasts to all dimensions
         pos_new = np.where(mask_s1_expanded, foraging_pos, pos_new)
@@ -191,7 +189,7 @@ cdef class OriginalMShOA(LegacyOptimizer):
         # Strategy 2: Attack/Strike (PTI = 2) - Equation 14 (circular motion)
         # x_i(t+1) = x_best * cos(θ)
         # where θ ~ U(π, 2π)
-        theta = self.generator.uniform(np.pi, 2 * np.pi, size=self.pop_size)[
+        theta = self.generator.uniform(np.pi, 2 * np.pi, size=pop_size)[
             :, np.newaxis
         ]
         strike_pos = g_best_pos * np.cos(theta)  # element-wise multiplication
@@ -205,10 +203,10 @@ cdef class OriginalMShOA(LegacyOptimizer):
         # between Defense and Shelter behaviors. This implementation uses uniform (50-50) selection,
         # which is consistent with the paper's description but clarifies an unspecified aspect.
         k = self.generator.uniform(
-            0.0, self.k_value, size=(self.pop_size, 1)
+            0.0, self.k_value, size=(pop_size, 1)
         )  # k ~ U(0, k_value)
         defense_or_shelter = (
-                self.generator.random(self.pop_size) < 0.5
+                self.generator.random(pop_size) < 0.5
         )  # 50% defense, 50% shelter
         defense_or_shelter_expanded = defense_or_shelter[:, np.newaxis]
         # Defense: x_i(t+1) = x_best + k * x_best
@@ -236,7 +234,7 @@ cdef class OriginalMShOA(LegacyOptimizer):
         # Step 4: Calculate RPA, LPT, RPT, LAD, RAD (Algorithm 1)
 
         # Calculate Right Polarization Angle (RPA): RPA_i = rand * π (Eq. 4)
-        rpa = self.generator.random(self.pop_size) * np.pi  # RPA ∈ [0, π]
+        rpa = self.generator.random(pop_size) * np.pi  # RPA ∈ [0, π]
 
         # Determine Left Polarization Type (LPT) and Right Polarization Type (RPT) based on Eq. 5
         # Eq. 5 defines three types with π/8 intervals:
@@ -329,19 +327,17 @@ cdef class OriginalMShOA(LegacyOptimizer):
 
         # Create new agents efficiently
         pop_new = []
-        for idx in range(self.pop_size):
-            pos_corrected = self._correct_solution(pos_new[idx])
-            agent = self._generate_empty_agent(pos_corrected)
+        for idx in range(pop_size):
+            pos_corrected = self.population.correct_solution(pos_new[idx])
+            agent = self.population.create_agent(pos_corrected)
             pop_new.append(agent)
         # Use standard Mealpy helper to update all targets
-        pop_new = self._update_target_for_population(pop_new)
+        pop_new = self.population.evaluate(pop_new, self.mode)
 
         # Safety check: ensure no agent has None target
         for agent in pop_new:
-            if agent.target is None:
-                agent.target = self._get_target(agent.solution)
+            if agent.objectives is None:
+                agent.evaluate(self.problem)
 
         # Perform greedy selection using standard Mealpy helper
-        self.pop = self._greedy_selection_population(
-            self.pop, pop_new, self.problem.sense
-        )
+        self.population = self.population.greedy(pop_new)

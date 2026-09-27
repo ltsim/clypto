@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMFO(LegacyOptimizer):
+cdef class OriginalMFO(cy.Optimizer):
     """
     The developed version: Moth-Flame Optimization (MFO)
 
@@ -29,8 +29,8 @@ cdef class OriginalMFO(LegacyOptimizer):
     >>>
     >>> model = MFO.OriginalMFO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -46,30 +46,29 @@ cdef class OriginalMFO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Number of flames Eq.(3.14) in the paper (linearly decreased)
-        num_flame = round(self.pop_size - epoch * ((self.pop_size - 1) / self.epoch))
+        num_flame = round(pop_size - epoch * ((pop_size - 1) / self.epoch))
         # a linearly decreases from -1 to -2 to calculate t in Eq. (3.12)
         a = -1.0 + epoch * (-1.0 / self.epoch)
-        pop_flames = self._get_sorted_population(self.pop, self.problem.sense)
+        pop_flames = self.population.sort()
         g_best = pop_flames[0].copy()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             #   D in Eq.(3.13)
             distance_to_flame = np.abs(
-                pop_flames[idx].solution - self.pop[idx].solution
+                pop_flames[idx].solution - self.population[idx].solution
             )
             t = (a - 1) * self.generator.uniform() + 1
             b = 1
@@ -85,16 +84,12 @@ cdef class OriginalMFO(LegacyOptimizer):
             )
             list_idx = idx * np.ones(self.problem.n_dims)
             pos_new = np.where(list_idx < num_flame, temp_1, temp_2)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

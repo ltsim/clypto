@@ -3,20 +3,30 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalSSDOAgent(LegacyAgent):
+
+cdef class OriginalSSDOAgent(cy.Agent):
     cdef public object velocity
     cdef public object local_solution
 
 
-cdef class OriginalSSDO(LegacyOptimizer):
+cdef class OriginalSSDOPopulation(cy.Population):
+    """Agents of :class:`OriginalSSDO`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        pos_local = solution.copy()
+        return OriginalSSDOAgent(
+            solution=solution, velocity=velocity, local_solution=pos_local
+        )
+
+
+cdef class OriginalSSDO(cy.Optimizer):
     """
     The original version of: Social Ski-Driver Optimization (SSDO)
 
@@ -40,8 +50,8 @@ cdef class OriginalSSDO(LegacyOptimizer):
     >>>
     >>> model = SSDO.OriginalSSDO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -57,64 +67,49 @@ cdef class OriginalSSDO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalSSDOPopulation)
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        pos_local = solution.copy()
-        return _OriginalSSDOAgent(
-            solution=solution, velocity=velocity, local_solution=pos_local
-        )
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         c = 2 - epoch * (2.0 / self.epoch)  # a decreases linearly from 2 to 0
         ## Calculate the mean of the best three solutions in each dimension. Eq 9
-        _, pop_best3, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
+        ranked = self.population.sort()
+        pop_best3 = [agent.copy() for agent in ranked[:3]]
         pos_mean = np.mean(np.array([agent.solution for agent in pop_best3]))
-        pop_new = [agent.copy() for agent in self.pop]
+        pop_new = [agent.copy() for agent in self.population]
         # Updating velocity vectors
         r1 = self.generator.uniform()  # r1, r2 is a random number in [0,1]
         r2 = self.generator.uniform()
-        for i in range(0, self.pop_size):
+        for i in range(0, pop_size):
             if r2 <= 0.5:  ## Use Sine function to move
                 vel_new = c * np.sin(r1) * (
-                    self.pop[i].local_solution - self.pop[i].solution
-                ) + (2 - c) * np.sin(r1) * (pos_mean - self.pop[i].solution)
+                    self.population[i].local_solution - self.population[i].solution
+                ) + (2 - c) * np.sin(r1) * (pos_mean - self.population[i].solution)
             else:  ## Use Cosine function to move
                 vel_new = c * np.cos(r1) * (
-                    self.pop[i].local_solution - self.pop[i].solution
-                ) + (2 - c) * np.cos(r1) * (pos_mean - self.pop[i].solution)
+                    self.population[i].local_solution - self.population[i].solution
+                ) + (2 - c) * np.cos(r1) * (pos_mean - self.population[i].solution)
             pop_new[i].velocity = vel_new
         ## Reproduction
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             pos_new = (
                 self.generator.normal(0, 1, self.problem.n_dims) * pop_new[idx].solution
                 + self.generator.random() * pop_new[idx].velocity
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
-            agent.local_solution = self.pop[idx].solution.copy()
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
+            agent.local_solution = self.population[idx].solution.copy()
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, pop_new[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, pop_new[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

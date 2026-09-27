@@ -3,21 +3,39 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _AdaptiveBAAgent(LegacyAgent):
+
+cdef class AdaptiveBAAgent(cy.Agent):
     cdef public object velocity
     cdef public object loudness
     cdef public object pulse_rate
 
 
-cdef class AdaptiveBA(LegacyOptimizer):
+cdef class AdaptiveBAPopulation(cy.Population):
+    """Agents of :class:`AdaptiveBA`."""
+    cdef public object loudness_max
+    cdef public object loudness_min
+    cdef public object pr_max
+    cdef public object pr_min
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
+        pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
+        return AdaptiveBAAgent(
+            solution=solution,
+            velocity=velocity,
+            loudness=loudness,
+            pulse_rate=pulse_rate,
+        )
+
+
+cdef class AdaptiveBA(cy.Optimizer):
     """
     The original version of: Adaptive Bat-inspired Algorithm (ABA)
 
@@ -49,14 +67,21 @@ cdef class AdaptiveBA(LegacyOptimizer):
     >>>
     >>> model = BA.AdaptiveBA(epoch=1000, pop_size=50, loudness_min = 1.0, loudness_max = 2.0, pr_min = -2.5, pr_max = 0.85, pf_min = 0.1, pf_max = 10.)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Yang, X.S., 2010. A new metaheuristic bat-inspired algorithm. In Nature inspired cooperative
     strategies for optimization (NICSO 2010) (pp. 65-74). Springer, Berlin, Heidelberg.
     """
+
+    cdef public double loudness_max
+    cdef public double loudness_min
+    cdef public double pf_max
+    cdef public double pf_min
+    cdef public double pr_max
+    cdef public double pr_min
 
     def __init__(
         self,
@@ -81,86 +106,55 @@ cdef class AdaptiveBA(LegacyOptimizer):
             pf_min (float): pulse frequency min, default = 0
             pf_max (float): pulse frequency max, default = 10
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.loudness_min = self.validator.check_float(
-            "loudness_min", loudness_min, [0.5, 1.5]
-        )
-        self.loudness_max = self.validator.check_float(
-            "loudness_max", loudness_max, [1.5, 3.0]
-        )
-        self.pr_min = self.validator.check_float("pr_min", pr_min, [-10.0, 10.0])
-        self.pr_max = self.validator.check_float("pr_max", pr_max, [-10.0, 10.0])
-        self.pf_min = self.validator.check_float("pf_min", pf_min, [-10.0, 10.0])
-        self.pf_max = self.validator.check_float("pf_max", pf_max, [0.0, 10.0])
+        super().__init__(parameters=[ "epoch", "pop_size", "loudness_min", "loudness_max", "pr_min", "pr_max", "pf_min", "pf_max", ], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=AdaptiveBAPopulation)
+        self.loudness_min = cy.validator(float, loudness_min, [0.5, 1.5], "loudness_min")
+        self.loudness_max = cy.validator(float, loudness_max, [1.5, 3.0], "loudness_max")
+        self.population.loudness_min = self.loudness_min
+        self.pr_min = cy.validator(float, pr_min, [-10.0, 10.0], "pr_min")
+        self.population.pr_min = self.pr_min
+        self.population.loudness_max = self.loudness_max
+        self.pr_max = cy.validator(float, pr_max, [-10.0, 10.0], "pr_max")
+        self.pf_min = cy.validator(float, pf_min, [-10.0, 10.0], "pf_min")
+        self.population.pr_max = self.pr_max
+        self.pf_max = cy.validator(float, pf_max, [0.0, 10.0], "pf_max")
         self.alpha = self.gamma = 0.9
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "loudness_min",
-                "loudness_max",
-                "pr_min",
-                "pr_max",
-                "pf_min",
-                "pf_max",
-            ]
-        )
-        self.sort_flag = False
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
-        pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
-        return _AdaptiveBAAgent(
-            solution=solution,
-            velocity=velocity,
-            loudness=loudness,
-            pulse_rate=pulse_rate,
-        )
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        mean_a = np.mean([agent.loudness for agent in self.pop])
+        pop_size = self.population.size()
+        mean_a = np.mean([agent.loudness for agent in self.population])
         pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             pulse_frequency = self.generator.uniform(self.pf_min, self.pf_max)
             agent.velocity = agent.velocity + pulse_frequency * (
-                self.pop[idx].solution - self.g_best.solution
+                self.population[idx].solution - self.g_best.solution
             )
-            x_new = self.pop[idx].solution + agent.velocity
+            x_new = self.population[idx].solution + agent.velocity
             ## Local Search around g_best position
             if self.generator.random() > agent.pulse_rate:
                 x_new = self.g_best.solution + mean_a * self.generator.normal(-1, 1)
-            pos_new = self._correct_solution(x_new)
+            pos_new = self.population.correct_solution(x_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        for idx in range(0, self.pop_size):
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        for idx in range(0, pop_size):
             ## Replace the old position by the new one when its has better fitness.
             ##  and then update loudness and emission rate
             if (
-                self._compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
-                )
+                cy.is_better(pop_new[idx], self.population[idx], self.problem.sense)
                 and self.generator.random() < pop_new[idx].loudness
             ):
                 loudness = self.alpha * pop_new[idx].loudness
                 pulse_rate = pop_new[idx].pulse_rate * (1 - np.exp(-self.gamma * epoch))
-                self.pop[idx].update(
-                    solution=pop_new[idx].solution,
-                    target=pop_new[idx].target,
-                    loudness=loudness,
-                    pulse_rate=pulse_rate,
-                )
+                self.population[idx].update_solution(pop_new[idx], pop_new[idx].solution)
+                self.population[idx].update(loudness=loudness, pulse_rate=pulse_rate)

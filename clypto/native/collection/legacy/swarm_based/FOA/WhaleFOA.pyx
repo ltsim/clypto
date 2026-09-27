@@ -3,9 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.swarm_based.FOA.OriginalFOA cimport OriginalFOA
 
@@ -33,8 +32,8 @@ cdef class WhaleFOA(OriginalFOA):
     >>>
     >>> model = FOA.WhaleFOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -52,16 +51,17 @@ cdef class WhaleFOA(OriginalFOA):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         a = 2.0 - 2.0 * epoch / self.epoch  # linearly decreased from 2 to 0
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             r = self.generator.random()
             A = 2 * a * r - a
             C = 2 * r
@@ -70,29 +70,26 @@ cdef class WhaleFOA(OriginalFOA):
             b = 1
             if self.generator.random() < p:
                 if np.abs(A) < 1:
-                    D = np.abs(C * self.g_best.solution - self.pop[idx].solution)
+                    D = np.abs(C * self.g_best.solution - self.population[idx].solution)
                     pos_new = self.g_best.solution - A * D
                 else:
                     # select random 1 position in pop
-                    x_rand = self.pop[self.generator.integers(self.pop_size)]
-                    D = np.abs(C * x_rand.solution - self.pop[idx].solution)
+                    x_rand = self.population[self.generator.integers(pop_size)]
+                    D = np.abs(C * x_rand.solution - self.population[idx].solution)
                     pos_new = x_rand.solution - A * D
             else:
-                D1 = np.abs(self.g_best.solution - self.pop[idx].solution)
+                D1 = np.abs(self.g_best.solution - self.population[idx].solution)
                 pos_new = (
                     D1 * np.exp(b * l) * np.cos(2 * np.pi * l) + self.g_best.solution
                 )
             smell = self.norm_consecutive_adjacent__(pos_new)
-            pos_new = self._correct_solution(smell)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(smell)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                # the classic code evaluates pos_new, not the agent's smell vector
+                agent.update_solution(self.population.evaluate_solution(pos_new), agent.solution)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                pop_new, self.pop, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = cy.greedy_agents(pop_new, self.population, self.problem.sense)

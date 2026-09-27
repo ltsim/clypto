@@ -3,19 +3,26 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalSSpiderOAgent(LegacyAgent):
+
+cdef class OriginalSSpiderOAgent(cy.Agent):
     cdef public object weight
 
 
-cdef class OriginalSSpiderO(LegacyOptimizer):
+cdef class OriginalSSpiderOPopulation(cy.ResetPopulation):
+    """Agents of :class:`OriginalSSpiderO`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        weight = 0.0
+        return OriginalSSpiderOAgent(solution=solution, weight=weight)
+
+
+cdef class OriginalSSpiderO(cy.Optimizer):
     """
     The original version of: Social Spider Optimization (SSpiderO)
 
@@ -42,8 +49,8 @@ cdef class OriginalSSpiderO(LegacyOptimizer):
     >>>
     >>> model = SSpiderO.OriginalSSpiderO(epoch=1000, pop_size=50, fp_min = 0.65, fp_max = 0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -66,49 +73,37 @@ cdef class OriginalSSpiderO(LegacyOptimizer):
             fp_min (float): Female Percent min, default = 0.65
             fp_max (float): Female Percent max, default = 0.9
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        fp_min = self.validator.check_float("fp_min", fp_min, (0.0, 1.0))
-        fp_max = self.validator.check_float("fp_max", fp_max, (0.0, 1.0))
+        super().__init__(parameters=["epoch", "pop_size", "fp_min", "fp_max"], **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalSSpiderOPopulation)
+        fp_min = cy.validator(float, fp_min, (0.0, 1.0), "fp_min")
+        fp_max = cy.validator(float, fp_max, (0.0, 1.0), "fp_max")
         self.fp_min, self.fp_max = min((fp_min, fp_max)), max((fp_min, fp_max))
-        self._set_parameters(["epoch", "pop_size", "fp_min", "fp_max"])
 
-    def _initialization(self):
+    def initialization(self):
+        pop_size = self.population.size()
         fp_temp = (
             self.fp_min + (self.fp_max - self.fp_min) * self.generator.uniform()
         )  # Female Aleatory Percent
-        self.n_f = int(self.pop_size * fp_temp)  # number of female
-        self.n_m = self.pop_size - self.n_f  # number of male
+        self.n_f = int(pop_size * fp_temp)  # number of female
+        self.n_m = pop_size - self.n_f  # number of male
         # Probabilities of attraction or repulsion Proper tuning for better results
         self.p_m = (self.epoch + 1 - np.array(range(1, self.epoch + 1))) / (
             self.epoch + 1
         )
 
         idx_males = self.generator.choice(
-            range(0, self.pop_size), self.n_m, replace=False
+            range(0, pop_size), self.n_m, replace=False
         )
-        idx_females = set(range(0, self.pop_size)) - set(idx_males)
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
-        self.pop_males = [self.pop[idx] for idx in idx_males]
-        self.pop_females = [self.pop[idx] for idx in idx_females]
-        self.pop = self.recalculate_weights__(self.pop)
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        weight = 0.0
-        return _OriginalSSpiderOAgent(solution=solution, weight=weight)
-
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        rd = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        condition = np.logical_and(
-            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
-        )
-        return np.where(condition, solution, rd)
+        idx_females = set(range(0, pop_size)) - set(idx_males)
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
+        self.pop_males = [self.population[idx] for idx in idx_males]
+        self.pop_females = [self.population[idx] for idx in idx_females]
+        self.population = self.recalculate_weights__(self.population)
 
     def move_females__(self, epoch=None):
+        pop_size = self.population.size()
         scale_distance = np.sum(self.problem.bounds.up - self.problem.bounds.low)
         pop = self.pop_females + self.pop_males
         # Start looking for any stronger vibration
@@ -116,7 +111,7 @@ cdef class OriginalSSpiderO(LegacyOptimizer):
             ## Find the position s
             id_min = None
             dist_min = 2**16
-            for jdx in range(0, self.pop_size):
+            for jdx in range(0, pop_size):
                 if self.pop_females[idx].weight < pop[jdx].weight:
                     dt = (
                         np.linalg.norm(
@@ -171,18 +166,19 @@ cdef class OriginalSSpiderO(LegacyOptimizer):
                     * gamma
                     + rd_pos
                 )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             self.pop_females[idx].solution = pos_new
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop_females[idx].target = self._get_target(pos_new)
-        self.pop_females = self._update_target_for_population(self.pop_females)
+                self.pop_females[idx].evaluate(self.problem)
+        self.pop_females = self.population.evaluate(self.pop_females, self.mode)
 
     def move_males__(self, epoch=None):
+        pop_size = self.population.size()
         scale_distance = np.sum(self.problem.bounds.up - self.problem.bounds.low)
         my_median = np.median([it.weight for it in self.pop_males])
         pop = self.pop_females + self.pop_males
         all_pos = np.array([it.solution for it in pop])
-        all_wei = np.array([it.weight for it in pop]).reshape((self.pop_size, 1))
+        all_wei = np.array([it.weight for it in pop]).reshape((pop_size, 1))
         total_wei = np.sum(all_wei)
         if total_wei == 0:
             mean = np.mean(all_pos, axis=0)
@@ -233,11 +229,11 @@ cdef class OriginalSSpiderO(LegacyOptimizer):
                     + delta * (mean - self.pop_males[idx].solution)
                     + rd_pos
                 )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             self.pop_males[idx].solution = pos_new
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop_males[idx].target = self._get_target(pos_new)
-        self.pop_males = self._update_target_for_population(self.pop_males)
+                self.pop_males[idx].evaluate(self.problem)
+        self.pop_males = self.population.evaluate(self.pop_males, self.mode)
 
     ### Crossover
     def crossover__(self, mom=None, dad=None, id=0):
@@ -268,6 +264,7 @@ cdef class OriginalSSpiderO(LegacyOptimizer):
         return child1, child2
 
     def mating__(self):
+        pop_size = self.population.size()
         # Check whether a spider is good or not (above median)
         my_median = np.median([it.weight for it in self.pop_males])
         pop_males_new = [
@@ -298,41 +295,38 @@ cdef class OriginalSSpiderO(LegacyOptimizer):
                 child1, child2 = self.crossover__(
                     couples[kdx][0].solution, couples[kdx][1].solution, 0
                 )
-                pos1 = self._correct_solution(child1)
-                pos2 = self._correct_solution(child2)
-                agent1 = self._generate_agent(pos1)
-                agent2 = self._generate_agent(pos2)
+                pos1 = self.population.correct_solution(child1)
+                pos2 = self.population.correct_solution(child2)
+                agent1 = self.population.generate_agent(pos1)
+                agent2 = self.population.generate_agent(pos2)
                 list_child.append(agent1)
                 list_child.append(agent2)
-        list_child += self._generate_population(self.pop_size - len(list_child))
+        list_child += self.population.generate(pop_size - len(list_child))
         return list_child
 
     def survive__(self, pop=None, pop_child=None):
         n_child = len(pop)
-        pop_child = self._get_sorted_and_trimmed_population(
-            pop_child, n_child, self.problem.sense
-        )
+        pop_child = cy.sort_agents(pop_child, self.problem.sense)[:n_child]
         for idx in range(0, n_child):
-            if self._compare_target(
-                pop_child[idx].target, pop[idx].target, self.problem.sense
-            ):
+            if cy.is_better(pop_child[idx], pop[idx], self.problem.sense):
                 pop[idx] = pop_child[idx].copy()
         return pop
 
     def recalculate_weights__(self, pop=None):
-        fit_total, fit_best, fit_worst = self._get_special_fitness(
-            pop, self.problem.sense
-        )
+        fit_total = np.sum([agent.fitness for agent in pop])
+        ranked = cy.sort_agents(pop, self.problem.sense)
+        fit_best = ranked[0].fitness
+        fit_worst = ranked[-1].fitness
         for idx in range(len(pop)):
             if fit_best == fit_worst:
                 pop[idx].weight = self.generator.uniform(0.2, 0.8)
             else:
-                pop[idx].weight = 0.001 + (pop[idx].target.fitness - fit_worst) / (
+                pop[idx].weight = 0.001 + (pop[idx].fitness - fit_worst) / (
                     fit_best - fit_worst + self.EPSILON
                 )
         return pop
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -350,4 +344,4 @@ cdef class OriginalSSpiderO(LegacyOptimizer):
         # Mating Operator
         pop_child = self.mating__()
         pop = self.survive__(pop, pop_child)
-        self.pop = self.recalculate_weights__(pop)
+        self.population = self.recalculate_weights__(pop)

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class IOBL_GWO(LegacyOptimizer):
+cdef class IOBL_GWO(cy.Optimizer):
     """
     The original version of: Improved Opposite-based Learning Grey Wolf Optimizer (IOBL-GWO)
 
@@ -37,8 +37,8 @@ cdef class IOBL_GWO(LegacyOptimizer):
     >>>
     >>> model = GWO.IOBL_GWO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -53,46 +53,44 @@ cdef class IOBL_GWO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # linearly decreased from 2 to 0
         a = 2 - 2.0 * epoch / self.epoch
-        _, list_best, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
-        for idx in range(0, self.pop_size):
+        ranked = self.population.sort()
+        list_best = [agent.copy() for agent in ranked[:3]]
+        for idx in range(0, pop_size):
             # Try explorative equation first
             r1, r2, r3, r4, r5 = self.generator.random(5)
             if r5 >= 0.5:  # Exploration around random wolf
                 # Select random wolf from population
-                jdx = self.generator.choice(list(set(range(self.pop_size)) - {idx}))
-                x_rand = self.pop[jdx].solution
-                pos_new = x_rand - r1 * np.abs(x_rand - 2 * r2 * self.pop[idx].solution)
+                jdx = self.generator.choice(list(set(range(pop_size)) - {idx}))
+                x_rand = self.population[jdx].solution
+                pos_new = x_rand - r1 * np.abs(x_rand - 2 * r2 * self.population[idx].solution)
             else:  # Exploration around alpha wolf
                 # Calculate average position of all wolves
-                x_avg = np.mean([agent.solution for agent in self.pop], axis=0)
+                x_avg = np.mean([agent.solution for agent in self.population], axis=0)
                 pos_new = (list_best[0].solution - x_avg) - r3 * (
                     self.problem.bounds.low + r4 * (self.problem.bounds.up - self.problem.bounds.low)
                 )
             # Apply boundary constraints
-            pos_new = self._correct_solution(pos_new)
-            tar_new = self._get_target(pos_new)
-            if self._compare_target(tar_new, self.pop[idx].target, self.problem.sense):
+            pos_new = self.population.correct_solution(pos_new)
+            tar_new = self.population.evaluate_solution(pos_new)
+            if cy.is_better(tar_new, self.population[idx], self.problem.sense):
                 # If new position is better, update the agent
-                agent = self._generate_empty_agent(pos_new)
-                agent.target = tar_new
-                self.pop[idx] = agent
+                agent = self.population.create_agent(pos_new)
+                agent.update_solution(tar_new, agent.solution)
+                self.population[idx] = agent
             else:
                 # If not better, use original GWO update
                 A1 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
@@ -103,48 +101,33 @@ cdef class IOBL_GWO(LegacyOptimizer):
                 C3 = 2 * self.generator.random(self.problem.n_dims)
 
                 X1 = list_best[0].solution - A1 * np.abs(
-                    C1 * list_best[0].solution - self.pop[idx].solution
+                    C1 * list_best[0].solution - self.population[idx].solution
                 )
                 X2 = list_best[1].solution - A2 * np.abs(
-                    C2 * list_best[1].solution - self.pop[idx].solution
+                    C2 * list_best[1].solution - self.population[idx].solution
                 )
                 X3 = list_best[2].solution - A3 * np.abs(
-                    C3 * list_best[2].solution - self.pop[idx].solution
+                    C3 * list_best[2].solution - self.population[idx].solution
                 )
                 pos_new = (X1 + X2 + X3) / 3.0
-                pos_new = self._correct_solution(pos_new)
-                tar_new = self._get_target(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                tar_new = self.population.evaluate_solution(pos_new)
                 # Create new agent with updated position
-                if self._compare_target(
-                    tar_new, self.pop[idx].target, self.problem.sense
-                ):
-                    agent = self._generate_empty_agent(pos_new)
-                    agent.target = tar_new
-                    self.pop[idx] = agent
+                if cy.is_better(tar_new, self.population[idx], self.problem.sense):
+                    agent = self.population.create_agent(pos_new)
+                    agent.update_solution(tar_new, agent.solution)
+                    self.population[idx] = agent
 
         # Apply Opposition-Based Learning (OBL) for leading wolves
-        _, list_best, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
-        pop_sorted, indices = self._get_sorted_indices_population(
-            self.pop, sense=self.problem.sense
-        )
-        obl_alpha = self._generate_agent(
-            solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[0].solution
-        )
-        obl_beta = self._generate_agent(
-            solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[1].solution
-        )
-        obl_delta = self._generate_agent(
-            solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[2].solution
-        )
+        ranked = self.population.sort()
+        list_best = [agent.copy() for agent in ranked[:3]]
+        pop_sorted, indices = (cy.sort_agents(self.population, self.problem.sense), cy.argsort_agents(self.population, self.problem.sense))
+        obl_alpha = self.population.generate_agent(solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[0].solution)
+        obl_beta = self.population.generate_agent(solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[1].solution)
+        obl_delta = self.population.generate_agent(solution=self.problem.bounds.low + self.problem.bounds.up - pop_sorted[2].solution)
         obl_pop = [obl_alpha, obl_beta, obl_delta]
 
         # Replace worst 3 wolves with opposite solutions if they are better
         for idx in range(0, 3):
-            if self._compare_target(
-                obl_pop[idx].target,
-                self.pop[indices[-3 + idx]].target,
-                self.problem.sense,
-            ):
-                self.pop[idx] = obl_pop[idx]
+            if cy.is_better(obl_pop[idx], self.population[indices[-3 + idx]], self.problem.sense):
+                self.population[idx] = obl_pop[idx]

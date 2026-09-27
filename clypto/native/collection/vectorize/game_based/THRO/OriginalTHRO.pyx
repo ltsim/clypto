@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalTHRO(VectorizeOptimizer):
@@ -40,8 +39,8 @@ cdef class OriginalTHRO(VectorizeOptimizer):
     >>>
     >>> model = THRO.OriginalTHRO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -77,15 +76,15 @@ cdef class OriginalTHRO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [10, 10000], "pop_size")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Split to two groups: tianji and king (50%-50%)
         self.n_pop = self.pop_size // 2
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         # Sequential: horses are compared and replaced one after another, so the loops
         # run on the buffer rows of the two sub-populations.
         cdef NativePopulation pop, tian, king
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef Py_ssize_t idx, jdx
         ### """Main racing phase with five scenarios"""
         # Randomly shuffle and redistribute populations
@@ -151,11 +150,11 @@ cdef class OriginalTHRO(VectorizeOptimizer):
             )
 
             tianji_r = (
-                    self._get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
+                    cy.levy_flight(self.generator, beta=1.5, multiplier=1, size=None, case=-1)
                     * t_b[idx]
             )
             king_r = (
-                    self._get_levy_flight_step(beta=1.5, multiplier=1, size=None, case=-1)
+                    cy.levy_flight(self.generator, beta=1.5, multiplier=1, size=None, case=-1)
                     * k_b[idx]
             )
 
@@ -194,9 +193,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * tianji_alpha + t_beta
-                pos_new = self._correct_solution(pos_new)
-                tar = self._get_target(pos_new)
-                if self._compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
+                pos_new = self.correct_solution(pos_new)
+                tar = self.evaluate_solution(pos_new)
+                if cy.better_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
                     ops.set_row(tian, tianji_slowest_id, pos_new, tar)
 
                 # Update King's slowest horse
@@ -212,9 +211,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * king_alpha + k_beta
-                pos_new = self._correct_solution(pos_new)
-                tar = self._get_target(pos_new)
-                if self._compare_fitness(tar.fitness, king.F[king_slowest_id], self.problem.sense):
+                pos_new = self.correct_solution(pos_new)
+                tar = self.evaluate_solution(pos_new)
+                if cy.better_fitness(tar.fitness, king.F[king_slowest_id], self.problem.sense):
                     ops.set_row(king, king_slowest_id, pos_new, tar)
 
                 tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -238,9 +237,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * tianji_alpha + t_beta
-                pos_new = self._correct_solution(pos_new)
-                tar = self._get_target(pos_new)
-                if self._compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
+                pos_new = self.correct_solution(pos_new)
+                tar = self.evaluate_solution(pos_new)
+                if cy.better_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
                     ops.set_row(tian, tianji_slowest_id, pos_new, tar)
 
                 # Update King's fastest horse
@@ -256,9 +255,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                           + p * (tianji_mean - king_mean)
                                   )
                           ) * king_alpha + k_beta
-                pos_new = self._correct_solution(pos_new)
-                tar = self._get_target(pos_new)
-                if self._compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
+                pos_new = self.correct_solution(pos_new)
+                tar = self.evaluate_solution(pos_new)
+                if cy.better_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
                     ops.set_row(king, king_fastest_id, pos_new, tar)
 
                 tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -297,9 +296,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self._correct_solution(pos_new)
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, tian.F[tianji_fastest_id], self.problem.sense):
+                    pos_new = self.correct_solution(pos_new)
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, tian.F[tianji_fastest_id], self.problem.sense):
                         ops.set_row(tian, tianji_fastest_id, pos_new, tar)
 
                     # Update King's fastest horse
@@ -315,9 +314,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self._correct_solution(pos_new)
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
+                    pos_new = self.correct_solution(pos_new)
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
                         ops.set_row(king, king_fastest_id, pos_new, tar)
 
                     tianji_fastest_id = min(self.n_pop - 1, tianji_fastest_id + 1)
@@ -342,9 +341,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self._correct_solution(pos_new)
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
+                    pos_new = self.correct_solution(pos_new)
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
                         ops.set_row(tian, tianji_slowest_id, pos_new, tar)
 
                     # Update King's fastest horse
@@ -360,9 +359,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self._correct_solution(pos_new)
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
+                    pos_new = self.correct_solution(pos_new)
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
                         ops.set_row(king, king_fastest_id, pos_new, tar)
 
                     tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -387,9 +386,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * tianji_alpha + t_beta
-                    pos_new = self._correct_solution(pos_new)
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
+                    pos_new = self.correct_solution(pos_new)
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, tian.F[tianji_slowest_id], self.problem.sense):
                         ops.set_row(tian, tianji_slowest_id, pos_new, tar)
 
                     # Update King's fastest horse
@@ -405,9 +404,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                                               + p * (tianji_mean - king_mean)
                                       )
                               ) * king_alpha + k_beta
-                    pos_new = self._correct_solution(pos_new)
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
+                    pos_new = self.correct_solution(pos_new)
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, king.F[king_fastest_id], self.problem.sense):
                         ops.set_row(king, king_fastest_id, pos_new, tar)
 
                     tianji_slowest_id = max(0, tianji_slowest_id - 1)
@@ -428,9 +427,7 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                     tr4, tr5 = self.generator.choice(
                         list(set(range(self.n_pop)) - {idx}), size=2, replace=False
                     )
-                    lt = self._get_levy_flight_step(
-                        beta=1.5, multiplier=0.2, size=None, case=-1
-                    )
+                    lt = cy.levy_flight(self.generator, beta=1.5, multiplier=0.2, size=None, case=-1)
                     pos_new[jdx] = pos_new[jdx] + lt * (
                             sol_t[tr4][jdx]
                             - sol_t[tr5][jdx]
@@ -445,9 +442,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                     pos_new[jdx] = best_tianji[jdx] + mt * (
                             best_tianji[jdx] - pos_new[jdx]
                     )
-            pos_new = self._correct_solution(pos_new)
-            tar = self._get_target(pos_new)
-            if self._compare_fitness(tar.fitness, tian.F[idx], self.problem.sense):
+            pos_new = self.correct_solution(pos_new)
+            tar = self.evaluate_solution(pos_new)
+            if cy.better_fitness(tar.fitness, tian.F[idx], self.problem.sense):
                 sol_t[idx] = pos_new
                 tian.F[idx] = tar.fitness
                 tian.O[idx] = tar.objectives
@@ -459,9 +456,7 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                     kr1, kr2 = self.generator.choice(
                         list(set(range(self.n_pop)) - {idx}), size=2, replace=False
                     )
-                    lk = self._get_levy_flight_step(
-                        beta=1.5, multiplier=0.2, size=None, case=-1
-                    )
+                    lk = cy.levy_flight(self.generator, beta=1.5, multiplier=0.2, size=None, case=-1)
                     pos_new[jdx] = pos_new[jdx] + lk * (
                             sol_k[kr1][jdx]
                             - sol_k[kr2][jdx]
@@ -476,9 +471,9 @@ cdef class OriginalTHRO(VectorizeOptimizer):
                     pos_new[jdx] = best_king[jdx] + mk * (
                             best_king[jdx] - pos_new[jdx]
                     )
-            pos_new = self._correct_solution(pos_new)
-            tar = self._get_target(pos_new)
-            if self._compare_fitness(tar.fitness, king.F[idx], self.problem.sense):
+            pos_new = self.correct_solution(pos_new)
+            tar = self.evaluate_solution(pos_new)
+            if cy.better_fitness(tar.fitness, king.F[idx], self.problem.sense):
                 sol_k[idx] = pos_new
                 king.F[idx] = tar.fitness
                 king.O[idx] = tar.objectives

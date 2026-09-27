@@ -3,15 +3,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalSRSRAgent(LegacyAgent):
+
+cdef class OriginalSRSRAgent(cy.Agent):
     cdef public object mu
     cdef public object sigma
     cdef public object solution_new
@@ -19,7 +16,34 @@ cdef class _OriginalSRSRAgent(LegacyAgent):
     cdef public object target_new
 
 
-cdef class OriginalSRSR(LegacyOptimizer):
+cdef class OriginalSRSRPopulation(cy.Population):
+    """Agents of :class:`OriginalSRSR`."""
+
+    def create_agent(self, solution: np.ndarray | None = None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+
+        mu = 0
+        sigma = 0
+        x_new = solution.copy()
+        target_move = 0
+
+        return OriginalSRSRAgent(
+            solution=solution,
+            mu=mu,
+            sigma=sigma,
+            solution_new=x_new,
+            target_move=target_move,
+        )
+
+    def generate_agent(self, solution: np.ndarray | None = None):
+        agent = self.create_agent(solution)
+        agent.evaluate(self.problem)
+        agent.target_new = agent.copy()
+        return agent
+
+
+cdef class OriginalSRSR(cy.Optimizer):
     """
     The original version of: Swarm Robotics Search And Rescue (SRSR)
 
@@ -42,8 +66,8 @@ cdef class OriginalSRSR(LegacyOptimizer):
     >>>
     >>> model = SRSR.OriginalSRSR(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -59,36 +83,12 @@ cdef class OriginalSRSR(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalSRSRPopulation)
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-
-        mu = 0
-        sigma = 0
-        x_new = solution.copy()
-        target_move = 0
-
-        return _OriginalSRSRAgent(
-            solution=solution,
-            mu=mu,
-            sigma=sigma,
-            solution_new=x_new,
-            target_move=target_move,
-        )
-
-    def _generate_agent(self, solution: np.ndarray | None = None):
-        agent = self._generate_empty_agent(solution)
-        agent.target = self._get_target(agent.solution)
-        agent.target_new = agent.target.copy()
-        return agent
-
-    def _initialize_variables(self):
+    def initialize_variables(self):
+        pop_size = self.population.size()
         # Control Parameters Of Algorithm
         # ==============================================================================================
         #  [c1] movement_factor : Determines Movement Pace Of Robots During Exploration Policy
@@ -100,74 +100,72 @@ cdef class OriginalSRSR(LegacyOptimizer):
         self.mu_factor = (
             2 / 3
         )  # [0.1-0.9] Controls Dominance Of Master Robot, Preferably 2/3
-        self.sigma_temp = np.zeros(self.pop_size)  # Initializing Temporary Stacks
+        self.sigma_temp = np.zeros(pop_size)  # Initializing Temporary Stacks
         self.SIF = 2
         self.movement_factor = self.problem.bounds.up - self.problem.bounds.low
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # ========================================================================================= %%
         #            PHASE 1 (ACCUMULATION): CALCULATING Mu AND SIGMA values FOR SOLUTIONS            %
         # ===========================================================================================%%
         # ------ CALCULATING MU AND SIGMA FOR MASTER ROBOT ----------
-        self.pop[0].sigma = self.generator.uniform()
+        self.population[0].sigma = self.generator.uniform()
         if epoch % 2 == 1:
-            self.pop[0].mu = (1 - self.pop[0].sigma) * self.pop[0].solution
+            self.population[0].mu = (1 - self.population[0].sigma) * self.population[0].solution
         else:
-            self.pop[0].mu = (1 + (1 - self.mu_factor) * self.pop[0].sigma) * self.pop[
+            self.population[0].mu = (1 + (1 - self.mu_factor) * self.population[0].sigma) * self.population[
                 0
             ].solution
 
         pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             # ---------- CALCULATING MU AND SIGMA FOR SLAVE ROBOTS ---------
-            self.pop[idx].mu = (
-                self.mu_factor * self.pop[0].solution
-                + (1 - self.mu_factor) * self.pop[idx].solution
+            self.population[idx].mu = (
+                self.mu_factor * self.population[0].solution
+                + (1 - self.mu_factor) * self.population[idx].solution
             )
             if epoch == 0:
                 self.SIF = 6
             self.sigma_temp[idx] = self.SIF * self.generator.uniform()
-            self.pop[idx].sigma = self.sigma_temp[idx] * np.abs(
-                self.pop[0].solution - self.pop[idx].solution
+            self.population[idx].sigma = self.sigma_temp[idx] * np.abs(
+                self.population[0].solution - self.population[idx].solution
             ) + self.generator.uniform() ** 2 * (
-                (self.pop[0].solution - self.pop[idx].solution) < 0.05
+                (self.population[0].solution - self.population[idx].solution) < 0.05
             )
             # ----- Generating New Positions Using New Obtained Mu And Sigma Values --------------
             pos_new = self.generator.normal(
-                self.pop[idx].mu, self.pop[idx].sigma, self.problem.n_dims
+                self.population[idx].mu, self.population[idx].sigma, self.problem.n_dims
             )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
 
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # --------- Calculate Degree Of Cost Movement Of Robots During Movement --------------
-            self.pop[idx].target_move = (
-                self.pop[idx].target.fitness - self.pop[idx].target_new.fitness
+            self.population[idx].target_move = (
+                self.population[idx].fitness - self.population[idx].target_new.fitness
             )
-            self.pop[idx].solution_new = pop_new[idx].solution.copy()
-            self.pop[idx].target_new = pop_new[idx].target.copy()
+            self.population[idx].solution_new = pop_new[idx].solution.copy()
+            self.population[idx].target_new = pop_new[idx].copy()
             # ---------- Progress Assessment: Replacing More Quality Solutions With Previous Ones ------
             # Replace Solution If It Reached To A More Quality Position
-            if self._compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx].solution = pop_new[idx].solution.copy()
-                self.pop[idx].target = pop_new[idx].target.copy()
+            if cy.is_better(pop_new[idx], self.population[idx], self.problem.sense):
+                self.population[idx].update_solution(pop_new[idx], pop_new[idx].solution.copy())
 
         # --------- Determining Sigma Improvement Factor (Sif) Based On Vvss Movement -------------------
         ## Get best improved fitness
-        fit_id = np.argmax([agent.target_move for agent in self.pop])
+        fit_id = np.argmax([agent.target_move for agent in self.population])
         sigma_factor = 1 + self.generator.uniform() * np.max(
             self.problem.bounds.up - self.problem.bounds.low
         )
@@ -180,38 +178,35 @@ cdef class OriginalSRSR(LegacyOptimizer):
         #            Phase 2 (Exploration): Moving Slave Robots Toward Master Robot                   %
         # ===========================================================================================%%
         pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             gb = self.generator.uniform(-1, 1, self.problem.n_dims)
             gb[gb >= 0] = 1
             gb[gb < 0] = -1
             pos_new = (
-                self.pop[idx].solution * self.generator.uniform()
-                + gb * (self.pop[0].solution - self.pop[idx].solution)
+                self.population[idx].solution * self.generator.uniform()
+                + gb * (self.population[0].solution - self.population[idx].solution)
                 + self.movement_factor
                 * self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
 
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # --------- Calculate Degree Of Cost Movement Of Robots During Movement --------------
-            self.pop[idx].target_move = (
-                self.pop[idx].target.fitness - self.pop[idx].target_new.fitness
+            self.population[idx].target_move = (
+                self.population[idx].fitness - self.population[idx].target_new.fitness
             )
-            self.pop[idx].solution_new = pop_new[idx].solution.copy()
-            self.pop[idx].target_new = pop_new[idx].target.copy()
+            self.population[idx].solution_new = pop_new[idx].solution.copy()
+            self.population[idx].target_new = pop_new[idx].copy()
             # ---------- Progress Assessment: Replacing More Quality Solutions With Previous Ones ------
             # Replace Solution If It Reached To A More Quality Position
-            if self._compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx].solution = pop_new[idx].solution.copy()
-                self.pop[idx].target = pop_new[idx].target.copy()
+            if cy.is_better(pop_new[idx], self.population[idx], self.problem.sense):
+                self.population[idx].update_solution(pop_new[idx], pop_new[idx].solution.copy())
 
         # ========================================================================================= %%
         #        PHASE 3 (LOCAL SEARCH): CREATING SOME WORKER ROBOTS ASSIGNED TO SEARCH               %
@@ -221,17 +216,17 @@ cdef class OriginalSRSR(LegacyOptimizer):
         if epoch > 0:
             # --- EXTRACTING "INTEGER PART" AND "FRACTIONAL PART"  OF THE ELEMENTS OF MASTER RPBOT POSITION------
             master_robot = {
-                "original": np.reshape(self.pop[0].solution, (self.problem.n_dims, 1)),
+                "original": np.reshape(self.population[0].solution, (self.problem.n_dims, 1)),
                 "sign": np.reshape(
-                    np.sign(self.pop[0].solution), (self.problem.n_dims, 1)
+                    np.sign(self.population[0].solution), (self.problem.n_dims, 1)
                 ),
-                "abs": np.reshape(abs(self.pop[0].solution), (self.problem.n_dims, 1)),
+                "abs": np.reshape(abs(self.population[0].solution), (self.problem.n_dims, 1)),
                 "int": np.reshape(
-                    np.floor(abs(self.pop[0].solution)), (self.problem.n_dims, 1)
+                    np.floor(abs(self.population[0].solution)), (self.problem.n_dims, 1)
                 ),
                 # INTEGER PART
                 "frac": np.reshape(
-                    abs(self.pop[0].solution) - np.floor(abs(self.pop[0].solution)),
+                    abs(self.population[0].solution) - np.floor(abs(self.population[0].solution)),
                     (self.problem.n_dims, 1),
                 ),
             }  # FRACTIONAL PART
@@ -310,16 +305,13 @@ cdef class OriginalSRSR(LegacyOptimizer):
             )
             pop_workers = []
             for idx in range(0, 5):
-                pos_new = self._correct_solution(workers[idx])
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(workers[idx])
+                agent = self.population.create_agent(pos_new)
                 pop_workers.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_workers[-1].target = self._get_target(pos_new)
-            pop_workers = self._update_target_for_population(pop_workers)
+                    pop_workers[-1].evaluate(self.problem)
+            pop_workers = self.population.evaluate(pop_workers, self.mode)
 
             for idx in range(0, 5):
-                if self._compare_target(
-                    pop_workers[idx].target, self.pop[1].target, self.problem.sense
-                ):
-                    self.pop[-(idx + 1)].solution = pop_workers[idx].solution.copy()
-                    self.pop[-(idx + 1)].target = pop_workers[idx].target.copy()
+                if cy.is_better(pop_workers[idx], self.population[1], self.problem.sense):
+                    self.population[-(idx + 1)].update_solution(pop_workers[idx], pop_workers[idx].solution.copy())

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class IARO(LegacyOptimizer):
+cdef class IARO(cy.Optimizer):
     """
     The improved version of: Improved Artificial Rabbits Optimization (IARO)
 
@@ -33,8 +33,8 @@ cdef class IARO(LegacyOptimizer):
     >>>
     >>> model = ARO.IARO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -48,22 +48,21 @@ cdef class IARO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         theta = 2 * (1 - (epoch + 1) / self.epoch)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             L = (np.exp(1) - np.exp((epoch / self.epoch) ** 2)) * (
                 np.sin(2 * np.pi * self.generator.random())
             )
@@ -77,10 +76,10 @@ cdef class IARO(LegacyOptimizer):
             R = L * temp  # Eq 2
             A = 2 * np.log(1.0 / self.generator.random()) * theta  # Eq. 15
             if A > 1:  # # detour foraging strategy
-                rand_idx = self.generator.integers(0, self.pop_size)
+                rand_idx = self.generator.integers(0, pop_size)
                 pos_new = (
-                        self.pop[rand_idx].solution
-                        + R * (self.pop[idx].solution - self.pop[rand_idx].solution)
+                        self.population[rand_idx].solution
+                        + R * (self.population[idx].solution - self.population[rand_idx].solution)
                         + np.round(0.5 * (0.05 + self.generator.random()))
                         * self.generator.normal(0, 1)
                 )  # Eq. 1
@@ -93,20 +92,16 @@ cdef class IARO(LegacyOptimizer):
                 )
                 gr[rd_index] = 1  # Eq. 12
                 H = self.generator.normal(0, 1) * (epoch / self.epoch)  # Eq. 8
-                b = self.pop[idx].solution + H * gr * self.pop[idx].solution  # Eq. 13
-                pos_new = self.pop[idx].solution + R * (
-                        self.generator.random() * b - self.pop[idx].solution
+                b = self.population[idx].solution + H * gr * self.population[idx].solution  # Eq. 13
+                pos_new = self.population[idx].solution + R * (
+                        self.generator.random() * b - self.population[idx].solution
                 )  # Eq. 11
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, sense=self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

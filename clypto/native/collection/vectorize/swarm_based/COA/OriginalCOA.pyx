@@ -3,14 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -43,8 +40,8 @@ cdef class OriginalCOA(VectorizeOptimizer):
     >>>
     >>> model = COA.OriginalCOA(epoch=1000, pop_size=50, n_coyotes = 5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -91,12 +88,12 @@ cdef class OriginalCOA(VectorizeOptimizer):
     cdef void init_fields(self, NativePopulation pop):
         pop.field("AGE")[:] = 1
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         self.ps = 1.0 / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation pup
         cdef Py_ssize_t n = pop.n, d = pop.d, npk = self.n_packs, nc = self.n_coyotes, m = npk * nc
@@ -124,7 +121,7 @@ cdef class OriginalCOA(VectorizeOptimizer):
         p = np.arange(npk)
         pups = rng.normal(0, 1, (npk, 1)) * np.where(rng.random((npk, d)) < prob1, X3[p, dad], X3[p, mom])
         pup = pop.take(np.arange(npk))
-        pup.X[:] = self._correct_solution(pups)
+        pup.X[:] = self.correct_solution(pups)
         self.evaluate(pup, 0, npk)
         pup.field("AGE")[:] = 1
         worst = F.max(axis=1) if self.problem.sense == "min" else F.min(axis=1)

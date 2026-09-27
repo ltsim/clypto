@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalEOA(VectorizeOptimizer):
@@ -48,8 +47,8 @@ cdef class OriginalEOA(VectorizeOptimizer):
     >>>
     >>> model = EOA.OriginalEOA(epoch=1000, pop_size=50, p_c = 0.9, p_m = 0.01, n_best = 2, alpha = 0.98, beta = 0.9, gama = 0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -106,14 +105,14 @@ cdef class OriginalEOA(VectorizeOptimizer):
         self.beta = cy.validator(float, beta, (0, 1.0), "beta")
         self.gama = cy.validator(float, gama, (0, 1.0), "gama")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_beta = self.beta
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef NativePopulation elites, merged
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef Py_ssize_t i, idx, n = pop.n
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
         sense = self.problem.sense
@@ -140,7 +139,7 @@ cdef class OriginalEOA(VectorizeOptimizer):
                 x_child = Xp[r1]
             x_t1 = self.dyn_beta * x_t1 + (1.0 - self.dyn_beta) * x_child
             # sequential mode replaces row idx (possibly the re-used index); swarm modes keep agent i's candidate
-            ops.commit(self, pop, cand, i if swarm else idx, self._correct_solution(x_t1), swarm)
+            ops.commit(self, pop, cand, i if swarm else idx, self.correct_solution(x_t1), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)
         self.dyn_beta = self.gama * self.beta
@@ -157,7 +156,7 @@ cdef class OriginalEOA(VectorizeOptimizer):
             condition = self.generator.random(self.problem.n_dims) < self.p_m
             cauchy_w = np.where(condition, x_mean, cauchy_w)
             x_t1 = (cauchy_w + g_best) / 2
-            ops.commit(self, pop, cand, idx, self._correct_solution(x_t1), swarm)
+            ops.commit(self, pop, cand, idx, self.correct_solution(x_t1), swarm)
         if swarm:
             # greedy_selection_population(pop_new, pop[n_best:]): the old agent stays only if strictly better
             self.evaluate(cand, self.n_best, n)
@@ -177,7 +176,7 @@ cdef class OriginalEOA(VectorizeOptimizer):
             key = tuple(pop.X[idx].tolist())
             if key in new_set:
                 x = self.problem.generate_solution(True)
-                ops.set_row(pop, idx, x, self._get_target(x))
+                ops.set_row(pop, idx, x, self.evaluate_solution(x))
             else:
                 new_set.add(key)
         self.pop = pop

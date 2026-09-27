@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalMPA(VectorizeOptimizer):
     >>>
     >>> model = MPA.OriginalMPA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -75,11 +75,11 @@ cdef class OriginalMPA(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.FADS = 0.2
         self.P = 0.5
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -88,7 +88,7 @@ cdef class OriginalMPA(VectorizeOptimizer):
         g = np.array(self.g_best_x())
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
         CF = (1 - epoch / self.epoch) ** (2 * epoch / self.epoch)
-        RL = self._get_levy_flight_step(beta=1.5, multiplier=0.05, size=(n, d), case=-1)
+        RL = cy.levy_flight(self.generator, beta=1.5, multiplier=0.05, size=(n, d), case=-1)
         RB = rng.standard_normal((n, d))
         per1 = rng.permutation(n)
         per2 = rng.permutation(n)
@@ -100,7 +100,7 @@ cdef class OriginalMPA(VectorizeOptimizer):
             pos = np.where(second, g + self.P * CF * (RB * (RB * g - X)), X + self.P * R * (RL * (g - RL * X)))
         else:  # Phase 3 (Eq. 15)
             pos = g + self.P * CF * (RL * (RL * g - X))
-        pos = self._correct_solution(pos)
+        pos = self.correct_solution(pos)
         # eddy formation and FADs effect
         fads = (rng.random(n) < self.FADS)[:, None]
         u = np.where(rng.random((n, d)) < self.FADS, 1, 0)

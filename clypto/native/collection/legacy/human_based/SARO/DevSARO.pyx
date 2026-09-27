@@ -5,17 +5,17 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevSARO(LegacyOptimizer):
+cdef class DevSARO(cy.Optimizer):
     """
     The developed version: Search And Rescue Optimization (SARO)
 
     Hyper-parameters should fine-tune in approximate range to get faster convergence toward the global optimum:
         + se (float): [0.3, 0.8], social effect, default = 0.5
-        + mu (int): maximum unsuccessful search number, belongs to range: [2, 2+int(self.pop_size/2)], default = 15
+        + mu (int): maximum unsuccessful search number, belongs to range: [2, 2+int(self.population.size()/2)], default = 15
 
     Examples
     ~~~~~~~~
@@ -33,8 +33,8 @@ cdef class DevSARO(LegacyOptimizer):
     >>>
     >>> model = SARO.DevSARO(epoch=1000, pop_size=50, se = 0.5, mu = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -52,94 +52,84 @@ cdef class DevSARO(LegacyOptimizer):
             se (float): social effect, default = 0.5
             mu (int): maximum unsuccessful search number, default = 15
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.se = self.validator.check_float("se", se, (0, 1.0))
-        self.mu = self.validator.check_int("mu", mu, [2, 2 + int(self.pop_size / 2)])
-        self._set_parameters(["epoch", "pop_size", "se", "mu"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "se", "mu"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.ResetPopulation)
+        self.se = cy.validator(float, se, (0, 1.0), "se")
+        self.mu = cy.validator(int, mu, [2, 2 + int(self.population.size() / 2)], "mu")
 
-    def _initialize_variables(self):
-        self.dyn_USN = np.zeros(self.pop_size)
+    def initialize_variables(self):
+        pop_size = self.population.size()
+        self.dyn_USN = np.zeros(pop_size)
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(2 * self.pop_size)
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(2 * pop_size)
         else:
-            self.pop = self.pop + self._generate_population(self.pop_size)
+            self.population = self.population + self.population.generate(pop_size)
 
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(
-            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
-        )
-        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        return np.where(condition, solution, rand_pos)
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop_x = [agent.copy() for agent in self.pop[: self.pop_size]]
-        pop_m = [agent.copy() for agent in self.pop[self.pop_size:]]
+        pop_size = self.population.size()
+        pop_x = [agent.copy() for agent in self.population[: pop_size]]
+        pop_m = [agent.copy() for agent in self.population[pop_size:]]
         pop_new = []
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             ## Social Phase
-            k = self.generator.choice(list(set(range(0, 2 * self.pop_size)) - {idx}))
-            sd = pop_x[idx].solution - self.pop[k].solution
+            k = self.generator.choice(list(set(range(0, 2 * pop_size)) - {idx}))
+            sd = pop_x[idx].solution - self.population[k].solution
             #### Remove third loop here, also using random flight back when out of bound
-            pos_new_1 = self.pop[k].solution + self.generator.uniform() * sd
+            pos_new_1 = self.population[k].solution + self.generator.uniform() * sd
             pos_new_2 = pop_x[idx].solution + self.generator.uniform() * sd
             condition = np.logical_and(
                 self.generator.uniform(0, 1, self.problem.n_dims) < self.se,
-                self.pop[k].target.fitness < pop_x[idx].target.fitness,
+                self.population[k].fitness < pop_x[idx].fitness,
             )
             pos_new = np.where(condition, pos_new_1, pos_new_2)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        for idx in range(self.pop_size):
-            if self._compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
-            ):
-                pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        for idx in range(pop_size):
+            if cy.is_better(pop_new[idx], pop_x[idx], self.problem.sense):
+                pop_m[self.generator.integers(0, pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
                 self.dyn_USN[idx] = 0
             else:
                 self.dyn_USN[idx] += 1
         pop = pop_x.copy() + pop_m.copy()
         pop_new = []
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             ## Individual phase
             k1, k2 = self.generator.choice(
-                list(set(range(0, 2 * self.pop_size)) - {idx}), 2, replace=False
+                list(set(range(0, 2 * pop_size)) - {idx}), 2, replace=False
             )
             #### Remove third loop here, and flight back strategy now be a random
             pos_new = self.g_best.solution + self.generator.uniform() * (
                     pop[k1].solution - pop[k2].solution
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
-            ):
-                pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        for idx in range(0, pop_size):
+            if cy.is_better(pop_new[idx], pop_x[idx], self.problem.sense):
+                pop_m[self.generator.integers(0, pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
                 self.dyn_USN[idx] = 0
             else:
                 self.dyn_USN[idx] += 1
             if self.dyn_USN[idx] > self.mu:
-                pop_x[idx] = self._generate_agent()
+                pop_x[idx] = self.population.generate_agent()
                 self.dyn_USN[idx] = 0
-        self.pop = pop_x + pop_m
+        self.population = pop_x + pop_m

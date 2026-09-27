@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalABC(VectorizeOptimizer):
@@ -38,8 +37,8 @@ cdef class OriginalABC(VectorizeOptimizer):
     >>>
     >>> model = ABC.OriginalABC(epoch=1000, pop_size=50, n_limits = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -76,10 +75,10 @@ cdef class OriginalABC(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.n_limits = cy.validator(int, n_limits, [1, 1000], "n_limits")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.trials = np.zeros(self.pop_size)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, scouts
         cdef Py_ssize_t i, n = pop.n, d = pop.d
@@ -103,7 +102,7 @@ cdef class OriginalABC(VectorizeOptimizer):
         guide = (selected + rng.integers(1, n, size=n)) % n
         phi = rng.uniform(low=-1, high=1, size=(n, d))
         cand = pop.take(selected)
-        cand.X[:] = self._correct_solution(X[selected] + phi * (X[guide] - X[selected]))
+        cand.X[:] = self.correct_solution(X[selected] + phi * (X[guide] - X[selected]))
         self.evaluate(cand, 0, n)
         for i in range(n):  # bees chosen several times keep their best candidate
             s = selected[i]

@@ -3,10 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -36,8 +34,8 @@ cdef class DevSCA(VectorizeOptimizer):
     >>>
     >>> model = SCA.DevSCA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -63,7 +61,7 @@ cdef class DevSCA(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -81,6 +79,6 @@ cdef class DevSCA(VectorizeOptimizer):
         pos_new2 = X + r1 * np.cos(r2) * np.abs(r3 * g - X)
         pos_new = np.where(R[:, 2] < 0.5, pos_new1, pos_new2)
         # Check the bound
-        cand.X[:] = self._correct_solution(pos_new)
+        cand.X[:] = self.correct_solution(pos_new)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

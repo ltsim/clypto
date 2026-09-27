@@ -3,14 +3,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class SADE(LegacyOptimizer):
+cdef class SADE(cy.Optimizer):
     """
     The original version of: Self-Adaptive Differential Evolution (SADE)
 
@@ -33,8 +31,8 @@ cdef class SADE(LegacyOptimizer):
     >>>
     >>> model = DE.SADE(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -50,13 +48,11 @@ cdef class SADE(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.loop_probability = 50
         self.loop_cr = 5
         self.ns1 = self.ns2 = self.nf1 = self.nf2 = 0
@@ -64,17 +60,18 @@ cdef class SADE(LegacyOptimizer):
         self.p1 = 0.5
         self.dyn_list_cr = list()
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop = []
         list_probability = []
         list_cr = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ## Calculate adaptive parameter cr and f
             cr = self.generator.normal(self.crm, 0.1)
             cr = np.clip(cr, 0, 1)
@@ -87,57 +84,53 @@ cdef class SADE(LegacyOptimizer):
                     f = 1
                 break
             id1, id2, id3 = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), 3, replace=False
+                list(set(range(0, pop_size)) - {idx}), 3, replace=False
             )
             if self.generator.random() < self.p1:
-                x_new = self.pop[id1].solution + f * (
-                    self.pop[id2].solution - self.pop[id3].solution
+                x_new = self.population[id1].solution + f * (
+                    self.population[id2].solution - self.population[id3].solution
                 )
                 pos_new = np.where(
                     self.generator.random(self.problem.n_dims) < cr,
                     x_new,
-                    self.pop[idx].solution,
+                    self.population[idx].solution,
                 )
                 j_rand = self.generator.integers(0, self.problem.n_dims)
                 pos_new[j_rand] = x_new[j_rand]
-                pos_new = self._correct_solution(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
                 list_probability.append(True)
             else:
                 x_new = (
-                    self.pop[idx].solution
-                    + f * (self.g_best.solution - self.pop[idx].solution)
-                    + f * (self.pop[id1].solution - self.pop[id2].solution)
+                    self.population[idx].solution
+                    + f * (self.g_best.solution - self.population[idx].solution)
+                    + f * (self.population[id1].solution - self.population[id2].solution)
                 )
                 pos_new = np.where(
                     self.generator.random(self.problem.n_dims) < cr,
                     x_new,
-                    self.pop[idx].solution,
+                    self.population[idx].solution,
                 )
                 j_rand = self.generator.integers(0, self.problem.n_dims)
                 pos_new[j_rand] = x_new[j_rand]
-                pos_new = self._correct_solution(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
                 list_probability.append(False)
-            agent = self._generate_empty_agent(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self._get_target(pos_new)
-        pop = self._update_target_for_population(pop)
-        for idx in range(0, self.pop_size):
+                pop[-1].evaluate(self.problem)
+        pop = self.population.evaluate(pop, self.mode)
+        for idx in range(0, pop_size):
             if list_probability[idx]:
-                if self._compare_target(
-                    pop[idx].target, self.pop[idx].target, self.problem.sense
-                ):
+                if cy.is_better(pop[idx], self.population[idx], self.problem.sense):
                     self.ns1 += 1
-                    self.pop[idx] = pop[idx].copy()
+                    self.population[idx] = pop[idx].copy()
                 else:
                     self.nf1 += 1
             else:
-                if self._compare_target(
-                    pop[idx].target, self.pop[idx].target, self.problem.sense
-                ):
+                if cy.is_better(pop[idx], self.population[idx], self.problem.sense):
                     self.ns2 += 1
                     self.dyn_list_cr.append(list_cr[idx])
-                    self.pop[idx] = pop[idx].copy()
+                    self.population[idx] = pop[idx].copy()
                 else:
                     self.nf2 += 1
         # Update cr and p1

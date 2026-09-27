@@ -3,7 +3,7 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.native.collection.vectorize.swarm_based.PSO.OriginalPSO cimport OriginalPSO
 
@@ -34,8 +34,8 @@ cdef class LDW_PSO(OriginalPSO):
     >>>
     >>> model = PSO.LDW_PSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, w_min=0.4, w_max=0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~

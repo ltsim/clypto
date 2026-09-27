@@ -8,7 +8,7 @@
 
 from typing import Tuple, List
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalIMODE(AgentListOptimizer):
     >>>
     >>> model = IMODE.OriginalIMODE(epoch=1000, pop_size=50, memory_size=5, archive_size=20)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -87,7 +87,7 @@ cdef class OriginalIMODE(AgentListOptimizer):
         self.memory_size = cy.validator(int, memory_size, [2, 100], "memory_size")
         self.archive_size = cy.validator(int, archive_size, [5, 100], "archive_size")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         # Operator probabilities (3 operators)
         self.operator_probs = np.ones(3) / 3
         # Parameter memory for adaptive control
@@ -97,7 +97,7 @@ cdef class OriginalIMODE(AgentListOptimizer):
         # Archive for diversity
         self.archive_size = max(self.archive_size, self.pop_size)
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Initialize archive with initial population
         self.archive = self.objs.copy()
 
@@ -300,12 +300,12 @@ cdef class OriginalIMODE(AgentListOptimizer):
                 keep_indices = list(set(range(len(self.archive))) - set(remove_indices))
                 self.archive = [self.archive[idx] for idx in keep_indices]
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         # Generate adaptive parameters
         f_values, cr_values = self._generate_parameters()
 
         # Sort population by fitness
-        self.objs = self._get_sorted_population(self.objs, self.problem.sense)
+        self.objs = cy.sort_agents(self.objs, self.problem.sense)
         cr_values = np.sort(cr_values)
 
         # Mutation
@@ -322,19 +322,19 @@ cdef class OriginalIMODE(AgentListOptimizer):
         improvements = np.zeros(self.pop_size)
         pop_new = []
         for idx in range(len(matrix_child)):
-            pos_new = self._correct_solution(matrix_child[idx])
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(agent.target, self.objs[idx].target):
+            pos_new = self.correct_solution(matrix_child[idx])
+            agent = self.generate_agent(pos_new)
+            if cy.is_better(agent, self.objs[idx], "min"):
                 improvement_mask[idx] = True
             improvements[idx] = np.abs(
-                self.objs[idx].target.fitness - agent.target.fitness
+                self.objs[idx].fitness - agent.fitness
             )
             pop_new.append(agent)
 
         # Track operator performance
         op1_mask, op2_mask, op3_mask = self._select_operator_indices()
-        fits = np.array([agent.target.fitness for agent in self.objs])
-        fits_child = np.array([agent.target.fitness for agent in pop_new])
+        fits = np.array([agent.fitness for agent in self.objs])
+        fits_child = np.array([agent.fitness for agent in pop_new])
         relative_improvements = np.maximum(0, (fits - fits_child) / np.abs(fits))
 
         # Update archive with improved solutions

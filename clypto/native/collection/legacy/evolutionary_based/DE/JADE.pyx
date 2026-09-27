@@ -3,15 +3,13 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 from scipy.stats import cauchy
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class JADE(LegacyOptimizer):
+cdef class JADE(cy.Optimizer):
     """
     The original version of: Differential Evolution (JADE)
 
@@ -40,14 +38,19 @@ cdef class JADE(LegacyOptimizer):
     >>>
     >>> model = DE.JADE(epoch=1000, pop_size=50, miu_f = 0.5, miu_cr = 0.5, pt = 0.1, ap = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Zhang, J. and Sanderson, A.C., 2009. JADE: adaptive differential evolution with optional
     external archive. IEEE Transactions on evolutionary computation, 13(5), pp.945-958.
     """
+
+    cdef public double ap
+    cdef public double miu_cr
+    cdef public double miu_f
+    cdef public double pt
 
     def __init__(
         self,
@@ -68,19 +71,17 @@ cdef class JADE(LegacyOptimizer):
             pt (float): The percent of top best agents (p in the paper), default = 0.1
             ap (float): The Adaptation Parameter control value of f and cr (c in the paper), default=0.1
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.miu_f = self.validator.check_float("miu_f", miu_f, (0, 1.0))
-        self.miu_cr = self.validator.check_float("miu_cr", miu_cr, (0, 1.0))
+        super().__init__(parameters=["epoch", "pop_size", "miu_f", "miu_cr", "pt", "ap"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.miu_f = cy.validator(float, miu_f, (0, 1.0), "miu_f")
+        self.miu_cr = cy.validator(float, miu_cr, (0, 1.0), "miu_cr")
         # np.random.uniform(0.05, 0.2) # the x_best is select from the top 100p % solutions
-        self.pt = self.validator.check_float("pt", pt, (0, 1.0))
+        self.pt = cy.validator(float, pt, (0, 1.0), "pt")
         # np.random.uniform(1/20, 1/5) # the adaptation parameter control value of f and cr
-        self.ap = self.validator.check_float("ap", ap, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "miu_f", "miu_cr", "pt", "ap"])
-        self.sort_flag = False
+        self.ap = cy.validator(float, ap, (0, 1.0), "ap")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_miu_cr = self.miu_cr
         self.dyn_miu_f = self.miu_f
         self.dyn_pop_archive = list()
@@ -90,20 +91,21 @@ cdef class JADE(LegacyOptimizer):
         temp = np.sum(list_objects)
         return 0 if temp == 0 else np.sum(list_objects**2) / temp
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         list_f = list()
         list_cr = list()
         temp_f = list()
         temp_cr = list()
-        pop_sorted = self._get_sorted_population(self.pop, self.problem.sense)
+        pop_sorted = self.population.sort()
         pop = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ## Calculate adaptive parameter cr and f
             cr = self.generator.normal(self.dyn_miu_cr, 0.1)
             cr = np.clip(cr, 0, 1)
@@ -116,43 +118,41 @@ cdef class JADE(LegacyOptimizer):
                 break
             temp_f.append(f)
             temp_cr.append(cr)
-            top = int(self.pop_size * self.pt)
+            top = int(pop_size * self.pt)
             x_best = pop_sorted[self.generator.integers(0, top)]
-            r1_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            new_pop = self.pop + self.dyn_pop_archive
+            r1_idx = self.generator.choice(list(set(range(0, pop_size)) - {idx}))
+            new_pop = self.population + self.dyn_pop_archive
             r2_idx = self.generator.choice(
                 list(set(range(0, len(new_pop))) - {idx, r1_idx})
             )
-            x_r1 = self.pop[r1_idx].solution
+            x_r1 = self.population[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
             x_new = (
-                self.pop[idx].solution
-                + f * (x_best.solution - self.pop[idx].solution)
+                self.population[idx].solution
+                + f * (x_best.solution - self.population[idx].solution)
                 + f * (x_r1 - x_r2)
             )
             pos_new = np.where(
                 self.generator.random(self.problem.n_dims) < cr,
                 x_new,
-                self.pop[idx].solution,
+                self.population[idx].solution,
             )
             j_rand = self.generator.integers(0, self.problem.n_dims)
             pos_new[j_rand] = x_new[j_rand]
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self._get_target(pos_new)
-        pop = self._update_target_for_population(pop)
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                pop[idx].target, self.pop[idx].target, self.problem.sense
-            ):
-                self.dyn_pop_archive.append(self.pop[idx].copy())
+                pop[-1].evaluate(self.problem)
+        pop = self.population.evaluate(pop, self.mode)
+        for idx in range(0, pop_size):
+            if cy.is_better(pop[idx], self.population[idx], self.problem.sense):
+                self.dyn_pop_archive.append(self.population[idx].copy())
                 list_cr.append(temp_cr[idx])
                 list_f.append(temp_f[idx])
-                self.pop[idx] = pop[idx].copy()
+                self.population[idx] = pop[idx].copy()
         # Randomly remove solution
-        temp = len(self.dyn_pop_archive) - self.pop_size
+        temp = len(self.dyn_pop_archive) - pop_size
         if temp > 0:
             idx_list = self.generator.choice(
                 range(0, len(self.dyn_pop_archive)), temp, replace=False

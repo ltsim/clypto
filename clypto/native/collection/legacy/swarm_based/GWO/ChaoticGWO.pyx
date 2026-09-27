@@ -6,11 +6,11 @@
 
 import numpy as np
 from clypto.optimizer.native.chaotic import ChaoticMap as CM
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class ChaoticGWO(LegacyOptimizer):
+cdef class ChaoticGWO(cy.Optimizer):
     """
     The original version of: Chaotic-based Grey Wolf Optimizer (Chaotic-GWO or C-GWO)
 
@@ -33,13 +33,16 @@ cdef class ChaoticGWO(LegacyOptimizer):
     >>>
     >>> model = GWO.ChaoticGWO(epoch=1000, pop_size=50, chaotic_name="chebyshev", initial_chaotic_value=0.7)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Kohli, M., & Arora, S. (2018). Chaotic grey wolf optimization algorithm for constrained optimization problems. Journal of computational design and engineering, 5(4), 458-472.
     """
+
+    cdef public str chaotic_name
+    cdef public double initial_chaotic_value
 
     CHAOTIC_MAPS = {
         "bernoulli": CM.bernoulli_map,
@@ -69,21 +72,13 @@ cdef class ChaoticGWO(LegacyOptimizer):
             chaotic_name (str): name of chaotic map to use, default = "chebyshev"
             initial_chaotic_value (float): initial value for chaotic map, default = 0.7
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.chaotic_name = self.validator.check_str(
-            "chaotic_name", chaotic_name, ChaoticGWO.CHAOTIC_MAPS.keys()
-        )
-        self.initial_chaotic_value = self.validator.check_float(
-            "initial_chaotic_value", initial_chaotic_value, [0.0, 1.0]
-        )
-        self._set_parameters(
-            ["epoch", "pop_size", "chaotic_name", "initial_chaotic_value"]
-        )
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "chaotic_name", "initial_chaotic_value"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.chaotic_name = cy.validator(str, chaotic_name, ChaoticGWO.CHAOTIC_MAPS.keys(), "chaotic_name")
+        self.initial_chaotic_value = cy.validator(float, initial_chaotic_value, [0.0, 1.0], "initial_chaotic_value")
 
-    def _initialize_variables(self) -> None:
+    def initialize_variables(self) -> None:
         self.chao_value = self.initial_chaotic_value
         self.chao_func = ChaoticGWO.CHAOTIC_MAPS[self.chaotic_name]
 
@@ -93,20 +88,20 @@ cdef class ChaoticGWO(LegacyOptimizer):
         # Ensure chaotic value stays in [0, 1]
         self.chao_value = np.clip(chao_value, 0, 1)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # linearly decreased from 2 to 0
         a = 2 - 2.0 * epoch / self.epoch
-        _, list_best, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
+        ranked = self.population.sort()
+        list_best = [agent.copy() for agent in ranked[:3]]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             self._update_chao_value()
             A1 = a * (
                 2 * self.generator.random(self.problem.n_dims) * self.chao_value - 1
@@ -121,25 +116,21 @@ cdef class ChaoticGWO(LegacyOptimizer):
             C2 = 2 * self.generator.random(self.problem.n_dims) * self.chao_value
             C3 = 2 * self.generator.random(self.problem.n_dims) * self.chao_value
             X1 = list_best[0].solution - A1 * np.abs(
-                C1 * list_best[0].solution - self.pop[idx].solution
+                C1 * list_best[0].solution - self.population[idx].solution
             )
             X2 = list_best[1].solution - A2 * np.abs(
-                C2 * list_best[1].solution - self.pop[idx].solution
+                C2 * list_best[1].solution - self.population[idx].solution
             )
             X3 = list_best[2].solution - A3 * np.abs(
-                C3 * list_best[2].solution - self.pop[idx].solution
+                C3 * list_best[2].solution - self.population[idx].solution
             )
             pos_new = (X1 + X2 + X3) / 3.0
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

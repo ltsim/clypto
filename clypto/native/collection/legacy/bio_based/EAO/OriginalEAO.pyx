@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalEAO(LegacyOptimizer):
+cdef class OriginalEAO(cy.Optimizer):
     """
     The original version of: Enzyme Action Optimizer (EAO)
 
@@ -35,14 +35,16 @@ cdef class OriginalEAO(LegacyOptimizer):
     >>>
     >>> model = EAO.OriginalEAO(epoch=1000, pop_size=50, p_m=0.01, n_elites=2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Rodan, A., Al-Tamimi, A. K., Al-Alnemer, L., Mirjalili, S., & Tiňo, P. (2025).
     Enzyme action optimizer: a novel bio-inspired optimization algorithm. The Journal of Supercomputing, 81(5), 686.
     """
+
+    cdef public double ec
 
     def __init__(
             self, epoch: int = 10000, pop_size: int = 100, ec: float = 0.1, **kwargs: object
@@ -55,36 +57,35 @@ cdef class OriginalEAO(LegacyOptimizer):
             pop_size: Number of population size, default = 100
             ec: Enzyme Concentration, default=0.1
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.ec = self.validator.check_float("ec", ec, [0.0, 100])
-        self._set_parameters(["epoch", "pop_size", "ec"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "ec"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.ec = cy.validator(float, ec, [0.0, 100], "ec")
 
-    def _evolve(self, epoch: int) -> None:
+    def evolve(self, epoch: int) -> None:
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch: The current iteration
         """
+        pop_size = self.population.size()
         # Adaptation Factor - tăng dần theo thời gian
         AF = np.sqrt(epoch / self.epoch)
 
         # Handle each enzyme
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             # 1. Update FirstSubstratePosition
             r1 = self.generator.random(size=self.problem.n_dims)
-            pos1 = (self.g_best.solution - self.pop[idx].solution) + r1 * np.sin(
-                AF * self.pop[idx].solution
+            pos1 = (self.g_best.solution - self.population[idx].solution) + r1 * np.sin(
+                AF * self.population[idx].solution
             )
-            pos1 = self._correct_solution(pos1)
-            agent1 = self._generate_agent(pos1)
+            pos1 = self.population.correct_solution(pos1)
+            agent1 = self.population.generate_agent(pos1)
 
             # 2. Select 2 randoms
             j1, j2 = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), size=2, replace=False
+                list(set(range(0, pop_size)) - {idx}), size=2, replace=False
             )
 
             ## Candidate A: vector-valued random factors
@@ -96,23 +97,23 @@ cdef class OriginalEAO(LegacyOptimizer):
                     + (1 - self.ec) * self.generator.random(size=self.problem.n_dims)
             )
             posA = (
-                    self.pop[idx].solution
-                    + scA1 * (self.pop[j1].solution - self.pop[j2].solution)
-                    + exA * (self.g_best.solution - self.pop[idx].solution)
+                    self.population[idx].solution
+                    + scA1 * (self.population[j1].solution - self.population[j2].solution)
+                    + exA * (self.g_best.solution - self.population[idx].solution)
             )
-            posA = self._correct_solution(posA)
-            agentA = self._generate_agent(posA)
+            posA = self.population.correct_solution(posA)
+            agentA = self.population.generate_agent(posA)
 
             ## Candidate B: scalar random factors
             scB1 = self.ec + (1 - self.ec) * self.generator.random()
             exB = AF * (self.ec + (1 - self.ec) * self.generator.random())
             posB = (
-                    self.pop[idx].solution
-                    + scB1 * (self.pop[j1].solution - self.pop[j2].solution)
-                    + exB * (self.g_best.solution - self.pop[idx].solution)
+                    self.population[idx].solution
+                    + scB1 * (self.population[j1].solution - self.population[j2].solution)
+                    + exB * (self.g_best.solution - self.population[idx].solution)
             )
-            posB = self._correct_solution(posB)
-            agentB = self._generate_agent(posB)
+            posB = self.population.correct_solution(posB)
+            agentB = self.population.generate_agent(posB)
 
-            pop_new = [self.pop[idx], agent1, agentA, agentB]
-            self.pop[idx] = self._get_best_agent(pop_new, sense=self.problem.sense)
+            pop_new = [self.population[idx], agent1, agentA, agentB]
+            self.population[idx] = cy.sort_agents(pop_new, self.problem.sense)[0].copy()

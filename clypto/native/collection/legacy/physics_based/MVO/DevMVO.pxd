@@ -1,5 +1,6 @@
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class DevMVO(LegacyOptimizer):
-    pass
+cdef class DevMVO(cy.Optimizer):
+    cdef public double wep_max
+    cdef public double wep_min

@@ -9,7 +9,7 @@
 from functools import reduce
 import numpy as np
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -43,8 +43,8 @@ cdef class ImprovedTLO(AgentListOptimizer):
     >>>
     >>> model = TLO.ImprovedTLO(epoch=1000, pop_size=50, n_teachers = 5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -88,9 +88,9 @@ cdef class ImprovedTLO(AgentListOptimizer):
         self.n_students = self.pop_size - self.n_teachers
         self.n_students_in_team = int(self.n_students / self.n_teachers)
 
-    def _initialization(self):
-        AgentListOptimizer._initialization(self)
-        sorted_pop = self._get_sorted_population(self.objs, self.problem.sense)
+    def initialization(self):
+        AgentListOptimizer.initialization(self)
+        sorted_pop = cy.sort_agents(self.objs, self.problem.sense)
         self.g_best = sorted_pop[0].copy()
         self.teachers = sorted_pop[: self.n_teachers].copy()
         sorted_pop = sorted_pop[self.n_teachers:]
@@ -104,7 +104,7 @@ cdef class ImprovedTLO(AgentListOptimizer):
             self.teams.append(group)
         self.pop = self.mirror__()
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         for id_teach, teacher in enumerate(self.teachers):
             team = self.teams[id_teach]
             list_pos = np.array(
@@ -113,19 +113,17 @@ cdef class ImprovedTLO(AgentListOptimizer):
             mean_team = np.mean(list_pos, axis=0)
             pop_new = []
             for id_stud, student in enumerate(team):
-                if teacher.target.fitness == 0:
+                if teacher.fitness == 0:
                     TF = 1
                 else:
-                    TF = student.target.fitness / teacher.target.fitness
+                    TF = student.fitness / teacher.fitness
                 diff_mean = self.generator.random() * (
                         teacher.solution - TF * mean_team
                 )  # Step 8
                 id2 = self.generator.choice(
                     list(set(range(0, self.n_teachers)) - {id_teach})
                 )
-                if self._compare_target(
-                        teacher.target, team[id2].target, self.problem.sense
-                ):
+                if cy.is_better(teacher, team[id2], self.problem.sense):
                     pos_new = (
                                       student.solution + diff_mean
                               ) + self.generator.random() * (
@@ -137,19 +135,15 @@ cdef class ImprovedTLO(AgentListOptimizer):
                               ) + self.generator.random() * (
                                       student.solution - team[id2].solution
                               )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.correct_solution(pos_new)
+                agent = self.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
-                    pop_new[-1] = self._get_better_agent(
-                        agent, student, self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    pop_new[-1] = cy.get_better_agent(agent, student, self.problem.sense)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self._update_target_for_population(pop_new)
-                pop_new = self._greedy_selection_population(
-                    team, pop_new, self.problem.sense
-                )
+                pop_new = self.evaluate_agents(pop_new)
+                pop_new = cy.greedy_agents(team, pop_new, self.problem.sense)
             self.teams[id_teach] = pop_new
 
         for id_teach, teacher in enumerate(self.teachers):
@@ -160,9 +154,7 @@ cdef class ImprovedTLO(AgentListOptimizer):
                 id2 = self.generator.choice(
                     list(set(range(0, self.n_students_in_team)) - {id_stud})
                 )
-                if self._compare_target(
-                        student.target, team[id2].target, self.problem.sense
-                ):
+                if cy.is_better(student, team[id2], self.problem.sense):
                     pos_new = (
                             student.solution
                             + self.generator.random()
@@ -178,23 +170,19 @@ cdef class ImprovedTLO(AgentListOptimizer):
                             + self.generator.random()
                             * (teacher.solution - ef * student.solution)
                     )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.correct_solution(pos_new)
+                agent = self.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
-                    pop_new[-1] = self._get_better_agent(
-                        agent, student, self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    pop_new[-1] = cy.get_better_agent(agent, student, self.problem.sense)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self._update_target_for_population(pop_new)
-                pop_new = self._greedy_selection_population(
-                    team, pop_new, self.problem.sense
-                )
+                pop_new = self.evaluate_agents(pop_new)
+                pop_new = cy.greedy_agents(team, pop_new, self.problem.sense)
             self.teams[id_teach] = pop_new
         for id_teach, teacher in enumerate(self.teachers):
             team = self.teams[id_teach] + [teacher]
-            team = self._get_sorted_population(team, self.problem.sense)
+            team = cy.sort_agents(team, self.problem.sense)
             self.teachers[id_teach] = team[0].copy()
             self.teams[id_teach] = team[1:]
         self.objs = self.teachers + reduce(lambda x, y: x + y, self.teams)

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalACOR(LegacyOptimizer):
+cdef class OriginalACOR(cy.Optimizer):
     """
     The original version of: Ant Colony Optimization Continuous (ACOR)
 
@@ -38,14 +38,18 @@ cdef class OriginalACOR(LegacyOptimizer):
     >>>
     >>> model = ACOR.OriginalACOR(epoch=1000, pop_size=50, sample_count = 25, intent_factor = 0.5, zeta = 1.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Socha, K. and Dorigo, M., 2008. Ant colony optimization for continuous domains.
     European journal of operational research, 185(3), pp.1155-1173.
     """
+
+    cdef public double intent_factor
+    cdef public int sample_count
+    cdef public double zeta
 
     def __init__(
             self,
@@ -64,44 +68,37 @@ cdef class OriginalACOR(LegacyOptimizer):
             intent_factor: Intensification Factor (Selection Pressure) (q in the paper), default = 0.5
             zeta: Deviation-Distance Ratio, default = 1.0
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.sample_count = self.validator.check_int(
-            "sample_count", sample_count, [2, 10000]
-        )
-        self.intent_factor = self.validator.check_float(
-            "intent_factor", intent_factor, (0, 1.0)
-        )
-        self.zeta = self.validator.check_float("zeta", zeta, (0, 5))
-        self._set_parameters(
-            ["epoch", "pop_size", "sample_count", "intent_factor", "zeta"]
-        )
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "sample_count", "intent_factor", "zeta"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.sample_count = cy.validator(int, sample_count, [2, 10000], "sample_count")
+        self.intent_factor = cy.validator(float, intent_factor, (0, 1.0), "intent_factor")
+        self.zeta = cy.validator(float, zeta, (0, 5), "zeta")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Calculate Selection Probabilities
-        pop_rank = np.array([idx for idx in range(1, self.pop_size + 1)])
-        qn = self.intent_factor * self.pop_size
+        pop_rank = np.array([idx for idx in range(1, pop_size + 1)])
+        qn = self.intent_factor * pop_size
         matrix_w = (
                 1 / (np.sqrt(2 * np.pi) * qn) * np.exp(-0.5 * ((pop_rank - 1) / qn) ** 2)
         )
         matrix_p = matrix_w / np.sum(matrix_w)  # Normalize to find the probability.
         # Means and Standard Deviations
-        matrix_pos = np.array([agent.solution for agent in self.pop])
+        matrix_pos = np.array([agent.solution for agent in self.population])
         matrix_sigma = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             matrix_i = np.repeat(
-                self.pop[idx].solution.reshape((1, -1)), self.pop_size, axis=0
+                self.population[idx].solution.reshape((1, -1)), pop_size, axis=0
             )
             D = np.sum(np.abs(matrix_pos - matrix_i), axis=0)
-            temp = self.zeta * D / (self.pop_size - 1)
+            temp = self.zeta * D / (pop_size - 1)
             matrix_sigma.append(temp)
         matrix_sigma = np.array(matrix_sigma)
 
@@ -110,17 +107,15 @@ cdef class OriginalACOR(LegacyOptimizer):
         for idx in range(0, self.sample_count):
             child = np.zeros(self.problem.n_dims)
             for jdx in range(0, self.problem.n_dims):
-                rdx = self._get_index_roulette_wheel_selection(matrix_p)
+                rdx = cy.roulette_wheel(self.generator, self.problem.sense, matrix_p)
                 child[jdx] = (
-                        self.pop[rdx].solution[jdx]
+                        self.population[rdx].solution[jdx]
                         + self.generator.normal() * matrix_sigma[rdx, jdx]
                 )  # (1)
-            pos_new = self._correct_solution(child)  # (2)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(child)  # (2)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, self.problem.sense
-        )
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        self.population = cy.sort_agents(self.population + pop_new, self.problem.sense)[:pop_size]

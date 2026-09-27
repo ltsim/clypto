@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevGCO(LegacyOptimizer):
+cdef class DevGCO(cy.Optimizer):
     """
     The developed version: Germinal Center Optimization (GCO)
 
@@ -36,8 +36,8 @@ cdef class DevGCO(LegacyOptimizer):
     >>>
     >>> model = GCO.DevGCO(epoch=1000, pop_size=50, cr = 0.7, wf = 1.25)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -55,63 +55,61 @@ cdef class DevGCO(LegacyOptimizer):
             cr (float): crossover rate, default = 0.7 (Same as DE algorithm)
             wf (float): weighting factor (f in the paper), default = 1.25 (Same as DE algorithm)
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.cr = self.validator.check_float("cr", cr, (0, 1.0))
-        self.wf = self.validator.check_float("wf", wf, (0, 3.0))
-        self._set_parameters(["epoch", "pop_size", "cr", "wf"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "cr", "wf"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.cr = cy.validator(float, cr, (0, 1.0), "cr")
+        self.wf = cy.validator(float, wf, (0, 3.0), "wf")
 
-    def _initialize_variables(self):
-        self.dyn_list_cell_counter = np.ones(self.pop_size)  # CEll Counter
+    def initialize_variables(self):
+        pop_size = self.population.size()
+        self.dyn_list_cell_counter = np.ones(pop_size)  # CEll Counter
         self.dyn_list_life_signal = 70 * np.ones(
-            self.pop_size
+            pop_size
         )  # 70% to duplicate, and 30% to die  # LIfe-Signal
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Dark-zone process    (can be parallelization)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if self.generator.uniform(0, 100) < self.dyn_list_life_signal[idx]:
                 self.dyn_list_cell_counter[idx] += 1
             else:
                 self.dyn_list_cell_counter[idx] = 1
             # Mutate process
             r1, r2 = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+                list(set(range(0, pop_size)) - {idx}), 2, replace=False
             )
             pos_new = self.g_best.solution + self.wf * (
-                    self.pop[r2].solution - self.pop[r1].solution
+                    self.population[r2].solution - self.population[r1].solution
             )
             condition = self.generator.random(self.problem.n_dims) < self.cr
-            pos_new = np.where(condition, pos_new, self.pop[idx].solution)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = np.where(condition, pos_new, self.population[idx].solution)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
-            ):
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        for idx in range(0, pop_size):
+            if cy.is_better(pop_new[idx], self.population[idx], self.problem.sense):
                 self.dyn_list_cell_counter[idx] += 10
-                self.pop[idx] = pop_new[idx].copy()
+                self.population[idx] = pop_new[idx].copy()
         ## Light-zone process   (no needs parallelization)
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             self.dyn_list_cell_counter[idx] = 10
-            fit_list = np.array([agent.target.fitness for agent in self.pop])
+            fit_list = np.array([agent.fitness for agent in self.population])
             fit_max = np.max(fit_list)
             fit_min = np.min(fit_list)
             self.dyn_list_cell_counter[idx] += (
                     10
-                    * (self.pop[idx].target.fitness - fit_max)
+                    * (self.population[idx].fitness - fit_max)
                     / (fit_min - fit_max + self.EPSILON)
             )

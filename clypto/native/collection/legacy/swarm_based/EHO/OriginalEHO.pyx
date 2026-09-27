@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalEHO(LegacyOptimizer):
+cdef class OriginalEHO(cy.Optimizer):
     """
     The original version of: Elephant Herding Optimization (EHO)
 
@@ -37,14 +37,18 @@ cdef class OriginalEHO(LegacyOptimizer):
     >>>
     >>> model = EHO.OriginalEHO(epoch=1000, pop_size=50, alpha = 0.5, beta = 0.5, n_clans = 5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Wang, G.G., Deb, S. and Coelho, L.D.S., 2015, December. Elephant herding optimization.
     In 2015 3rd international symposium on computational and business intelligence (ISCBI) (pp. 1-5). IEEE.
     """
+
+    cdef public double alpha
+    cdef public double beta
+    cdef public int n_clans
 
     def __init__(
             self,
@@ -63,35 +67,31 @@ cdef class OriginalEHO(LegacyOptimizer):
             beta (float): a factor that determines the influence of the x_center, default=0.5
             n_clans (int): the number of clans, default=5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.alpha = self.validator.check_float("alpha", alpha, (0, 3.0))
-        self.beta = self.validator.check_float("beta", beta, (0, 1.0))
-        self.n_clans = self.validator.check_int(
-            "n_clans", n_clans, [2, int(self.pop_size / 5)]
-        )
-        self._set_parameters(["epoch", "pop_size", "alpha", "beta", "n_clans"])
-        self.n_individuals = int(self.pop_size / self.n_clans)
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "alpha", "beta", "n_clans"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.alpha = cy.validator(float, alpha, (0, 3.0), "alpha")
+        self.beta = cy.validator(float, beta, (0, 1.0), "beta")
+        self.n_clans = cy.validator(int, n_clans, [2, int(self.population.size() / 5)], "n_clans")
+        self.n_individuals = int(self.population.size() / self.n_clans)
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
-        self.pop_group = self._generate_group_population(
-            self.pop, self.n_clans, self.n_individuals
-        )
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
+        self.pop_group = cy.split_groups(self.population, self.n_clans, self.n_individuals)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Clan updating operator
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             clan_idx = int(idx / self.n_individuals)
             pos_clan_idx = int(idx % self.n_individuals)
             if (
@@ -109,26 +109,18 @@ cdef class OriginalEHO(LegacyOptimizer):
                                   self.pop_group[clan_idx][0].solution
                                   - self.pop_group[clan_idx][pos_clan_idx].solution
                           )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        self.pop_group = self._generate_group_population(
-            self.pop, self.n_clans, self.n_individuals
-        )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        self.pop_group = cy.split_groups(self.population, self.n_clans, self.n_individuals)
         # Separating operator
         for idx in range(0, self.n_clans):
-            self.pop_group[idx] = self._get_sorted_population(
-                self.pop_group[idx], self.problem.sense
-            )
-            self.pop_group[idx][-1] = self._generate_agent()
-        self.pop = [agent for pack in self.pop_group for agent in pack]
+            self.pop_group[idx] = cy.sort_agents(self.pop_group[idx], self.problem.sense)
+            self.pop_group[idx][-1] = self.population.generate_agent()
+        self.population = [agent for pack in self.pop_group for agent in pack]

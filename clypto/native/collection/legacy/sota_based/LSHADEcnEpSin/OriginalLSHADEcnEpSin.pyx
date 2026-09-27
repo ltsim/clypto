@@ -6,11 +6,11 @@
 
 import numpy as np
 from scipy.stats import cauchy, norm
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
+cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
     """
     The original version of: Ensemble sinusoidal differential covariance matrix adaptation with Euclidean neighborhood (LSHADEcnEpSin)
 
@@ -34,8 +34,8 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
     >>> model = LSHADEcnEpSin.OriginalLSHADEcnEpSin(epoch=1000, pop_size=50, miu_f = 0.5, miu_cr = 0.5,
     >>>                                freq = 0.5, memory_size = 5, ps = 0.5, pc = 0.4, pop_size_min = 10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -43,6 +43,14 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
     covariance matrix adaptation with Euclidean neighborhood for solving CEC2017 benchmark problems.
     In 2017 IEEE congress on evolutionary computation (CEC) (pp. 372-379). IEEE.
     """
+
+    cdef public double freq
+    cdef public int memory_size
+    cdef public double miu_cr
+    cdef public double miu_f
+    cdef public double pc
+    cdef public int pop_size_min
+    cdef public double ps
 
     def __init__(
         self,
@@ -69,37 +77,20 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
             pc (float): [0.1, 1.0], Probability for covariance matrix crossover, default = 0.4
             pop_size_min (int): [5, 1000], Minimum population size, default = 10
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.miu_f = self.validator.check_float("miu_f", miu_f, (0.1, 1.0))
-        self.miu_cr = self.validator.check_float("miu_cr", miu_cr, (0.1, 1.0))
-        self.freq = self.validator.check_float("freq", freq, (0.1, 2.0))
-        self.memory_size = self.validator.check_int(
-            "memory_size", memory_size, [1, 100]
-        )
-        self.ps = self.validator.check_float("ps", ps, (0.1, 1.0))
-        self.pc = self.validator.check_float("pc", pc, (0.1, 1.0))
-        self.pop_size_min = self.validator.check_int(
-            "pop_size_min", pop_size_min, [4, 1000]
-        )
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "miu_f",
-                "miu_cr",
-                "freq",
-                "memory_size",
-                "ps",
-                "pc",
-                "pop_size_min",
-            ]
-        )
-        self.sort_flag = False
+        super().__init__(parameters=[ "epoch", "pop_size", "miu_f", "miu_cr", "freq", "memory_size", "ps", "pc", "pop_size_min", ], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.miu_f = cy.validator(float, miu_f, (0.1, 1.0), "miu_f")
+        self.miu_cr = cy.validator(float, miu_cr, (0.1, 1.0), "miu_cr")
+        self.freq = cy.validator(float, freq, (0.1, 2.0), "freq")
+        self.memory_size = cy.validator(int, memory_size, [1, 100], "memory_size")
+        self.ps = cy.validator(float, ps, (0.1, 1.0), "ps")
+        self.pc = cy.validator(float, pc, (0.1, 1.0), "pc")
+        self.pop_size_min = cy.validator(int, pop_size_min, [4, 1000], "pop_size_min")
 
-    def _initialize_variables(self):
-        self.NP_init = self.pop_size if self.pop_size else 18 * self.problem.n_dims
+    def initialize_variables(self):
+        pop_size = self.population.size()
+        self.NP_init = pop_size if pop_size else 18 * self.problem.n_dims
         self.NP_min = self.pop_size_min  # Minimum population size
         self.NP = self.NP_init  # population size will be updated in each iteration
 
@@ -121,9 +112,9 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
         self.nf1_history = []  # Failure history for config 1
         self.nf2_history = []  # Failure history for config 2
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Initialize archive with initial population
-        self.archive = self.pop.copy()
+        self.archive = self.population.copy()
 
     def update_sinusoidal_probabilities(self, epoch):
         """Update probabilities for sinusoidal configurations"""
@@ -172,24 +163,24 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
     def current_to_pbest_mutation(self, idx, F, p=0.1):
         """Current-to-pbest/1 mutation strategy"""
         # Select pbest from top p*NP individuals
-        pop_sorted = self._get_sorted_population(self.pop, self.problem.sense)
+        pop_sorted = self.population.sort()
         p_size = max(1, int(p * self.NP))
         pbest_idx = self.generator.choice(range(p_size))
 
         # Select r1 randomly from population (different from i)
         r1 = self.generator.choice(list(set(range(self.NP)) - {idx}))
         # Select r2 from population + archive
-        pop_combined = self.pop + self.archive
+        pop_combined = self.population + self.archive
         r2 = self.generator.choice(list(set(range(len(pop_combined))) - {idx, r1}))
 
         # Mutation
         pos_new = (
-            self.pop[idx].solution
-            + F * (pop_sorted[pbest_idx].solution - self.pop[idx].solution)
-            + F * (self.pop[r1].solution - pop_combined[r2].solution)
+            self.population[idx].solution
+            + F * (pop_sorted[pbest_idx].solution - self.population[idx].solution)
+            + F * (self.population[r1].solution - pop_combined[r2].solution)
         )
         # Ensure the new position is within bounds
-        pos_new = self._correct_solution(pos_new)
+        pos_new = self.population.correct_solution(pos_new)
         return pos_new
 
     def binomial_crossover(self, target, mutant, CR=None):
@@ -208,7 +199,7 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
     def covariance_matrix_crossover(self, target, mutant):
         """Covariance matrix learning with Euclidean neighborhood"""
         # Calculate Euclidean distances to best individual
-        list_pos = np.array([agent.solution for agent in self.pop])
+        list_pos = np.array([agent.solution for agent in self.population])
         dist = np.linalg.norm(list_pos - self.g_best.solution, axis=1)
         dist_indices = np.argsort(dist)
 
@@ -281,15 +272,13 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
         new_NP = max(self.NP_min, new_NP)
         if new_NP < self.NP:
             # Sort population by fitness and keep the best individuals
-            _, indices = self._get_sorted_indices_population(
-                self.pop, self.problem.sense
-            )
+            _, indices = (cy.sort_agents(self.population, self.problem.sense), cy.argsort_agents(self.population, self.problem.sense))
             tt = indices[:new_NP]
             self.generator.shuffle(tt)
-            self.pop = [self.pop[idx] for idx in tt]
+            self.population = [self.population[idx] for idx in tt]
         self.NP = new_NP
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -338,20 +327,18 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
             # Crossover
             if self.generator.random() < self.pc:
                 pos_new = self.covariance_matrix_crossover(
-                    self.pop[idx].solution, pos_new
+                    self.population[idx].solution, pos_new
                 )
             else:
-                pos_new = self.binomial_crossover(self.pop[idx].solution, pos_new, CR)
+                pos_new = self.binomial_crossover(self.population[idx].solution, pos_new, CR)
 
             # Calculate fitness
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
 
             # Selection
-            if self._compare_target(
-                agent.target, self.pop[idx].target, self.problem.sense
-            ):  # Success
-                delta = abs(self.pop[idx].target.fitness - agent.target.fitness)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):  # Success
+                delta = abs(self.population[idx].fitness - agent.fitness)
                 S_F.append(F)
                 S_CR.append(CR)
                 delta_f.append(delta)
@@ -362,9 +349,9 @@ cdef class OriginalLSHADEcnEpSin(LegacyOptimizer):
                     elif config_used == 2:
                         ns2_current += 1
                 # Add old individual to archive
-                self.archive = self.archive + [self.pop[idx].copy()]
+                self.archive = self.archive + [self.population[idx].copy()]
                 # Replace with trial
-                self.pop[idx] = agent
+                self.population[idx] = agent
             else:  # Failure
                 if epoch <= self.epoch // 2:
                     if config_used == 1:

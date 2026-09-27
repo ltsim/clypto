@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalOOA(LegacyOptimizer):
+cdef class OriginalOOA(cy.Optimizer):
     """
     The original version of: Osprey Optimization Algorithm (OOA)
 
@@ -38,8 +38,8 @@ cdef class OriginalOOA(LegacyOptimizer):
     >>>
     >>> model = OOA.OriginalOOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -55,30 +55,29 @@ cdef class OriginalOOA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
     def get_indexes_better__(self, pop, idx):
-        fits = np.array([agent.target.fitness for agent in self.pop])
+        fits = np.array([agent.fitness for agent in self.population])
         if self.problem.sense == "min":
-            idxs = np.where(fits < pop[idx].target.fitness)
+            idxs = np.where(fits < pop[idx].fitness)
         else:
-            idxs = np.where(fits > pop[idx].target.fitness)
+            idxs = np.where(fits > pop[idx].fitness)
         return idxs[0]
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        for idx in range(0, self.pop_size):
+        pop_size = self.population.size()
+        for idx in range(0, pop_size):
             # Phase 1: : POSITION IDENTIFICATION AND HUNTING THE FISH (EXPLORATION)
-            idxs = self.get_indexes_better__(self.pop, idx)
+            idxs = self.get_indexes_better__(self.population, idx)
             if len(idxs) == 0:
                 sf = self.g_best
             else:
@@ -86,27 +85,23 @@ cdef class OriginalOOA(LegacyOptimizer):
                     sf = self.g_best
                 else:
                     kk = self.generator.permutation(idxs)[0]
-                    sf = self.pop[kk]
+                    sf = self.population[kk]
             r1 = self.generator.integers(1, 3)
-            pos_new = self.pop[idx].solution + self.generator.normal(0, 1) * (
-                    sf.solution - r1 * self.pop[idx].solution
+            pos_new = self.population[idx].solution + self.generator.normal(0, 1) * (
+                    sf.solution - r1 * self.population[idx].solution
             )  # Eq. 5
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
 
             # PHASE 2: CARRYING THE FISH TO THE SUITABLE POSITION (EXPLOITATION)
             pos_new = (
-                    self.pop[idx].solution
+                    self.population[idx].solution
                     + self.problem.bounds.low
                     + self.generator.random() * (self.problem.bounds.up - self.problem.bounds.low)
             )  # Eq. 7
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent

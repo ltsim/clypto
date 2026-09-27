@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -41,8 +41,8 @@ cdef class OriginalTS(VectorizeOptimizer):
     >>>
     >>> model = TS.OriginalTS(epoch=1000, pop_size=50, tabu_size = 5, neighbour_size = 20, perturbation_scale = 0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -88,12 +88,12 @@ cdef class OriginalTS(VectorizeOptimizer):
         self.neighbour_size = cy.validator(int, neighbour_size, [2, 10000], "neighbour_size")
         self.perturbation_scale = cy.validator(float, perturbation_scale, (0, 100), "perturbation_scale")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         self.x = np.array(self.g_best.solution)
         self.tabu_list = []
         self.pop = self.pop.take(np.array([], dtype=int))  # the search keeps its best moves instead
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         # Generate candidate solutions by perturbing the current solution
@@ -105,7 +105,7 @@ cdef class OriginalTS(VectorizeOptimizer):
         # Evaluate candidate solutions and select best move
         list_candidates = []
         for candidate in candidates:
-            pos_new = self._correct_solution(candidate)
+            pos_new = self.correct_solution(candidate)
             if np.allclose(pos_new, self.x):
                 continue
             if tuple(pos_new) in self.tabu_list:

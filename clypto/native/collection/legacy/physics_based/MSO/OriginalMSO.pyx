@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMSO(LegacyOptimizer):
+cdef class OriginalMSO(cy.Optimizer):
     """
     The original version of: Mirage Search Optimization (MSO)
 
@@ -32,8 +32,8 @@ cdef class OriginalMSO(LegacyOptimizer):
     >>>
     >>> model = MSO.OriginalMSO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -49,11 +49,9 @@ cdef class OriginalMSO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
 
     def sind(self, x):
         return np.sin(np.deg2rad(x))
@@ -80,19 +78,20 @@ cdef class OriginalMSO(LegacyOptimizer):
             return 1.0
         return np.arctanh(x)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Random permutation for agent selection
-        ac = self.generator.permutation(self.pop_size - 1) + 1
+        ac = self.generator.permutation(pop_size - 1) + 1
         # Selection of individuals for Superior mirage search
         cv = int(
             np.ceil(
-                (self.pop_size * (2 / 3))
+                (pop_size * (2 / 3))
                 * ((self.epoch - self.nf_counter + 1) / self.epoch)
             )
         )
@@ -103,7 +102,7 @@ cdef class OriginalMSO(LegacyOptimizer):
             pos_new = np.zeros(self.problem.n_dims)
             for k in range(self.problem.n_dims):
                 h = (
-                            self.g_best.solution[k] - self.pop[idx].solution[k]
+                            self.g_best.solution[k] - self.population[idx].solution[k]
                     ) * self.generator.random()
                 cmax = 1
                 hmax = 5 * self.atanh(-(self.nf_counter / self.epoch) + 1) + cmax
@@ -135,24 +134,22 @@ cdef class OriginalMSO(LegacyOptimizer):
                     zf = 0
                 dx = (self.sind(B) * h * self.sind(C)) / (self.sind(D) * self.sind(A))
                 dx = dx * zf
-                pos_new[k] = self.pop[idx].solution[k] + dx
+                pos_new[k] = self.population[idx].solution[k] + dx
             # Bound the variables
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
             pop_new.append(agent)
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, sense=self.problem.sense
-        )
+        self.population = cy.sort_agents(self.population + pop_new, self.problem.sense)[:pop_size]
 
         # Inferior mirage search
         pop_new = []
-        for idx in range(self.pop_size):
-            if self.g_best == self.pop[idx]:
+        for idx in range(pop_size):
+            if self.g_best == self.population[idx]:
                 hh = (
                         np.ones(self.problem.n_dims) * 0.05 * self.generator.choice([-1, 1])
                 )
             else:
-                hh = self.g_best.solution - self.pop[idx].solution
+                hh = self.g_best.solution - self.population[idx].solution
             zf = np.sign(hh)
             hh = np.abs(hh * self.generator.random(self.problem.n_dims))
             gama = (
@@ -173,10 +170,8 @@ cdef class OriginalMSO(LegacyOptimizer):
                     )
                     * self.cosd(omg)
             ) / self.cosd(omg - gama)
-            pos_new = self.pop[idx].solution + x * zf
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
+            pos_new = self.population[idx].solution + x * zf
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
             pop_new.append(agent)
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, sense=self.problem.sense
-        )
+        self.population = cy.sort_agents(self.population + pop_new, self.problem.sense)[:pop_size]

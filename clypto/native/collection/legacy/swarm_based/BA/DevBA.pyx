@@ -3,14 +3,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevBA(LegacyOptimizer):
+cdef class DevBA(cy.Optimizer):
     """
     The original version of: Developed Bat-inspired Algorithm (DBA)
 
@@ -42,9 +40,13 @@ cdef class DevBA(LegacyOptimizer):
     >>>
     >>> model = BA.DevBA(epoch=1000, pop_size=50, pulse_rate = 0.95, pf_min = 0., pf_max = 10.)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
+
+    cdef public double pf_max
+    cdef public double pf_min
+    cdef public double pulse_rate
 
     def __init__(
         self,
@@ -55,68 +57,60 @@ cdef class DevBA(LegacyOptimizer):
         pf_max=10.0,
         **kwargs
     ):
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.pulse_rate = self.validator.check_float("pulse_rate", pulse_rate, (0, 1.0))
-        self.pf_min = self.validator.check_float("pf_min", pf_min, [0, 2])
-        self.pf_max = self.validator.check_float("pf_max", pf_max, [2, 10])
+        super().__init__(parameters=["epoch", "pop_size", "pulse_rate", "pf_min", "pf_max"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.pulse_rate = cy.validator(float, pulse_rate, (0, 1.0), "pulse_rate")
+        self.pf_min = cy.validator(float, pf_min, [0, 2], "pf_min")
+        self.pf_max = cy.validator(float, pf_max, [2, 10], "pf_max")
         self.alpha = self.gamma = 0.9
-        self._set_parameters(["epoch", "pop_size", "pulse_rate", "pf_min", "pf_max"])
-        self.sort_flag = False
 
-    def _initialize_variables(self):
-        self.dyn_list_velocity = np.zeros((self.pop_size, self.problem.n_dims))
+    def initialize_variables(self):
+        pop_size = self.population.size()
+        self.dyn_list_velocity = np.zeros((pop_size, self.problem.n_dims))
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             pf = (
                 self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
             )  # Eq. 2
             self.dyn_list_velocity[idx] = (
                 self.generator.uniform() * self.dyn_list_velocity[idx]
-                + (self.g_best.solution - self.pop[idx].solution) * pf
+                + (self.g_best.solution - self.population[idx].solution) * pf
             )  # Eq. 3
-            x = self.pop[idx].solution + self.dyn_list_velocity[idx]  # Eq. 4
-            pos_new = self._correct_solution(x)
-            agent = self._generate_empty_agent(pos_new)
+            x = self.population[idx].solution + self.dyn_list_velocity[idx]  # Eq. 4
+            pos_new = self.population.correct_solution(x)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
         pop_child_idx = []
         pop_child = []
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx].update(
-                    solution=pop_new[idx].solution.copy(), target=pop_new[idx].target
-                )
+        for idx in range(0, pop_size):
+            if cy.is_better(pop_new[idx], self.population[idx], self.problem.sense):
+                self.population[idx].update_solution(pop_new[idx], pop_new[idx].solution.copy())
             else:
                 if self.generator.random() > self.pulse_rate:
                     x = self.g_best.solution + 0.01 * self.generator.uniform(
                         self.problem.bounds.low, self.problem.bounds.up
                     )
-                    pos_new = self._correct_solution(x)
-                    agent = self._generate_empty_agent(pos_new)
+                    pos_new = self.population.correct_solution(x)
+                    agent = self.population.create_agent(pos_new)
                     pop_child_idx.append(idx)
                     pop_child.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
-                        pop_child[-1].target = self._get_target(pos_new)
-        pop_child = self._update_target_for_population(pop_child)
+                        pop_child[-1].evaluate(self.problem)
+        pop_child = self.population.evaluate(pop_child, self.mode)
         for idx, idx_selected in enumerate(pop_child_idx):
-            if self._compare_target(
-                pop_child[idx].target, pop_new[idx_selected].target, self.problem.sense
-            ):
-                pop_new[idx_selected].update(
-                    solution=pop_child[idx].solution, target=pop_child[idx].target
-                )
-        self.pop = pop_new
+            if cy.is_better(pop_child[idx], pop_new[idx_selected], self.problem.sense):
+                pop_new[idx_selected].update_solution(pop_child[idx], pop_child[idx].solution)
+        self.population = pop_new

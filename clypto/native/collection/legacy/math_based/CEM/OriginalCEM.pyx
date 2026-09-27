@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCEM(LegacyOptimizer):
+cdef class OriginalCEM(cy.Optimizer):
     """
     The original version of: Cross-Entropy Method (CEM)
 
@@ -37,14 +37,17 @@ cdef class OriginalCEM(LegacyOptimizer):
     >>>
     >>> model = CEM.OriginalCEM(epoch=1000, pop_size=50, n_best = 20, alpha = 0.7)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] De Boer, P.T., Kroese, D.P., Mannor, S. and Rubinstein, R.Y., 2005. A tutorial on the
     cross-entropy method. Annals of operations research, 134(1), pp.19-67.
     """
+
+    cdef public double alpha
+    cdef public int n_best
 
     def __init__(
             self,
@@ -61,29 +64,26 @@ cdef class OriginalCEM(LegacyOptimizer):
             n_best (int): N selected solutions as a samples for next evolution
             alpha (float): weight factor for means and stdevs (normal distribution)
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.n_best = self.validator.check_int(
-            "n_best", n_best, [2, int(self.pop_size / 2)]
-        )
-        self.alpha = self.validator.check_float("alpha", alpha, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "n_best", "alpha"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "n_best", "alpha"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
+        self.n_best = cy.validator(int, n_best, [2, int(self.population.size() / 2)], "n_best")
+        self.alpha = cy.validator(float, alpha, (0, 1.0), "alpha")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.means = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         self.stdevs = np.abs(self.problem.bounds.up - self.problem.bounds.low)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Selected the best samples and update means and stdevs
-        pop_best = self.pop[: self.n_best]
+        pop_best = self.population[: self.n_best]
         pos_list = np.array([agent.solution for agent in pop_best])
         means_new = np.mean(pos_list, axis=0)
         means_new_repeat = np.repeat(means_new.reshape((1, -1)), self.n_best, axis=0)
@@ -92,18 +92,14 @@ cdef class OriginalCEM(LegacyOptimizer):
         self.stdevs = np.abs(self.alpha * self.stdevs + (1.0 - self.alpha) * stdevs_new)
         ## Create new population for next generation
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             pos_new = self.generator.normal(self.means, self.stdevs)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

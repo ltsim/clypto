@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalFFA(LegacyOptimizer):
+cdef class OriginalFFA(cy.Optimizer):
     """
     The original version of: Firefly Algorithm (FFA)
 
@@ -37,8 +37,8 @@ cdef class OriginalFFA(LegacyOptimizer):
     >>>
     >>> model = FFA.OriginalFFA(epoch=1000, pop_size=50, gamma = 0.001, beta_base = 2, alpha = 0.2, alpha_damp = 0.99, delta = 0.05, exponent = 2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -47,6 +47,13 @@ cdef class OriginalFFA(LegacyOptimizer):
     [2] Arora, S. and Singh, S., 2013. The firefly optimization algorithm: convergence analysis and
     parameter selection. International Journal of Computer Applications, 69(3).
     """
+
+    cdef public double alpha
+    cdef public double alpha_damp
+    cdef public double beta_base
+    cdef public double delta
+    cdef public int exponent
+    cdef public double gamma
 
     def __init__(
             self,
@@ -71,58 +78,44 @@ cdef class OriginalFFA(LegacyOptimizer):
             delta (float): Mutation Step Size, default = 0.05
             exponent (int): Exponent (m in the paper), default = 2
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.gamma = self.validator.check_float("gamma", gamma, (0, 1.0))
-        self.beta_base = self.validator.check_float("beta_base", beta_base, (0, 3.0))
-        self.alpha = self.validator.check_float("alpha", alpha, (0, 1.0))
-        self.alpha_damp = self.validator.check_float("alpha_damp", alpha_damp, (0, 1.0))
-        self.delta = self.validator.check_float("delta", delta, (0, 1.0))
-        self.exponent = self.validator.check_int("exponent", exponent, [2, 4])
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "gamma",
-                "beta_base",
-                "alpha",
-                "alpha_damp",
-                "delta",
-                "exponent",
-            ]
-        )
-        self.sort_flag = False
+        super().__init__(parameters=[ "epoch", "pop_size", "gamma", "beta_base", "alpha", "alpha_damp", "delta", "exponent", ], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.gamma = cy.validator(float, gamma, (0, 1.0), "gamma")
+        self.beta_base = cy.validator(float, beta_base, (0, 3.0), "beta_base")
+        self.alpha = cy.validator(float, alpha, (0, 1.0), "alpha")
+        self.alpha_damp = cy.validator(float, alpha_damp, (0, 1.0), "alpha_damp")
+        self.delta = cy.validator(float, delta, (0, 1.0), "delta")
+        self.exponent = cy.validator(int, exponent, [2, 4], "exponent")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_alpha = self.alpha  # Initial Value of Mutation Coefficient
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Maximum Distance
         dmax = np.sqrt(self.problem.n_dims)
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             pop_child = []
-            for j in range(idx + 1, self.pop_size):
+            for j in range(idx + 1, pop_size):
                 # Move Towards Better Solutions
-                if self._compare_target(
-                        self.pop[j].target, agent.target, self.problem.sense
-                ):
+                if cy.is_better(self.population[j], agent, self.problem.sense):
                     # Calculate Radius and Attraction Level
-                    rij = np.linalg.norm(agent.solution - self.pop[j].solution) / dmax
+                    rij = np.linalg.norm(agent.solution - self.population[j].solution) / dmax
                     beta = self.beta_base * np.exp(-self.gamma * rij ** self.exponent)
                     # Mutation Vector
                     mutation_vector = self.delta * self.generator.uniform(
                         0, 1, self.problem.n_dims
                     )
                     temp = np.matmul(
-                        (self.pop[j].solution - agent.solution),
+                        (self.population[j].solution - agent.solution),
                         self.generator.uniform(
                             0, 1, (self.problem.n_dims, self.problem.n_dims)
                         ),
@@ -130,16 +123,14 @@ cdef class OriginalFFA(LegacyOptimizer):
                     pos_new = (
                             agent.solution + self.dyn_alpha * mutation_vector + beta * temp
                     )
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
                     pop_child.append(agent)
-            if len(pop_child) < self.pop_size:
-                pop_child += self._generate_population(self.pop_size - len(pop_child))
-            local_best = self._get_best_agent(pop_child, self.problem.sense)
+            if len(pop_child) < pop_size:
+                pop_child += self.population.generate(pop_size - len(pop_child))
+            local_best = cy.sort_agents(pop_child, self.problem.sense)[0].copy()
             # Compare to Previous Solution
-            if self._compare_target(
-                    local_best.target, agent.target, self.problem.sense
-            ):
-                self.pop[idx] = local_best
-        self.pop.append(self.g_best)
+            if cy.is_better(local_best, agent, self.problem.sense):
+                self.population[idx] = local_best
+        self.population.append(self.g_best)
         self.dyn_alpha = self.alpha_damp * self.alpha

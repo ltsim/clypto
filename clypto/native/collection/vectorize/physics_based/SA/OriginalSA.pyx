@@ -5,12 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
 
 
 cdef class OriginalSA(VectorizeOptimizer):
@@ -40,8 +38,8 @@ cdef class OriginalSA(VectorizeOptimizer):
     >>>
     >>> model = SA.OriginalSA(epoch=1000, pop_size=50, temp_init = 100, step_size = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -81,29 +79,29 @@ cdef class OriginalSA(VectorizeOptimizer):
         self.temp_init = cy.validator(float, temp_init, [1, 10000], "temp_init")
         self.step_size = cy.validator(float, step_size, (-100.0, 100.0), "step_size")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         self.agent_current = self.g_best.copy()
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef NativePopulation pop
         cdef object cur = self.agent_current
         # Perturb the current solution
         pos_new = cur.solution + self.generator.standard_normal(self.problem.n_dims) * self.step_size
-        tar = self._get_target(pos_new)
-        agent = LegacyNativeAgent(pos_new, tar)
+        tar = self.evaluate_solution(pos_new)
+        agent = cy.Agent(pos_new, tar.objectives, tar.weights)
         # Accept or reject the new solution
-        if self._compare_fitness(tar.fitness, cur.target.fitness, self.problem.sense):
+        if cy.better_fitness(tar.fitness, cur.fitness, self.problem.sense):
             self.agent_current = agent
         else:
             # Calculate the energy difference
-            delta_energy = np.abs(cur.target.fitness - tar.fitness)
+            delta_energy = np.abs(cur.fitness - tar.fitness)
             # calculate probability acceptance criterion
             p_accept = np.exp(-delta_energy / (self.temp_init / epoch))
             if self.generator.random() < p_accept:
                 self.agent_current = agent
         pop = self.pop.take(np.zeros(2, dtype=int))
-        ops.set_row(pop, 0, self.g_best.solution, self.g_best.target)
-        ops.set_row(pop, 1, self.agent_current.solution, self.agent_current.target)
+        ops.set_row(pop, 0, self.g_best.solution, self.g_best)
+        ops.set_row(pop, 1, self.agent_current.solution, self.agent_current)
         self.pop = pop

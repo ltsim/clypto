@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalFOX(LegacyOptimizer):
+cdef class OriginalFOX(cy.Optimizer):
     """
     The original version of: Fox Optimizer (FOX)
 
@@ -41,13 +41,16 @@ cdef class OriginalFOX(LegacyOptimizer):
     >>>
     >>> model = FOX.OriginalFOX(epoch=1000, pop_size=50, c1=0.18, c2=0.82)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Mohammed, H., & Rashid, T. (2023). FOX: a FOX-inspired optimization algorithm. Applied Intelligence, 53(1), 1030-1050.
     """
+
+    cdef public double c1
+    cdef public double c2
 
     def __init__(
             self,
@@ -57,27 +60,26 @@ cdef class OriginalFOX(LegacyOptimizer):
             c2: float = 0.82,
             **kwargs: object
     ) -> None:
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c1 = self.validator.check_float("c1", c1, (-100.0, 100.0))
-        self.c2 = self.validator.check_float("c2", c2, (-100.0, 100.0))
-        self._set_parameters(["epoch", "pop_size", "c1", "c2"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "c1", "c2"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.c1 = cy.validator(float, c1, (-100.0, 100.0), "c1")
+        self.c2 = cy.validator(float, c2, (-100.0, 100.0), "c2")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.mint = 10000000
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         aa = 2 * (1 - (1.0 / self.epoch))
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if self.generator.random() >= 0.5:
                 t1 = self.generator.random(self.problem.n_dims)
                 sps = self.g_best.solution / t1
@@ -97,11 +99,11 @@ cdef class OriginalFOX(LegacyOptimizer):
                         * self.generator.random(self.problem.n_dims)
                         * (self.mint * aa)
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = agent
+                agent.evaluate(self.problem)
+                self.population[idx] = agent
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self._update_target_for_population(pop_new)
+            self.population = self.population.evaluate(pop_new, self.mode)

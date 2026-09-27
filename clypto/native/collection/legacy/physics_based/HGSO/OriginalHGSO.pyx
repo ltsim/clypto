@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHGSO(LegacyOptimizer):
+cdef class OriginalHGSO(cy.Optimizer):
     """
     The original version of: Henry Gas Solubility Optimization (HGSO)
 
@@ -35,14 +35,16 @@ cdef class OriginalHGSO(LegacyOptimizer):
     >>>
     >>> model = HGSO.OriginalHGSO(epoch=1000, pop_size=50, n_clusters = 3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Hashim, F.A., Houssein, E.H., Mabrouk, M.S., Al-Atabany, W. and Mirjalili, S., 2019. Henry gas solubility
     optimization: A novel physics-based algorithm. Future Generation Computer Systems, 101, pp.646-667.
     """
+
+    cdef public int n_clusters
 
     def __init__(
             self,
@@ -57,15 +59,11 @@ cdef class OriginalHGSO(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             n_clusters (int): number of clusters, default = 2
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.n_clusters = self.validator.check_int(
-            "n_clusters", n_clusters, [2, int(self.pop_size / 5)]
-        )
-        self._set_parameters(["epoch", "pop_size", "n_clusters"])
-        self.n_elements = int(self.pop_size / self.n_clusters)
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "n_clusters"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
+        self.n_clusters = cy.validator(int, n_clusters, [2, int(self.population.size() / 5)], "n_clusters")
+        self.n_elements = int(self.population.size() / self.n_clusters)
         self.T0 = 298.15
         self.K = 1.0
         self.beta = 1.0
@@ -75,18 +73,17 @@ cdef class OriginalHGSO(LegacyOptimizer):
         self.l2 = 100.0
         self.l3 = 1e-2
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.H_j = self.l1 * self.generator.uniform()
         self.P_ij = self.l2 * self.generator.uniform()
         self.C_j = self.l3 * self.generator.uniform()
         self.pop_group, self.p_best = None, None
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
-        self.pop_group = self._generate_group_population(
-            self.pop, self.n_clusters, self.n_elements
-        )
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
+        self.pop_group = cy.split_groups(self.population, self.n_clusters, self.n_elements)
         self.p_best = self.get_best_solution_in_team__(
             self.pop_group
         )  # multiple element
@@ -100,17 +97,18 @@ cdef class OriginalHGSO(LegacyOptimizer):
     def get_best_solution_in_team__(self, group=None):
         list_best = []
         for idx in range(len(group)):
-            best_agent = self._get_best_agent(group[idx], self.problem.sense)
+            best_agent = cy.sort_agents(group[idx], self.problem.sense)[0].copy()
             list_best.append(best_agent)
         return list_best
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Loop based on the number of cluster in swarm (number of gases type)
         for idx in range(self.n_clusters):
             ### Loop based on the number of individual in each gases type
@@ -124,8 +122,8 @@ cdef class OriginalHGSO(LegacyOptimizer):
                 S_ij = self.K * self.H_j * self.P_ij
                 gama = self.beta * np.exp(
                     -(
-                            (self.p_best[idx].target.fitness + self.epsilon)
-                            / (self.pop_group[idx][jdx].target.fitness + self.epsilon)
+                            (self.p_best[idx].fitness + self.epsilon)
+                            / (self.pop_group[idx][jdx].fitness + self.epsilon)
                     )
                 )
                 pos_new = (
@@ -139,14 +137,14 @@ cdef class OriginalHGSO(LegacyOptimizer):
                         * self.alpha
                         * (S_ij * self.g_best.solution - self.pop_group[idx][jdx].solution)
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self._get_target(pos_new)
-            pop_new = self._update_target_for_population(pop_new)
+                    pop_new[-1].evaluate(self.problem)
+            pop_new = self.population.evaluate(pop_new, self.mode)
             self.pop_group[idx] = pop_new
-        self.pop = self.flatten_group__(self.pop_group)
+        self.population = self.flatten_group__(self.pop_group)
 
         ## Update Henry's coefficient using Eq.8
         self.H_j = self.H_j * np.exp(
@@ -155,25 +153,23 @@ cdef class OriginalHGSO(LegacyOptimizer):
         ## Update the solubility of each gas using Eq.9
         S_ij = self.K * self.H_j * self.P_ij
         ## Rank and select the number of worst agents using Eq. 11
-        N_w = int(self.pop_size * (self.generator.uniform(0, 0.1) + 0.1))
+        N_w = int(pop_size * (self.generator.uniform(0, 0.1) + 0.1))
         ## Update the position of the worst agents using Eq. 12
-        sorted_id_pos = np.argsort([x.target.fitness for x in self.pop])
+        sorted_id_pos = np.argsort([x.fitness for x in self.population])
 
         pop_new = []
         pop_idx = []
         for item in range(N_w):
             id = sorted_id_pos[item]
             pos_new = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_idx.append(id)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
         for idx, id_selected in enumerate(pop_idx):
-            self.pop[id_selected] = pop_new[idx].copy()
-        self.pop_group = self._generate_group_population(
-            self.pop, self.n_clusters, self.n_elements
-        )
+            self.population[id_selected] = pop_new[idx].copy()
+        self.pop_group = cy.split_groups(self.population, self.n_clusters, self.n_elements)
         self.p_best = self.get_best_solution_in_team__(self.pop_group)

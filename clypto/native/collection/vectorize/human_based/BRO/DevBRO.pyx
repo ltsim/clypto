@@ -5,15 +5,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -47,8 +44,8 @@ cdef class DevBRO(AgentListOptimizer):
     >>>
     >>> model = BRO.DevBRO(epoch=1000, pop_size=50, threshold = 3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
 
@@ -78,13 +75,13 @@ cdef class DevBRO(AgentListOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.threshold = cy.validator(float, threshold, [1, 10], "threshold")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         shrink = np.ceil(np.log10(self.epoch))
         self.dyn_delta = np.round(self.epoch / shrink)
         self.lb_updated = self.problem.bounds.low.copy()
         self.ub_updated = self.problem.bounds.up.copy()
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         damage = 0
@@ -106,21 +103,19 @@ cdef class DevBRO(AgentListOptimizer):
         dist_list = np.reshape(dist_list, (-1))
         return self.get_idx_min__(dist_list)
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         for idx in range(self.pop_size):
             # Compare ith soldier with nearest one (jth)
             jdx = self.find_idx_min_distance__(self.objs[idx].solution, self.objs)
-            if self._compare_target(
-                self.objs[idx].target, self.objs[jdx].target, self.problem.sense
-            ):
+            if cy.is_better(self.objs[idx], self.objs[jdx], self.problem.sense):
                 ## Update Winner based on global best solution
                 pos_new = self.objs[idx].solution + self.generator.normal(
                     0, 1
                 ) * np.mean(
                     np.array([self.objs[idx].solution, self.g_best.solution]), axis=0
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
+                pos_new = self.correct_solution(pos_new)
+                agent = self.generate_agent(pos_new)
                 dam_new = (
                     self.objs[idx].damage - 1
                 )  ## Substract damaged hurt -1 to go next battle
@@ -135,14 +130,14 @@ cdef class DevBRO(AgentListOptimizer):
                         - np.minimum(self.objs[jdx].solution, self.g_best.solution)
                     ) + np.maximum(self.objs[jdx].solution, self.g_best.solution)
                     dam_new = self.objs[jdx].damage + 1
-                    self.objs[jdx].target = self._get_target(self.objs[jdx].solution)
+                    self.objs[jdx].evaluate(self.problem)
                 else:  ## Loser dead and respawn again
                     pos_new = self.generator.uniform(
                         self.lb_updated, self.ub_updated
                     )
                     dam_new = 0
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
+                pos_new = self.correct_solution(pos_new)
+                agent = self.generate_agent(pos_new)
                 agent.damage = dam_new
                 self.objs[jdx] = agent
             else:
@@ -152,8 +147,8 @@ cdef class DevBRO(AgentListOptimizer):
                 pos_new = self.objs[jdx].solution + self.generator.uniform() * (
                     self.g_best.solution - self.objs[jdx].solution
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
+                pos_new = self.correct_solution(pos_new)
+                agent = self.generate_agent(pos_new)
                 agent.damage = 0
                 self.objs[jdx] = agent
         if epoch >= self.dyn_delta:  # max_epoch = 1000 -> delta = 300, 450, >500,....

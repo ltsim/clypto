@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -45,8 +45,8 @@ cdef class OriginalIWO(VectorizeOptimizer):
     >>>
     >>> model = IWO.OriginalIWO(epoch=1000, pop_size=50, seed_min = 3, seed_max = 9, exponent = 3, sigma_start = 0.6, sigma_end = 0.01)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -106,7 +106,7 @@ cdef class OriginalIWO(VectorizeOptimizer):
         self.sigma_start = cy.validator(float, sigma_start, [0.5, 5.0], "sigma_start")
         self.sigma_end = cy.validator(float, sigma_end, (0, 0.5), "sigma_end")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -120,5 +120,5 @@ cdef class OriginalIWO(VectorizeOptimizer):
         s = np.minimum(np.ceil(self.seed_min + (self.seed_max - self.seed_min) * ratio).astype(int), int(np.sqrt(self.pop_size)))
         parent = np.repeat(np.arange(n), s)
         pos = Xs[parent] + sigma * rng.normal(0, 1, (len(parent), d))
-        cand = self.new_population(self._correct_solution(pos))
+        cand = self.new_population(self.correct_solution(pos))
         self.pop = cand.take(self.sorted_order(cand)[:self.pop_size])

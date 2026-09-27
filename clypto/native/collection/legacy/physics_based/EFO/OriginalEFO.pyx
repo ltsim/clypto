@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.physics_based.EFO.DevEFO cimport DevEFO
 
@@ -38,8 +39,8 @@ cdef class OriginalEFO(DevEFO):
     >>>
     >>> model = EFO.OriginalEFO(epoch=1000, pop_size=50, r_rate = 0.3, ps_rate = 0.85, p_field = 0.1, n_field = 0.45)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -68,33 +69,28 @@ cdef class OriginalEFO(DevEFO):
             n_field (float): default = 0.45    portion of population, negative field
         """
         super().__init__(epoch, pop_size, r_rate, ps_rate, p_field, n_field, **kwargs)
+        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.ResetPopulation)
         self.support_parallel_modes = False
 
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        rd = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        condition = np.logical_and(
-            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
-        )
-        return np.where(condition, solution, rd)
-
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
         # %random vectors (this is to increase the calculation speed instead of determining the random values in each
         # iteration we allocate them in the beginning before algorithm start
         self.r_index1 = self.generator.integers(
-            0, int(self.pop_size * self.p_field), (self.problem.n_dims, self.epoch)
+            0, int(pop_size * self.p_field), (self.problem.n_dims, self.epoch)
         )
         # random particles from positive field
         self.r_index2 = self.generator.integers(
-            int(self.pop_size * (1 - self.n_field)),
-            self.pop_size,
+            int(pop_size * (1 - self.n_field)),
+            pop_size,
             (self.problem.n_dims, self.epoch),
         )
         # random particles from negative field
         self.r_index3 = self.generator.integers(
-            int((self.pop_size * self.p_field) + 1),
-            int(self.pop_size * (1 - self.n_field)),
+            int((pop_size * self.p_field) + 1),
+            int(pop_size * (1 - self.n_field)),
             (self.problem.n_dims, self.epoch),
         )
         # random particles from neutral field
@@ -109,7 +105,7 @@ cdef class OriginalEFO(DevEFO):
         self.RI = 0
         # index of the electromagnet (variable) which is going to be initialized by random number
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -124,21 +120,21 @@ cdef class OriginalEFO(DevEFO):
         for idx in range(0, self.problem.n_dims):
             if self.ps[idx, iter01] > self.ps_rate:
                 x_new[idx] = (
-                        self.pop[self.r_index3[idx, iter01]].solution[idx]
+                        self.population[self.r_index3[idx, iter01]].solution[idx]
                         + self.phi
                         * r
                         * (
-                                self.pop[self.r_index1[idx, iter01]].solution[idx]
-                                - self.pop[self.r_index3[idx, iter01]].solution[idx]
+                                self.population[self.r_index1[idx, iter01]].solution[idx]
+                                - self.population[self.r_index3[idx, iter01]].solution[idx]
                         )
                         + r
                         * (
-                                self.pop[self.r_index3[idx, iter01]].solution[idx]
-                                - self.pop[self.r_index2[idx, iter01]].solution[idx]
+                                self.population[self.r_index3[idx, iter01]].solution[idx]
+                                - self.population[self.r_index2[idx, iter01]].solution[idx]
                         )
                 )
             else:
-                x_new[idx] = self.pop[self.r_index1[idx, iter01]].solution[idx]
+                x_new[idx] = self.population[self.r_index1[idx, iter01]].solution[idx]
         # replacement of one electromagnet of generated particle with a random number (only for some generated particles) to bring diversity to the population
         if self.rp[iter01] < self.r_rate:
             x_new[self.RI] = (
@@ -150,8 +146,8 @@ cdef class OriginalEFO(DevEFO):
             if RI >= self.problem.n_dims:
                 self.RI = 0
         # checking whether the generated number is inside boundary or not
-        pos_new = self._correct_solution(x_new)
-        agent = self._generate_agent(pos_new)
+        pos_new = self.population.correct_solution(x_new)
+        agent = self.population.generate_agent(pos_new)
         # Updating the population if the fitness of the generated particle is better than worst fitness in
         #     the population (because the population is sorted by fitness, the last particle is the worst)
-        self.pop[-1] = agent
+        self.population[-1] = agent

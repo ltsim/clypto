@@ -3,11 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.swarm_based.SLO.ModifiedSLO cimport ModifiedSLO
+from clypto.native.collection.legacy.swarm_based.SLO.ModifiedSLO import ModifiedSLOPopulation
 
 
 cdef class ImprovedSLO(ModifiedSLO):
@@ -34,14 +34,17 @@ cdef class ImprovedSLO(ModifiedSLO):
     >>>
     >>> model = SLO.ImprovedSLO(epoch=1000, pop_size=50, c1=1.2, c2=1.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Nguyen, Binh Minh, Trung Tran, Thieu Nguyen, and Giang Nguyen. "An improved sea lion optimization for workload elasticity
     prediction with neural networks." International Journal of Computational Intelligence Systems 15, no. 1 (2022): 90.
     """
+
+    cdef public double c1
+    cdef public double c2
 
     def __init__(
         self,
@@ -59,28 +62,29 @@ cdef class ImprovedSLO(ModifiedSLO):
             c2 (float): Global coefficient same as PSO, default = 1.2
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c1 = self.validator.check_float("c1", c1, (0, 5.0))
-        self.c2 = self.validator.check_float("c2", c2, (0, 5.0))
-        self._set_parameters(["epoch", "pop_size", "c1", "c2"])
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=ModifiedSLOPopulation)
+        self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
+        self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
+        self.parameters = ["epoch", "pop_size", "c1", "c2"]
         self.sort_flag = False
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         c = 2.0 - 2.0 * epoch / self.epoch
         t0 = self.generator.random()
         v1 = np.sin(2 * np.pi * t0)
         v2 = np.sin(2 * np.pi * (1 - t0))
         SP_leader = np.abs(v1 * (1 + v2) / v2)
         pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             if SP_leader < 0.5:
                 if (
                     c < 1
@@ -88,16 +92,16 @@ cdef class ImprovedSLO(ModifiedSLO):
                     # pos_new = g_best.solution - c * np.abs(2 * rand() * g_best.solution - pop[i].solution)
                     dif1 = np.abs(
                         2 * self.generator.random() * self.g_best.solution
-                        - self.pop[idx].solution
+                        - self.population[idx].solution
                     )
                     dif2 = np.abs(
-                        2 * self.generator.random() * self.pop[idx].local_solution
-                        - self.pop[idx].solution
+                        2 * self.generator.random() * self.population[idx].local_solution
+                        - self.population[idx].solution
                     )
                     pos_new = self.c1 * self.generator.random() * (
-                        self.pop[idx].solution - dif1
+                        self.population[idx].solution - dif1
                     ) + self.c2 * self.generator.random() * (
-                        self.pop[idx].solution - dif2
+                        self.population[idx].solution - dif2
                     )
                 else:  # Exploration improved by opposition-based learning
                     # Create a new solution by equation below
@@ -105,38 +109,32 @@ cdef class ImprovedSLO(ModifiedSLO):
                     # Compare both of them and keep the good one (Searching at both direction)
                     pos_new = self.g_best.solution + c * self.generator.normal(
                         0, 1, self.problem.n_dims
-                    ) * (self.g_best.solution - self.pop[idx].solution)
-                    pos_new = self._correct_solution(pos_new)
-                    target_new = self._get_target(pos_new)
+                    ) * (self.g_best.solution - self.population[idx].solution)
+                    pos_new = self.population.correct_solution(pos_new)
+                    target_new = self.population.evaluate_solution(pos_new)
                     pos_new_oppo = (
                         self.problem.bounds.low
                         + self.problem.bounds.up
                         - self.g_best.solution
                         + self.generator.random() * (self.g_best.solution - pos_new)
                     )
-                    pos_new_oppo = self._correct_solution(pos_new_oppo)
-                    target_new_oppo = self._get_target(pos_new_oppo)
-                    if self._compare_target(
-                        target_new_oppo, target_new, self.problem.sense
-                    ):
+                    pos_new_oppo = self.population.correct_solution(pos_new_oppo)
+                    target_new_oppo = self.population.evaluate_solution(pos_new_oppo)
+                    if cy.is_better(target_new_oppo, target_new, self.problem.sense):
                         pos_new = pos_new_oppo
             else:  # Exploitation
                 pos_new = self.g_best.solution + np.cos(
                     2 * np.pi * self.generator.uniform(-1, 1)
-                ) * np.abs(self.g_best.solution - self.pop[idx].solution)
-            pos_new = self._correct_solution(pos_new)
+                ) * np.abs(self.g_best.solution - self.population[idx].solution)
+            pos_new = self.population.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                pop_new[idx].target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = pop_new[idx].copy()
-                if self._compare_target(
-                    pop_new[idx].target, self.pop[idx].local_target, self.problem.sense
-                ):
-                    self.pop[idx].local_solution = pop_new[idx].solution.copy()
-                    self.pop[idx].local_target = pop_new[idx].target.copy()
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        for idx in range(0, pop_size):
+            if cy.is_better(pop_new[idx], self.population[idx], self.problem.sense):
+                self.population[idx] = pop_new[idx].copy()
+                if cy.is_better(pop_new[idx], self.population[idx].local_best, self.problem.sense):
+                    self.population[idx].local_solution = pop_new[idx].solution.copy()
+                    self.population[idx].local_best = pop_new[idx].copy()

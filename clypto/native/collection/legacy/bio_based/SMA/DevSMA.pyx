@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevSMA(LegacyOptimizer):
+cdef class DevSMA(cy.Optimizer):
     """
     The developed version: Slime Mould Algorithm (SMA)
 
@@ -36,8 +36,8 @@ cdef class DevSMA(LegacyOptimizer):
     >>>
     >>> model = SMA.DevSMA(epoch=1000, pop_size=50, p_t = 0.03)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -53,75 +53,71 @@ cdef class DevSMA(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             p_t (float): probability threshold (z in the paper), default = 0.03
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.p_t = self.validator.check_float("p_t", p_t, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "p_t"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "p_t"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.p_t = cy.validator(float, p_t, (0, 1.0), "p_t")
 
-    def _initialize_variables(self):
-        self.weights = np.zeros((self.pop_size, self.problem.n_dims))
+    def initialize_variables(self):
+        pop_size = self.population.size()
+        self.weights = np.zeros((pop_size, self.problem.n_dims))
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # plus eps to avoid denominator zero
-        ss = self.g_best.target.fitness - self.pop[-1].target.fitness + self.EPSILON
+        ss = self.g_best.fitness - self.population[-1].fitness + self.EPSILON
         # calculate the fitness weight of each slime mold
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Eq.(2.5)
-            if idx <= int(self.pop_size / 2):
+            if idx <= int(pop_size / 2):
                 self.weights[idx] = 1 + self.generator.uniform(
                     0, 1, self.problem.n_dims
                 ) * np.log10(
-                    (self.g_best.target.fitness - self.pop[idx].target.fitness) / ss + 1
+                    (self.g_best.fitness - self.population[idx].fitness) / ss + 1
                 )
             else:
                 self.weights[idx] = 1 - self.generator.uniform(
                     0, 1, self.problem.n_dims
                 ) * np.log10(
-                    (self.g_best.target.fitness - self.pop[idx].target.fitness) / ss + 1
+                    (self.g_best.fitness - self.population[idx].fitness) / ss + 1
                 )
         a = np.arctanh(1 - epoch / self.epoch)  # Eq.(2.4)
         b = 1 - epoch / self.epoch
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Update the Position of search agent
             if self.generator.uniform() < self.p_t:  # Eq.(2.7)
                 pos_new = self.problem.generate_solution()
             else:
                 p = np.tanh(
-                    np.abs(self.pop[idx].target.fitness - self.g_best.target.fitness)
+                    np.abs(self.population[idx].fitness - self.g_best.fitness)
                 )  # Eq.(2.2)
                 vb = self.generator.uniform(-a, a, self.problem.n_dims)  # Eq.(2.3)
                 vc = self.generator.uniform(-b, b, self.problem.n_dims)
                 # two positions randomly selected from population, apply for the whole problem size instead of 1 variable
                 id_a, id_b = self.generator.choice(
-                    list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+                    list(set(range(0, pop_size)) - {idx}), 2, replace=False
                 )
                 pos_1 = self.g_best.solution + vb * (
-                        self.weights[idx] * self.pop[id_a].solution
-                        - self.pop[id_b].solution
+                        self.weights[idx] * self.population[id_a].solution
+                        - self.population[id_b].solution
                 )
-                pos_2 = vc * self.pop[idx].solution
+                pos_2 = vc * self.population[idx].solution
                 condition = self.generator.random(self.problem.n_dims) < p
                 pos_new = np.where(condition, pos_1, pos_2)
             # Check bound and re-calculate fitness after each individual move
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

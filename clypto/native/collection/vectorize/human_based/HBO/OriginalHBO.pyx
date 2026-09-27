@@ -7,7 +7,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +42,8 @@ cdef class OriginalHBO(AgentListOptimizer):
     >>>
     >>> model = HBO.OriginalHBO(epoch=1000, pop_size=50, degree = 3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -84,7 +84,7 @@ cdef class OriginalHBO(AgentListOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.degree = cy.validator(int, degree, [2, 10], "degree")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.cycles = np.floor(self.epoch / 25)
         self.it_per_cycle = self.epoch / self.cycles
         self.qtr_cycle = self.it_per_cycle / 4
@@ -103,27 +103,25 @@ cdef class OriginalHBO(AgentListOptimizer):
         pop_size = len(pop)
         heap = []
         for c in range(pop_size):
-            heap.append([pop[c].target, c])
+            heap.append([pop[c].copy(), c])
             # Heapifying
             t = c
             while t > 0:
                 parent_id = int(np.floor((t + 1) / degree) - 1)
-                if self._compare_target(
-                        pop[parent_id].target, pop[t].target, self.problem.sense
-                ):
+                if cy.is_better(pop[parent_id], pop[t], self.problem.sense):
                     break
                 else:
                     heap[t], heap[parent_id] = heap[parent_id], heap[t]
                 t = parent_id
         return heap
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         self.heap = self.heapifying__(self.objs, self.degree)
         self.friend_limits = self.colleagues_limits_generator__(
             self.pop_size, self.degree
         )
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         gama = (np.mod(epoch, self.it_per_cycle) + 1) / self.qtr_cycle
         gama = np.abs(2 - gama)
         p1 = 1.0 - epoch / self.epoch
@@ -165,11 +163,7 @@ cdef class OriginalHBO(AgentListOptimizer):
                             par_agent.solution[jdx] - cur_agent.solution[jdx]
                         )
                     else:
-                        if self._compare_target(
-                                self.heap[friend_idx][0],
-                                self.heap[c][0],
-                                self.problem.sense,
-                        ):
+                        if cy.is_better(self.heap[friend_idx][0], self.heap[c][0], self.problem.sense):
                             cur_agent.solution[jdx] = fri_agent.solution[jdx] + rn[
                                 jdx
                             ] * gama * np.abs(
@@ -183,20 +177,16 @@ cdef class OriginalHBO(AgentListOptimizer):
                                 fri_agent.solution[jdx] - cur_agent.solution[jdx]
                             )
                             )
-                pos_new = self._correct_solution(cur_agent.solution)
-                cur_agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        cur_agent.target, self.heap[c][0], self.problem.sense
-                ):
+                pos_new = self.correct_solution(cur_agent.solution)
+                cur_agent = self.generate_agent(pos_new)
+                if cy.is_better(cur_agent, self.heap[c][0], self.problem.sense):
                     self.objs[self.heap[c][1]] = cur_agent
-                    self.heap[c][0] = cur_agent.target.copy()
+                    self.heap[c][0] = cur_agent.copy()
             # Heapifying
             t = c
             while t > 1:
                 parent_id = int((t + 1) / self.degree)
-                if self._compare_target(
-                        self.heap[parent_id][0], self.heap[t][0], self.problem.sense
-                ):
+                if cy.is_better(self.heap[parent_id][0], self.heap[t][0], self.problem.sense):
                     break
                 else:
                     self.heap[t], self.heap[parent_id] = (

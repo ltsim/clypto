@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -35,8 +35,8 @@ cdef class OriginalGJO(VectorizeOptimizer):
     >>>
     >>> model = GJO.OriginalGJO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -67,14 +67,14 @@ cdef class OriginalGJO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         E1 = 1.5 * (1.0 - (epoch / self.epoch))
-        RL = self._get_levy_flight_step(beta=1.5, multiplier=0.05, size=(n, d), case=-1)
+        RL = cy.levy_flight(self.generator, beta=1.5, multiplier=0.05, size=(n, d), case=-1)
         order = self.sorted_order(pop)
         male = np.array(X[order[0]])
         female = np.array(X[order[1]])

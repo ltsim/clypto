@@ -6,7 +6,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -45,8 +45,8 @@ cdef class ImprovedBSO(AgentListOptimizer):
     >>>
     >>> model = BSO.ImprovedBSO(epoch=1000, pop_size=50, m_clusters = 5, p1 = 0.25, p2 = 0.5, p3 = 0.75, p4 = 0.6)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -97,23 +97,21 @@ cdef class ImprovedBSO(AgentListOptimizer):
     def find_cluster__(self, pop_group):
         centers = []
         for idx in range(0, self.m_clusters):
-            local_best = self._get_best_agent(pop_group[idx], self.problem.sense)
+            local_best = cy.sort_agents(pop_group[idx], self.problem.sense)[0].copy()
             centers.append(local_best.copy())
         return centers
 
-    def _initialization(self):
-        AgentListOptimizer._initialization(self)
-        self.pop_group = self._generate_group_population(
-            self.objs, self.m_clusters, self.m_solution
-        )
+    def initialization(self):
+        AgentListOptimizer.initialization(self)
+        self.pop_group = cy.split_groups(self.objs, self.m_clusters, self.m_solution)
         self.centers = self.find_cluster__(self.pop_group)
         self.pop = self.mirror__()
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         epsilon = 1.0 - 1.0 * epoch / self.epoch  # 1. Changed here, no need: k
         if self.generator.uniform() < self.p1:  # p_5a
             idx = self.generator.integers(0, self.m_clusters)
-            self.centers[idx] = self._generate_agent()
+            self.centers[idx] = self.generate_agent()
         pop_group = self.pop_group
         for idx in range(0, self.pop_size):  # Generate new individuals
             cluster_id = int(idx / self.m_solution)
@@ -127,9 +125,7 @@ cdef class ImprovedBSO(AgentListOptimizer):
                         0, 1, self.problem.n_dims
                     )
                 else:  # 2. Using levy flight here
-                    levy_step = self._get_levy_flight_step(
-                        beta=1.0, multiplier=0.001, size=self.problem.n_dims, case=-1
-                    )
+                    levy_step = cy.levy_flight(self.generator, beta=1.0, multiplier=0.001, size=self.problem.n_dims, case=-1)
                     pos_new = (
                             self.pop_group[cluster_id][location_id].solution + levy_step
                     )
@@ -148,20 +144,16 @@ cdef class ImprovedBSO(AgentListOptimizer):
                             self.pop_group[id1][rand_id1].solution
                             + self.pop_group[id2][rand_id2].solution
                     ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_group[cluster_id][location_id] = agent
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                pop_group[cluster_id][location_id] = self._get_better_agent(
-                    agent, self.pop_group[cluster_id][location_id], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                pop_group[cluster_id][location_id] = cy.get_better_agent(agent, self.pop_group[cluster_id][location_id], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
             for idx in range(0, self.m_clusters):
-                pop_group[idx] = self._update_target_for_population(pop_group[idx])
-                pop_group[idx] = self._greedy_selection_population(
-                    self.pop_group[idx], pop_group[idx], self.problem.sense
-                )
+                pop_group[idx] = self.evaluate_agents(pop_group[idx])
+                pop_group[idx] = cy.greedy_agents(self.pop_group[idx], pop_group[idx], self.problem.sense)
 
         # Needed to update the centers and population
         self.centers = self.find_cluster__(pop_group)

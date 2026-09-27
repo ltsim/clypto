@@ -3,21 +3,13 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
-
-
-cdef class _OriginalPSOAgent(LegacyAgent):
-    cdef public object velocity
-    cdef public object local_solution
-    cdef public object local_target
+from clypto.native.collection.legacy.swarm_based.PSO._base cimport PSOAgent, ResetPSOPopulation
 
 
-cdef class OriginalPSO(LegacyOptimizer):
+cdef class OriginalPSO(cy.Optimizer):
     """
     The original version of: Particle Swarm Optimization (PSO)
 
@@ -42,14 +34,18 @@ cdef class OriginalPSO(LegacyOptimizer):
     >>>
     >>> model = PSO.OriginalPSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, w=0.4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Kennedy, J. and Eberhart, R., 1995, November. Particle swarm optimization. In Proceedings of
     ICNN'95-international conference on neural networks (Vol. 4, pp. 1942-1948). IEEE.
     """
+
+    cdef public double c1
+    cdef public double c2
+    cdef public double w
 
     def __init__(
         self,
@@ -68,71 +64,27 @@ cdef class OriginalPSO(LegacyOptimizer):
             c2: [0-2] global coefficient
             w_min: Weight min of bird, default = 0.4
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c1 = self.validator.check_float("c1", c1, (0, 5.0))
-        self.c2 = self.validator.check_float("c2", c2, (0, 5.0))
-        self.w = self.validator.check_float("w", w, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "c1", "c2", "w"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "c1", "c2", "w"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=ResetPSOPopulation)
+        self.c1 = cy.validator(float, c1, (0.0, 5.0), "c1")
+        self.c2 = cy.validator(float, c2, (0.0, 5.0), "c2")
+        self.w = cy.validator(float, w, (0.0, 1.0), "w")
 
-    def _initialize_variables(self):
-        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
-        self.v_min = -self.v_max
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.v_min, self.v_max)
-        local_pos = solution.copy()
-        return _OriginalPSOAgent(
-            solution=solution, velocity=velocity, local_solution=local_pos
-        )
-
-    def _generate_agent(self, solution: np.ndarray | None = None):
-        agent = self._generate_empty_agent(solution)
-        agent.target = self._get_target(agent.solution)
-        agent.local_target = agent.target.copy()
-        return agent
-
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        condition = np.logical_and(
-            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
-        )
-        pos_rand = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        return np.where(condition, solution, pos_rand)
-
-    def _evolve(self, epoch):
+    def evolve(self, int epoch):
         """
-        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+        The main operations (equations) of algorithm.
 
         Args:
             epoch (int): The current iteration
         """
-        # Update weight after each move count  (weight down)
-        for idx in range(0, self.pop_size):
-            cognitive = (
-                self.c1
-                * self.generator.random(self.problem.n_dims)
-                * (self.pop[idx].local_solution - self.pop[idx].solution)
-            )
-            social = (
-                self.c2
-                * self.generator.random(self.problem.n_dims)
-                * (self.g_best.solution - self.pop[idx].solution)
-            )
-            self.pop[idx].velocity = (
-                self.w * self.pop[idx].velocity + cognitive + social
-            )
-            pos_new = self.pop[idx].solution + self.pop[idx].velocity
-            pos_new = self._correct_solution(pos_new)
-            target = self._get_target(pos_new)
-            if self._compare_target(target, self.pop[idx].target, self.problem.sense):
-                self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self._compare_target(
-                target, self.pop[idx].local_target, self.problem.sense
-            ):
-                self.pop[idx].update(
-                    local_solution=pos_new.copy(), local_target=target.copy()
-                )
+        cdef PSOAgent agent
+        for agent in self.population:
+            # 1. The particle updates its velocity and proposes a position inside the bounds
+            agent.update_velocity(self.g_best.solution, self.w, self.c1, self.c2, self.generator)
+            # 2. Evaluate that position as a candidate
+            candidate = self.population.evaluate_solution(self.population.correct_solution(agent.move()))
+            # 3. Greedy: move only if better, then refresh the personal best
+            if cy.is_better(candidate, agent, self.problem.sense):
+                agent.update_solution(candidate)
+            agent.update_pbest(candidate, self.problem.sense)

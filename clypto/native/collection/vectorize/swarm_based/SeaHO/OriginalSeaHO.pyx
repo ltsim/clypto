@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -35,8 +35,8 @@ cdef class OriginalSeaHO(VectorizeOptimizer):
     >>>
     >>> model = SeaHO.OriginalSeaHO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -71,12 +71,12 @@ cdef class OriginalSeaHO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.uu = 0.05
         self.vv = 0.05
         self.ll = 0.05
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation child, offspring, both
@@ -85,14 +85,14 @@ cdef class OriginalSeaHO(VectorizeOptimizer):
         X = pop.X
         g = np.array(self.g_best_x())
         # The motor behavior of sea horses
-        step_length = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, d), case=-1)
+        step_length = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=(n, d), case=-1)
         beta = rng.normal(0, 1, (n, d))
         theta = 2 * np.pi * rng.random((n, d))
         row = self.uu * np.exp(theta * self.vv)
         xx, yy, zz = row * np.cos(theta), row * np.sin(theta), row * theta
         eq4 = X + step_length * ((g - X) * xx * yy * zz + g)  # Eq. 4
         eq7 = X + rng.random((n, d)) * self.ll * beta * (g - beta * g)  # Eq. 7
-        moved = self._correct_solution(np.where((rng.normal(0, 1, (n, 1)) > 0), eq4, eq7))
+        moved = self.correct_solution(np.where((rng.normal(0, 1, (n, 1)) > 0), eq4, eq7))
         # The predation behavior of sea horses
         alpha = (1 - epoch / self.epoch) ** (2 * epoch / self.epoch)
         r1 = rng.random((n, d))
@@ -102,13 +102,13 @@ cdef class OriginalSeaHO(VectorizeOptimizer):
             (1 - alpha) * (moved - r1 * g) + alpha * moved,  # Eq. 11
         )
         child = pop.empty_like()
-        child.X[:] = self._correct_solution(pos)
+        child.X[:] = self.correct_solution(pos)
         self.evaluate(child, 0, n)
         child = child.take(self.sorted_order(child))  # Sorted population
         # The reproductive behavior of sea horses
         offspring = child.take(np.arange(half))
         r3 = rng.random((half, 1))
-        offspring.X[:] = self._correct_solution(r3 * child.X[:half] + (1 - r3) * child.X[half:2 * half])  # Eq. 13
+        offspring.X[:] = self.correct_solution(r3 * child.X[:half] + (1 - r3) * child.X[half:2 * half])  # Eq. 13
         self.evaluate(offspring, 0, half)
         # Sea horses selection
         both = child.concat(offspring)

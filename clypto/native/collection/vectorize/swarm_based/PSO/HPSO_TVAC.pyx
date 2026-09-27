@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 import numpy as np
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.native.collection.vectorize.swarm_based.PSO.P_PSO cimport P_PSO
@@ -35,8 +35,8 @@ cdef class HPSO_TVAC(P_PSO):
     >>>
     >>> model = PSO.HPSO_TVAC(epoch=1000, pop_size=50, ci=0.5, cf=0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -76,7 +76,7 @@ cdef class HPSO_TVAC(P_PSO):
         self.ci = cy.validator(float, ci, [0.3, 1.0], "ci")
         self.cf = cy.validator(float, cf, [0, 0.3], "cf")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         # Sequential: reads pop[idx_k] after earlier agents updated it and draws a
         # data-dependent number of normals, so agents are processed one by one.
         cdef NativePopulation pop = self.pop
@@ -102,7 +102,7 @@ cdef class HPSO_TVAC(P_PSO):
             v_new = np.sign(v_new) * np.minimum(np.abs(v_new), self.v_max)
             #########################
             v_new = np.minimum(np.maximum(v_new, -self.v_max), self.v_max)
-            cand.X[idx] = self._correct_solution(X[idx] + v_new)
+            cand.X[idx] = self.correct_solution(X[idx] + v_new)
             V[idx] = v_new
             self.evaluate(cand, idx, idx + 1)
             self.accept(cand, idx, idx + 1)

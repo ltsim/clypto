@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalRUN(VectorizeOptimizer):
@@ -37,8 +36,8 @@ cdef class OriginalRUN(VectorizeOptimizer):
     >>>
     >>> model = RUN.OriginalRUN(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -102,11 +101,11 @@ cdef class OriginalRUN(VectorizeOptimizer):
         else:
             return np.argmax(fit_list)
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         # In-place updates of the best agent are seen by the agents after it (g_best is
         # aliased), and every agent reads the ones updated before it: sequential on rows.
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar_new, tar_new2, tar_new3
+        cdef cy.Agent tar_new, tar_new2, tar_new3
         cdef Py_ssize_t idx
         Xp = pop.X
         f = 20 * np.exp(-(12.0 * epoch / self.epoch))  # Eq.17.6
@@ -136,7 +135,7 @@ cdef class OriginalRUN(VectorizeOptimizer):
             )
             id_min_x = self.get_index_of_best_agent__([pop.F[a], pop.F[b], pop.F[c]])
             ## Determine Xb and Xw for using in Runge Kutta method
-            if self._compare_fitness(pop.F[idx], pop.F[id_min_x], self.problem.sense):
+            if cy.better_fitness(pop.F[idx], pop.F[id_min_x], self.problem.sense):
                 xb, xw = Xp[idx], Xp[id_min_x]
             else:
                 xb, xw = Xp[id_min_x], Xp[idx]
@@ -159,9 +158,9 @@ cdef class OriginalRUN(VectorizeOptimizer):
                         + SF[idx] * SM
                         + mu * (Xp[a] - Xp[b])
                 )
-            pos_new = self._correct_solution(pos_new)
-            tar_new = self._get_target(pos_new)
-            if self._compare_fitness(tar_new.fitness, pop.F[idx], self.problem.sense):
+            pos_new = self.correct_solution(pos_new)
+            tar_new = self.evaluate_solution(pos_new)
+            if cy.better_fitness(tar_new.fitness, pop.F[idx], self.problem.sense):
                 ops.set_row(pop, idx, pos_new, tar_new)
             ## Enhanced solution quality (ESQ)  (Eq. 19)
             if self.generator.random() < 0.5:
@@ -193,9 +192,9 @@ cdef class OriginalRUN(VectorizeOptimizer):
                 )
                 )
                 x_new2 = np.where(w < 1, x_new2_temp1, x_new2_temp2)
-                pos_new2 = self._correct_solution(x_new2)
-                tar_new2 = self._get_target(pos_new2)
-                if self._compare_fitness(tar_new2.fitness, pop.F[idx], self.problem.sense):
+                pos_new2 = self.correct_solution(x_new2)
+                tar_new2 = self.evaluate_solution(pos_new2)
+                if cy.better_fitness(tar_new2.fitness, pop.F[idx], self.problem.sense):
                     ops.set_row(pop, idx, pos_new2, tar_new2)
                 else:
                     if (
@@ -219,7 +218,7 @@ cdef class OriginalRUN(VectorizeOptimizer):
                                         )
                                 )
                         )  # Eq. 20
-                        pos_new3 = self._correct_solution(x_new3)
-                        tar_new3 = self._get_target(pos_new3)
-                        if self._compare_fitness(tar_new3.fitness, pop.F[idx], self.problem.sense):
+                        pos_new3 = self.correct_solution(x_new3)
+                        tar_new3 = self.evaluate_solution(pos_new3)
+                        if cy.better_fitness(tar_new3.fitness, pop.F[idx], self.problem.sense):
                             ops.set_row(pop, idx, pos_new3, tar_new3)

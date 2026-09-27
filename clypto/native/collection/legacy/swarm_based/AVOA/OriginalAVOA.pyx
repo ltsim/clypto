@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalAVOA(LegacyOptimizer):
+cdef class OriginalAVOA(cy.Optimizer):
     """
     The original version of: African Vultures Optimization Algorithm (AVOA)
 
@@ -40,14 +40,20 @@ cdef class OriginalAVOA(LegacyOptimizer):
     >>>
     >>> model = AVOA.OriginalAVOA(epoch=1000, pop_size=50, p1=0.6, p2=0.4, p3=0.6, alpha=0.8, gama=2.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Abdollahzadeh, B., Gharehchopogh, F. S., & Mirjalili, S. (2021). African vultures optimization algorithm: A new
     nature-inspired metaheuristic algorithm for global optimization problems. Computers & Industrial Engineering, 158, 107408.
     """
+
+    cdef public double alpha
+    cdef public double gama
+    cdef public double p1
+    cdef public double p2
+    cdef public double p3
 
     def __init__(
             self,
@@ -65,35 +71,33 @@ cdef class OriginalAVOA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.p1 = self.validator.check_float("p1", p1, (0, 1))
-        self.p2 = self.validator.check_float("p2", p2, (0, 1))
-        self.p3 = self.validator.check_float("p3", p3, (0, 1))
-        self.alpha = self.validator.check_float("alpha", alpha, (0, 1))
-        self.gama = self.validator.check_float("gama", gama, (0, 5.0))
-        self._set_parameters(["epoch", "pop_size", "p1", "p2", "p3", "alpha", "gama"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "p1", "p2", "p3", "alpha", "gama"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.p1 = cy.validator(float, p1, (0, 1), "p1")
+        self.p2 = cy.validator(float, p2, (0, 1), "p2")
+        self.p3 = cy.validator(float, p3, (0, 1), "p3")
+        self.alpha = cy.validator(float, alpha, (0, 1), "alpha")
+        self.gama = cy.validator(float, gama, (0, 5.0), "gama")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         a = self.generator.uniform(-2, 2) * (
                 (np.sin((np.pi / 2) * (epoch / self.epoch)) ** self.gama)
                 + np.cos((np.pi / 2) * (epoch / self.epoch))
                 - 1
         )
         ppp = (2 * self.generator.random() + 1) * (1 - epoch / self.epoch) + a
-        _, best_list, _ = self._get_special_agents(
-            self.pop, n_best=2, sense=self.problem.sense
-        )
+        ranked = self.population.sort()
+        best_list = [agent.copy() for agent in ranked[:2]]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             F = ppp * (2 * self.generator.random() - 1)
             rand_idx = self.generator.choice([0, 1], p=[self.alpha, 1 - self.alpha])
             rand_pos = best_list[rand_idx].solution
@@ -104,7 +108,7 @@ cdef class OriginalAVOA(LegacyOptimizer):
                             - (
                                 np.abs(
                                     (2 * self.generator.random()) * rand_pos
-                                    - self.pop[idx].solution
+                                    - self.population[idx].solution
                                 )
                             )
                             * F
@@ -128,59 +132,57 @@ cdef class OriginalAVOA(LegacyOptimizer):
                         A = (
                                 best_x1
                                 - (
-                                        (best_x1 * self.pop[idx].solution)
-                                        / (best_x1 - self.pop[idx].solution ** 2 + self.EPSILON)
+                                        (best_x1 * self.population[idx].solution)
+                                        / (best_x1 - self.population[idx].solution ** 2 + self.EPSILON)
                                 )
                                 * F
                         )
                         B = (
                                 best_x2
                                 - (
-                                        (best_x2 * self.pop[idx].solution)
-                                        / (best_x2 - self.pop[idx].solution ** 2 + self.EPSILON)
+                                        (best_x2 * self.population[idx].solution)
+                                        / (best_x2 - self.population[idx].solution ** 2 + self.EPSILON)
                                 )
                                 * F
                         )
                         pos_new = (A + B) / 2
                     else:
                         pos_new = rand_pos - np.abs(
-                            rand_pos - self.pop[idx].solution
-                        ) * F * self._get_levy_flight_step(
-                            beta=1.5, multiplier=1.0, size=self.problem.n_dims, case=-1
-                        )
+                            rand_pos - self.population[idx].solution
+                        ) * F * cy.levy_flight(self.generator, beta=1.5, multiplier=1.0, size=self.problem.n_dims, case=-1)
                 else:  # Phase 2
                     if self.generator.random() < self.p3:
                         pos_new = (
                                       np.abs(
                                           (2 * self.generator.random()) * rand_pos
-                                          - self.pop[idx].solution
+                                          - self.population[idx].solution
                                       )
                                   ) * (F + self.generator.random()) - (
-                                          rand_pos - self.pop[idx].solution
+                                          rand_pos - self.population[idx].solution
                                   )
                     else:
                         s1 = (
                                 rand_pos
                                 * (
                                         self.generator.random()
-                                        * self.pop[idx].solution
+                                        * self.population[idx].solution
                                         / (2 * np.pi)
                                 )
-                                * np.cos(self.pop[idx].solution)
+                                * np.cos(self.population[idx].solution)
                         )
                         s2 = (
                                 rand_pos
                                 * (
                                         self.generator.random()
-                                        * self.pop[idx].solution
+                                        * self.population[idx].solution
                                         / (2 * np.pi)
                                 )
-                                * np.sin(self.pop[idx].solution)
+                                * np.sin(self.population[idx].solution)
                         )
                         pos_new = rand_pos - (s1 + s2)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        self.pop = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        self.population = self.population.evaluate(pop_new, self.mode)

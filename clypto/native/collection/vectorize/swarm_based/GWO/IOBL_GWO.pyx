@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class IOBL_GWO(VectorizeOptimizer):
@@ -40,8 +39,8 @@ cdef class IOBL_GWO(VectorizeOptimizer):
     >>>
     >>> model = GWO.IOBL_GWO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -71,7 +70,7 @@ cdef class IOBL_GWO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, sub, obl
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -88,7 +87,7 @@ cdef class IOBL_GWO(VectorizeOptimizer):
         pos_e = np.where(R[:, 4] >= 0.5, x_rand - R[:, 0] * np.abs(x_rand - 2 * R[:, 1] * X),
                          (best[0] - x_avg) - R[:, 2] * (lb + R[:, 3] * (ub - lb)))
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(pos_e)
+        cand.X[:] = self.correct_solution(pos_e)
         self.evaluate(cand, 0, n)
         # where it is not an improvement: the original GWO update
         fail = np.flatnonzero(~ops.better(self, cand.F, pop.F))
@@ -97,14 +96,14 @@ cdef class IOBL_GWO(VectorizeOptimizer):
             G = rng.random((m, 6, d))
             Xs = best[None] - (a * (2 * G[:, :3] - 1)) * np.abs(2 * G[:, 3:] * best[None] - X[fail][:, None, :])
             sub = pop.take(fail)
-            sub.X[:] = self._correct_solution(Xs.sum(axis=1) / 3.0)
+            sub.X[:] = self.correct_solution(Xs.sum(axis=1) / 3.0)
             self.evaluate(sub, 0, m)
             cand.buf[fail] = sub.buf
         ops.greedy(self, cand)
         # opposition-based learning of the three leaders replaces the three worst wolves when it is better
         order = self.sorted_order(pop)
         obl = pop.take(order[:3])
-        obl.X[:] = self._correct_solution(lb + ub - pop.X[order[:3]])
+        obl.X[:] = self.correct_solution(lb + ub - pop.X[order[:3]])
         self.evaluate(obl, 0, 3)
         worst = order[-3:][::-1]
         win = ops.better(self, obl.F, pop.F[worst])

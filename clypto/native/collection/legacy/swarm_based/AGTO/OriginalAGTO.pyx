@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalAGTO(LegacyOptimizer):
+cdef class OriginalAGTO(cy.Optimizer):
     """
     The original version of: Artificial Gorilla Troops Optimization (AGTO)
 
@@ -38,14 +38,18 @@ cdef class OriginalAGTO(LegacyOptimizer):
     >>>
     >>> model = AGTO.OriginalAGTO(epoch=1000, pop_size=50, p1=0.03, p2=0.8, beta=3.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Abdollahzadeh, B., Soleimanian Gharehchopogh, F., & Mirjalili, S. (2021). Artificial gorilla troops optimizer: a new
     nature‐inspired metaheuristic algorithm for global optimization problems. International Journal of Intelligent Systems, 36(10), 5887-5958.
     """
+
+    cdef public double beta
+    cdef public double p1
+    cdef public double p2
 
     def __init__(
             self,
@@ -61,71 +65,67 @@ cdef class OriginalAGTO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.p1 = self.validator.check_float("p1", p1, (0, 1))  # p in the paper
-        self.p2 = self.validator.check_float("p2", p2, (0, 1))  # w in the paper
-        self.beta = self.validator.check_float("beta", beta, [-10.0, 10.0])
-        self._set_parameters(["epoch", "pop_size", "p1", "p2", "beta"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "p1", "p2", "beta"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.p1 = cy.validator(float, p1, (0, 1), "p1")  # p in the paper
+        self.p2 = cy.validator(float, p2, (0, 1), "p2")  # w in the paper
+        self.beta = cy.validator(float, beta, [-10.0, 10.0], "beta")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         a = (np.cos(2 * self.generator.random()) + 1) * (1 - epoch / self.epoch)
         c = a * (2 * self.generator.random() - 1)
         ## Exploration
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if self.generator.random() < self.p1:
                 pos_new = self.problem.generate_solution()
             else:
                 if self.generator.random() >= 0.5:
                     z = self.generator.uniform(-a, a, self.problem.n_dims)
-                    rand_idx = self.generator.integers(0, self.pop_size)
-                    pos_new = (self.generator.random() - a) * self.pop[
+                    rand_idx = self.generator.integers(0, pop_size)
+                    pos_new = (self.generator.random() - a) * self.population[
                         rand_idx
-                    ].solution + c * z * self.pop[idx].solution
+                    ].solution + c * z * self.population[idx].solution
                 else:
                     id1, id2 = self.generator.choice(
-                        list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+                        list(set(range(0, pop_size)) - {idx}), 2, replace=False
                     )
                     pos_new = (
-                            self.pop[idx].solution
-                            - c * (c * self.pop[idx].solution - self.pop[id1].solution)
+                            self.population[idx].solution
+                            - c * (c * self.population[idx].solution - self.population[id1].solution)
                             + self.generator.random()
-                            * (self.pop[idx].solution - self.pop[id2].solution)
+                            * (self.population[idx].solution - self.population[id2].solution)
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        _, self.g_best = self._update_global_best_agent(self.pop)
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        ranked = self.population.sort()
+        self.g_best = ranked[0]
 
-        pos_list = np.array([agent.solution for agent in self.pop])
+        pos_list = np.array([agent.solution for agent in self.population])
         ## Exploitation
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if a >= self.p2:
                 g = 2 ** c
                 delta = (np.abs(np.mean(pos_list, axis=0)) ** g) ** (1.0 / g)
                 pos_new = (
-                        c * delta * (self.pop[idx].solution - self.g_best.solution)
-                        + self.pop[idx].solution
+                        c * delta * (self.population[idx].solution - self.g_best.solution)
+                        + self.population[idx].solution
                 )
             else:
                 if self.generator.random() >= 0.5:
@@ -134,18 +134,14 @@ cdef class OriginalAGTO(LegacyOptimizer):
                     h = self.generator.normal(0, 1)
                 r1 = self.generator.random()
                 pos_new = self.g_best.solution - (2 * r1 - 1) * (
-                        self.g_best.solution - self.pop[idx].solution
+                        self.g_best.solution - self.population[idx].solution
                 ) * (self.beta * h)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

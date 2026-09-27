@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -41,8 +41,8 @@ cdef class SwarmSA(VectorizeOptimizer):
     >>> model = SA.SwarmSA(epoch=1000, pop_size=50, max_sub_iter = 5, t0 = 1000, t1 = 1,
     >>>         move_count = 5, mutation_rate = 0.1, mutation_step_size = 0.1, mutation_step_size_damp = 0.99)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -126,16 +126,16 @@ cdef class SwarmSA(VectorizeOptimizer):
         )
         if np.all(pos_new == position):  # Select at least one variable to mutate
             pos_new[self.generator.integers(0, self.problem.n_dims)] = self.generator.uniform()
-        return self._correct_solution(pos_new)
+        return self.correct_solution(pos_new)
 
-    def _initialization(self):
+    def initialization(self):
         # Initial Temperature
         self.dyn_t = self.t0  # Initial Temperature
         self.t_damp = (self.t1 / self.t0) ** (1.0 / self.epoch)  # Calculate Temperature Damp Rate
         self.dyn_sigma = self.mutation_step_size  # Initial Value of Step Size
-        VectorizeOptimizer._initialization(self)
+        VectorizeOptimizer.initialization(self)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, best
         cdef Py_ssize_t g, idx, j, k, n = pop.n, d = pop.d
@@ -146,14 +146,14 @@ cdef class SwarmSA(VectorizeOptimizer):
             for idx in range(0, self.pop_size):
                 for j in range(0, self.move_count):
                     # Perform Mutation (Move)
-                    moves.append(self._correct_solution(self.mutate__(X[idx], self.dyn_sigma)))
+                    moves.append(self.correct_solution(self.mutate__(X[idx], self.dyn_sigma)))
             cand = self.new_population(np.array(moves))
             # Columnize and Sort Newly Created Population
             best = cand.take(self.sorted_order(cand)[:self.pop_size])
             # Randomized Selection
             for idx in range(0, self.pop_size):
                 # Check if new solution is better than current
-                if self._compare_fitness(best.F[idx], pop.F[idx], self.problem.sense):
+                if cy.better_fitness(best.F[idx], pop.F[idx], self.problem.sense):
                     pop.buf[idx] = best.buf[idx]
                 else:
                     # Compute difference according to problem type

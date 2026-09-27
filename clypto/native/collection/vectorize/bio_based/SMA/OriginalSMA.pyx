@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.bio_based.SMA.DevSMA cimport DevSMA
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalSMA(DevSMA):
     >>>
     >>> model = SMA.OriginalSMA(epoch=1000, pop_size=50, p_t = 0.03)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -66,14 +66,14 @@ cdef class OriginalSMA(DevSMA):
         """
         super().__init__(epoch, pop_size, p_t, name=name, mode=mode)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        gb_fit = self.current_g_best().target.fitness
+        gb_fit = self.current_g_best().fitness
         ss = gb_fit - pop.F[-1] + self.EPSILON
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
         sign = np.where(np.arange(n) <= int(self.pop_size / 2), 1.0, -1.0)[:, None]

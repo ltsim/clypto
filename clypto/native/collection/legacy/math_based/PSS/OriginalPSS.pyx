@@ -6,11 +6,11 @@
 
 import numpy as np
 from scipy.stats import qmc
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalPSS(LegacyOptimizer):
+cdef class OriginalPSS(cy.Optimizer):
     """
     The original version of: Pareto-like Sequential Sampling (PSS)
 
@@ -38,13 +38,16 @@ cdef class OriginalPSS(LegacyOptimizer):
     >>>
     >>> model = PSS.OriginalPSS(epoch=1000, pop_size=50, acceptance_rate = 0.8, sampling_method = "LHS")
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Shaqfa, M. and Beyer, K., 2021. Pareto-like sequential sampling heuristic for global optimisation. Soft Computing, 25(14), pp.9077-9096.
     """
+
+    cdef public double acceptance_rate
+    cdef public str sampling_method
 
     def __init__(
             self,
@@ -61,56 +64,52 @@ cdef class OriginalPSS(LegacyOptimizer):
             acceptance_rate (float): the probability of accepting a solution in the normal range, default = 0.9
             sampling_method (str): 'LHS': Latin-Hypercube or 'MC': 'MonteCarlo', default = "LHS"
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.acceptance_rate = self.validator.check_float(
-            "acceptance_rate", acceptance_rate, (0, 1.0)
-        )
-        self.sampling_method = self.validator.check_str(
-            "sampling_method", sampling_method, ["MC", "LHS"]
-        )
-        self._set_parameters(["epoch", "pop_size", "acceptance_rate", "sampling_method"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "acceptance_rate", "sampling_method"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.acceptance_rate = cy.validator(float, acceptance_rate, (0, 1.0), "acceptance_rate")
+        self.sampling_method = cy.validator(str, sampling_method, ["MC", "LHS"], "sampling_method")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.step = 10e-10
         self.steps = np.ones(self.problem.n_dims) * self.step
         self.new_solution = True
 
     def create_population(self, pop_size=None):
         if self.sampling_method == "MC":
-            pop = self.generator.random(self.pop_size, self.problem.n_dims)
+            pop = self.generator.random(self.population.size(), self.problem.n_dims)
         else:  # Default: "LHS"
             sampler = qmc.LatinHypercube(d=self.problem.n_dims)
             pop = sampler.random(n=pop_size)
         return pop
 
-    def _initialization(self):
-        lb_pop = np.repeat(np.reshape(self.problem.bounds.low, (1, -1)), self.pop_size, axis=0)
-        ub_pop = np.repeat(np.reshape(self.problem.bounds.up, (1, -1)), self.pop_size, axis=0)
-        steps_mat = np.repeat(np.reshape(self.steps, (1, -1)), self.pop_size, axis=0)
-        random_pop = self.create_population(self.pop_size)
+    def initialization(self):
+        pop_size = self.population.size()
+        lb_pop = np.repeat(np.reshape(self.problem.bounds.low, (1, -1)), pop_size, axis=0)
+        ub_pop = np.repeat(np.reshape(self.problem.bounds.up, (1, -1)), pop_size, axis=0)
+        steps_mat = np.repeat(np.reshape(self.steps, (1, -1)), pop_size, axis=0)
+        random_pop = self.create_population(pop_size)
         pop = (
                 np.round((lb_pop + random_pop * (ub_pop - lb_pop)) / steps_mat) * steps_mat
         )
-        self.pop = []
+        self.population = []
         for pos in pop:
-            pos_new = self._correct_solution(pos)
-            agent = self._generate_agent(pos_new)
-            self.pop.append(agent)
+            pos_new = self.population.correct_solution(pos)
+            agent = self.population.generate_agent(pos_new)
+            self.population.append(agent)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        pop_rand = self.create_population(self.pop_size)
-        for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution.copy()
+        pop_rand = self.create_population(pop_size)
+        for idx in range(0, pop_size):
+            pos_new = self.population[idx].solution.copy()
             for k in range(self.problem.n_dims):
                 # Update the ranges
                 deviation = self.generator.uniform(
@@ -141,16 +140,14 @@ cdef class OriginalPSS(LegacyOptimizer):
                 # Round for the step size
                 pos_new = np.round(pos_new / self.steps) * self.steps
             # Check the bound
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        self.pop = self._update_target_for_population(pop_new)
-        current_best = self._get_best_agent(pop_new, self.problem.sense)
-        if self._compare_target(
-                current_best.target, self.g_best.target, self.problem.sense
-        ):
+                pop_new[-1].evaluate(self.problem)
+        self.population = self.population.evaluate(pop_new, self.mode)
+        current_best = cy.sort_agents(pop_new, self.problem.sense)[0].copy()
+        if cy.is_better(current_best, self.g_best, self.problem.sense):
             self.new_solution = True
         else:
             self.new_solution = False

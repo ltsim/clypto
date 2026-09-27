@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class OriginalCEM(VectorizeOptimizer):
     >>>
     >>> model = CEM.OriginalCEM(epoch=1000, pop_size=50, n_best = 20, alpha = 0.7)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -82,11 +82,11 @@ cdef class OriginalCEM(VectorizeOptimizer):
         self.n_best = cy.validator(int, n_best, [2, int(self.pop_size / 2)], "n_best")
         self.alpha = cy.validator(float, alpha, (0, 1.0), "alpha")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.means = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         self.stdevs = np.abs(self.problem.bounds.up - self.problem.bounds.low)
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -98,6 +98,6 @@ cdef class OriginalCEM(VectorizeOptimizer):
         self.means = self.alpha * self.means + (1.0 - self.alpha) * means_new
         self.stdevs = np.abs(self.alpha * self.stdevs + (1.0 - self.alpha) * stdevs_new)
         ## Create new population for next generation
-        cand.X[:] = self._correct_solution(self.generator.normal(self.means, self.stdevs, (n, d)))
+        cand.X[:] = self.correct_solution(self.generator.normal(self.means, self.stdevs, (n, d)))
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class LARO(LegacyOptimizer):
+cdef class LARO(cy.Optimizer):
     """
     The improved version of:  Lévy flight, and the selective opposition version of the artificial rabbit algorithm (LARO)
 
@@ -32,8 +32,8 @@ cdef class LARO(LegacyOptimizer):
     >>>
     >>> model = ARO.LARO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -47,22 +47,21 @@ cdef class LARO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         theta = 2 * (1 - (epoch + 1) / self.epoch)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             L = (np.exp(1) - np.exp((epoch / self.epoch) ** 2)) * (
                 np.sin(2 * np.pi * self.generator.random())
             )
@@ -76,10 +75,10 @@ cdef class LARO(LegacyOptimizer):
             R = L * temp  # Eq 2
             A = 2 * np.log(1.0 / self.generator.random()) * theta  # Eq. 15
             if A > 1:  # # detour foraging strategy
-                rand_idx = self.generator.integers(0, self.pop_size)
+                rand_idx = self.generator.integers(0, pop_size)
                 pos_new = (
-                        self.pop[rand_idx].solution
-                        + R * (self.pop[idx].solution - self.pop[rand_idx].solution)
+                        self.population[rand_idx].solution
+                        + R * (self.population[idx].solution - self.population[rand_idx].solution)
                         + np.round(0.5 * (0.05 + self.generator.random()))
                         * self.generator.normal(0, 1)
                 )  # Eq. 1
@@ -92,29 +91,25 @@ cdef class LARO(LegacyOptimizer):
                 )
                 gr[rd_index] = 1  # Eq. 12
                 H = self.generator.normal(0, 1) * (epoch / self.epoch)  # Eq. 8
-                b = self.pop[idx].solution + H * gr * self.pop[idx].solution  # Eq. 13
-                levy = self._get_levy_flight_step(beta=1.5, multiplier=0.1)
-                pos_new = self.pop[idx].solution + R * (
-                        levy * b - self.pop[idx].solution
+                b = self.population[idx].solution + H * gr * self.population[idx].solution  # Eq. 13
+                levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.1)
+                pos_new = self.population[idx].solution + R * (
+                        levy * b - self.population[idx].solution
                 )  # Eq. 11
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, sense=self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
         # Selective Opposition (SO) Strategy
         TS = 2 - (2 * epoch / self.epoch)
-        for idx in range(0, self.pop_size):
-            if self.pop[idx].target.fitness != self.g_best.target.fitness:
-                dd = np.abs(self.g_best.solution - self.pop[idx].solution)
+        for idx in range(0, pop_size):
+            if self.population[idx].fitness != self.g_best.fitness:
+                dd = np.abs(self.g_best.solution - self.population[idx].solution)
                 idx_far = np.sign(dd - TS) < 0
                 n_df = np.sum(idx_far)
                 n_dc = np.sum(np.sign(dd - TS) > 0)
@@ -124,10 +119,8 @@ cdef class LARO(LegacyOptimizer):
                 else:
                     df_lb, df_ub = np.min(dd[idx_far]), np.max(dd[idx_far])
                 if src <= 0 and n_df > n_dc:
-                    pos_new = df_lb + df_ub - self.pop[idx].solution
-                    pos_new = self._correct_solution(pos_new)
-                    target = self._get_target(pos_new)
-                    if self._compare_target(
-                            target, self.pop[idx].target, self.problem.sense
-                    ):
-                        self.pop[idx].update(solution=pos_new, target=target)
+                    pos_new = df_lb + df_ub - self.population[idx].solution
+                    pos_new = self.population.correct_solution(pos_new)
+                    target = self.population.evaluate_solution(pos_new)
+                    if cy.is_better(target, self.population[idx], self.problem.sense):
+                        self.population[idx].update_solution(target, pos_new)

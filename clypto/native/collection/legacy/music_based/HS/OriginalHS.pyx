@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 from clypto.native.collection.legacy.music_based.HS.DevHS cimport DevHS
+cimport clypto.core as cy
 
 
 cdef class OriginalHS(DevHS):
@@ -34,8 +35,8 @@ cdef class OriginalHS(DevHS):
     >>>
     >>> model = HS.OriginalHS(epoch=1000, pop_size=50, c_r = 0.95, pa_r = 0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -60,21 +61,22 @@ cdef class OriginalHS(DevHS):
         """
         super().__init__(epoch, pop_size, c_r, pa_r, **kwargs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             pos_new = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             for jdx in range(self.problem.n_dims):
                 # Use Harmony Memory
                 if self.generator.uniform() <= self.c_r:
-                    random_index = self.generator.integers(0, self.pop_size)
-                    pos_new[jdx] = self.pop[random_index].solution[jdx]
+                    random_index = self.generator.integers(0, pop_size)
+                    pos_new[jdx] = self.population[random_index].solution[jdx]
                 # Pitch Adjustment
                 if self.generator.uniform() <= self.pa_r:
                     mean = (self.problem.bounds.low + self.problem.bounds.up) / 2
@@ -85,15 +87,13 @@ cdef class OriginalHS(DevHS):
                         mean, std_dev
                     )  # Gaussian(Normal)
                     pos_new[jdx] = pos_new[jdx] + delta[jdx]
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
         # Update Damp Fret Width
         self.dyn_fw = self.dyn_fw * self.fw_damp
         # Merge Harmony Memory and New Harmonies, Then sort them, Then truncate extra harmonies
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, sense=self.problem.sense
-        )
+        self.population = cy.sort_agents(self.population + pop_new, self.problem.sense)[:pop_size]

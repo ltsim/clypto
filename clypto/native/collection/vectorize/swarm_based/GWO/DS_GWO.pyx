@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -38,8 +38,8 @@ cdef class DS_GWO(VectorizeOptimizer):
     >>>
     >>> model = GWO.DS_GWO(epoch=1000, pop_size=50, explore_ratio=0.4, n_groups=5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -82,10 +82,10 @@ cdef class DS_GWO(VectorizeOptimizer):
         self.explore_ratio = cy.validator(float, explore_ratio, [0.0, 1.0], "explore_ratio")
         self.n_groups = cy.validator(int, n_groups, [5, 100], "n_groups")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.explore_epoch = int(self.epoch * self.explore_ratio)
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         self.group_stage_competition()
 
     def get_coefficients(self, a: float) -> tuple:
@@ -111,7 +111,7 @@ cdef class DS_GWO(VectorizeOptimizer):
             self.delta_candidates.append(group.agent(self.sorted_order(group)[0]))
 
         # Set alpha wolf (best among all delta candidates)
-        fits = [agent.target.fitness for agent in self.delta_candidates]
+        fits = [agent.fitness for agent in self.delta_candidates]
         order = np.argsort(fits)
         if self.problem.sense == "max":
             order = order[::-1]

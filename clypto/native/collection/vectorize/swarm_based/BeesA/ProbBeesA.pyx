@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -35,8 +35,8 @@ cdef class ProbBeesA(VectorizeOptimizer):
     >>>
     >>> model = BeesA.ProbBeesA(epoch=1000, pop_size=50, recruited_bee_ratio = 0.1, dance_radius = 0.1, dance_reduction = 0.99)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -90,7 +90,7 @@ cdef class ProbBeesA(VectorizeOptimizer):
         self.dyn_radius = self.dance_radius
         self.recruited_bee_count = int(round(self.recruited_bee_ratio * self.pop_size))
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, fresh
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -105,7 +105,7 @@ cdef class ProbBeesA(VectorizeOptimizer):
         pos = np.array(pop.X[parent])
         pos[np.arange(len(parent)), rng.integers(0, d, size=len(parent))] += self.dyn_radius * rng.uniform(-1, 1, len(parent))
         cand = pop.take(parent)
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, len(parent))
         ops.scatter(self, cand, parent)
         # rejected sites are abandoned: their bees scout new random sources

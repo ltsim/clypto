@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalDOA(LegacyOptimizer):
+cdef class OriginalDOA(cy.Optimizer):
     """
     The original version of: Dream Optimization Algorithm (DOA)
 
@@ -43,8 +43,8 @@ cdef class OriginalDOA(LegacyOptimizer):
     >>>
     >>> model = DOA.OriginalDOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -61,18 +61,18 @@ cdef class OriginalDOA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
+        super().__init__(parameters=["epoch", "pop_size"], **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Exploration phase (90% of iterations)
         exploration_end = int(9 * self.epoch / 10)
         if epoch <= exploration_end:
@@ -84,12 +84,10 @@ cdef class OriginalDOA(LegacyOptimizer):
                 bb = np.ceil(self.problem.n_dims / 3 / (m + 1)) + 1
                 kk = self.generator.integers(aa, bb)
                 # Group indices
-                group_start = int((m / 5) * self.pop_size)
-                group_end = int(((m + 1) / 5) * self.pop_size)
+                group_start = int((m / 5) * pop_size)
+                group_end = int(((m + 1) / 5) * pop_size)
                 # Update the best solution for current group
-                pbest = self._get_best_agent(
-                    self.pop[group_start:group_end], self.problem.sense
-                )
+                pbest = cy.sort_agents(self.population[group_start:group_end], self.problem.sense)[0].copy()
 
                 # Memory strategy and forgetting/supplementation
                 for idx in range(group_start, group_end):
@@ -122,9 +120,9 @@ cdef class OriginalDOA(LegacyOptimizer):
                                         self.problem.n_dims > 15
                                 ):  # For high-dimensional problems
                                     rdx = self.generator.choice(
-                                        list(set(range(self.pop_size)) - {idx})
+                                        list(set(range(pop_size)) - {idx})
                                     )
-                                    pos_new[jdx] = self.pop[rdx].solution[jdx]
+                                    pos_new[jdx] = self.population[rdx].solution[jdx]
                                 else:  # For low-dimensional problems
                                     pos_new[jdx] = (
                                             self.generator.random()
@@ -134,21 +132,21 @@ cdef class OriginalDOA(LegacyOptimizer):
                     else:  # Alternative update strategy
                         for jdx in in_indices:
                             rdx = self.generator.choice(
-                                list(set(range(self.pop_size)) - {idx})
+                                list(set(range(pop_size)) - {idx})
                             )
-                            pos_new[jdx] = self.pop[rdx].solution[jdx]
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_empty_agent(pos_new)
+                            pos_new[jdx] = self.population[rdx].solution[jdx]
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.create_agent(pos_new)
                     pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                for idx in range(self.pop_size):
-                    pop_new[idx].target = self._get_target(pop_new[idx].solution)
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = pop_new
+                for idx in range(pop_size):
+                    pop_new[idx].evaluate(self.problem)
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = pop_new
         else:  # Exploitation phase (last 10% of iterations)
             # Update population
             pop_new = []
-            for idx in range(self.pop_size):
+            for idx in range(pop_size):
                 km = max(2, int(np.ceil(self.problem.n_dims / 3)))
                 k = self.generator.integers(2, km + 1)
                 in_indices = self.generator.choice(
@@ -173,20 +171,20 @@ cdef class OriginalDOA(LegacyOptimizer):
                     ):
                         if self.problem.n_dims > 15:
                             rdx = self.generator.choice(
-                                list(set(range(self.pop_size)) - {idx})
+                                list(set(range(pop_size)) - {idx})
                             )
-                            pos_new[jdx] = self.pop[rdx].solution[jdx]
+                            pos_new[jdx] = self.population[rdx].solution[jdx]
                         else:
                             pos_new[jdx] = (
                                     self.generator.random()
                                     * (self.problem.bounds.up[jdx] - self.problem.bounds.low[jdx])
                                     + self.problem.bounds.low[jdx]
                             )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                for idx in range(self.pop_size):
-                    pop_new[idx].target = self._get_target(pop_new[idx].solution)
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = pop_new
+                for idx in range(pop_size):
+                    pop_new[idx].evaluate(self.problem)
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = pop_new

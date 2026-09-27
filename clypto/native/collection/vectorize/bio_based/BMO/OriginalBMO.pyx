@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -37,8 +37,8 @@ cdef class OriginalBMO(VectorizeOptimizer):
     >>>
     >>> model = BMO.OriginalBMO(epoch=1000, pop_size=50, pl = 4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -68,7 +68,7 @@ cdef class OriginalBMO(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.pl = cy.validator(int, pl, [1, self.pop_size - 1], "pl")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n
@@ -78,6 +78,6 @@ cdef class OriginalBMO(VectorizeOptimizer):
         p = self.generator.uniform(0, 1, n)[:, None]  # one draw per agent
         X = pop.X
         pos = np.where((temp <= self.pl)[:, None], p * X[k1] + (1 - p) * X[k2], p * X[k2])
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
         self.pop = cand

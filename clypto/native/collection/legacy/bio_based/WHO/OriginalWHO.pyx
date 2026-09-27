@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalWHO(LegacyOptimizer):
+cdef class OriginalWHO(cy.Optimizer):
     """
     The original version of: Wildebeest Herd Optimization (WHO)
 
@@ -45,14 +45,25 @@ cdef class OriginalWHO(LegacyOptimizer):
     >>> model = WHO.OriginalWHO(epoch=1000, pop_size=50, n_explore_step = 3, n_exploit_step = 3, eta = 0.15, p_hi = 0.9,
     >>>                         local_alpha=0.9, local_beta=0.3, global_alpha=0.2, global_beta=0.8, delta_w=2.0, delta_c=2.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Amali, D. and Dinakaran, M., 2019. Wildebeest herd optimization: a new global optimization algorithm inspired
     by wildebeest herding behaviour. Journal of Intelligent & Fuzzy Systems, 37(6), pp.8063-8076.
     """
+
+    cdef public double delta_c
+    cdef public double delta_w
+    cdef public double eta
+    cdef public double global_alpha
+    cdef public double global_beta
+    cdef public double local_alpha
+    cdef public double local_beta
+    cdef public int n_exploit_step
+    cdef public int n_explore_step
+    cdef public double p_hi
 
     def __init__(
             self,
@@ -85,160 +96,116 @@ cdef class OriginalWHO(LegacyOptimizer):
             delta_w (float): dist to worst
             delta_c (float): dist to best
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.n_explore_step = self.validator.check_int(
-            "n_explore_step", n_explore_step, [2, 10]
-        )
-        self.n_exploit_step = self.validator.check_int(
-            "n_exploit_step", n_exploit_step, [2, 10]
-        )
-        self.eta = self.validator.check_float("eta", eta, (0, 1.0))
-        self.p_hi = self.validator.check_float("p_hi", p_hi, (0, 1.0))
-        self.local_alpha = self.validator.check_float(
-            "local_alpha", local_alpha, (0, 3.0)
-        )
-        self.local_beta = self.validator.check_float("local_beta", local_beta, (0, 3.0))
-        self.global_alpha = self.validator.check_float(
-            "global_alpha", global_alpha, (0, 3.0)
-        )
-        self.global_beta = self.validator.check_float(
-            "global_beta", global_beta, (0, 3.0)
-        )
-        self.delta_w = self.validator.check_float("delta_w", delta_w, (0.5, 5.0))
-        self.delta_c = self.validator.check_float("delta_c", delta_c, (0.5, 5.0))
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "n_explore_step",
-                "n_exploit_step",
-                "eta",
-                "p_hi",
-                "local_alpha",
-                "local_beta",
-                "global_alpha",
-                "global_beta",
-                "delta_w",
-                "delta_c",
-            ]
-        )
-        self.sort_flag = False
+        super().__init__(parameters=[ "epoch", "pop_size", "n_explore_step", "n_exploit_step", "eta", "p_hi", "local_alpha", "local_beta", "global_alpha", "global_beta", "delta_w", "delta_c", ], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.n_explore_step = cy.validator(int, n_explore_step, [2, 10], "n_explore_step")
+        self.n_exploit_step = cy.validator(int, n_exploit_step, [2, 10], "n_exploit_step")
+        self.eta = cy.validator(float, eta, (0, 1.0), "eta")
+        self.p_hi = cy.validator(float, p_hi, (0, 1.0), "p_hi")
+        self.local_alpha = cy.validator(float, local_alpha, (0, 3.0), "local_alpha")
+        self.local_beta = cy.validator(float, local_beta, (0, 3.0), "local_beta")
+        self.global_alpha = cy.validator(float, global_alpha, (0, 3.0), "global_alpha")
+        self.global_beta = cy.validator(float, global_beta, (0, 3.0), "global_beta")
+        self.delta_w = cy.validator(float, delta_w, (0.5, 5.0), "delta_w")
+        self.delta_c = cy.validator(float, delta_c, (0.5, 5.0), "delta_c")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Begin the Wildebeest Herd Optimization process
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ### 1. Local movement (Milling behaviour)
             local_list = []
             for j in range(0, self.n_explore_step):
-                temp = self.pop[
+                temp = self.population[
                            idx
                        ].solution + self.eta * self.generator.uniform() * self.generator.uniform(
                     self.problem.bounds.low, self.problem.bounds.up
                 )
-                pos_new = self._correct_solution(temp)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(temp)
+                agent = self.population.create_agent(pos_new)
                 local_list.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    local_list[-1].target = self._get_target(pos_new)
-            local_list = self._update_target_for_population(local_list)
-            best_local = self._get_best_agent(local_list, self.problem.sense)
+                    local_list[-1].evaluate(self.problem)
+            local_list = self.population.evaluate(local_list, self.mode)
+            best_local = cy.sort_agents(local_list, self.problem.sense)[0].copy()
             temp = self.local_alpha * best_local.solution + self.local_beta * (
-                    self.pop[idx].solution - best_local.solution
+                    self.population[idx].solution - best_local.solution
             )
-            pos_new = self._correct_solution(temp)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(temp)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        for idx in range(0, self.pop_size):
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        for idx in range(0, pop_size):
             ### 2. Herd instinct
-            idr = self.generator.choice(range(0, self.pop_size))
+            idr = self.generator.choice(range(0, pop_size))
             if (
-                    self._compare_target(
-                        self.pop[idr].target, self.pop[idx].target, self.problem.sense
-                    )
+                    cy.is_better(self.population[idr], self.population[idx], self.problem.sense)
                     and self.generator.random() < self.p_hi
             ):
                 temp = (
-                        self.global_alpha * self.pop[idx].solution
-                        + self.global_beta * self.pop[idr].solution
+                        self.global_alpha * self.population[idx].solution
+                        + self.global_beta * self.population[idr].solution
                 )
-                pos_new = self._correct_solution(temp)
-                tar_new = self._get_target(pos_new)
-                if self._compare_target(
-                        tar_new, self.pop[idx].target, self.problem.sense
-                ):
-                    self.pop[idx].update(solution=pos_new, target=tar_new)
+                pos_new = self.population.correct_solution(temp)
+                tar_new = self.population.evaluate_solution(pos_new)
+                if cy.is_better(tar_new, self.population[idx], self.problem.sense):
+                    self.population[idx].update_solution(tar_new, pos_new)
 
-        _, best, worst = self._get_special_agents(
-            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
-        )
+        ranked = self.population.sort()
+        best = [agent.copy() for agent in ranked[:1]]
+        worst = [agent.copy() for agent in ranked[::-1][:1]]
         g_best, g_worst = best[0], worst[0]
         pop_child = []
-        for idx in range(0, self.pop_size):
-            dist_to_worst = np.linalg.norm(self.pop[idx].solution - g_worst.solution)
-            dist_to_best = np.linalg.norm(self.pop[idx].solution - g_best.solution)
+        for idx in range(0, pop_size):
+            dist_to_worst = np.linalg.norm(self.population[idx].solution - g_worst.solution)
+            dist_to_best = np.linalg.norm(self.population[idx].solution - g_best.solution)
             ### 3. Starvation avoidance
             if dist_to_worst < self.delta_w:
-                temp = self.pop[idx].solution + self.generator.uniform() * (
+                temp = self.population[idx].solution + self.generator.uniform() * (
                         self.problem.bounds.up - self.problem.bounds.low
                 ) * self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-                pos_new = self._correct_solution(temp)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(temp)
+                agent = self.population.create_agent(pos_new)
                 pop_child.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
-                    self.pop[idx] = self._get_better_agent(
-                        agent, self.pop[idx], self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
             ### 4. Population pressure
             if 1.0 < dist_to_best and dist_to_best < self.delta_c:
                 temp = g_best.solution + self.eta * self.generator.uniform(
                     self.problem.bounds.low, self.problem.bounds.up
                 )
-                pos_new = self._correct_solution(temp)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(temp)
+                agent = self.population.create_agent(pos_new)
                 pop_child.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
-                    self.pop[idx] = self._get_better_agent(
-                        agent, self.pop[idx], self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
             ### 5. Herd social memory
             for jdx in range(0, self.n_exploit_step):
                 temp = g_best.solution + 0.1 * self.generator.uniform(
                     self.problem.bounds.low, self.problem.bounds.up
                 )
-                pos_new = self._correct_solution(temp)
-                agent = self._generate_empty_agent(temp)
+                pos_new = self.population.correct_solution(temp)
+                agent = self.population.create_agent(temp)
                 pop_child.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
-                    self.pop[idx] = self._get_better_agent(
-                        agent, self.pop[idx], self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            pop_child = self._get_sorted_and_trimmed_population(
-                pop_child, self.pop_size, self.problem.sense
-            )
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_child, self.problem.sense
-            )
+            pop_child = self.population.evaluate(pop_child, self.mode)
+            pop_child = cy.sort_agents(pop_child, self.problem.sense)[:pop_size]
+            self.population = self.population.greedy(pop_child)

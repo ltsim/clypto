@@ -3,24 +3,52 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalESOAAgent(LegacyAgent):
-    cdef public object weights
+
+cdef class OriginalESOAAgent(cy.Agent):
+    cdef public object model_weights
     cdef public object local_solution
     cdef public object m
     cdef public object v
-    cdef public object local_target
+    cdef public object local_best
     cdef public object g
 
 
-cdef class OriginalESOA(LegacyOptimizer):
+cdef class OriginalESOAPopulation(cy.Population):
+    """Agents of :class:`OriginalESOA`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        model_weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
+        m = np.zeros(self.problem.n_dims)
+        v = np.zeros(self.problem.n_dims)
+        return OriginalESOAAgent(
+            solution=solution, model_weights=model_weights, local_solution=solution.copy(), m=m, v=v
+        )
+
+    def generate_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        """
+        ID_WEI = 2
+        ID_LOC_X = 3
+        ID_LOC_Y = 4
+        ID_G = 5
+        ID_M = 6
+        ID_V = 7
+        """
+        agent = self.create_agent(solution)
+        agent.evaluate(self.problem)
+        agent.local_best = agent.copy()
+        agent.g = (
+            np.sum(agent.model_weights * agent.solution) - agent.fitness
+        ) * agent.solution
+        return agent
+
+
+cdef class OriginalESOA(cy.Optimizer):
     """
     The original version of: Egret Swarm Optimization Algorithm (ESOA)
 
@@ -44,8 +72,8 @@ cdef class OriginalESOA(LegacyOptimizer):
     >>>
     >>> model = ESOA.OriginalESOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -54,100 +82,72 @@ cdef class OriginalESOA(LegacyOptimizer):
     """
 
     def __init__(self, epoch=10000, pop_size=100, **kwargs):
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalESOAPopulation)
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
-        m = np.zeros(self.problem.n_dims)
-        v = np.zeros(self.problem.n_dims)
-        return _OriginalESOAAgent(
-            solution=solution, weights=weights, local_solution=solution.copy(), m=m, v=v
-        )
-
-    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        """
-        ID_WEI = 2
-        ID_LOC_X = 3
-        ID_LOC_Y = 4
-        ID_G = 5
-        ID_M = 6
-        ID_V = 7
-        """
-        agent = self._generate_empty_agent(solution)
-        agent.target = self._get_target(agent.solution)
-        agent.local_target = agent.target.copy()
-        agent.g = (
-            np.sum(agent.weights * agent.solution) - agent.target.fitness
-        ) * agent.solution
-        return agent
-
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.beta1 = 0.9
         self.beta2 = 0.99
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         hop = self.problem.bounds.up - self.problem.bounds.low
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Individual Direction
-            p_d = self.pop[idx].local_solution - self.pop[idx].solution
+            p_d = self.population[idx].local_solution - self.population[idx].solution
             p_d = p_d * (
-                self.pop[idx].local_target.fitness - self.pop[idx].target.fitness
+                self.population[idx].local_best.fitness - self.population[idx].fitness
             )
             p_d = p_d / (np.sum(p_d) ** 2 + self.EPSILON)
-            d_p = p_d + self.pop[idx].g
+            d_p = p_d + self.population[idx].g
 
             # Group Direction
-            c_d = self.g_best.solution - self.pop[idx].solution
-            c_d = c_d * (self.g_best.target.fitness - self.pop[idx].target.fitness)
+            c_d = self.g_best.solution - self.population[idx].solution
+            c_d = c_d * (self.g_best.fitness - self.population[idx].fitness)
             c_d = c_d / (np.sum(c_d) ** 2 + self.EPSILON)
             d_g = c_d + self.g_best.g
 
             # Gradient Estimation
             r1 = self.generator.random(self.problem.n_dims)
             r2 = self.generator.random(self.problem.n_dims)
-            g = (1 - r1 - r2) * self.pop[idx].g + r1 * d_p + r2 * d_g
+            g = (1 - r1 - r2) * self.population[idx].g + r1 * d_p + r2 * d_g
             g = g / (np.sum(g) + self.EPSILON)
 
-            self.pop[idx].m = self.beta1 * self.pop[idx].m + (1 - self.beta1) * g
-            self.pop[idx].v = self.beta2 * self.pop[idx].v + (1 - self.beta2) * g**2
-            self.pop[idx].weights -= self.pop[idx].m / (
-                np.sqrt(self.pop[idx].v) + self.EPSILON
+            self.population[idx].m = self.beta1 * self.population[idx].m + (1 - self.beta1) * g
+            self.population[idx].v = self.beta2 * self.population[idx].v + (1 - self.beta2) * g**2
+            self.population[idx].model_weights -= self.population[idx].m / (
+                np.sqrt(self.population[idx].v) + self.EPSILON
             )
 
             # Advice Forward
             x_0 = (
-                self.pop[idx].solution
+                self.population[idx].solution
                 + np.exp(-1.0 / (0.1 * self.epoch)) * 0.1 * hop * g
             )
-            x_0 = self._correct_solution(x_0)
-            y_0 = self._get_target(x_0)
+            x_0 = self.population.correct_solution(x_0)
+            y_0 = self.population.evaluate_solution(x_0)
 
             # Random Search
             r3 = self.generator.uniform(-np.pi / 2, np.pi / 2, self.problem.n_dims)
-            x_n = self.pop[idx].solution + np.tan(r3) * hop / epoch * 0.5
-            x_n = self._correct_solution(x_n)
-            y_n = self._get_target(x_n)
+            x_n = self.population[idx].solution + np.tan(r3) * hop / epoch * 0.5
+            x_n = self.population.correct_solution(x_n)
+            y_n = self.population.evaluate_solution(x_n)
 
             # Encircling Mechanism
-            d = self.pop[idx].local_solution - self.pop[idx].solution
-            d_g = self.g_best.solution - self.pop[idx].solution
+            d = self.population[idx].local_solution - self.population[idx].solution
+            d_g = self.g_best.solution - self.population[idx].solution
             r1 = self.generator.random(self.problem.n_dims)
             r2 = self.generator.random(self.problem.n_dims)
-            x_m = (1 - r1 - r2) * self.pop[idx].solution + r1 * d + r2 * d_g
-            x_m = self._correct_solution(x_m)
-            y_m = self._get_target(x_m)
+            x_m = (1 - r1 - r2) * self.population[idx].solution + r1 * d + r2 * d_g
+            x_m = self.population.correct_solution(x_m)
+            y_m = self.population.evaluate_solution(x_m)
 
             # Discriminant Condition
             y_list_compare = [y_0.fitness, y_n.fitness, y_m.fitness]
@@ -162,19 +162,15 @@ cdef class OriginalESOA(LegacyOptimizer):
                 x_best = x_list[id_best]
                 y_best = y_list[id_best]
 
-            if self._compare_target(y_best, self.pop[idx].target, self.problem.sense):
-                self.pop[idx].solution = x_best
-                self.pop[idx].target = y_best
-                if self._compare_target(
-                    y_best, self.pop[idx].local_target, self.problem.sense
-                ):
-                    self.pop[idx].local_solution = x_best
-                    self.pop[idx].local_target = y_best
-                    self.pop[idx].g = (
-                        np.sum(self.pop[idx].weights * self.pop[idx].solution)
-                        - self.pop[idx].target.fitness
-                    ) * self.pop[idx].solution
+            if cy.is_better(y_best, self.population[idx], self.problem.sense):
+                self.population[idx].update_solution(y_best, x_best)
+                if cy.is_better(y_best, self.population[idx].local_best, self.problem.sense):
+                    self.population[idx].local_solution = x_best
+                    self.population[idx].local_best = y_best
+                    self.population[idx].g = (
+                        np.sum(self.population[idx].model_weights * self.population[idx].solution)
+                        - self.population[idx].fitness
+                    ) * self.population[idx].solution
             else:
                 if self.generator.random() < 0.3:
-                    self.pop[idx].solution = x_best
-                    self.pop[idx].target = y_best
+                    self.population[idx].update_solution(y_best, x_best)

@@ -3,13 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +40,8 @@ cdef class OriginalEP(VectorizeOptimizer):
     >>>
     >>> model = EP.OriginalEP(epoch=1000, pop_size=50, bout_size = 0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -81,7 +79,7 @@ cdef class OriginalEP(VectorizeOptimizer):
     cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
         return [("S", d), ("WIN", 1)]  # mutation strategy and tournament wins
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.n_bout_size = int(self.bout_size * self.pop_size)
         self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
 
@@ -103,13 +101,13 @@ cdef class OriginalEP(VectorizeOptimizer):
         """Gaussian mutation of every agent and of its strategy; the children are evaluated."""
         child = pop.empty_like()
         S = np.array(pop.field("S"))
-        child.X[:] = self._correct_solution(pop.X + S * self.generator.normal(0, 1.0, S.shape))
+        child.X[:] = self.correct_solution(pop.X + S * self.generator.normal(0, 1.0, S.shape))
         child.field("S")[:] = S + self.generator.normal(0, 1.0, S.shape) * np.abs(S) ** 0.5
         child.field("WIN")[:] = 0
         self.evaluate(child, 0, child.n)
         return child
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation child = self.offspring__(pop)
         both = child.take(self.sorted_order(child)).concat(pop)

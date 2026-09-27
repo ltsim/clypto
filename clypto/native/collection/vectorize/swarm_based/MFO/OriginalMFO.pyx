@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -31,8 +31,8 @@ cdef class OriginalMFO(VectorizeOptimizer):
     >>>
     >>> model = MFO.OriginalMFO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -63,7 +63,7 @@ cdef class OriginalMFO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
@@ -85,6 +85,6 @@ cdef class OriginalMFO(VectorizeOptimizer):
         temp_1 = dist * w[:, None] * cs[:, None] + Xs
         temp_2 = dist * w[:, None] * cs[:, None] + g_best
         pos_new = np.where((np.arange(n) < num_flame)[:, None], temp_1, temp_2)
-        cand.X[:] = self._correct_solution(pos_new)
+        cand.X[:] = self.correct_solution(pos_new)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand, old_first=True)

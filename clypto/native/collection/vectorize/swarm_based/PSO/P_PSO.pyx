@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 import numpy as np
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
@@ -31,8 +31,8 @@ cdef class P_PSO(_PSOBase):
     >>>
     >>> model = PSO.P_PSO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -63,11 +63,11 @@ cdef class P_PSO(_PSOBase):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.dyn_delta_list = self.generator.uniform(0, 2 * np.pi, self.pop_size)
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t idx, start, stop, n = pop.n
@@ -96,6 +96,6 @@ cdef class P_PSO(_PSOBase):
             v_new = ee[start:stop] * (P[start:stop] - Xs) + tt[start:stop] * (g - Xs)
             v_new = np.minimum(np.maximum(v_new, -lim), lim)
             V[start:stop] = v_new
-            cand.X[start:stop] = self._correct_solution(Xs + v_new)
+            cand.X[start:stop] = self.correct_solution(Xs + v_new)
             self.evaluate(cand, start, stop)
             self.accept(cand, start, stop)

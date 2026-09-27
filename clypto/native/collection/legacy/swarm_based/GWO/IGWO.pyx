@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.swarm_based.GWO.OriginalGWO cimport OriginalGWO
 
@@ -37,14 +38,17 @@ cdef class IGWO(OriginalGWO):
     >>>
     >>> model = GWO.IGWO(epoch=1000, pop_size=50, a_min = 0.02, a_max = 2.2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Kaveh, A. & Zakian, P.. (2018). Improved GWO algorithm for optimal design of truss structures.
     Engineering with Computers. 34. 10.1007/s00366-017-0567-1.
     """
+
+    cdef public double a_max
+    cdef public double a_min
 
     def __init__(
         self,
@@ -62,24 +66,24 @@ cdef class IGWO(OriginalGWO):
             a_max (float): Upper bound of a, default = 2.2
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.a_min = self.validator.check_float("a_min", a_min, (0.0, 1.6))
-        self.a_max = self.validator.check_float("a_max", a_max, [1.0, 4.0])
-        self._set_parameters(["epoch", "pop_size", "a_min", "a_max"])
+        self.a_min = cy.validator(float, a_min, (0.0, 1.6), "a_min")
+        self.a_max = cy.validator(float, a_max, [1.0, 4.0], "a_max")
+        self.parameters = ["epoch", "pop_size", "a_min", "a_max"]
         self.growth_alpha = 2
         self.growth_delta = 3
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm.
 
         Args:
             epoch (int): The current iteration
         """
-        _, list_best, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
+        pop_size = self.population.size()
+        ranked = self.population.sort()
+        list_best = [agent.copy() for agent in ranked[:3]]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # IGWO functions
             a_alpha = self.a_max * np.exp(
                 (epoch / self.epoch) ** self.growth_alpha
@@ -97,25 +101,21 @@ cdef class IGWO(OriginalGWO):
             C2 = 2 * self.generator.random(self.problem.n_dims)
             C3 = 2 * self.generator.random(self.problem.n_dims)
             X1 = list_best[0].solution - A1 * np.abs(
-                C1 * list_best[0].solution - self.pop[idx].solution
+                C1 * list_best[0].solution - self.population[idx].solution
             )
             X2 = list_best[1].solution - A2 * np.abs(
-                C2 * list_best[1].solution - self.pop[idx].solution
+                C2 * list_best[1].solution - self.population[idx].solution
             )
             X3 = list_best[2].solution - A3 * np.abs(
-                C3 * list_best[2].solution - self.pop[idx].solution
+                C3 * list_best[2].solution - self.population[idx].solution
             )
             pos_new = (X1 + X2 + X3) / 3.0
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

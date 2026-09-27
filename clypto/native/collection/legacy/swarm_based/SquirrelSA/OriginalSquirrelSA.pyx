@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSquirrelSA(LegacyOptimizer):
+cdef class OriginalSquirrelSA(cy.Optimizer):
     """
     The original version of: Squirrel Search Algorithm (SquirrelSA)
 
@@ -33,14 +33,20 @@ cdef class OriginalSquirrelSA(LegacyOptimizer):
     >>> model = SquirrelSA.OriginalSquirrelSA(epoch=1000, pop_size=50, n_food_sources=4,
     >>>         predator_prob=0.1, gliding_constant=1.9, scaling_factor=18, beta=1.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Jain, M., Singh, V., & Rani, A. (2019). A novel nature-inspired algorithm for optimization: Squirrel search algorithm.
     Swarm and evolutionary computation, 44, 148-175.
     """
+
+    cdef public double beta
+    cdef public double gliding_constant
+    cdef public int n_food_sources
+    cdef public double predator_prob
+    cdef public double scaling_factor
 
     def __init__(
             self,
@@ -63,36 +69,16 @@ cdef class OriginalSquirrelSA(LegacyOptimizer):
             scaling_factor (int): scaling factor for gliding distance, default = 18
             beta (float): beta parameter for Levy flight, default = 1.5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.n_food_sources = self.validator.check_int(
-            "n_food_sources", n_food_sources, [1, 10]
-        )
-        self.predator_prob = self.validator.check_float(
-            "predator_prob", predator_prob, [0.0, 1.0]
-        )
-        self.gliding_constant = self.validator.check_float(
-            "gliding_constant", gliding_constant, [0.0, 10.0]
-        )
-        self.scaling_factor = self.validator.check_float(
-            "scaling_factor", scaling_factor, [1, 100]
-        )
-        self.beta = self.validator.check_float("beta", beta, [0.0, 10.0])
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "n_food_sources",
-                "predator_prob",
-                "gliding_constant",
-                "scaling_factor",
-                "beta",
-            ]
-        )
-        self.sort_flag = True
+        super().__init__(parameters=[ "epoch", "pop_size", "n_food_sources", "predator_prob", "gliding_constant", "scaling_factor", "beta", ], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.n_food_sources = cy.validator(int, n_food_sources, [1, 10], "n_food_sources")
+        self.predator_prob = cy.validator(float, predator_prob, [0.0, 1.0], "predator_prob")
+        self.gliding_constant = cy.validator(float, gliding_constant, [0.0, 10.0], "gliding_constant")
+        self.scaling_factor = cy.validator(float, scaling_factor, [1, 100], "scaling_factor")
+        self.beta = cy.validator(float, beta, [0.0, 10.0], "beta")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         # Aerodynamic parameters from the paper
         self.rho = 1.204  # Air density (kg/m³)
         self.velocity = 5.25  # Gliding velocity (m/s)
@@ -120,22 +106,23 @@ cdef class OriginalSquirrelSA(LegacyOptimizer):
         # Scale down the gliding distance
         return d_g / self.scaling_factor
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Assign roles: 1 hickory, 3 acorn, rest normal trees
-        pop_new = self.pop.copy()
+        pop_new = self.population.copy()
         # Case 1: Acorn squirrels move toward hickory tree
         for idx in range(1, self.n_acorn_trees + 1):
             d_g = self.calculate_gliding_distance()
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward hickory
-                pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                        self.g_best.solution - self.pop[idx].solution
+                pos_new = self.population[idx].solution + d_g * self.gliding_constant * (
+                        self.g_best.solution - self.population[idx].solution
                 )
             else:
                 # Predator present: random location
@@ -143,26 +130,26 @@ cdef class OriginalSquirrelSA(LegacyOptimizer):
                     self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
-            agent.target = self.pop[idx].target
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
+            agent.update_solution(self.population[idx], agent.solution)
             pop_new[idx] = agent
 
         # Case 2: Normal squirrels move toward acorn trees
-        indices_random = np.array(list(range(self.pop_size - self.n_food_sources)))
+        indices_random = np.array(list(range(pop_size - self.n_food_sources)))
         self.generator.shuffle(indices_random)
         indices_random = (
                 indices_random + self.n_food_sources
         )  # True indices of normal squirrels
-        n_cut = self.generator.integers(1, self.pop_size - self.n_food_sources - 1)
+        n_cut = self.generator.integers(1, pop_size - self.n_food_sources - 1)
         for idx in indices_random[n_cut:]:
             # Select random acorn tree
             jdx = self.generator.integers(0, self.n_acorn_trees) + 1
             d_g = self.calculate_gliding_distance()
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward acorn
-                pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                        self.pop[jdx].solution - self.pop[idx].solution
+                pos_new = self.population[idx].solution + d_g * self.gliding_constant * (
+                        self.population[jdx].solution - self.population[idx].solution
                 )
             else:
                 # Predator present: random location
@@ -170,9 +157,9 @@ cdef class OriginalSquirrelSA(LegacyOptimizer):
                     self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
-            agent.target = self.pop[idx].target
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
+            agent.update_solution(self.population[idx], agent.solution)
             pop_new[idx] = agent
 
         # Case 3: Normal squirrels move toward hickory tree
@@ -180,8 +167,8 @@ cdef class OriginalSquirrelSA(LegacyOptimizer):
             d_g = self.calculate_gliding_distance()
             if self.generator.random() >= self.predator_prob:
                 # No predator: move toward hickory
-                pos_new = self.pop[idx].solution + d_g * self.gliding_constant * (
-                        self.pop[0].solution - self.pop[idx].solution
+                pos_new = self.population[idx].solution + d_g * self.gliding_constant * (
+                        self.population[0].solution - self.population[idx].solution
                 )
             else:
                 # Predator present: random location
@@ -189,15 +176,15 @@ cdef class OriginalSquirrelSA(LegacyOptimizer):
                     self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
-            agent.target = self.pop[idx].target
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
+            agent.update_solution(self.population[idx], agent.solution)
             pop_new[idx] = agent
 
         # Seasonal monitoring condition
         S_c = np.mean(
             [
-                np.sqrt(np.sum((self.pop[idx].solution - self.pop[0].solution) ** 2))
+                np.sqrt(np.sum((self.population[idx].solution - self.population[0].solution) ** 2))
                 for idx in range(1, self.n_food_sources)
             ]
         )
@@ -206,23 +193,21 @@ cdef class OriginalSquirrelSA(LegacyOptimizer):
 
         if S_c < S_min:
             # Winter season is over: randomly relocate some squirrels
-            n_relocate = max(1, len(self.pop_size - self.n_food_sources) // 4)
+            n_relocate = max(1, len(pop_size - self.n_food_sources) // 4)
             relocate_indices = self.generator.choice(
                 indices_random, n_relocate, replace=False
             )
             for idx in relocate_indices:
-                levy = self._get_levy_flight_step(
-                    beta=self.beta, multiplier=0.01, size=self.problem.n_dims, case=-1
-                )
+                levy = cy.levy_flight(self.generator, beta=self.beta, multiplier=0.01, size=self.problem.n_dims, case=-1)
                 pos_new = self.problem.bounds.low + levy * (self.problem.bounds.up - self.problem.bounds.low)
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
-                agent.target = self.pop[idx].target
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
+                agent.update_solution(self.population[idx], agent.solution)
                 pop_new[idx] = agent
         if self.mode in self.AVAILABLE_MODES:
             # Update target for the population
-            pop_new = self._update_target_for_population(pop_new)
+            pop_new = self.population.evaluate(pop_new, self.mode)
         else:
             for idx, agent in enumerate(pop_new):
-                pop_new[idx].target = self._get_target(agent.solution)
-        self.pop = pop_new
+                pop_new[idx].evaluate(self.problem)
+        self.population = pop_new

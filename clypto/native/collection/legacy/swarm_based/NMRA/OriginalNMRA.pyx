@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 14:52, 17/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalNMRA(LegacyOptimizer):
+cdef class OriginalNMRA(cy.Optimizer):
     """
     The original version of: Naked Mole-Rat Algorithm (NMRA)
 
@@ -33,13 +33,15 @@ cdef class OriginalNMRA(LegacyOptimizer):
     >>>
     >>> model = NMRA.OriginalNMRA(epoch=1000, pop_size=50, pb = 0.75)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Salgotra, R. and Singh, U., 2019. The naked mole-rat algorithm. Neural Computing and Applications, 31(12), pp.8837-8857.
     """
+
+    cdef public double pb
 
     def __init__(
             self,
@@ -54,47 +56,42 @@ cdef class OriginalNMRA(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             pb (float): probability of breeding, default = 0.75
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.pb = self.validator.check_float("pb", pb, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "pb"])
-        self.sort_flag = True
-        self.size_b = int(self.pop_size / 5)
+        super().__init__(parameters=["epoch", "pop_size", "pb"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.pb = cy.validator(float, pb, (0, 1.0), "pb")
+        self.size_b = int(self.population.size() / 5)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution.copy()
+        for idx in range(0, pop_size):
+            pos_new = self.population[idx].solution.copy()
             if idx < self.size_b:  # breeding operators
                 if self.generator.uniform() < self.pb:
                     alpha = self.generator.uniform()
-                    pos_new = (1 - alpha) * self.pop[idx].solution + alpha * (
-                            self.g_best.solution - self.pop[idx].solution
+                    pos_new = (1 - alpha) * self.population[idx].solution + alpha * (
+                            self.g_best.solution - self.population[idx].solution
                     )
             else:  # working operators
                 t1, t2 = self.generator.choice(
-                    range(self.size_b, self.pop_size), 2, replace=False
+                    range(self.size_b, pop_size), 2, replace=False
                 )
-                pos_new = self.pop[idx].solution + self.generator.uniform() * (
-                        self.pop[t1].solution - self.pop[t2].solution
+                pos_new = self.population[idx].solution + self.generator.uniform() * (
+                        self.population[t1].solution - self.population[t2].solution
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

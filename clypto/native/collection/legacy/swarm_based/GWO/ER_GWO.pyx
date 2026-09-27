@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class ER_GWO(LegacyOptimizer):
+cdef class ER_GWO(cy.Optimizer):
     """
     The original version of: Efficient and Robust Grey Wolf Optimizer (ER-GWO)
 
@@ -36,13 +36,17 @@ cdef class ER_GWO(LegacyOptimizer):
     >>>
     >>> model = GWO.ER_GWO(epoch=1000, pop_size=50, a_initial=2.0, a_final=0.0, miu_factor=1.0001)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Long, W., Cai, S., Jiao, J. et al. An efficient and robust grey wolf optimizer algorithm for large-scale numerical optimization. Soft Comput 24, 997–1026 (2020).
     """
+
+    cdef public double a_final
+    cdef public double a_initial
+    cdef public double miu_factor
 
     def __init__(
         self,
@@ -61,33 +65,27 @@ cdef class ER_GWO(LegacyOptimizer):
             a_final (float): final value of coefficient a, default = 0.0
             miu_factor (float): nonlinear coefficient for equation (8), default = 1.0001
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.a_initial = self.validator.check_float("a_initial", a_initial, [0.0, 10.0])
-        self.a_final = self.validator.check_float(
-            "a_final", a_final, [0.0, self.a_initial]
-        )
-        self.miu_factor = self.validator.check_float(
-            "miu_factor", miu_factor, [1.0001, 1.01]
-        )  # Required in paper
-        self._set_parameters(["epoch", "pop_size", "a_initial", "a_final", "miu_factor"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "a_initial", "a_final", "miu_factor"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.a_initial = cy.validator(float, a_initial, [0.0, 10.0], "a_initial")
+        self.a_final = cy.validator(float, a_final, [0.0, self.a_initial], "a_final")
+        self.miu_factor = cy.validator(float, miu_factor, [1.0001, 1.01], "miu_factor")  # Required in paper
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # linearly decreased from 2 to 0
         a = self.a_initial - (self.a_initial - self.a_final) * self.miu_factor**epoch
-        _, list_best, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
+        ranked = self.population.sort()
+        list_best = [agent.copy() for agent in ranked[:3]]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             A1 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
             A2 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
             A3 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
@@ -95,13 +93,13 @@ cdef class ER_GWO(LegacyOptimizer):
             C2 = 2 * self.generator.random(self.problem.n_dims)
             C3 = 2 * self.generator.random(self.problem.n_dims)
             X1 = list_best[0].solution - A1 * np.abs(
-                C1 * list_best[0].solution - self.pop[idx].solution
+                C1 * list_best[0].solution - self.population[idx].solution
             )
             X2 = list_best[1].solution - A2 * np.abs(
-                C2 * list_best[1].solution - self.pop[idx].solution
+                C2 * list_best[1].solution - self.population[idx].solution
             )
             X3 = list_best[2].solution - A3 * np.abs(
-                C3 * list_best[2].solution - self.pop[idx].solution
+                C3 * list_best[2].solution - self.population[idx].solution
             )
             dist1 = np.linalg.norm(X1)
             dist2 = np.linalg.norm(X2)
@@ -113,16 +111,12 @@ cdef class ER_GWO(LegacyOptimizer):
             else:
                 # Normalize distances to avoid division by zero
                 pos_new = (X1 * dist1 + X2 * dist2 + X3 * dist3) / total
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

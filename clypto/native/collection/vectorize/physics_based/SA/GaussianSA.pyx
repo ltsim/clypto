@@ -5,12 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
 
 
 cdef class GaussianSA(VectorizeOptimizer):
@@ -42,8 +40,8 @@ cdef class GaussianSA(VectorizeOptimizer):
     >>>
     >>> model = SA.GaussianSA(epoch=1000, pop_size=2, temp_init = 100, cooling_rate = 0.99, scale = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     cdef public object temp_init
@@ -84,25 +82,25 @@ cdef class GaussianSA(VectorizeOptimizer):
         self.cooling_rate = cy.validator(float, cooling_rate, (0.0, 1.0), "cooling_rate")
         self.scale = cy.validator(float, scale, (0.0, 100.0), "scale")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Initialize the system
         self.temp_current = self.temp_init
         self.agent_current = self.g_best.copy()
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef object cur = self.agent_current
         # Perturb the current solution
         pos_new = cur.solution + self.generator.normal(scale=self.scale, size=self.problem.n_dims)
-        tar = self._get_target(pos_new)
-        agent = LegacyNativeAgent(pos_new, tar)
+        tar = self.evaluate_solution(pos_new)
+        agent = cy.Agent(pos_new, tar.objectives, tar.weights)
         # Accept or reject the new solution
-        if self._compare_fitness(tar.fitness, cur.target.fitness, self.problem.sense):
+        if cy.better_fitness(tar.fitness, cur.fitness, self.problem.sense):
             self.agent_current = agent
         else:
             # Calculate the energy difference
-            delta_energy = np.abs(cur.target.fitness - tar.fitness)
+            delta_energy = np.abs(cur.fitness - tar.fitness)
             p_accept = np.exp(-delta_energy / self.temp_current)
             if self.generator.random() < p_accept:
                 self.agent_current = agent
@@ -113,6 +111,6 @@ cdef class GaussianSA(VectorizeOptimizer):
     def two_agents__(self, a, b):
         """A population made of two agents (the best so far and the current one)."""
         cdef NativePopulation pop = self.pop.take(np.zeros(2, dtype=int))
-        ops.set_row(pop, 0, a.solution, a.target)
-        ops.set_row(pop, 1, b.solution, b.target)
+        ops.set_row(pop, 0, a.solution, a)
+        ops.set_row(pop, 1, b.solution, b)
         return pop

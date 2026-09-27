@@ -5,10 +5,9 @@
 # --------------------------------------------------%
 import numpy as np
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
 
 
@@ -38,8 +37,8 @@ cdef class CL_PSO(_PSOBase):
     >>>
     >>> model = PSO.CL_PSO(epoch=1000, pop_size=50, c_local = 1.2, w_min=0.4, w_max=0.9, max_flag = 7)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -88,7 +87,7 @@ cdef class CL_PSO(_PSOBase):
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
         self.max_flag = cy.validator(int, max_flag, [2, 100], "max_flag")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.v_min = -self.v_max
         self.flags = np.zeros(self.pop_size)
@@ -98,12 +97,12 @@ cdef class CL_PSO(_PSOBase):
         if self.flags[idx] >= self.max_flag:
             self.flags[idx] = 0
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         # Sequential: agents compare against pop[id1]/pop[id2] as already updated
         # in this epoch, so they are processed one by one on the buffer rows.
         cdef NativePopulation pop = self.pop
         cdef NativePopulation new = pop.empty_like()
-        cdef NativeTarget target
+        cdef cy.Agent target
         cdef double[:, ::1] buf = pop.view
         cdef Py_ssize_t idx, jdx, id1, id2, n = pop.n, d = pop.d
         cdef Py_ssize_t cX = pop.cX, cF = pop.cF, cV = self.cV, cP = self.cP
@@ -132,14 +131,14 @@ cdef class CL_PSO(_PSOBase):
                     )
                 vec_new[jdx] = vj
             vec_new = np.clip(vec_new, self.v_min, self.v_max)
-            pos_new = self._correct_solution(pop.buf[idx, cX:cX + d] + vec_new)
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.correct_solution(pop.buf[idx, cX:cX + d] + vec_new)
+            pos_new = self.correct_solution(pos_new)
             # generate_empty_agent(pos_new): fresh velocity, personal best = itself.
             new.X[idx] = pos_new
             new.field("V")[idx] = self.generator.uniform(-self.v_max, self.v_max)
             new.field("P")[idx] = pos_new
             if swarm:
-                target = self._get_target(pos_new)
+                target = self.evaluate_solution(pos_new)
                 new.O[idx] = target.objectives
                 new.F[idx] = target.fitness
                 new.field("PO")[idx] = target.objectives
@@ -152,7 +151,7 @@ cdef class CL_PSO(_PSOBase):
                     better = pop.F[idx] < target.fitness
                 if better:
                     pop.buf[idx] = new.buf[idx]
-                if cy.compare_target(target, pop.target_at(idx, self.cPO), sense):
+                if cy.is_better(target, pop.agent(idx, self.cPO), sense):
                     pop.field("P")[idx] = pos_new
                     pop.field("PO")[idx] = target.objectives
                     pop.field("PF")[idx] = target.fitness
@@ -169,7 +168,7 @@ cdef class CL_PSO(_PSOBase):
                     better = new.F[idx] > pop.F[idx]
                 child.buf[idx] = new.buf[idx] if better else pop.buf[idx]
                 # Compared with the *old* agent's personal best, as the classic code.
-                if cy.compare_target(new.target_at(idx, new.cO), pop.target_at(idx, self.cPO), sense):
+                if cy.is_better(new.agent(idx, new.cO), pop.agent(idx, self.cPO), sense):
                     child.field("P")[idx] = new.X[idx]
                     child.field("PO")[idx] = new.O[idx]
                     child.field("PF")[idx] = new.F[idx]

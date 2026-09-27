@@ -3,11 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.swarm_based.PSO.P_PSO cimport P_PSO
+from clypto.native.collection.legacy.swarm_based.PSO._base cimport PSOPopulation
 
 
 cdef class C_PSO(P_PSO):
@@ -36,14 +36,19 @@ cdef class C_PSO(P_PSO):
     >>>
     >>> model = PSO.C_PSO(epoch=1000, pop_size=50, c1=2.05, c2=2.05, w_min=0.4, w_max=0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Liu, B., Wang, L., Jin, Y.H., Tang, F. and Huang, D.X., 2005. Improved particle swarm optimization
     combined with chaos. Chaos, Solitons & Fractals, 25(5), pp.1261-1271.
     """
+
+    cdef public double c1
+    cdef public double c2
+    cdef public double w_max
+    cdef public double w_min
 
     def __init__(
         self,
@@ -65,19 +70,20 @@ cdef class C_PSO(P_PSO):
             w_max: Weight max of bird, default = 0.9
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c1 = self.validator.check_float("c1", c1, (0, 5.0))
-        self.c2 = self.validator.check_float("c2", c2, (0, 5.0))
-        self.w_min = self.validator.check_float("w_min", w_min, (0, 0.5))
-        self.w_max = self.validator.check_float("w_max", w_max, [0.5, 2.0])
-        self._set_parameters(["epoch", "pop_size", "c1", "c2", "w_min", "w_max"])
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=PSOPopulation)
+        self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
+        self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
+        self.w_min = cy.validator(float, w_min, (0, 0.5), "w_min")
+        self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
+        self.parameters = ["epoch", "pop_size", "c1", "c2", "w_min", "w_max"]
         self.sort_flag = False
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
+        pop_size = self.population.size()
         self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.v_min = -self.v_max
-        self.N_CLS = int(self.pop_size / 5)  # Number of chaotic local searches
+        self.N_CLS = int(pop_size / 5)  # Number of chaotic local searches
         self.dyn_lb = self.problem.bounds.low.copy()
         self.dyn_ub = self.problem.bounds.up.copy()
 
@@ -94,41 +100,37 @@ cdef class C_PSO(P_PSO):
     def bounded_solution(self, solution: np.ndarray) -> np.ndarray:
         return np.clip(solution, self.dyn_lb, self.dyn_ub)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        list_fits = [agent.target.fitness for agent in self.pop]
+        pop_size = self.population.size()
+        list_fits = [agent.fitness for agent in self.population]
         fit_avg = np.mean(list_fits)
         fit_min = np.min(list_fits)
-        for idx in range(self.pop_size):
-            w = self.get_weights__(self.pop[idx].target.fitness, fit_avg, fit_min)
+        for idx in range(pop_size):
+            w = self.get_weights__(self.population[idx].fitness, fit_avg, fit_min)
             v_new = (
-                w * self.pop[idx].velocity
+                w * self.population[idx].velocity
                 + self.c1
                 * self.generator.random()
-                * (self.pop[idx].local_solution - self.pop[idx].solution)
+                * (self.population[idx].pbest_solution - self.population[idx].solution)
                 + self.c2
                 * self.generator.random()
-                * (self.g_best.solution - self.pop[idx].solution)
+                * (self.g_best.solution - self.population[idx].solution)
             )
             v_new = np.clip(v_new, self.v_min, self.v_max)
-            x_new = self.pop[idx].solution + v_new
-            self.pop[idx].velocity = v_new
+            x_new = self.population[idx].solution + v_new
+            self.population[idx].velocity = v_new
             pos_new = self.bounded_solution(x_new)
-            pos_new = self._correct_solution(pos_new)
-            target = self._get_target(pos_new)
-            if self._compare_target(target, self.pop[idx].target, self.problem.sense):
-                self.pop[idx].update(solution=pos_new.copy(), target=target.copy())
-            if self._compare_target(
-                target, self.pop[idx].local_target, self.problem.sense
-            ):
-                self.pop[idx].update(
-                    local_solution=pos_new.copy(), local_target=target.copy()
-                )
+            pos_new = self.population.correct_solution(pos_new)
+            candidate = self.population.evaluate_solution(pos_new)
+            if cy.is_better(candidate, self.population[idx], self.problem.sense):
+                self.population[idx].update_solution(candidate)
+            self.population[idx].update_pbest(candidate, self.problem.sense)
 
         ## Implement chaostic local search for the best solution
         g_best = self.g_best.copy()
@@ -139,10 +141,10 @@ cdef class C_PSO(P_PSO):
         x_best = self.problem.bounds.low + cx_best_1 * (
             self.problem.bounds.up - self.problem.bounds.low
         )  # Eq. 8
-        x_best = self._correct_solution(x_best)
-        target_best = self._get_target(x_best)
-        if self._compare_target(target_best, self.g_best.target):
-            g_best.update(solution=x_best, target=target_best)
+        x_best = self.population.correct_solution(x_best)
+        target_best = self.population.evaluate_solution(x_best)
+        if cy.is_better(target_best, self.g_best, "min"):
+            g_best.update_solution(target_best, x_best)
 
         r = self.generator.random()
         bound_min = np.stack(
@@ -154,7 +156,5 @@ cdef class C_PSO(P_PSO):
         )
         self.dyn_ub = np.min(bound_max, axis=0)
 
-        pop_new_child = self._generate_population(self.pop_size - self.N_CLS)
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new_child, self.pop_size, self.problem.sense
-        )
+        pop_new_child = self.population.generate(pop_size - self.N_CLS)
+        self.population = cy.sort_agents(self.population + pop_new_child, self.problem.sense)[:pop_size]

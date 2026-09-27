@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 from clypto.native.collection.legacy.human_based.QSA.DevQSA cimport DevQSA
+cimport clypto.core as cy
 
 
 cdef class OriginalQSA(DevQSA):
@@ -30,8 +31,8 @@ cdef class OriginalQSA(DevQSA):
     >>>
     >>> model = QSA.OriginalQSA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -51,39 +52,36 @@ cdef class OriginalQSA(DevQSA):
         self.sort_flag = True
 
     def update_business_3__(self, pop, g_best):
-        pr = [idx / self.pop_size for idx in range(1, self.pop_size + 1)]
+        pop_size = self.population.size()
+        pr = [idx / pop_size for idx in range(1, pop_size + 1)]
         pop_new = []
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             pos_new = pop[idx].solution.copy()
             for jdx in range(self.problem.n_dims):
                 if self.generator.random() > pr[idx]:
-                    i1, i2 = self.generator.choice(self.pop_size, 2, replace=False)
+                    i1, i2 = self.generator.choice(pop_size, 2, replace=False)
                     e = self.generator.exponential(0.5)
                     X1 = pop[i1].solution
                     X2 = pop[i2].solution
                     pos_new[jdx] = X1[jdx] + e * (X2[jdx] - pop[idx].solution[jdx])
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                pop_new[-1] = self._get_better_agent(
-                    agent, pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                pop_new[-1] = cy.get_better_agent(agent, pop[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            pop_new = self._greedy_selection_population(
-                pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            pop_new = cy.greedy_agents(pop, pop_new, self.problem.sense)
         return pop_new
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop = self.update_business_1__(self.pop, epoch)
+        pop = self.update_business_1__(self.population, epoch)
         pop = self.update_business_2__(pop)
-        self.pop = self.update_business_3__(pop, self.g_best)
+        self.population = self.update_business_3__(pop, self.g_best)

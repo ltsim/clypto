@@ -7,7 +7,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class OriginalSquirrelSA(AgentListOptimizer):
     >>> model = SquirrelSA.OriginalSquirrelSA(epoch=1000, pop_size=50, n_food_sources=4,
     >>>         predator_prob=0.1, gliding_constant=1.9, scaling_factor=18, beta=1.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -105,7 +105,7 @@ cdef class OriginalSquirrelSA(AgentListOptimizer):
         self.scaling_factor = cy.validator(float, scaling_factor, [1, 100], "scaling_factor")
         self.beta = cy.validator(float, beta, [0.0, 10.0], "beta")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         # Aerodynamic parameters from the paper
         self.rho = 1.204  # Air density (kg/m³)
         self.velocity = 5.25  # Gliding velocity (m/s)
@@ -132,7 +132,7 @@ cdef class OriginalSquirrelSA(AgentListOptimizer):
         # Scale down the gliding distance
         return d_g / self.scaling_factor
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         # Assign roles: 1 hickory, 3 acorn, rest normal trees
         pop_new = self.objs.copy()
         # Case 1: Acorn squirrels move toward hickory tree
@@ -149,9 +149,9 @@ cdef class OriginalSquirrelSA(AgentListOptimizer):
                     self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
-            agent.target = self.objs[idx].target
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
+            agent.update_solution(self.objs[idx], agent.solution)
             pop_new[idx] = agent
 
         # Case 2: Normal squirrels move toward acorn trees
@@ -176,9 +176,9 @@ cdef class OriginalSquirrelSA(AgentListOptimizer):
                     self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
-            agent.target = self.objs[idx].target
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
+            agent.update_solution(self.objs[idx], agent.solution)
             pop_new[idx] = agent
 
         # Case 3: Normal squirrels move toward hickory tree
@@ -195,9 +195,9 @@ cdef class OriginalSquirrelSA(AgentListOptimizer):
                     self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                 )
             # Apply boundary constraints
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
-            agent.target = self.objs[idx].target
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
+            agent.update_solution(self.objs[idx], agent.solution)
             pop_new[idx] = agent
 
         # Seasonal monitoring condition
@@ -217,18 +217,16 @@ cdef class OriginalSquirrelSA(AgentListOptimizer):
                 indices_random, n_relocate, replace=False
             )
             for idx in relocate_indices:
-                levy = self._get_levy_flight_step(
-                    beta=self.beta, multiplier=0.01, size=self.problem.n_dims, case=-1
-                )
+                levy = cy.levy_flight(self.generator, beta=self.beta, multiplier=0.01, size=self.problem.n_dims, case=-1)
                 pos_new = self.problem.bounds.low + levy * (self.problem.bounds.up - self.problem.bounds.low)
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
-                agent.target = self.objs[idx].target
+                pos_new = self.correct_solution(pos_new)
+                agent = self.create_agent(pos_new)
+                agent.update_solution(self.objs[idx], agent.solution)
                 pop_new[idx] = agent
         if self.mode in self.AVAILABLE_MODES:
             # Update target for the population
-            pop_new = self._update_target_for_population(pop_new)
+            pop_new = self.evaluate_agents(pop_new)
         else:
             for idx, agent in enumerate(pop_new):
-                pop_new[idx].target = self._get_target(agent.solution)
+                pop_new[idx].evaluate(self.problem)
         self.objs = pop_new

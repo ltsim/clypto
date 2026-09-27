@@ -6,7 +6,7 @@
 
 import numpy as np
 from clypto.optimizer.native.fuzzy import FuzzySystem as FS
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -35,8 +35,8 @@ cdef class FuzzyGWO(VectorizeOptimizer):
     >>>
     >>> model = GWO.FuzzyGWO(epoch=1000, pop_size=50, fuzzy_name="increase")
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -74,10 +74,10 @@ cdef class FuzzyGWO(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.fuzzy_name = cy.validator(str, fuzzy_name, FuzzyGWO.FUZZY_OPERATORS, "fuzzy_name")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.fuzzy_system = FS(self.fuzzy_name)
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -91,6 +91,6 @@ cdef class FuzzyGWO(VectorizeOptimizer):
         # Get fuzzy weights (they only depend on the epoch)
         FW_alpha, FW_beta, FW_delta = self.fuzzy_system.get_fuzzy_weights(epoch, self.epoch)
         total_weight = FW_alpha + FW_beta + FW_delta
-        cand.X[:] = self._correct_solution((Xs[:, 0] * FW_alpha + Xs[:, 1] * FW_beta + Xs[:, 2] * FW_delta) / total_weight)
+        cand.X[:] = self.correct_solution((Xs[:, 0] * FW_alpha + Xs[:, 1] * FW_beta + Xs[:, 2] * FW_delta) / total_weight)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

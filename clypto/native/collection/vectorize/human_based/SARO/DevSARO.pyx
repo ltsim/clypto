@@ -7,7 +7,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class DevSARO(AgentListOptimizer):
     >>>
     >>> model = SARO.DevSARO(epoch=1000, pop_size=50, se = 0.5, mu = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
 
@@ -73,25 +73,25 @@ cdef class DevSARO(AgentListOptimizer):
         self.se = cy.validator(float, se, (0, 1.0), "se")
         self.mu = cy.validator(int, mu, [2, 2 + int(self.pop_size / 2)], "mu")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_USN = np.zeros(self.pop_size)
 
-    def _initialization(self):
-        AgentListOptimizer._initialization(self)
+    def initialization(self):
+        AgentListOptimizer.initialization(self)
         if self.objs is None:
-            self.objs = self._generate_agents(2 * self.pop_size)
+            self.objs = self.generate_agents(2 * self.pop_size)
         else:
-            self.objs = self.objs + self._generate_agents(self.pop_size)
+            self.objs = self.objs + self.generate_agents(self.pop_size)
         self.pop = self.mirror__()
 
-    cdef object _amend_solution(self, object solution):
+    cdef object amend_solution(self, object solution):
         condition = np.logical_and(
             self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
         )
         rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, rand_pos)
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         pop_x = [agent.copy() for agent in self.objs[: self.pop_size]]
         pop_m = [agent.copy() for agent in self.objs[self.pop_size:]]
         pop_new = []
@@ -104,19 +104,17 @@ cdef class DevSARO(AgentListOptimizer):
             pos_new_2 = pop_x[idx].solution + self.generator.uniform() * sd
             condition = np.logical_and(
                 self.generator.uniform(0, 1, self.problem.n_dims) < self.se,
-                self.objs[k].target.fitness < pop_x[idx].target.fitness,
+                self.objs[k].fitness < pop_x[idx].fitness,
             )
             pos_new = np.where(condition, pos_new_1, pos_new_2)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.evaluate_agents(pop_new)
         for idx in range(self.pop_size):
-            if self._compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
-            ):
+            if cy.is_better(pop_new[idx], pop_x[idx], self.problem.sense):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
                 self.dyn_USN[idx] = 0
@@ -133,22 +131,20 @@ cdef class DevSARO(AgentListOptimizer):
             pos_new = self.g_best.solution + self.generator.uniform() * (
                     pop[k1].solution - pop[k2].solution
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.evaluate_agents(pop_new)
         for idx in range(0, self.pop_size):
-            if self._compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
-            ):
+            if cy.is_better(pop_new[idx], pop_x[idx], self.problem.sense):
                 pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
                 self.dyn_USN[idx] = 0
             else:
                 self.dyn_USN[idx] += 1
             if self.dyn_USN[idx] > self.mu:
-                pop_x[idx] = self._generate_agent()
+                pop_x[idx] = self.generate_agent()
                 self.dyn_USN[idx] = 0
         self.objs = pop_x + pop_m

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class OriginalACOR(VectorizeOptimizer):
     >>>
     >>> model = ACOR.OriginalACOR(epoch=1000, pop_size=50, sample_count = 25, intent_factor = 0.5, zeta = 1.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -85,7 +85,7 @@ cdef class OriginalACOR(VectorizeOptimizer):
         self.intent_factor = cy.validator(float, intent_factor, (0, 1.0), "intent_factor")
         self.zeta = cy.validator(float, zeta, (0, 5), "zeta")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sample, both
         cdef Py_ssize_t n = pop.n, d = pop.d, m = self.sample_count
@@ -103,7 +103,7 @@ cdef class OriginalACOR(VectorizeOptimizer):
         rdx = rng.choice(n, size=(m, d), p=p)  # a rank chosen per (sample, dimension)
         cols = np.arange(d)[None, :]
         sample = pop.take(np.zeros(m, dtype=int))
-        sample.X[:] = self._correct_solution(X[rdx, cols] + rng.normal(size=(m, d)) * sigma[rdx, cols])
+        sample.X[:] = self.correct_solution(X[rdx, cols] + rng.normal(size=(m, d)) * sigma[rdx, cols])
         self.evaluate(sample, 0, m)
         both = pop.concat(sample)
         self.pop = both.take(self.sorted_order(both)[:self.pop_size])

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -37,8 +37,8 @@ cdef class OriginalHGSO(VectorizeOptimizer):
     >>>
     >>> model = HGSO.OriginalHGSO(epoch=1000, pop_size=50, n_clusters = 3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -97,14 +97,14 @@ cdef class OriginalHGSO(VectorizeOptimizer):
         self.l2 = 100.0
         self.l3 = 1e-2
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.H_j = self.l1 * self.generator.uniform()
         self.P_ij = self.l2 * self.generator.uniform()
         self.C_j = self.l3 * self.generator.uniform()
         self.pop_group, self.p_best = None, None
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         self.regroup__()
 
     def regroup__(self):
@@ -120,7 +120,7 @@ cdef class OriginalHGSO(VectorizeOptimizer):
             merged = merged.concat(self.pop_group[idx])
         return merged
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation grp, new, pop, out
         cdef Py_ssize_t idx, jdx
@@ -136,13 +136,13 @@ cdef class OriginalHGSO(VectorizeOptimizer):
                 ##### Based on Eq. 8, 9, 10
                 self.H_j = self.H_j * np.exp(-self.C_j * (1.0 / np.exp(-epoch / self.epoch) - 1.0 / self.T0))
                 S_ij = self.K * self.H_j * self.P_ij
-                gama = self.beta * np.exp(-((p_best.target.fitness + self.epsilon) / (grp.F[jdx] + self.epsilon)))
+                gama = self.beta * np.exp(-((p_best.fitness + self.epsilon) / (grp.F[jdx] + self.epsilon)))
                 pos_new = (
                         grp.X[jdx]
                         + F * self.generator.uniform() * gama * (p_best.solution - grp.X[jdx])
                         + F * self.generator.uniform() * self.alpha * (S_ij * g_best - grp.X[jdx])
                 )
-                new.X[jdx] = self._correct_solution(pos_new)
+                new.X[jdx] = self.correct_solution(pos_new)
             self.evaluate(new, 0, new.n)
             self.pop_group[idx] = new
         pop = self.flatten_group__()
@@ -157,7 +157,7 @@ cdef class OriginalHGSO(VectorizeOptimizer):
         ## Update the position of the worst agents using Eq. 12
         sorted_id_pos = np.argsort(np.ascontiguousarray(pop.F))
         if N_w > 0:
-            pos_new = self._correct_solution(self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (N_w, pop.d)))
+            pos_new = self.correct_solution(self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (N_w, pop.d)))
             out = self.new_population(pos_new)
             pop.buf[sorted_id_pos[:N_w]] = out.buf
         self.regroup__()

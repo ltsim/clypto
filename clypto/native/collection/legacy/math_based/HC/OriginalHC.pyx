@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHC(LegacyOptimizer):
+cdef class OriginalHC(cy.Optimizer):
     """
     The original version of: Hill Climbing (HC)
 
@@ -37,14 +37,16 @@ cdef class OriginalHC(LegacyOptimizer):
     >>>
     >>> model = HC.OriginalHC(epoch=1000, pop_size=50, neighbour_size = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Mitchell, M., Holland, J. and Forrest, S., 1993. When will a genetic algorithm
     outperform hill climbing. Advances in neural information processing systems, 6.
     """
+
+    cdef public int neighbour_size
 
     def __init__(
             self,
@@ -59,16 +61,12 @@ cdef class OriginalHC(LegacyOptimizer):
             pop_size (int): number of population size, default = 2
             neighbour_size (int): fixed parameter, sensitive exploitation parameter, Default: 50
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
-        self.neighbour_size = self.validator.check_int(
-            "neighbour_size", neighbour_size, [2, 1000]
-        )
-        self._set_parameters(["epoch", "pop_size", "neighbour_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "neighbour_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[2, 10000])
+        self.neighbour_size = cy.validator(int, neighbour_size, [2, 1000], "neighbour_size")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -82,9 +80,9 @@ cdef class OriginalHC(LegacyOptimizer):
                     self.g_best.solution
                     + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up) * step_size
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_neighbours.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_neighbours[-1].target = self._get_target(pos_new)
-        self.pop = self._update_target_for_population(pop_neighbours)
+                pop_neighbours[-1].evaluate(self.problem)
+        self.population = self.population.evaluate(pop_neighbours, self.mode)

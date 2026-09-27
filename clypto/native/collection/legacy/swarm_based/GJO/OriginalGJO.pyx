@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalGJO(LegacyOptimizer):
+cdef class OriginalGJO(cy.Optimizer):
     """
     The original version of: Golden jackal optimization (GJO)
 
@@ -33,8 +33,8 @@ cdef class OriginalGJO(LegacyOptimizer):
     >>>
     >>> model = GJO.OriginalGJO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -50,31 +50,24 @@ cdef class OriginalGJO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         E1 = 1.5 * (1.0 - (epoch / self.epoch))
-        RL = self._get_levy_flight_step(
-            beta=1.5,
-            multiplier=0.05,
-            size=(self.pop_size, self.problem.n_dims),
-            case=-1,
-        )
-        _, (male, female), _ = self._get_special_agents(
-            self.pop, n_best=2, n_worst=1, sense=self.problem.sense
-        )
+        RL = cy.levy_flight(self.generator, beta=1.5, multiplier=0.05, size=(pop_size, self.problem.n_dims), case=-1)
+        ranked = self.population.sort()
+        (male, female) = [agent.copy() for agent in ranked[:2]]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             male_pos = male.solution.copy()
             female_pos = female.solution.copy()
             for jdx in range(0, self.problem.n_dims):
@@ -85,14 +78,14 @@ cdef class OriginalGJO(LegacyOptimizer):
                     t1 = np.abs(
                         (
                                 RL[idx, jdx] * male.solution[jdx]
-                                - self.pop[idx].solution[jdx]
+                                - self.population[idx].solution[jdx]
                         )
                     )
                     male_pos[jdx] = male.solution[jdx] - E * t1
                     t2 = np.abs(
                         (
                                 RL[idx, jdx] * female.solution[jdx]
-                                - self.pop[idx].solution[jdx]
+                                - self.population[idx].solution[jdx]
                         )
                     )
                     female_pos[jdx] = female.solution[jdx] - E * t2
@@ -100,23 +93,23 @@ cdef class OriginalGJO(LegacyOptimizer):
                     t1 = np.abs(
                         (
                                 male.solution[jdx]
-                                - RL[idx, jdx] * self.pop[idx].solution[jdx]
+                                - RL[idx, jdx] * self.population[idx].solution[jdx]
                         )
                     )
                     male_pos[jdx] = male.solution[jdx] - E * t1
                     t2 = np.abs(
                         (
                                 female.solution[jdx]
-                                - RL[idx, jdx] * self.pop[idx].solution[jdx]
+                                - RL[idx, jdx] * self.population[idx].solution[jdx]
                         )
                     )
                     female_pos[jdx] = female.solution[jdx] - E * t2
             pos_new = (male_pos + female_pos) / 2
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = agent
+                agent.evaluate(self.problem)
+                self.population[idx] = agent
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self._update_target_for_population(pop_new)
+            self.population = self.population.evaluate(pop_new, self.mode)

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMGO(LegacyOptimizer):
+cdef class OriginalMGO(cy.Optimizer):
     """
     The original version of: Mountain Gazelle Optimizer (MGO)
 
@@ -33,8 +33,8 @@ cdef class OriginalMGO(LegacyOptimizer):
     >>>
     >>> model = MGO.OriginalMGO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -50,11 +50,9 @@ cdef class OriginalMGO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
     def coefficient_vector__(self, n_dims, epoch, max_epoch):
         a2 = -1.0 + epoch * (-1.0 / max_epoch)
@@ -67,23 +65,24 @@ cdef class OriginalMGO(LegacyOptimizer):
         cofi[3, :] = u * np.power(v, 2) * np.cos((self.generator.random() * 2) * u)
         return cofi
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
-            idxs_rand = self.generator.permutation(self.pop_size)[
-                : int(np.ceil(self.pop_size / 3))
+        for idx in range(0, pop_size):
+            idxs_rand = self.generator.permutation(pop_size)[
+                : int(np.ceil(pop_size / 3))
             ]
-            pos_list = np.array([self.pop[mm].solution for mm in idxs_rand])
+            pos_list = np.array([self.population[mm].solution for mm in idxs_rand])
             idx_rand = self.generator.integers(
-                int(np.ceil(self.pop_size / 3)), self.pop_size
+                int(np.ceil(pop_size / 3)), pop_size
             )
-            M = self.pop[idx_rand].solution * np.floor(
+            M = self.population[idx_rand].solution * np.floor(
                 self.generator.normal()
             ) + np.mean(pos_list, axis=0) * np.ceil(self.generator.normal())
 
@@ -92,7 +91,7 @@ cdef class OriginalMGO(LegacyOptimizer):
             A = self.generator.standard_normal(self.problem.n_dims) * np.exp(
                 2 - epoch * (2.0 / self.epoch)
             )
-            D = (np.abs(self.pop[idx].solution) + np.abs(self.g_best.solution)) * (
+            D = (np.abs(self.population[idx].solution) + np.abs(self.g_best.solution)) * (
                     2 * self.generator.random() - 1
             )
 
@@ -102,7 +101,7 @@ cdef class OriginalMGO(LegacyOptimizer):
                     - np.abs(
                 (
                         self.generator.integers(1, 3) * M
-                        - self.generator.integers(1, 3) * self.pop[idx].solution
+                        - self.generator.integers(1, 3) * self.population[idx].solution
                 )
                 * A
             )
@@ -114,12 +113,12 @@ cdef class OriginalMGO(LegacyOptimizer):
                     + (
                             self.generator.integers(1, 3) * self.g_best.solution
                             - self.generator.integers(1, 3)
-                            * self.pop[self.generator.integers(self.pop_size)].solution
+                            * self.population[self.generator.integers(pop_size)].solution
                     )
                     * cofi[self.generator.integers(0, 4), :]
             )
             x4 = (
-                    self.pop[idx].solution
+                    self.population[idx].solution
                     - D
                     + (
                             self.generator.integers(1, 3) * self.g_best.solution
@@ -129,22 +128,20 @@ cdef class OriginalMGO(LegacyOptimizer):
             )
 
             x1 = self.problem.generate_solution()
-            x1 = self._correct_solution(x1)
-            x2 = self._correct_solution(x2)
-            x3 = self._correct_solution(x3)
-            x4 = self._correct_solution(x4)
+            x1 = self.population.correct_solution(x1)
+            x2 = self.population.correct_solution(x2)
+            x3 = self.population.correct_solution(x3)
+            x4 = self.population.correct_solution(x4)
 
-            agent1 = self._generate_empty_agent(x1)
-            agent2 = self._generate_empty_agent(x2)
-            agent3 = self._generate_empty_agent(x3)
-            agent4 = self._generate_empty_agent(x4)
+            agent1 = self.population.create_agent(x1)
+            agent2 = self.population.create_agent(x2)
+            agent3 = self.population.create_agent(x3)
+            agent4 = self.population.create_agent(x4)
 
             pop_new += [agent1, agent2, agent3, agent4]
             if self.mode not in self.AVAILABLE_MODES:
                 for jdx in range(-4, 0):
-                    pop_new[jdx].target = self._get_target(pop_new[jdx].solution)
+                    pop_new[jdx].evaluate(self.problem)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_new, self.pop_size, self.problem.sense
-        )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+        self.population = cy.sort_agents(self.population + pop_new, self.problem.sense)[:pop_size]

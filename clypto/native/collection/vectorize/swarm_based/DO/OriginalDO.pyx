@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -34,8 +34,8 @@ cdef class OriginalDO(VectorizeOptimizer):
     >>>
     >>> model = DO.OriginalDO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -70,13 +70,13 @@ cdef class OriginalDO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         self.pop_delta = self.generate_population(self.pop_size)
         self.radius = (self.problem.bounds.up - self.problem.bounds.low) / 10
         self.delta_max = (self.problem.bounds.up - self.problem.bounds.low) / 10
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -110,13 +110,13 @@ cdef class OriginalDO(VectorizeOptimizer):
         enemy = np.where(np.all(np.abs(X - gw) <= r, axis=1)[:, None], gw + X, 0.0)
         temp = w * D + rng.uniform(0, 1, (n, d)) * A + rng.uniform(0, 1, (n, d)) * C + rng.uniform(0, 1, (n, d)) * S
         temp = np.clip(temp, -1 * self.delta_max, self.delta_max)
-        levy = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, 1), case=-1)
+        levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=(n, 1), case=-1)
         near = (a * A + c * C + s * S + f * Fd + e * enemy) + w * D
         far = ~near_food  # any dimension beyond the radius
         delta_new = np.where(far, np.where(many, temp, 0.0), near)
         pos = X + np.where(far, np.where(many, temp, levy * X), near)
         ops.step(self, pos)
         cand = self.pop_delta.empty_like()
-        cand.X[:] = self._correct_solution(delta_new)
+        cand.X[:] = self.correct_solution(delta_new)
         self.evaluate(cand, 0, n)
         ops.greedy(self, cand, dst=self.pop_delta)

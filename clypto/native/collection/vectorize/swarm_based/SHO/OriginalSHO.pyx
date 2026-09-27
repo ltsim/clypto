@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalSHO(VectorizeOptimizer):
@@ -39,8 +38,8 @@ cdef class OriginalSHO(VectorizeOptimizer):
     >>>
     >>> model = SHO.OriginalSHO(epoch=1000, pop_size=50, h_factor = 5.0, n_trials = 10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -80,7 +79,7 @@ cdef class OriginalSHO(VectorizeOptimizer):
         self.h_factor = cy.validator(float, h_factor, (0.5, 10.0), "h_factor")
         self.n_trials = cy.validator(int, n_trials, (1, float("inf")), "n_trials")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation trial
@@ -88,7 +87,7 @@ cdef class OriginalSHO(VectorizeOptimizer):
         cdef object rng = self.generator
         X = pop.X
         g = np.array(self.g_best_x())
-        gb_fit = self.current_g_best().target.fitness
+        gb_fit = self.current_g_best().fitness
         lb, ub = self.problem.bounds.low, self.problem.bounds.up
         hh = self.h_factor - epoch * (self.h_factor / self.epoch)
         B = 2 * rng.uniform(0, 1, (n, d))
@@ -109,7 +108,7 @@ cdef class OriginalSHO(VectorizeOptimizer):
                 if not len(active):
                     break
                 sub = trial.take(np.arange(len(active)))
-                sub.X[:] = self._correct_solution(g + rng.normal(0, 1, (len(active), d)) * rng.uniform(lb, ub, (len(active), d)))
+                sub.X[:] = self.correct_solution(g + rng.normal(0, 1, (len(active), d)) * rng.uniform(lb, ub, (len(active), d)))
                 self.evaluate(sub, 0, len(active))
                 ok = ops.better(self, sub.F, gb_fit)
                 count[active] += 1

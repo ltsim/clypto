@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalMRFO(LegacyOptimizer):
+cdef class OriginalMRFO(cy.Optimizer):
     """
     The original version of: Manta Ray Foraging Optimization (MRFO)
 
@@ -35,14 +35,16 @@ cdef class OriginalMRFO(LegacyOptimizer):
     >>>
     >>> model = MRFO.OriginalMRFO(epoch=1000, pop_size=50, somersault_range = 2.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Zhao, W., Zhang, Z. and Wang, L., 2020. Manta ray foraging optimization: An effective bio-inspired
     optimizer for engineering applications. Engineering Applications of Artificial Intelligence, 87, p.103300.
     """
+
+    cdef public double somersault_range
 
     def __init__(
             self,
@@ -57,24 +59,21 @@ cdef class OriginalMRFO(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             somersault_range (float): somersault factor that decides the somersault range of manta rays, default=2
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.somersault_range = self.validator.check_float(
-            "somersault_range", somersault_range, [1.0, 5.0]
-        )
-        self._set_parameters(["epoch", "pop_size", "somersault_range"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "somersault_range"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.somersault_range = cy.validator(float, somersault_range, [1.0, 5.0], "somersault_range")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Cyclone foraging (Eq. 5, 6, 7)
             if self.generator.random() < 0.5:
                 r1 = self.generator.uniform()
@@ -90,30 +89,30 @@ cdef class OriginalMRFO(LegacyOptimizer):
                         x_t1 = (
                                 x_rand
                                 + self.generator.uniform()
-                                * (x_rand - self.pop[idx].solution)
-                                + beta * (x_rand - self.pop[idx].solution)
+                                * (x_rand - self.population[idx].solution)
+                                + beta * (x_rand - self.population[idx].solution)
                         )
                     else:
                         x_t1 = (
                                 x_rand
                                 + self.generator.uniform()
-                                * (self.pop[idx - 1].solution - self.pop[idx].solution)
-                                + beta * (x_rand - self.pop[idx].solution)
+                                * (self.population[idx - 1].solution - self.population[idx].solution)
+                                + beta * (x_rand - self.population[idx].solution)
                         )
                 else:
                     if idx == 0:
                         x_t1 = (
                                 self.g_best.solution
                                 + self.generator.uniform()
-                                * (self.g_best.solution - self.pop[idx].solution)
-                                + beta * (self.g_best.solution - self.pop[idx].solution)
+                                * (self.g_best.solution - self.population[idx].solution)
+                                + beta * (self.g_best.solution - self.population[idx].solution)
                         )
                     else:
                         x_t1 = (
                                 self.g_best.solution
                                 + self.generator.uniform()
-                                * (self.pop[idx - 1].solution - self.pop[idx].solution)
-                                + beta * (self.g_best.solution - self.pop[idx].solution)
+                                * (self.population[idx - 1].solution - self.population[idx].solution)
+                                + beta * (self.g_best.solution - self.population[idx].solution)
                         )
             # Chain foraging (Eq. 1,2)
             else:
@@ -121,47 +120,40 @@ cdef class OriginalMRFO(LegacyOptimizer):
                 alpha = 2 * r * np.sqrt(np.abs(np.log(r)))
                 if idx == 0:
                     x_t1 = (
-                            self.pop[idx].solution
-                            + r * (self.g_best.solution - self.pop[idx].solution)
-                            + alpha * (self.g_best.solution - self.pop[idx].solution)
+                            self.population[idx].solution
+                            + r * (self.g_best.solution - self.population[idx].solution)
+                            + alpha * (self.g_best.solution - self.population[idx].solution)
                     )
                 else:
                     x_t1 = (
-                            self.pop[idx].solution
-                            + r * (self.pop[idx - 1].solution - self.pop[idx].solution)
-                            + alpha * (self.g_best.solution - self.pop[idx].solution)
+                            self.population[idx].solution
+                            + r * (self.population[idx - 1].solution - self.population[idx].solution)
+                            + alpha * (self.g_best.solution - self.population[idx].solution)
                     )
-            pos_new = self._correct_solution(x_t1)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(x_t1)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        _, g_best = self._update_global_best_agent(self.pop)
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        ranked = self.population.sort()
+        g_best = ranked[0]
         pop_child = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Somersault foraging   (Eq. 8)
-            x_t1 = self.pop[idx].solution + self.somersault_range * (
+            x_t1 = self.population[idx].solution + self.somersault_range * (
                     self.generator.uniform() * g_best.solution
-                    - self.generator.uniform() * self.pop[idx].solution
+                    - self.generator.uniform() * self.population[idx].solution
             )
-            pos_new = self._correct_solution(x_t1)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(x_t1)
+            agent = self.population.create_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_child, self.problem.sense
-            )
+            pop_child = self.population.evaluate(pop_child, self.mode)
+            self.population = self.population.greedy(pop_child)

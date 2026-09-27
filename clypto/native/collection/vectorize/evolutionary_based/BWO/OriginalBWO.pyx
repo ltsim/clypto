@@ -5,12 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalBWO(VectorizeOptimizer):
@@ -41,8 +39,8 @@ cdef class OriginalBWO(VectorizeOptimizer):
     >>>
     >>> model = BWO.OriginalBWO(epoch=1000, pop_size=50, pp=0.6, cr=0.44, pm=0.4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -89,7 +87,7 @@ cdef class OriginalBWO(VectorizeOptimizer):
         self.cr = cy.validator(float, cr, (0.0, 1.0), "cr")
         self.pm = cy.validator(float, pm, (0.0, 1.0), "pm")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.n_parents = max(2, int(self.pp * self.pop_size))
         if self.n_parents > self.pop_size:
             self.n_parents = self.pop_size
@@ -104,7 +102,7 @@ cdef class OriginalBWO(VectorizeOptimizer):
         child2 = parent2.copy()
         child1[idxs] = alpha * parent1[idxs] + (1 - alpha) * parent2[idxs]
         child2[idxs] = alpha * parent2[idxs] + (1 - alpha) * parent1[idxs]
-        return self._correct_solution(child1), self._correct_solution(child2)
+        return self.correct_solution(child1), self.correct_solution(child2)
 
     def _mutate(self, position: np.ndarray) -> np.ndarray:
         if self.problem.n_dims < 1:
@@ -114,9 +112,9 @@ cdef class OriginalBWO(VectorizeOptimizer):
         pos_new[idx] = self.generator.uniform(
             self.problem.bounds.low[idx], self.problem.bounds.up[idx]
         )
-        return self._correct_solution(pos_new)
+        return self.correct_solution(pos_new)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         self.objs = ops.agents_of(self.pop)
         pop_sorted = ops.sorted_agents(self, self.objs)
@@ -128,14 +126,14 @@ cdef class OriginalBWO(VectorizeOptimizer):
             parent1, parent2 = pop1[parent_idx[0]], pop1[parent_idx[1]]
             female = ops.better_agent(self, parent1, parent2).copy()
             child1_pos, child2_pos = self._procreate(parent1.solution, parent2.solution)
-            child1 = LegacyNativeAgent(child1_pos, None)
-            child2 = LegacyNativeAgent(child2_pos, None)
+            child1 = cy.Agent(child1_pos)
+            child2 = cy.Agent(child2_pos)
             children = [child1, child2]
             if self.mode in self.AVAILABLE_MODES:
-                ops.update_targets(self, children)
+                ops.evaluate_agents(self, children)
             else:
                 for child in children:
-                    child.target = self._get_target(child.solution)
+                    child.evaluate(self.problem)
             n_keep = self.generator.binomial(len(children), 1 - self.cr)
             if n_keep < 1:
                 n_keep = 1
@@ -148,12 +146,12 @@ cdef class OriginalBWO(VectorizeOptimizer):
             for _ in range(self.n_mutate):
                 parent = pop1[self.generator.integers(0, len(pop1))]
                 pos_new = self._mutate(parent.solution)
-                pop3.append(LegacyNativeAgent(pos_new, None))
+                pop3.append(cy.Agent(pos_new))
             if self.mode in self.AVAILABLE_MODES:
-                ops.update_targets(self, pop3)
+                ops.evaluate_agents(self, pop3)
             else:
                 for agent in pop3:
-                    agent.target = self._get_target(agent.solution)
+                    agent.evaluate(self.problem)
 
         pop_new = pop2 + pop3
         if len(pop_new) < self.pop_size:

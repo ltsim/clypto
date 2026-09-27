@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevEPC(LegacyOptimizer):
+cdef class DevEPC(cy.Optimizer):
     """
     The developed version of: Emperor Penguins Colony (EPC)
 
@@ -40,14 +40,19 @@ cdef class DevEPC(LegacyOptimizer):
     >>> model = EPC.DevEPC(epoch=1000, pop_size=50, heat_damping_factor=0.95, mutation_factor=0.1,
     >>>                     spiral_a=1.0, spiral_b=0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Harifi, S., Khalilian, M., Mohammadzadeh, J. and Ebrahimnejad, S., 2019.
     Emperor Penguins Colony: a new metaheuristic algorithm for optimization. Evolutionary intelligence, 12(2), pp.211-226.
     """
+
+    cdef public double heat_damping_factor
+    cdef public double mutation_factor
+    cdef public double spiral_a
+    cdef public double spiral_b
 
     def __init__(
             self,
@@ -68,30 +73,15 @@ cdef class DevEPC(LegacyOptimizer):
             spiral_a (float): Constant for logarithmic spiral movement, default = 1.0
             spiral_b (float): Constant for logarithmic spiral movement, default = 0.5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.heat_damping_factor = self.validator.check_float(
-            "heat_damping_factor", heat_damping_factor, [0.0, 1.0]
-        )
-        self.mutation_factor = self.validator.check_float(
-            "mutation_factor", mutation_factor, [0.0, 1.0]
-        )
-        self.spiral_a = self.validator.check_float("spiral_a", spiral_a, [0.0, 100.0])
-        self.spiral_b = self.validator.check_float("spiral_b", spiral_b, [0.0, 100.0])
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "heat_damping_factor",
-                "mutation_factor",
-                "spiral_a",
-                "spiral_b",
-            ]
-        )
-        self.sort_flag = False
+        super().__init__(parameters=[ "epoch", "pop_size", "heat_damping_factor", "mutation_factor", "spiral_a", "spiral_b", ], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.heat_damping_factor = cy.validator(float, heat_damping_factor, [0.0, 1.0], "heat_damping_factor")
+        self.mutation_factor = cy.validator(float, mutation_factor, [0.0, 1.0], "mutation_factor")
+        self.spiral_a = cy.validator(float, spiral_a, [0.0, 100.0], "spiral_a")
+        self.spiral_b = cy.validator(float, spiral_b, [0.0, 100.0], "spiral_b")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         # Physical constants (from paper)
         self.surface_area = 0.56  # m^2 (total surface area of emperor penguin)
         self.emissivity = 0.98  # emissivity of bird plumage
@@ -178,29 +168,28 @@ cdef class DevEPC(LegacyOptimizer):
         )
         return new_position
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Decrease heat absorption coefficient
         self.heat_radiation = self.heat_radiation * self.heat_damping_factor
         # Decrease mutation factor
         self.current_mutation_factor = self.mutation_factor * (1 - epoch / self.epoch)
 
         # For each penguin i
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             # For each penguin j
-            for jdx in range(self.pop_size):
+            for jdx in range(pop_size):
                 # Move penguin i towards penguin j if j has better cost
-                if self._compare_target(
-                        self.pop[jdx].target, self.pop[idx].target, self.problem.sense
-                ):
+                if cy.is_better(self.population[jdx], self.population[idx], self.problem.sense):
                     # Calculate distance between penguins
                     distance = np.linalg.norm(
-                        self.pop[jdx].solution - self.pop[idx].solution
+                        self.population[jdx].solution - self.population[idx].solution
                     )
                     # Calculate attractiveness
                     attractiveness = self.calculate_attractiveness(
@@ -211,11 +200,9 @@ cdef class DevEPC(LegacyOptimizer):
                         attractiveness = 1.0 / (1.0 + attractiveness)
                     # Perform spiral movement
                     pos_new = self.spiral_movement(
-                        self.pop[idx].solution, self.pop[jdx].solution, attractiveness
+                        self.population[idx].solution, self.population[jdx].solution, attractiveness
                     )
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                            agent.target, self.pop[idx].target, self.problem.sense
-                    ):
-                        self.pop[idx] = agent
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
+                    if cy.is_better(agent, self.population[idx], self.problem.sense):
+                        self.population[idx] = agent

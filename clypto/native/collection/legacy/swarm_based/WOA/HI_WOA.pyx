@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class HI_WOA(LegacyOptimizer):
+cdef class HI_WOA(cy.Optimizer):
     """
     The original version of: Hybrid Improved Whale Optimization Algorithm (HI-WOA)
 
@@ -35,14 +35,16 @@ cdef class HI_WOA(LegacyOptimizer):
     >>>
     >>> model = WOA.HI_WOA(epoch=1000, pop_size=50, feedback_max = 10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Tang, C., Sun, W., Wu, W. and Xue, M., 2019, July. A hybrid improved whale optimization algorithm.
     In 2019 IEEE 15th International Conference on Control and Automation (ICCA) (pp. 362-367). IEEE.
     """
+
+    cdef public int feedback_max
 
     def __init__(
             self,
@@ -57,30 +59,28 @@ cdef class HI_WOA(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             feedback_max (int): maximum iterations of each feedback, default = 10
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.feedback_max = self.validator.check_int(
-            "feedback_max", feedback_max, [2, 2 + int(self.epoch / 2)]
-        )
+        super().__init__(parameters=["epoch", "pop_size", "feedback_max"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.feedback_max = cy.validator(int, feedback_max, [2, 2 + int(self.epoch / 2)], "feedback_max")
         # The maximum of times g_best doesn't change -> need to change half of population
-        self._set_parameters(["epoch", "pop_size", "feedback_max"])
-        self.sort_flag = True
 
-    def _initialize_variables(self):
-        self.n_changes = int(self.pop_size / 2)
+    def initialize_variables(self):
+        pop_size = self.population.size()
+        self.n_changes = int(pop_size / 2)
         self.dyn_feedback_count = 0
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         a = 2 + 2 * np.cos(np.pi / 2 * (1 + epoch / self.epoch))  # Eq. 8
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             r = self.generator.random()
             A = 2 * a * r - a
             C = 2 * r
@@ -89,43 +89,39 @@ cdef class HI_WOA(LegacyOptimizer):
             b = 1
             if self.generator.uniform() < p:
                 if np.abs(A) < 1:
-                    D = np.abs(C * self.g_best.solution - self.pop[idx].solution)
+                    D = np.abs(C * self.g_best.solution - self.population[idx].solution)
                     pos_new = self.g_best.solution - A * D
                 else:
-                    # x_rand = pop[self.generator.self.generator.randint(self.pop_size)]         # select random 1 position in pop
+                    # x_rand = pop[self.generator.self.generator.randint(pop_size)]         # select random 1 position in pop
                     x_rand = self.problem.generate_solution()
-                    D = np.abs(C * x_rand - self.pop[idx].solution)
+                    D = np.abs(C * x_rand - self.population[idx].solution)
                     pos_new = x_rand - A * D
             else:
-                D1 = np.abs(self.g_best.solution - self.pop[idx].solution)
+                D1 = np.abs(self.g_best.solution - self.population[idx].solution)
                 pos_new = (
                         self.g_best.solution + np.exp(b * l) * np.cos(2 * np.pi * l) * D1
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
 
         ## Feedback Mechanism
-        current_best = self._get_best_agent(self.pop, self.problem.sense)
-        if current_best.target.fitness == self.g_best.target.fitness:
+        current_best = self.population.sort()[0].copy()
+        if current_best.fitness == self.g_best.fitness:
             self.dyn_feedback_count += 1
         else:
             self.dyn_feedback_count = 0
 
         if self.dyn_feedback_count >= self.feedback_max:
             idx_list = self.generator.choice(
-                range(0, self.pop_size), self.n_changes, replace=False
+                range(0, pop_size), self.n_changes, replace=False
             )
-            pop_child = self._generate_population(self.n_changes)
+            pop_child = self.population.generate(self.n_changes)
             for idx_counter, idx in enumerate(idx_list):
-                self.pop[idx] = pop_child[idx_counter]
+                self.population[idx] = pop_child[idx_counter]

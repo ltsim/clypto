@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalWCA(VectorizeOptimizer):
@@ -47,8 +46,8 @@ cdef class OriginalWCA(VectorizeOptimizer):
     >>>
     >>> model = WCA.OriginalWCA(epoch=1000, pop_size=50, nsr = 4, wc = 2.0, dmax = 1e-6)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -96,8 +95,8 @@ cdef class OriginalWCA(VectorizeOptimizer):
         self.wc = cy.validator(float, wc, (1.0, 3.0), "wc")
         self.dmax = cy.validator(float, dmax, (0, 1.0), "dmax")
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         cdef NativePopulation pop = self.pop
         pop = pop.take(self.sorted_order(pop))
         self.pop = pop
@@ -125,12 +124,12 @@ cdef class OriginalWCA(VectorizeOptimizer):
         streams[self.nsr - 1] = pop_stream.take(idx_last)
         self.streams = streams
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         # Rivers, streams and the sea live in their own sub-populations (row blocks); the
         # streams of a river are replaced by their moved versions, without selection.
         cdef NativePopulation river = self.pop_best
         cdef NativePopulation stream, stream_new, merged
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef Py_ssize_t idx
         sense = self.problem.sense
         g_best = np.array(self.g_best_x())
@@ -140,16 +139,16 @@ cdef class OriginalWCA(VectorizeOptimizer):
             # Update stream
             u = self.generator.random(stream.n)  # one uniform() per stream
             pos_new = stream.X + (u[:, None] * self.wc) * (river.X[idx] - stream.X)
-            stream_new = self.new_population(self._correct_solution(pos_new))
+            stream_new = self.new_population(self.correct_solution(pos_new))
             self.streams[idx] = stream_new
             best = self.sorted_order(stream_new)[0]
-            if self._compare_fitness(stream_new.F[best], river.F[idx], sense):
+            if cy.better_fitness(stream_new.F[best], river.F[idx], sense):
                 river.buf[idx] = stream_new.buf[best]
             # Update river
             pos_new = river.X[idx] + self.generator.uniform() * self.wc * (g_best - river.X[idx])
-            pos_new = self._correct_solution(pos_new)
-            tar = self._get_target(pos_new)
-            if self._compare_fitness(tar.fitness, river.F[idx], sense):
+            pos_new = self.correct_solution(pos_new)
+            tar = self.evaluate_solution(pos_new)
+            if cy.better_fitness(tar.fitness, river.F[idx], sense):
                 ops.set_row(river, idx, pos_new, tar)
         # Evaporation
         for idx in range(1, self.nsr):

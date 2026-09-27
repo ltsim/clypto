@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevMVO(LegacyOptimizer):
+cdef class DevMVO(cy.Optimizer):
     """
     The developed version: Multi-Verse Optimizer (MVO)
 
@@ -37,8 +37,8 @@ cdef class DevMVO(LegacyOptimizer):
     >>>
     >>> model = MVO.DevMVO(epoch=1000, pop_size=50, wep_min = 0.2, wep_max = 1.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -56,36 +56,35 @@ cdef class DevMVO(LegacyOptimizer):
             wep_min (float): Wormhole Existence Probability (min in Eq.(3.3) paper, default = 0.2
             wep_max (float: Wormhole Existence Probability (max in Eq.(3.3) paper, default = 1.0
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.wep_min = self.validator.check_float("wep_min", wep_min, (0, 0.5))
-        self.wep_max = self.validator.check_float("wep_max", wep_max, [0.5, 3.0])
-        self._set_parameters(["epoch", "pop_size", "wep_min", "wep_max"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "wep_min", "wep_max"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.wep_min = cy.validator(float, wep_min, (0, 0.5), "wep_min")
+        self.wep_max = cy.validator(float, wep_max, [0.5, 3.0], "wep_max")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Eq. (3.3) in the paper
         wep = self.wep_max - epoch * ((self.wep_max - self.wep_min) / self.epoch)
         # Travelling Distance Rate (Formula): Eq. (3.4) in the paper
         tdr = 1 - epoch ** (1.0 / 6) / self.epoch ** (1.0 / 6)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if self.generator.uniform() < wep:
-                list_fitness = np.array([agent.target.fitness for agent in self.pop])
-                white_hole_id = self._get_index_roulette_wheel_selection(list_fitness)
-                black_hole_pos_1 = self.pop[idx].solution + tdr * self.generator.normal(
+                list_fitness = np.array([agent.fitness for agent in self.population])
+                white_hole_id = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
+                black_hole_pos_1 = self.population[idx].solution + tdr * self.generator.normal(
                     0, 1
-                ) * (self.pop[white_hole_id].solution - self.pop[idx].solution)
+                ) * (self.population[white_hole_id].solution - self.population[idx].solution)
                 black_hole_pos_2 = self.g_best.solution + tdr * self.generator.normal(
                     0, 1
-                ) * (self.g_best.solution - self.pop[idx].solution)
+                ) * (self.g_best.solution - self.population[idx].solution)
                 black_hole_pos = np.where(
                     self.generator.random(self.problem.n_dims) < 0.5,
                     black_hole_pos_1,
@@ -93,16 +92,12 @@ cdef class DevMVO(LegacyOptimizer):
                 )
             else:
                 black_hole_pos = self.problem.generate_solution()
-            pos_new = self._correct_solution(black_hole_pos)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(black_hole_pos)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

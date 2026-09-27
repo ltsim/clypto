@@ -1,5 +1,5 @@
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class ModifiedSLO(LegacyOptimizer):
+cdef class ModifiedSLO(cy.Optimizer):
     pass

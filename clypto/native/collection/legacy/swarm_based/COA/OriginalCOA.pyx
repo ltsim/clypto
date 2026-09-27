@@ -3,19 +3,26 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalCOAAgent(LegacyAgent):
+
+cdef class OriginalCOAAgent(cy.Agent):
     cdef public object age
 
 
-cdef class OriginalCOA(LegacyOptimizer):
+cdef class OriginalCOAPopulation(cy.Population):
+    """Agents of :class:`OriginalCOA`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        age = 1
+        return OriginalCOAAgent(solution=solution, age=age)
+
+
+cdef class OriginalCOA(cy.Optimizer):
     """
     The original version of: Coyote Optimization Algorithm (COA)
 
@@ -42,14 +49,16 @@ cdef class OriginalCOA(LegacyOptimizer):
     >>>
     >>> model = COA.OriginalCOA(epoch=1000, pop_size=50, n_coyotes = 5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Pierezan, J. and Coelho, L.D.S., 2018, July. Coyote optimization algorithm: a new metaheuristic
     for global optimization problems. In 2018 IEEE congress on evolutionary computation (CEC) (pp. 1-8). IEEE.
     """
+
+    cdef public int n_coyotes
 
     def __init__(
         self,
@@ -64,32 +73,21 @@ cdef class OriginalCOA(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             n_coyotes (int): number of coyotes per group, default=5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.n_coyotes = self.validator.check_int(
-            "n_coyotes", n_coyotes, [2, int(self.pop_size / 2)]
-        )
-        self._set_parameters(["epoch", "pop_size", "n_coyotes"])
+        super().__init__(parameters=["epoch", "pop_size", "n_coyotes"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalCOAPopulation)
+        self.n_coyotes = cy.validator(int, n_coyotes, [2, int(self.population.size() / 2)], "n_coyotes")
         self.n_packs = int(pop_size / self.n_coyotes)
-        self.sort_flag = False
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
-        self.pop_group = self._generate_group_population(
-            self.pop, self.n_packs, self.n_coyotes
-        )
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
+        self.pop_group = cy.split_groups(self.population, self.n_packs, self.n_coyotes)
         self.ps = 1.0 / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        age = 1
-        return _OriginalCOAAgent(solution=solution, age=age)
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -99,9 +97,7 @@ cdef class OriginalCOA(LegacyOptimizer):
         # Execute the operations inside each pack
         for p in range(self.n_packs):
             # Get the coyotes that belong to each pack
-            self.pop_group[p] = self._get_sorted_population(
-                self.pop_group[p], self.problem.sense
-            )
+            self.pop_group[p] = cy.sort_agents(self.pop_group[p], self.problem.sense)
             # Detect alphas according to the costs (Eq. 5)
             # Compute the social tendency of the pack (Eq. 6)
             tendency = np.mean([agent.solution for agent in self.pop_group[p]])
@@ -121,18 +117,16 @@ cdef class OriginalCOA(LegacyOptimizer):
                     * (tendency - self.pop_group[p][rc2].solution)
                 )
                 # Keep the coyotes in the search space (optimization problem constraint)
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 agent.age = self.pop_group[p][i].age
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self._get_target(pos_new)
+                    pop_new[-1].evaluate(self.problem)
             # Evaluate the new social condition (Eq. 13)
-            pop_new = self._update_target_for_population(pop_new)
+            pop_new = self.population.evaluate(pop_new, self.mode)
             # Adaptation (Eq. 14)
-            self.pop_group[p] = self._greedy_selection_population(
-                self.pop_group[p], pop_new, self.problem.sense
-            )
+            self.pop_group[p] = cy.greedy_agents(self.pop_group[p], pop_new, self.problem.sense)
 
             # Birth of a new coyote from random parents (Eq. 7 and Alg. 1)
             id_dad, id_mom = self.generator.choice(
@@ -147,13 +141,13 @@ cdef class OriginalCOA(LegacyOptimizer):
             )
             # Eventual noise
             pos_new = self.generator.normal(0, 1) * pup
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
 
             # Verify if the pup will survive
-            packs = self._get_sorted_population(self.pop_group[p], self.problem.sense)
+            packs = cy.sort_agents(self.pop_group[p], self.problem.sense)
             # Find index of element has fitness larger than new child. If existed an element like that, new child is good
-            if self._compare_target(agent.target, packs[-1].target, self.problem.sense):
+            if cy.is_better(agent, packs[-1], self.problem.sense):
                 if self.problem.sense == "min":
                     packs = sorted(packs, key=lambda agent: agent.age)
                 else:
@@ -180,4 +174,4 @@ cdef class OriginalCOA(LegacyOptimizer):
         for id_pack in range(0, self.n_packs):
             for id_coy in range(0, self.n_coyotes):
                 self.pop_group[id_pack][id_coy].age += 1
-        self.pop = [agent for pack in self.pop_group for agent in pack]
+        self.population = [agent for pack in self.pop_group for agent in pack]

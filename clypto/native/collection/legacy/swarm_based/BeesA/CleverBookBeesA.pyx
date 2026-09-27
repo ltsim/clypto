@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 15:34, 01/03/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class CleverBookBeesA(LegacyOptimizer):
+cdef class CleverBookBeesA(cy.Optimizer):
     """
     The original version of: Bees Algorithm (CB-BeesA)
 
@@ -40,14 +40,21 @@ cdef class CleverBookBeesA(LegacyOptimizer):
     >>> model = BeesA.CleverBookBeesA(epoch=1000, pop_size=50, n_elites = 16, n_others = 4,
     >>>             patch_size = 5.0, patch_reduction = 0.985, n_sites = 3, n_elite_sites = 1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] D. T. Pham, Ghanbarzadeh A., Koc E., Otri S., Rahim S., and M.Zaidi. The bees algorithm - a novel tool
     for complex optimisation problems. In Proceedings of IPROMS 2006 Conference, pages 454–461, 2006.
     """
+
+    cdef public int n_elite_sites
+    cdef public int n_elites
+    cdef public int n_others
+    cdef public int n_sites
+    cdef public double patch_reduction
+    cdef public double patch_size
 
     def __init__(
             self,
@@ -72,32 +79,15 @@ cdef class CleverBookBeesA(LegacyOptimizer):
             n_sites (int): 3 bees (employed bees, onlookers and scouts),
             n_elite_sites (int): 1 good partition
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.n_elites = self.validator.check_int("n_elites", n_elites, [4, 20])
-        self.n_others = self.validator.check_int("n_others", n_others, [2, 5])
-        self.patch_size = self.validator.check_float("patch_size", patch_size, [2, 10])
-        self.patch_reduction = self.validator.check_float(
-            "patch_reduction", patch_reduction, (0, 1.0)
-        )
-        self.n_sites = self.validator.check_int("n_sites", n_sites, [2, 5])
-        self.n_elite_sites = self.validator.check_int(
-            "n_elite_sites", n_elite_sites, [1, 3]
-        )
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "n_elites",
-                "n_others",
-                "patch_size",
-                "patch_reduction",
-                "n_sites",
-                "n_elite_sites",
-            ]
-        )
-        self.sort_flag = True
+        super().__init__(parameters=[ "epoch", "pop_size", "n_elites", "n_others", "patch_size", "patch_reduction", "n_sites", "n_elite_sites", ], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.n_elites = cy.validator(int, n_elites, [4, 20], "n_elites")
+        self.n_others = cy.validator(int, n_others, [2, 5], "n_others")
+        self.patch_size = cy.validator(float, patch_size, [2, 10], "patch_size")
+        self.patch_reduction = cy.validator(float, patch_reduction, (0, 1.0), "patch_reduction")
+        self.n_sites = cy.validator(int, n_sites, [2, 5], "n_sites")
+        self.n_elite_sites = cy.validator(int, n_elite_sites, [1, 3], "n_elite_sites")
 
     def search_neighborhood__(self, parent=None, neigh_size=None):
         """
@@ -112,37 +102,34 @@ cdef class CleverBookBeesA(LegacyOptimizer):
                 if self.generator.uniform() < 0.5
                 else (parent.solution[t1] - self.generator.uniform() * self.patch_size)
             )
-            pos_new = self._correct_solution(new_bee)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(new_bee)
+            agent = self.population.create_agent(pos_new)
             pop_neigh.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_neigh[-1].target = self._get_target(pos_new)
-        pop_neigh = self._update_target_for_population(pop_neigh)
-        return self._get_best_agent(pop_neigh, self.problem.sense)
+                pop_neigh[-1].evaluate(self.problem)
+        pop_neigh = self.population.evaluate(pop_neigh, self.mode)
+        return cy.sort_agents(pop_neigh, self.problem.sense)[0].copy()
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if idx < self.n_sites:
                 if idx < self.n_elite_sites:
                     neigh_size = self.n_elites
                 else:
                     neigh_size = self.n_others
-                agent = self.search_neighborhood__(self.pop[idx], neigh_size)
+                agent = self.search_neighborhood__(self.population[idx], neigh_size)
             else:
-                agent = self._generate_agent()
+                agent = self.population.generate_agent()
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            self.population = self.population.greedy(pop_new)

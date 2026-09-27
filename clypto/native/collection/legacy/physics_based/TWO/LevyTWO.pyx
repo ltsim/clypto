@@ -3,9 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.physics_based.TWO.OriginalTWO cimport OriginalTWO
 
@@ -30,8 +29,8 @@ cdef class LevyTWO(OriginalTWO):
     >>>
     >>> model = TWO.LevyTWO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -44,26 +43,27 @@ cdef class LevyTWO(OriginalTWO):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop_new = self.pop.copy()
-        for idx in range(self.pop_size):
-            pos_new = self.pop[idx].solution.copy().astype(float)
-            for kdx in range(self.pop_size):
-                if self.pop[idx].weight < self.pop[kdx].weight:
+        pop_size = self.population.size()
+        pop_new = self.population.copy()
+        for idx in range(pop_size):
+            pos_new = self.population[idx].solution.copy().astype(float)
+            for kdx in range(pop_size):
+                if self.population[idx].weight < self.population[kdx].weight:
                     force = max(
-                        self.pop[idx].weight * self.muy_s,
-                        self.pop[kdx].weight * self.muy_s,
+                        self.population[idx].weight * self.muy_s,
+                        self.population[kdx].weight * self.muy_s,
                     )
-                    resultant_force = force - self.pop[idx].weight * self.muy_k
-                    g = self.pop[kdx].solution - self.pop[idx].solution
+                    resultant_force = force - self.population[idx].weight * self.muy_k
+                    g = self.population[kdx].solution - self.population[idx].solution
                     acceleration = (
-                        resultant_force * g / (self.pop[idx].weight * self.muy_k)
+                        resultant_force * g / (self.population[idx].weight * self.muy_k)
                     )
                     delta_x = 1 / 2 * acceleration + np.power(
                         self.alpha, epoch
@@ -74,8 +74,8 @@ cdef class LevyTWO(OriginalTWO):
                     )
                     pos_new += delta_x
             pop_new[idx].solution = pos_new
-        for idx in range(self.pop_size):
-            pos_new = self.pop[idx].solution.copy().astype(float)
+        for idx in range(pop_size):
+            pos_new = self.population[idx].solution.copy().astype(float)
             for jdx in range(self.problem.n_dims):
                 if (
                     pos_new[jdx] < self.problem.bounds.low[jdx]
@@ -91,35 +91,28 @@ cdef class LevyTWO(OriginalTWO):
                             pos_new[jdx] < self.problem.bounds.low[jdx]
                             or pos_new[jdx] > self.problem.bounds.up[jdx]
                         ):
-                            pos_new[jdx] = self.pop[idx].solution[jdx]
+                            pos_new[jdx] = self.population[idx].solution[jdx]
                     else:
                         if pos_new[jdx] < self.problem.bounds.low[jdx]:
                             pos_new[jdx] = self.problem.bounds.low[jdx]
                         if pos_new[jdx] > self.problem.bounds.up[jdx]:
                             pos_new[jdx] = self.problem.bounds.up[jdx]
-            pop_new[idx].solution = self._correct_solution(pos_new)
+            pop_new[idx].solution = self.population.correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[idx].target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    pop_new[idx], self.pop[idx], self.problem.sense
-                )
+                # the classic code evaluates pos_new, not pop_new[idx].solution (MEALPY behaviour, kept)
+                pop_new[idx].update_solution(self.population.evaluate_solution(pos_new), pop_new[idx].solution)
+                self.population[idx] = cy.get_better_agent(pop_new[idx], self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
         ### Apply levy-flight here
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             ## Chance for each agent to update using levy is 50%
             if self.generator.random() < 0.5:
-                levy_step = self._get_levy_flight_step(
-                    beta=1.0, multiplier=0.01, size=self.problem.n_dims, case=-1
-                )
+                levy_step = cy.levy_flight(self.generator, beta=1.0, multiplier=0.01, size=self.problem.n_dims, case=-1)
                 pos_new = pop_new[idx].solution + levy_step
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                    agent.target, pop_new[idx].target, self.problem.sense
-                ):
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+                if cy.is_better(agent, pop_new[idx], self.problem.sense):
                     pop_new[idx] = agent
-        self.pop = self.update_weight__(pop_new)
+        self.population = self.update_weight__(pop_new)

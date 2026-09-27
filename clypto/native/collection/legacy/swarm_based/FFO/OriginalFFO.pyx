@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 18:22, 11/03/2023 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalFFO(LegacyOptimizer):
+cdef class OriginalFFO(cy.Optimizer):
     """
     The original version of: Fennec Fox Optimization (FFO)
 
@@ -36,8 +36,8 @@ cdef class OriginalFFO(LegacyOptimizer):
     >>>
     >>> model = FFO.OriginalFFO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -53,46 +53,39 @@ cdef class OriginalFFO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        for idx in range(0, self.pop_size):
+        pop_size = self.population.size()
+        for idx in range(0, pop_size):
             # PHASE 1: THE DIGGING TO LOOK FOR PREY UNDER THE SAND (EXPLOITATION)
-            rr = 0.2 * (1 - epoch / self.epoch) * self.pop[idx].solution
-            pos_new = self.pop[idx].solution + (2 * self.generator.random() * 1) * rr
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            rr = 0.2 * (1 - epoch / self.epoch) * self.population[idx].solution
+            pos_new = self.population[idx].solution + (2 * self.generator.random() * 1) * rr
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
 
             # PHASE 2: ESCAPE STRATEGY FROM THE PREDATORS’ ATTACK (EXPLORATION)
-            kk = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            if self._compare_target(
-                    self.pop[kk].target, self.pop[idx].target, self.problem.sense
-            ):
-                pos_new = self.pop[idx].solution + self.generator.random() * (
-                        self.pop[kk].solution
-                        - self.generator.integers(1, 3) * self.pop[idx].solution
+            kk = self.generator.choice(list(set(range(0, pop_size)) - {idx}))
+            if cy.is_better(self.population[kk], self.population[idx], self.problem.sense):
+                pos_new = self.population[idx].solution + self.generator.random() * (
+                        self.population[kk].solution
+                        - self.generator.integers(1, 3) * self.population[idx].solution
                 )
             else:
-                pos_new = self.pop[idx].solution + self.generator.random() * (
-                        self.pop[idx].solution - self.pop[kk].solution
+                pos_new = self.population[idx].solution + self.generator.random() * (
+                        self.population[idx].solution - self.population[kk].solution
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent

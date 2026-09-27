@@ -3,9 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 from clypto.native.collection.legacy.swarm_based.FOA.OriginalFOA cimport OriginalFOA
+cimport clypto.core as cy
 
 
 cdef class DevFOA(OriginalFOA):
@@ -33,8 +32,8 @@ cdef class DevFOA(OriginalFOA):
     >>>
     >>> model = FOA.DevFOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -47,32 +46,30 @@ cdef class DevFOA(OriginalFOA):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         c = 1 - epoch / self.epoch
         pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution + self.generator.normal(
+        for idx in range(0, pop_size):
+            pos_new = self.population[idx].solution + self.generator.normal(
                 self.problem.bounds.low, self.problem.bounds.up
             )
             pos_new = (
                 c * self.generator.random() * self.norm_consecutive_adjacent__(pos_new)
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                # the classic code evaluates pos_new, not the agent's smell vector
+                agent.update_solution(self.population.evaluate_solution(pos_new), agent.solution)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                pop_new, self.pop, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = cy.greedy_agents(pop_new, self.population, self.problem.sense)

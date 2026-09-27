@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalRIME(LegacyOptimizer):
+cdef class OriginalRIME(cy.Optimizer):
     """
     The original version of: physical phenomenon of RIME-ice  (RIME)
 
@@ -38,13 +38,15 @@ cdef class OriginalRIME(LegacyOptimizer):
     >>>
     >>> model = RIME.OriginalRIME(epoch=1000, pop_size=50, sr = 5.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Su, H., Zhao, D., Heidari, A. A., Liu, L., Zhang, X., Mafarja, M., & Chen, H. (2023). RIME: A physics-based optimization. Neurocomputing.
     """
+
+    cdef public double sr
 
     def __init__(
             self, epoch: int = 10000, pop_size: int = 100, sr: float = 5.0, **kwargs: object
@@ -55,20 +57,19 @@ cdef class OriginalRIME(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             sr (float): Soft-rime parameters, default=5.0
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.sr = self.validator.check_float("sr", sr, (0.0, 100.0))
-        self._set_parameters(["epoch", "pop_size", "sr"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "sr"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.sr = cy.validator(float, sr, (0.0, 100.0), "sr")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         rime_factor = (
                 (self.generator.random() - 0.5)
                 * 2
@@ -76,13 +77,13 @@ cdef class OriginalRIME(LegacyOptimizer):
                 * (1 - np.round(epoch * self.sr / self.epoch) / self.sr)
         )
         ee = np.sqrt((epoch + 1) / self.epoch)
-        fits = np.array([agent.target.fitness for agent in self.pop]).reshape((1, -1))
+        fits = np.array([agent.fitness for agent in self.population]).reshape((1, -1))
         fits_norm = fits / np.linalg.norm(fits, axis=1, keepdims=True)
         LB = self.problem.bounds.low
         UB = self.problem.bounds.up
         pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution.copy()
+        for idx in range(0, pop_size):
+            pos_new = self.population[idx].solution.copy()
             for jdx in range(0, self.problem.n_dims):
                 # Soft-rime search strategy
                 if self.generator.random() < ee:
@@ -92,16 +93,12 @@ cdef class OriginalRIME(LegacyOptimizer):
                 # Hard-rime puncture mechanism
                 if self.generator.random() < fits_norm[0, idx]:
                     pos_new[jdx] = self.g_best.solution[jdx]
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

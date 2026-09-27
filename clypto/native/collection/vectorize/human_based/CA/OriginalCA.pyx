@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -37,8 +37,8 @@ cdef class OriginalCA(VectorizeOptimizer):
     >>>
     >>> model = CA.OriginalCA(epoch=1000, pop_size=50, accepted_rate = 0.15)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -76,21 +76,21 @@ cdef class OriginalCA(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.accepted_rate = cy.validator(float, accepted_rate, (0, 1.0), "accepted_rate")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_belief_space = {
             "lb": self.problem.bounds.low,
             "ub": self.problem.bounds.up,
         }
         self.dyn_accepted_num = int(self.accepted_rate * self.pop_size)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation child, full
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator
         # children sampled inside the belief space
         child = pop.empty_like()
-        child.X[:] = self._correct_solution(rng.uniform(self.dyn_belief_space["lb"], self.dyn_belief_space["ub"], (n, d)))
+        child.X[:] = self.correct_solution(rng.uniform(self.dyn_belief_space["lb"], self.dyn_belief_space["ub"], (n, d)))
         self.evaluate(child, 0, n)
         full = pop.concat(child)
         # binary tournaments among parents and children

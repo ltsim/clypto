@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.system_based.GCO.DevGCO cimport DevGCO
 
@@ -37,8 +38,8 @@ cdef class OriginalGCO(DevGCO):
     >>>
     >>> model = GCO.OriginalGCO(epoch=1000, pop_size=50, cr = 0.7, wf = 1.25)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -63,15 +64,16 @@ cdef class OriginalGCO(DevGCO):
         """
         super().__init__(epoch, pop_size, cr, wf, **kwargs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Dark-zone process (can't be parallelization)
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if self.generator.uniform(0, 100) < self.dyn_list_life_signal[idx]:
                 self.dyn_list_cell_counter[idx] += 1
             elif self.dyn_list_cell_counter[idx] > 1:
@@ -79,24 +81,22 @@ cdef class OriginalGCO(DevGCO):
             # Mutate process
             p = self.dyn_list_cell_counter / np.sum(self.dyn_list_cell_counter)
             r1, r2, r3 = self.generator.choice(
-                list(set(range(0, self.pop_size))), 3, replace=False, p=p
+                list(set(range(0, pop_size))), 3, replace=False, p=p
             )
-            pos_new = self.pop[r1].solution + self.wf * (
-                    self.pop[r2].solution - self.pop[r3].solution
+            pos_new = self.population[r1].solution + self.wf * (
+                    self.population[r2].solution - self.population[r3].solution
             )
             condition = self.generator.random(self.problem.n_dims) < self.cr
-            pos_new = np.where(condition, pos_new, self.pop[idx].solution)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
+            pos_new = np.where(condition, pos_new, self.population[idx].solution)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
             # for each pos_new, generate the fitness
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
                 self.dyn_list_life_signal[idx] += 10
         ## Light-zone process   (no needs parallelization)
         self.dyn_list_life_signal -= 10
-        fit_list = np.array([agent.target.fitness for agent in self.pop])
+        fit_list = np.array([agent.fitness for agent in self.population])
         fit_max = np.max(fit_list)
         fit_min = np.min(fit_list)
         fit = (fit_list - fit_max) / (fit_min - fit_max + self.EPSILON)

@@ -6,11 +6,11 @@
 
 from typing import Tuple, List
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalIMODE(LegacyOptimizer):
+cdef class OriginalIMODE(cy.Optimizer):
     """
     The original version of: Improved Multi-operator Differential Evolution Algorithm (IMODE)
 
@@ -34,8 +34,8 @@ cdef class OriginalIMODE(LegacyOptimizer):
     >>>
     >>> model = IMODE.OriginalIMODE(epoch=1000, pop_size=50, memory_size=5, archive_size=20)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -43,6 +43,8 @@ cdef class OriginalIMODE(LegacyOptimizer):
     differential evolution algorithm for solving unconstrained problems. In 2020 IEEE congress on
     evolutionary computation (CEC) (pp. 1-8). IEEE.
     """
+
+    cdef public int memory_size
 
     def __init__(
             self,
@@ -59,19 +61,14 @@ cdef class OriginalIMODE(LegacyOptimizer):
             memory_size (int): [2, 20], Memory size for F and CR, default = 5
             archive_size (int): [5, 100], Size of the solution archive for diversity, default = 20
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.memory_size = self.validator.check_int(
-            "memory_size", memory_size, [2, 100]
-        )
-        self.archive_size = self.validator.check_int(
-            "archive_size", archive_size, [5, 100]
-        )
-        self._set_parameters(["epoch", "pop_size", "memory_size", "archive_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "memory_size", "archive_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.memory_size = cy.validator(int, memory_size, [2, 100], "memory_size")
+        self.archive_size = cy.validator(int, archive_size, [5, 100], "archive_size")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
+        pop_size = self.population.size()
         # Operator probabilities (3 operators)
         self.operator_probs = np.ones(3) / 3
         # Parameter memory for adaptive control
@@ -79,16 +76,17 @@ cdef class OriginalIMODE(LegacyOptimizer):
         self.memory_f = np.full(self.memory_size, 0.5)  # Scaling factor memory
         self.memory_cr = np.full(self.memory_size, 0.5)  # Crossover rate memory
         # Archive for diversity
-        self.archive_size = max(self.archive_size, self.pop_size)
+        self.archive_size = max(self.archive_size, pop_size)
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Initialize archive with initial population
-        self.archive = self.pop.copy()
+        self.archive = self.population.copy()
 
     def _generate_parameters(self) -> Tuple[np.ndarray, np.ndarray]:
         """Generate adaptive F and CR parameters"""
+        pop_size = self.population.size()
         # Select random memory indices
-        mem_indices = self.generator.integers(0, self.memory_size, self.pop_size)
+        mem_indices = self.generator.integers(0, self.memory_size, pop_size)
         mu_f = self.memory_f[mem_indices]
         mu_cr = self.memory_cr[mem_indices]
 
@@ -98,7 +96,7 @@ cdef class OriginalIMODE(LegacyOptimizer):
         cr = np.clip(cr, 0, 1)
 
         # Generate F with Cauchy distribution
-        f = mu_f + 0.1 * np.tan(np.pi * (self.generator.random(self.pop_size) - 0.5))
+        f = mu_f + 0.1 * np.tan(np.pi * (self.generator.random(pop_size) - 0.5))
 
         # Regenerate negative F values
         negative_mask = f <= 0
@@ -112,7 +110,8 @@ cdef class OriginalIMODE(LegacyOptimizer):
 
     def _select_operator_indices(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Select which operator to use for each individual"""
-        rand_vals = self.generator.random(self.pop_size)
+        pop_size = self.population.size()
+        rand_vals = self.generator.random(pop_size)
         prob_cumsum = np.cumsum(self.operator_probs)
 
         op1_mask = rand_vals <= prob_cumsum[0]
@@ -125,18 +124,19 @@ cdef class OriginalIMODE(LegacyOptimizer):
             self,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List]:
         """Generate random indices for mutation"""
-        combined_pop = self.pop + self.archive
+        pop_size = self.population.size()
+        combined_pop = self.population + self.archive
         total_size = len(combined_pop)
 
         # Generate unique random indices and Ensure indices are different
         r1, r2, r3 = (
-            np.zeros(self.pop_size, dtype=np.intp),
-            np.zeros(self.pop_size, dtype=np.intp),
-            np.zeros(self.pop_size, dtype=np.intp),
+            np.zeros(pop_size, dtype=np.intp),
+            np.zeros(pop_size, dtype=np.intp),
+            np.zeros(pop_size, dtype=np.intp),
         )
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             x1, x3 = self.generator.choice(
-                list(set(range(self.pop_size)) - {idx}), size=2, replace=False
+                list(set(range(pop_size)) - {idx}), size=2, replace=False
             )
             x2 = self.generator.choice(list(set(range(total_size)) - {idx, x1, x3}))
             r1[idx] = x1
@@ -146,19 +146,20 @@ cdef class OriginalIMODE(LegacyOptimizer):
 
     def _mutation(self, f: np.ndarray) -> np.ndarray:
         """Apply mutation operators"""
+        pop_size = self.population.size()
         # Select operators for each individual
         op1_mask, op2_mask, op3_mask = self._select_operator_indices()
         # Generate random indices
         r1, r2, r3, combined_pop = self._generate_random_indices()
         # Initialize mutant vectors
-        matrix_pos = np.array([agent.solution for agent in self.pop])
+        matrix_pos = np.array([agent.solution for agent in self.population])
         matrix_combined = np.array([agent.solution for agent in combined_pop])
         matrix_mutant = np.zeros_like(matrix_pos)
 
         # Operator 1: DE/current-to-pbest/1/bin-archive
         if np.any(op1_mask):
-            p_best_size = max(int(0.25 * self.pop_size), 1)
-            pbest_indices = self.generator.integers(0, p_best_size, self.pop_size)
+            p_best_size = max(int(0.25 * pop_size), 1)
+            pbest_indices = self.generator.integers(0, p_best_size, pop_size)
             matrix_pbest = matrix_pos[pbest_indices]
             matrix_mutant[op1_mask] = matrix_pos[op1_mask] + f[op1_mask, np.newaxis] * (
                     matrix_pbest[op1_mask]
@@ -168,8 +169,8 @@ cdef class OriginalIMODE(LegacyOptimizer):
             )
         # Operator 2: DE/current-to-pbest/1/bin
         if np.any(op2_mask):
-            p_best_size = max(int(0.25 * self.pop_size), 1)
-            pbest_indices = self.generator.integers(0, p_best_size, self.pop_size)
+            p_best_size = max(int(0.25 * pop_size), 1)
+            pbest_indices = self.generator.integers(0, p_best_size, pop_size)
             matrix_pbest = matrix_pos[pbest_indices]
             matrix_mutant[op2_mask] = matrix_pos[op2_mask] + f[op2_mask, np.newaxis] * (
                     matrix_pbest[op2_mask]
@@ -179,8 +180,8 @@ cdef class OriginalIMODE(LegacyOptimizer):
             )
         # Operator 3: DE/rand-to-pbest/1
         if np.any(op3_mask):
-            p_best_size = max(int(0.5 * self.pop_size), 2)
-            pbest_indices = self.generator.integers(0, p_best_size, self.pop_size)
+            p_best_size = max(int(0.5 * pop_size), 2)
+            pbest_indices = self.generator.integers(0, p_best_size, pop_size)
             matrix_pbest = matrix_pos[pbest_indices]
             matrix_mutant[op3_mask] = f[op3_mask, np.newaxis] * matrix_pos[
                 r1[op3_mask]
@@ -238,15 +239,16 @@ cdef class OriginalIMODE(LegacyOptimizer):
 
     def _crossover(self, mutant: np.ndarray, cr: np.ndarray) -> np.ndarray:
         """Apply crossover operation"""
-        matrix_pos = np.array([agent.solution for agent in self.pop])
+        pop_size = self.population.size()
+        matrix_pos = np.array([agent.solution for agent in self.population])
         if self.generator.random() < 0.4:
             # Binomial crossover
             cross_mask = (
-                    self.generator.random((self.pop_size, self.problem.n_dims))
+                    self.generator.random((pop_size, self.problem.n_dims))
                     <= cr[:, np.newaxis]
             )
             # Ensure at least one dimension is taken from mutant
-            for idx in range(self.pop_size):
+            for idx in range(pop_size):
                 if not np.any(cross_mask[idx]):
                     cross_mask[idx, self.generator.integers(0, self.problem.n_dims)] = (
                         True
@@ -257,9 +259,9 @@ cdef class OriginalIMODE(LegacyOptimizer):
             # Exponential crossover
             trial = matrix_pos.copy()
             start_points = self.generator.integers(
-                0, self.problem.n_dims, self.pop_size
+                0, self.problem.n_dims, pop_size
             )
-            for idx in range(self.pop_size):
+            for idx in range(pop_size):
                 jdx = start_points[idx]
                 while self.generator.random() < cr[idx] and jdx < self.problem.n_dims:
                     trial[idx, jdx] = mutant[idx, jdx]
@@ -291,18 +293,19 @@ cdef class OriginalIMODE(LegacyOptimizer):
                 keep_indices = list(set(range(len(self.archive))) - set(remove_indices))
                 self.archive = [self.archive[idx] for idx in keep_indices]
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Generate adaptive parameters
         f_values, cr_values = self._generate_parameters()
 
         # Sort population by fitness
-        self.pop = self._get_sorted_population(self.pop, self.problem.sense)
+        self.population = self.population.sort()
         cr_values = np.sort(cr_values)
 
         # Mutation
@@ -315,29 +318,29 @@ cdef class OriginalIMODE(LegacyOptimizer):
         matrix_child = self._crossover(matrix_mutant, cr_values)
 
         # Evaluate trial population
-        improvement_mask = np.zeros(self.pop_size, dtype=bool)
-        improvements = np.zeros(self.pop_size)
+        improvement_mask = np.zeros(pop_size, dtype=bool)
+        improvements = np.zeros(pop_size)
         pop_new = []
         for idx in range(len(matrix_child)):
-            pos_new = self._correct_solution(matrix_child[idx])
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(agent.target, self.pop[idx].target):
+            pos_new = self.population.correct_solution(matrix_child[idx])
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], "min"):
                 improvement_mask[idx] = True
             improvements[idx] = np.abs(
-                self.pop[idx].target.fitness - agent.target.fitness
+                self.population[idx].fitness - agent.fitness
             )
             pop_new.append(agent)
 
         # Track operator performance
         op1_mask, op2_mask, op3_mask = self._select_operator_indices()
-        fits = np.array([agent.target.fitness for agent in self.pop])
-        fits_child = np.array([agent.target.fitness for agent in pop_new])
+        fits = np.array([agent.fitness for agent in self.population])
+        fits_child = np.array([agent.fitness for agent in pop_new])
         relative_improvements = np.maximum(0, (fits - fits_child) / np.abs(fits))
 
         # Update archive with improved solutions
         if np.any(improvement_mask):
             self._update_archive(
-                [pop_new[idx] for idx in range(self.pop_size) if improvement_mask[idx]]
+                [pop_new[idx] for idx in range(pop_size) if improvement_mask[idx]]
             )
 
         # Update parameters
@@ -392,6 +395,6 @@ cdef class OriginalIMODE(LegacyOptimizer):
             self.operator_probs = np.ones(3) / 3
 
         ## Update population
-        self.pop = [
-            a if flag else b for a, b, flag in zip(pop_new, self.pop, improvement_mask)
+        self.population = [
+            a if flag else b for a, b, flag in zip(pop_new, self.population, improvement_mask)
         ]

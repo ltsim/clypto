@@ -6,11 +6,11 @@
 
 import numpy as np
 from scipy.stats import cauchy
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSHADE(LegacyOptimizer):
+cdef class OriginalSHADE(cy.Optimizer):
     """
     The original version of: Success-History Adaptation Differential Evolution (OriginalSHADE)
 
@@ -37,14 +37,17 @@ cdef class OriginalSHADE(LegacyOptimizer):
     >>>
     >>> model = SHADE.OriginalSHADE(epoch=1000, pop_size=50, miu_f = 0.5, miu_cr = 0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Tanabe, R. and Fukunaga, A., 2013, June. Success-history based parameter adaptation for
     differential evolution. In 2013 IEEE congress on evolutionary computation (pp. 71-78). IEEE.
     """
+
+    cdef public double miu_cr
+    cdef public double miu_f
 
     def __init__(
             self,
@@ -61,19 +64,18 @@ cdef class OriginalSHADE(LegacyOptimizer):
             miu_f (float): initial weighting factor, default = 0.5
             miu_cr (float): initial cross-over probability, default = 0.5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
+        super().__init__(parameters=["epoch", "pop_size", "miu_f", "miu_cr"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
         # the initial f, location is changed then that f is good
-        self.miu_f = self.validator.check_float("miu_f", miu_f, (0, 1.0))
+        self.miu_f = cy.validator(float, miu_f, (0, 1.0), "miu_f")
         # the initial cr,
-        self.miu_cr = self.validator.check_float("miu_cr", miu_cr, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "miu_f", "miu_cr"])
-        self.sort_flag = False
+        self.miu_cr = cy.validator(float, miu_cr, (0, 1.0), "miu_cr")
 
-    def _initialize_variables(self):
-        self.dyn_miu_f = self.miu_f * np.ones(self.pop_size)  # list the initial f,
-        self.dyn_miu_cr = self.miu_cr * np.ones(self.pop_size)  # list the initial cr,
+    def initialize_variables(self):
+        pop_size = self.population.size()
+        self.dyn_miu_f = self.miu_f * np.ones(pop_size)  # list the initial f,
+        self.dyn_miu_cr = self.miu_cr * np.ones(pop_size)  # list the initial cr,
         self.dyn_pop_archive = list()
         self.k_counter = 0
 
@@ -83,25 +85,26 @@ cdef class OriginalSHADE(LegacyOptimizer):
         down = list_weights * list_objects
         return np.sum(up) / np.sum(down)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         list_f = list()
         list_cr = list()
         list_f_index = list()
         list_cr_index = list()
-        list_f_new = np.ones(self.pop_size)
-        list_cr_new = np.ones(self.pop_size)
-        pop_old = [agent.copy() for agent in self.pop]
-        pop_sorted = self._get_sorted_population(self.pop, self.problem.sense)
+        list_f_new = np.ones(pop_size)
+        list_cr_new = np.ones(pop_size)
+        pop_old = [agent.copy() for agent in self.population]
+        pop_sorted = self.population.sort()
         pop = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ## Calculate adaptive parameter cr and f
-            idx_rand = self.generator.integers(0, self.pop_size)
+            idx_rand = self.generator.integers(0, pop_size)
             cr = self.generator.normal(self.dyn_miu_cr[idx_rand], 0.1)
             cr = np.clip(cr, 0, 1)
             while True:
@@ -113,43 +116,41 @@ cdef class OriginalSHADE(LegacyOptimizer):
                 break
             list_cr_new[idx] = cr
             list_f_new[idx] = f
-            p = self.generator.uniform(2 / self.pop_size, 0.2)
-            top = int(self.pop_size * p)
+            p = self.generator.uniform(2 / pop_size, 0.2)
+            top = int(pop_size * p)
             x_best = pop_sorted[self.generator.integers(0, top)]
-            r1_idx = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
-            new_pop = self.pop + self.dyn_pop_archive
+            r1_idx = self.generator.choice(list(set(range(0, pop_size)) - {idx}))
+            new_pop = self.population + self.dyn_pop_archive
             r2_idx = self.generator.choice(
                 list(set(range(0, len(new_pop))) - {idx, r1_idx})
             )
-            x_r1 = self.pop[r1_idx].solution
+            x_r1 = self.population[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
             x_new = (
-                    self.pop[idx].solution
-                    + f * (x_best.solution - self.pop[idx].solution)
+                    self.population[idx].solution
+                    + f * (x_best.solution - self.population[idx].solution)
                     + f * (x_r1 - x_r2)
             )
             condition = self.generator.random(self.problem.n_dims) < cr
-            pos_new = np.where(condition, x_new, self.pop[idx].solution)
+            pos_new = np.where(condition, x_new, self.population[idx].solution)
             j_rand = self.generator.integers(0, self.problem.n_dims)
             pos_new[j_rand] = x_new[j_rand]
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self._get_target(pos_new)
-        pop = self._update_target_for_population(pop)
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                    pop[idx].target, self.pop[idx].target, self.problem.sense
-            ):
+                pop[-1].evaluate(self.problem)
+        pop = self.population.evaluate(pop, self.mode)
+        for idx in range(0, pop_size):
+            if cy.is_better(pop[idx], self.population[idx], self.problem.sense):
                 list_cr.append(list_cr_new[idx])
                 list_f.append(list_f_new[idx])
                 list_f_index.append(idx)
                 list_cr_index.append(idx)
-                self.pop[idx] = pop[idx].copy()
+                self.population[idx] = pop[idx].copy()
                 self.dyn_pop_archive.append(pop[idx].copy())
         # Randomly remove solution
-        temp = len(self.dyn_pop_archive) - self.pop_size
+        temp = len(self.dyn_pop_archive) - pop_size
         if temp > 0:
             idx_list = self.generator.choice(
                 range(0, len(self.dyn_pop_archive)), temp, replace=False
@@ -166,10 +167,10 @@ cdef class OriginalSHADE(LegacyOptimizer):
             list_fit_old = np.ones(len(list_cr_index))
             list_fit_new = np.ones(len(list_cr_index))
             idx_increase = 0
-            for idx in range(0, self.pop_size):
+            for idx in range(0, pop_size):
                 if idx in list_cr_index:
-                    list_fit_old[idx_increase] = pop_old[idx].target.fitness
-                    list_fit_new[idx_increase] = self.pop[idx].target.fitness
+                    list_fit_old[idx_increase] = pop_old[idx].fitness
+                    list_fit_new[idx_increase] = self.population[idx].fitness
                     idx_increase += 1
             temp = np.sum(np.abs(list_fit_new - list_fit_old))
             if temp == 0:
@@ -181,5 +182,5 @@ cdef class OriginalSHADE(LegacyOptimizer):
                 np.array(list_f), list_weights
             )
             self.k_counter += 1
-            if self.k_counter >= self.pop_size:
+            if self.k_counter >= pop_size:
                 self.k_counter = 0

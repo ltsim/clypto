@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalWHO(VectorizeOptimizer):
@@ -48,8 +47,8 @@ cdef class OriginalWHO(VectorizeOptimizer):
     >>> model = WHO.OriginalWHO(epoch=1000, pop_size=50, n_explore_step = 3, n_exploit_step = 3, eta = 0.15, p_hi = 0.9,
     >>>                         local_alpha=0.9, local_beta=0.3, global_alpha=0.2, global_beta=0.8, delta_w=2.0, delta_c=2.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -134,13 +133,13 @@ cdef class OriginalWHO(VectorizeOptimizer):
         self.delta_w = cy.validator(float, delta_w, (0.5, 5.0), "delta_w")
         self.delta_c = cy.validator(float, delta_c, (0.5, 5.0), "delta_c")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         # Agents are compared and replaced as they move (the later steps see the rows updated
         # before), so the loops run on the buffer rows; swarm modes collect the candidates.
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef NativePopulation local, child
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef Py_ssize_t idx, jdx, n = pop.n, d = pop.d
         cdef bint swarm = self.mode in self.AVAILABLE_MODES
         sense = self.problem.sense
@@ -152,20 +151,20 @@ cdef class OriginalWHO(VectorizeOptimizer):
             k = self.n_explore_step
             R = self.generator.random((k, 1 + d))  # per step: uniform(), then uniform(lb, ub)
             temp = Xp[idx] + self.eta * R[:, :1] * (lb + (ub - lb) * R[:, 1:])
-            local = self.new_population(self._correct_solution(temp))
+            local = self.new_population(self.correct_solution(temp))
             best_local = local.X[self.sorted_order(local)[0]]
             temp = self.local_alpha * best_local + self.local_beta * (Xp[idx] - best_local)
-            ops.commit(self, pop, cand, idx, self._correct_solution(temp), swarm)
+            ops.commit(self, pop, cand, idx, self.correct_solution(temp), swarm)
         if swarm:
             ops.finish(self, cand, 0, n)
         for idx in range(0, self.pop_size):
             ### 2. Herd instinct
             idr = self.generator.choice(range(0, self.pop_size))
-            if self._compare_fitness(pop.F[idr], pop.F[idx], sense) and self.generator.random() < self.p_hi:
+            if cy.better_fitness(pop.F[idr], pop.F[idx], sense) and self.generator.random() < self.p_hi:
                 temp = self.global_alpha * Xp[idx] + self.global_beta * Xp[idr]
-                pos_new = self._correct_solution(temp)
-                tar = self._get_target(pos_new)
-                if self._compare_fitness(tar.fitness, pop.F[idx], sense):
+                pos_new = self.correct_solution(temp)
+                tar = self.evaluate_solution(pos_new)
+                if cy.better_fitness(tar.fitness, pop.F[idx], sense):
                     ops.set_row(pop, idx, pos_new, tar)
 
         order = self.sorted_order(pop)
@@ -177,32 +176,32 @@ cdef class OriginalWHO(VectorizeOptimizer):
             ### 3. Starvation avoidance
             if dist_to_worst < self.delta_w:
                 temp = Xp[idx] + self.generator.uniform() * (ub - lb) * self.generator.uniform(lb, ub)
-                pos_new = self._correct_solution(temp)
+                pos_new = self.correct_solution(temp)
                 if swarm:
                     pop_child.append(pos_new)
                 else:
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, pop.F[idx], sense):
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, pop.F[idx], sense):
                         ops.set_row(pop, idx, pos_new, tar)
             ### 4. Population pressure
             if 1.0 < dist_to_best and dist_to_best < self.delta_c:
                 temp = g_best + self.eta * self.generator.uniform(lb, ub)
-                pos_new = self._correct_solution(temp)
+                pos_new = self.correct_solution(temp)
                 if swarm:
                     pop_child.append(pos_new)
                 else:
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, pop.F[idx], sense):
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, pop.F[idx], sense):
                         ops.set_row(pop, idx, pos_new, tar)
             ### 5. Herd social memory (the classic agent keeps the uncorrected position)
             for jdx in range(0, self.n_exploit_step):
                 temp = g_best + 0.1 * self.generator.uniform(lb, ub)
-                pos_new = self._correct_solution(temp)
+                pos_new = self.correct_solution(temp)
                 if swarm:
                     pop_child.append(temp)
                 else:
-                    tar = self._get_target(pos_new)
-                    if self._compare_fitness(tar.fitness, pop.F[idx], sense):
+                    tar = self.evaluate_solution(pos_new)
+                    if cy.better_fitness(tar.fitness, pop.F[idx], sense):
                         ops.set_row(pop, idx, temp, tar)
         if swarm:
             child = self.new_population(np.array(pop_child))

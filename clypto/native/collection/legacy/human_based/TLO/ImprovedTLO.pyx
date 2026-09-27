@@ -6,6 +6,7 @@
 
 from functools import reduce
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.human_based.TLO.DevTLO cimport DevTLO
 
@@ -36,14 +37,16 @@ cdef class ImprovedTLO(DevTLO):
     >>>
     >>> model = TLO.ImprovedTLO(epoch=1000, pop_size=50, n_teachers = 5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Rao, R.V. and Patel, V., 2013. An improved teaching-learning-based optimization algorithm
     for solving unconstrained optimization problems. Scientia Iranica, 20(3), pp.710-720.
     """
+
+    cdef public int n_teachers
 
     def __init__(
             self,
@@ -59,18 +62,17 @@ cdef class ImprovedTLO(DevTLO):
             n_teachers (int): number of teachers in class
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.n_teachers = self.validator.check_int(
-            "n_teachers", n_teachers, [2, int(np.sqrt(self.pop_size) - 1)]
-        )
-        self._set_parameters(["epoch", "pop_size", "n_teachers"])
-        self.n_students = self.pop_size - self.n_teachers
+        self.n_teachers = cy.validator(int, n_teachers, [2, int(np.sqrt(self.population.size()) - 1)], "n_teachers")
+        self.parameters = ["epoch", "pop_size", "n_teachers"]
+        self.n_students = self.population.size() - self.n_teachers
         self.n_students_in_team = int(self.n_students / self.n_teachers)
         self.sort_flag = False
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
-        sorted_pop = self._get_sorted_population(self.pop, self.problem.sense)
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
+        sorted_pop = self.population.sort()
         self.g_best = sorted_pop[0].copy()
         self.teachers = sorted_pop[: self.n_teachers].copy()
         sorted_pop = sorted_pop[self.n_teachers:]
@@ -83,7 +85,7 @@ cdef class ImprovedTLO(DevTLO):
                 group.append(sorted_pop[idx_list[start_index]])
             self.teams.append(group)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -98,19 +100,17 @@ cdef class ImprovedTLO(DevTLO):
             mean_team = np.mean(list_pos, axis=0)
             pop_new = []
             for id_stud, student in enumerate(team):
-                if teacher.target.fitness == 0:
+                if teacher.fitness == 0:
                     TF = 1
                 else:
-                    TF = student.target.fitness / teacher.target.fitness
+                    TF = student.fitness / teacher.fitness
                 diff_mean = self.generator.random() * (
                         teacher.solution - TF * mean_team
                 )  # Step 8
                 id2 = self.generator.choice(
                     list(set(range(0, self.n_teachers)) - {id_teach})
                 )
-                if self._compare_target(
-                        teacher.target, team[id2].target, self.problem.sense
-                ):
+                if cy.is_better(teacher, team[id2], self.problem.sense):
                     pos_new = (
                                       student.solution + diff_mean
                               ) + self.generator.random() * (
@@ -122,19 +122,15 @@ cdef class ImprovedTLO(DevTLO):
                               ) + self.generator.random() * (
                                       student.solution - team[id2].solution
                               )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
-                    pop_new[-1] = self._get_better_agent(
-                        agent, student, self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    pop_new[-1] = cy.get_better_agent(agent, student, self.problem.sense)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self._update_target_for_population(pop_new)
-                pop_new = self._greedy_selection_population(
-                    team, pop_new, self.problem.sense
-                )
+                pop_new = self.population.evaluate(pop_new, self.mode)
+                pop_new = cy.greedy_agents(team, pop_new, self.problem.sense)
             self.teams[id_teach] = pop_new
 
         for id_teach, teacher in enumerate(self.teachers):
@@ -145,9 +141,7 @@ cdef class ImprovedTLO(DevTLO):
                 id2 = self.generator.choice(
                     list(set(range(0, self.n_students_in_team)) - {id_stud})
                 )
-                if self._compare_target(
-                        student.target, team[id2].target, self.problem.sense
-                ):
+                if cy.is_better(student, team[id2], self.problem.sense):
                     pos_new = (
                             student.solution
                             + self.generator.random()
@@ -163,23 +157,19 @@ cdef class ImprovedTLO(DevTLO):
                             + self.generator.random()
                             * (teacher.solution - ef * student.solution)
                     )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
-                    pop_new[-1] = self._get_better_agent(
-                        agent, student, self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    pop_new[-1] = cy.get_better_agent(agent, student, self.problem.sense)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self._update_target_for_population(pop_new)
-                pop_new = self._greedy_selection_population(
-                    team, pop_new, self.problem.sense
-                )
+                pop_new = self.population.evaluate(pop_new, self.mode)
+                pop_new = cy.greedy_agents(team, pop_new, self.problem.sense)
             self.teams[id_teach] = pop_new
         for id_teach, teacher in enumerate(self.teachers):
             team = self.teams[id_teach] + [teacher]
-            team = self._get_sorted_population(team, self.problem.sense)
+            team = cy.sort_agents(team, self.problem.sense)
             self.teachers[id_teach] = team[0].copy()
             self.teams[id_teach] = team[1:]
-        self.pop = self.teachers + reduce(lambda x, y: x + y, self.teams)
+        self.population = self.teachers + reduce(lambda x, y: x + y, self.teams)

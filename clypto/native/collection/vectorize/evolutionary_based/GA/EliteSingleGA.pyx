@@ -6,11 +6,10 @@
 
 from clypto.native.collection.vectorize.evolutionary_based.GA.SingleGA cimport SingleGA
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.validator import Validator
 
 
 cdef class EliteSingleGA(SingleGA):
@@ -50,8 +49,8 @@ cdef class EliteSingleGA(SingleGA):
     >>> model = GA.EliteSingleGA(epoch=1000, pop_size=50, pc=0.9, pm=0.8, selection = "roulette", crossover = "uniform",
     >>>                         mutation = "swap", elite_best = 0.1, elite_worst = 0.3, strategy = 0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     >>>
     >>> model2 = GA.EliteSingleGA(epoch=1000, pop_size=50, pc=0.9, pm=0.8, selection="tournament", k_way=0.4, crossover="multi_points")
     >>>
@@ -110,7 +109,7 @@ cdef class EliteSingleGA(SingleGA):
                 "strategy",
             ])
         self.sort_flag = True
-        self.elite_best = Validator.check_is_int_and_float("elite_best", elite_best, [1, int(self.pop_size / 2) - 1], (0, 0.5))
+        self.elite_best = cy.check_is_int_and_float("elite_best", elite_best, [1, int(self.pop_size / 2) - 1], (0, 0.5))
         self.n_elite_best = (
                     int(self.elite_best * self.pop_size)
                     if self.elite_best < 1
@@ -118,7 +117,7 @@ cdef class EliteSingleGA(SingleGA):
                 )
         if self.n_elite_best < 1:
                     self.n_elite_best = 1
-        self.elite_worst = Validator.check_is_int_and_float("elite_worst", elite_worst, [1, int(self.pop_size / 2) - 1], (0, 0.5))
+        self.elite_worst = cy.check_is_int_and_float("elite_worst", elite_worst, [1, int(self.pop_size / 2) - 1], (0, 0.5))
         self.n_elite_worst = (
                     int(self.elite_worst * self.pop_size)
                     if self.elite_worst < 1
@@ -128,5 +127,5 @@ cdef class EliteSingleGA(SingleGA):
                     self.n_elite_worst = 1
         self.strategy = cy.validator(int, strategy, [0, 1], "strategy")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         self.elite_step__()

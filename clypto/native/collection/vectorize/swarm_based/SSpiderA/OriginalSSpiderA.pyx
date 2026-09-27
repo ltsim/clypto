@@ -5,15 +5,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 from scipy.spatial.distance import cdist
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -52,8 +49,8 @@ cdef class OriginalSSpiderA(AgentListOptimizer):
     >>>
     >>> model = SSpiderA.OriginalSSpiderA(epoch=1000, pop_size=50, r_a = 1.0, p_c = 0.7, p_m = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -96,7 +93,7 @@ cdef class OriginalSSpiderA(AgentListOptimizer):
         self.p_c = cy.validator(float, p_c, (0, 1.0), "p_c")
         self.p_m = cy.validator(float, p_m, (0, 1.0), "p_m")
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         target_solution = solution.copy()
@@ -109,15 +106,15 @@ cdef class OriginalSSpiderA(AgentListOptimizer):
             mask=mask,
         )
 
-    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        agent = self._generate_empty_agent(solution)
-        agent.target = self._get_target(agent.solution)
+    def generate_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        agent = self.create_agent(solution)
+        agent.evaluate(self.problem)
         agent.intensity = np.log(
-            1.0 / (np.abs(agent.target.fitness) + self.EPSILON) + 1
+            1.0 / (np.abs(agent.fitness) + self.EPSILON) + 1
         )
         return agent
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         all_pos = np.array(
             [agent.solution for agent in self.objs]
         )  ## Matrix (pop_size, problem_size)
@@ -152,24 +149,21 @@ cdef class OriginalSSpiderA(AgentListOptimizer):
                 * (self.objs[idx].solution - self.objs[idx].local_vector)
                 + (pos_new - self.objs[idx].solution) * self.generator.normal()
             )
-            agent.solution = self._correct_solution(pos_new)
+            agent.solution = self.correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(agent.solution)
+                agent.evaluate(self.problem)
                 agent.intensity = np.log(
-                    1.0 / (np.abs(agent.target.fitness) + self.EPSILON) + 1
+                    1.0 / (np.abs(agent.fitness) + self.EPSILON) + 1
                 )
                 pop_new.append(agent)
-        pop_new = self._update_target_for_population(pop_new)
+        pop_new = self.evaluate_agents(pop_new)
 
         for idx in range(0, self.pop_size):
-            if self._compare_target(
-                pop_new[idx].target, self.objs[idx].target, self.problem.sense
-            ):
+            if cy.is_better(pop_new[idx], self.objs[idx], self.problem.sense):
                 self.objs[idx].local_vector = (
                     pop_new[idx].solution - self.objs[idx].solution
                 )
                 self.objs[idx].intensity = np.log(
-                    1.0 / (np.abs(pop_new[idx].target.fitness) + self.EPSILON) + 1
+                    1.0 / (np.abs(pop_new[idx].fitness) + self.EPSILON) + 1
                 )
-                self.objs[idx].solution = pop_new[idx].solution
-                self.objs[idx].target = pop_new[idx].target
+                self.objs[idx].update_solution(pop_new[idx], pop_new[idx].solution)

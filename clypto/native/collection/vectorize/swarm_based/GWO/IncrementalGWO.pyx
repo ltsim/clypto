@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -38,8 +38,8 @@ cdef class IncrementalGWO(VectorizeOptimizer):
     >>>
     >>> model = GWO.IncrementalGWO(epoch=1000, pop_size=50, explore_factor=1.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -74,7 +74,7 @@ cdef class IncrementalGWO(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.explore_factor = cy.validator(float, explore_factor, [0.0, 5.0], "explore_factor")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t idx, n = pop.n, d = pop.d
@@ -90,6 +90,6 @@ cdef class IncrementalGWO(VectorizeOptimizer):
         for idx in range(1, n):
             mask = np.arange(n) != idx
             pos[idx] = ps[mask].mean(axis=0)
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)

@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.human_based.CHIO.OriginalCHIO cimport OriginalCHIO
 
@@ -33,8 +34,8 @@ cdef class DevCHIO(OriginalCHIO):
     >>>
     >>> model = CHIO.DevCHIO(epoch=1000, pop_size=50, brr = 0.15, max_age = 10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -54,19 +55,20 @@ cdef class DevCHIO(OriginalCHIO):
         """
         super().__init__(epoch, pop_size, brr, max_age, **kwargs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
         is_corona_list = [
                              False,
-                         ] * self.pop_size
-        for i in range(0, self.pop_size):
-            pos_new = self.pop[i].solution.copy()
+                         ] * pop_size
+        for i in range(0, pop_size):
+            pos_new = self.population[i].solution.copy()
             for j in range(0, self.problem.n_dims):
                 rand = self.generator.uniform()
                 if rand < (1.0 / 3) * self.brr:
@@ -75,15 +77,15 @@ cdef class DevCHIO(OriginalCHIO):
                     )  # Infected list
                     if idx_candidates[0].size == 0:
                         rand_choice = self.generator.choice(
-                            range(0, self.pop_size),
-                            int(0.33 * self.pop_size),
+                            range(0, pop_size),
+                            int(0.33 * pop_size),
                             replace=False,
                         )
                         self.immunity_type_list[rand_choice] = 1
                         idx_candidates = np.where(self.immunity_type_list == 1)
                     idx_selected = self.generator.choice(idx_candidates[0])
-                    pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                    pos_new[j] = self.population[i].solution[j] + self.generator.uniform() * (
+                            self.population[i].solution[j] - self.population[idx_selected].solution[j]
                     )
                     is_corona_list[i] = True
                 elif (1.0 / 3) * self.brr <= rand < (2.0 / 3) * self.brr:
@@ -92,67 +94,61 @@ cdef class DevCHIO(OriginalCHIO):
                     )  # Susceptible list
                     if idx_candidates[0].size == 0:
                         rand_choice = self.generator.choice(
-                            range(0, self.pop_size),
-                            int(0.33 * self.pop_size),
+                            range(0, pop_size),
+                            int(0.33 * pop_size),
                             replace=False,
                         )
                         self.immunity_type_list[rand_choice] = 0
                         idx_candidates = np.where(self.immunity_type_list == 0)
                     idx_selected = self.generator.choice(idx_candidates[0])
-                    pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                    pos_new[j] = self.population[i].solution[j] + self.generator.uniform() * (
+                            self.population[i].solution[j] - self.population[idx_selected].solution[j]
                     )
                 elif (2.0 / 3) * self.brr <= rand < self.brr:
                     idx_candidates = np.where(
                         self.immunity_type_list == 2
                     )  # Immunity list
                     fit_list = np.array(
-                        [self.pop[item].target.fitness for item in idx_candidates[0]]
+                        [self.population[item].fitness for item in idx_candidates[0]]
                     )
                     idx_selected = idx_candidates[0][
                         np.argmin(fit_list)
                     ]  # Found the index of best fitness
-                    pos_new[j] = self.pop[i].solution[j] + self.generator.uniform() * (
-                            self.pop[i].solution[j] - self.pop[idx_selected].solution[j]
+                    pos_new[j] = self.population[i].solution[j] + self.generator.uniform() * (
+                            self.population[i].solution[j] - self.population[idx_selected].solution[j]
                     )
             if self.finished:
                 break
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
 
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Step 4: Update herd immunity population
-            if self._compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = pop_new[idx].copy()
+            if cy.is_better(pop_new[idx], self.population[idx], self.problem.sense):
+                self.population[idx] = pop_new[idx].copy()
             else:
                 self.age_list[idx] += 1
             ## Calculate immunity mean of population
-            fit_list = np.array([agent.target.fitness for agent in self.pop])
+            fit_list = np.array([agent.fitness for agent in self.population])
             delta_fx = np.mean(fit_list)
             if (
-                    self._compare_fitness(
-                        pop_new[idx].target.fitness, delta_fx, self.problem.sense
-                    )
+                    cy.better_fitness(pop_new[idx].fitness, delta_fx, self.problem.sense)
                     and (self.immunity_type_list[idx] == 0)
                     and is_corona_list[idx]
             ):
                 self.immunity_type_list[idx] = 1
                 self.age_list[idx] = 1
-            if self._compare_fitness(
-                    delta_fx, pop_new[idx].target.fitness, self.problem.sense
-            ) and (self.immunity_type_list[idx] == 1):
+            if cy.better_fitness(delta_fx, pop_new[idx].fitness, self.problem.sense) and (self.immunity_type_list[idx] == 1):
                 self.immunity_type_list[idx] = 2
                 self.age_list[idx] = 0
             # Step 5: Fatality condition
             if (self.age_list[idx] >= self.max_age) and (
                     self.immunity_type_list[idx] == 1
             ):
-                self.pop[idx] = self._generate_agent()
+                self.population[idx] = self.population.generate_agent()
                 self.immunity_type_list[idx] = 0
                 self.age_list[idx] = 0

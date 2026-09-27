@@ -3,17 +3,14 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalTWO(VectorizeOptimizer):
@@ -39,8 +36,8 @@ cdef class OriginalTWO(VectorizeOptimizer):
     >>>
     >>> model = TWO.OriginalTWO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -83,8 +80,8 @@ cdef class OriginalTWO(VectorizeOptimizer):
     cdef void init_fields(self, NativePopulation pop):
         pop.field("W")[:] = 0.0
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         self.update_weight__(self.pop)
 
     def update_weight__(self, NativePopulation teams):
@@ -120,9 +117,9 @@ cdef class OriginalTWO(VectorizeOptimizer):
         around = np.where((around < lb) | (around > ub), pos, around)
         return np.where(out & (self.generator.random(pos.shape) <= 0.5), around, np.where(out, np.clip(pos, lb, ub), pos))
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         pos = self.forces__(pop, epoch_c)
-        pop.X[:] = self._correct_solution(self.bound__(pos, epoch_c))
+        pop.X[:] = self.correct_solution(self.bound__(pos, epoch_c))
         self.evaluate(pop, 0, pop.n)
         self.update_weight__(pop)

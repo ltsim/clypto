@@ -5,14 +5,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
@@ -51,8 +48,8 @@ cdef class OriginalMA(AgentListOptimizer):
     >>>
     >>> model = MA.OriginalMA(epoch=1000, pop_size=50, pc = 0.85, pm = 0.15, p_local = 0.5, max_local_gens = 10, bits_per_param = 4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -113,10 +110,10 @@ cdef class OriginalMA(AgentListOptimizer):
         self.max_local_gens = cy.validator(int, max_local_gens, [2, int(pop_size / 2)], "max_local_gens")
         self.bits_per_param = cy.validator(int, bits_per_param, [2, 32], "bits_per_param")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = "".join(
@@ -167,15 +164,15 @@ cdef class OriginalMA(AgentListOptimizer):
             child = current
             bitstring_new = self.point_mutation__(child.bitstring)
             pos_new = self.decode__(bitstring_new)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             agent.update(solution=pos_new, bitstring=bitstring_new)
             list_local.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                list_local[-1].target = self._get_target(pos_new)
-        list_local = self._update_target_for_population(list_local)
+                list_local[-1].evaluate(self.problem)
+        list_local = self.evaluate_agents(list_local)
         list_local.append(child)
-        best = self._get_best_agent(list_local, self.problem.sense)
+        best = cy.sort_agents(list_local, self.problem.sense)[0].copy()
         return best
 
     def create_child__(self, idx, pop_copy):
@@ -185,18 +182,16 @@ cdef class OriginalMA(AgentListOptimizer):
         bitstring_new = self.crossover__(pop_copy[idx].bitstring, ancient.bitstring)
         bitstring_new = self.point_mutation__(bitstring_new)
         pos_new = self.decode__(bitstring_new)
-        pos_new = self._correct_solution(pos_new)
-        agent = self._generate_agent(pos_new)
+        pos_new = self.correct_solution(pos_new)
+        agent = self.generate_agent(pos_new)
         agent.bitstring = bitstring_new
         return agent
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         ## Binary tournament
         children = []
         for idx in range(0, self.pop_size):
-            idx_offspring = self._get_index_kway_tournament_selection(
-                self.objs, k_way=2, output=1
-            )[0]
+            idx_offspring = cy.kway_tournament(self.generator, self.problem.sense, self.objs, k_way=2, output=1)[0]
             children.append(self.objs[idx_offspring].copy())
         pop = []
         for idx in range(0, self.pop_size):
@@ -207,13 +202,13 @@ cdef class OriginalMA(AgentListOptimizer):
             bitstring_new = self.crossover__(children[idx].bitstring, ancient.bitstring)
             bitstring_new = self.point_mutation__(bitstring_new)
             pos_new = self.decode__(bitstring_new)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             agent.update(bitstring=bitstring_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self._get_target(pos_new)
-        self.objs = self._update_target_for_population(pop)
+                pop[-1].evaluate(self.problem)
+        self.objs = self.evaluate_agents(pop)
         # Searching in local
         for idx in range(0, self.pop_size):
             if self.generator.random() < self.p_local:

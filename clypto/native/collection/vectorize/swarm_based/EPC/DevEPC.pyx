@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +42,8 @@ cdef class DevEPC(VectorizeOptimizer):
     >>> model = EPC.DevEPC(epoch=1000, pop_size=50, heat_damping_factor=0.95, mutation_factor=0.1,
     >>>                     spiral_a=1.0, spiral_b=0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -105,7 +105,7 @@ cdef class DevEPC(VectorizeOptimizer):
         self.spiral_a = cy.validator(float, spiral_a, [0.0, 100.0], "spiral_a")
         self.spiral_b = cy.validator(float, spiral_b, [0.0, 100.0], "spiral_b")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         # Physical constants (from paper)
         self.surface_area = 0.56  # m^2 (total surface area of emperor penguin)
         self.emissivity = 0.98  # emissivity of bird plumage
@@ -162,7 +162,7 @@ cdef class DevEPC(VectorizeOptimizer):
         )
         return new_position
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -192,6 +192,6 @@ cdef class DevEPC(VectorizeOptimizer):
         pos = X[i] + (att * dist * self.spiral_a)[:, None] * direction + self.current_mutation_factor * rng.uniform(-1, 1, (m, d))
         pos = np.where((dist == 0)[:, None], X[i], pos)
         cand = pop.take(i)
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, m)
         ops.scatter(self, cand, i)

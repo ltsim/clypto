@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -34,8 +34,8 @@ cdef class LARO(VectorizeOptimizer):
     >>>
     >>> model = ARO.LARO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -72,7 +72,7 @@ cdef class LARO(VectorizeOptimizer):
         ranks = self.generator.random((n, d)).argsort(axis=1).argsort(axis=1)
         return (ranks < k[:, None]).astype(float)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
@@ -90,11 +90,11 @@ cdef class LARO(VectorizeOptimizer):
         gr = self.random_dims__(n, d)
         H = rng.normal(0, 1, (n, 1)) * (epoch / self.epoch)
         b = X + H * gr * X
-        hiding = X + R * (self._get_levy_flight_step(beta=1.5, multiplier=0.1, size=n, case=-1)[:, None] * b - X)
+        hiding = X + R * (cy.levy_flight(self.generator, beta=1.5, multiplier=0.1, size=n, case=-1)[:, None] * b - X)
         ops.step(self, np.where((A > 1)[:, None], detour, hiding))
         # second phase: agents far from the best in most dimensions and with a negative rank correlation jump to the mirror image
         X = np.array(self.pop.X)
-        gb_fit = self.current_g_best().target.fitness
+        gb_fit = self.current_g_best().fitness
         g = np.array(self.g_best_x())
         TS = 2 - (2 * epoch / self.epoch)
         dd = np.abs(g - X)
@@ -107,6 +107,6 @@ cdef class LARO(VectorizeOptimizer):
         sel = np.flatnonzero((np.asarray(self.pop.F) != gb_fit) & (src <= 0) & (n_df > n_dc))
         if len(sel):
             cand = self.pop.take(sel)
-            cand.X[:] = self._correct_solution((df_lb + df_ub)[sel][:, None] - X[sel])
+            cand.X[:] = self.correct_solution((df_lb + df_ub)[sel][:, None] - X[sel])
             self.evaluate(cand, 0, len(sel))
             ops.scatter(self, cand, sel)

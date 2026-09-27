@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class WMQIMRFO(LegacyOptimizer):
+cdef class WMQIMRFO(cy.Optimizer):
     """
     The original version of: Wavelet Mutation and Quadratic Interpolation MRFO (WMQIMRFO)
 
@@ -36,14 +36,17 @@ cdef class WMQIMRFO(LegacyOptimizer):
     >>>
     >>> model = MRFO.WMQIMRFO(epoch=1000, pop_size=50, somersault_range = 2.0, pm=0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] G. Hu, M. Li, X. Wang et al., An enhanced manta ray foraging optimization algorithm for shape optimization of
     complex CCG-Ball curves, Knowledge-Based Systems (2022), doi: https://doi.org/10.1016/j.knosys.2021.108071.
     """
+
+    cdef public double pm
+    cdef public double somersault_range
 
     def __init__(
             self,
@@ -60,27 +63,24 @@ cdef class WMQIMRFO(LegacyOptimizer):
             somersault_range (float): somersault factor that decides the somersault range of manta rays, default=2
             pm (float): probability mutation, default = 0.5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.somersault_range = self.validator.check_float(
-            "somersault_range", somersault_range, [1.0, 5.0]
-        )
-        self.pm = self.validator.check_float("pm", pm, (0.0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "somersault_range", "pm"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "somersault_range", "pm"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.somersault_range = cy.validator(float, somersault_range, [1.0, 5.0], "somersault_range")
+        self.pm = cy.validator(float, pm, (0.0, 1.0), "pm")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
-            x_t = self.pop[idx].solution
-            x_t1 = self.pop[idx - 1].solution
+        for idx in range(0, pop_size):
+            x_t = self.population[idx].solution
+            x_t1 = self.population[idx - 1].solution
 
             ## Morlet wavelet mutation strategy
             ## Goal is to jump out of local optimum --> Performed in exploration stage
@@ -177,60 +177,54 @@ cdef class WMQIMRFO(LegacyOptimizer):
                     pos_new = (
                             x_t + r * (x_t1 - x_t) + alpha * (self.g_best.solution - x_t)
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        _, g_best = self._update_global_best_agent(self.pop)
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        ranked = self.population.sort()
+        g_best = ranked[0]
 
         # Somersault foraging   (Eq. 8)
         pop_child = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution + self.somersault_range * (
+        for idx in range(0, pop_size):
+            pos_new = self.population[idx].solution + self.somersault_range * (
                     self.generator.random() * g_best.solution
-                    - self.generator.random() * self.pop[idx].solution
+                    - self.generator.random() * self.population[idx].solution
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_child, self.problem.sense
-            )
-        self.pop, g_best = self._update_global_best_agent(self.pop)
+            pop_child = self.population.evaluate(pop_child, self.mode)
+            self.population = self.population.greedy(pop_child)
+        self.population = self.population.sort()
+        g_best = self.population[0]
 
         # Quadratic Interpolation
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             idx2, idx3 = idx + 1, idx + 2
-            if idx == self.pop_size - 2:
+            if idx == pop_size - 2:
                 idx2, idx3 = idx + 1, 0
-            if idx == self.pop_size - 1:
+            if idx == pop_size - 1:
                 idx2, idx3 = 0, 1
             f1, f2, f3 = (
-                self.pop[idx].target.fitness,
-                self.pop[idx2].target.fitness,
-                self.pop[idx3].target.fitness,
+                self.population[idx].fitness,
+                self.population[idx2].fitness,
+                self.population[idx3].fitness,
             )
             x1, x2, x3 = (
-                self.pop[idx].solution,
-                self.pop[idx2].solution,
-                self.pop[idx3].solution,
+                self.population[idx].solution,
+                self.population[idx2].solution,
+                self.population[idx3].solution,
             )
             a = (
                     f1 / ((x1 - x2) * (x1 - x3) + self.EPSILON)
@@ -241,16 +235,12 @@ cdef class WMQIMRFO(LegacyOptimizer):
                          (x3 ** 2 - x2 ** 2) * f1 + (x1 ** 2 - x3 ** 2) * f2 + (x2 ** 2 - x1 ** 2) * f3
                  ) / (2 * ((x3 - x2) * f1 + (x1 - x3) * f2 + (x2 - x1) * f3) + self.EPSILON)
             pos_new = np.where(a > 0, gx, x1)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

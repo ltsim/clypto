@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.human_based.BSO.ImprovedBSO cimport ImprovedBSO
 
@@ -40,14 +41,16 @@ cdef class OriginalBSO(ImprovedBSO):
     >>>
     >>> model = BSO.OriginalBSO(epoch=1000, pop_size=50, m_clusters = 5, p1 = 0.2, p2 = 0.8, p3 = 0.4, p4 = 0.5, slope = 20)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Shi, Y., 2011, June. Brain storm optimization algorithm. In International
     conference in swarm intelligence (pp. 303-309). Springer, Berlin, Heidelberg.
     """
+
+    cdef public int slope
 
     def __init__(
             self,
@@ -73,32 +76,25 @@ cdef class OriginalBSO(ImprovedBSO):
             slope (int): changing logsig() function's slope (k: in the paper)
         """
         super().__init__(epoch, pop_size, m_clusters, p1, p2, p3, p4, **kwargs)
-        self.slope = self.validator.check_int("slope", slope, [10, 50])
-        self._set_parameters(
-            ["epoch", "pop_size", "m_clusters", "p1", "p2", "p3", "p4", "slope"]
-        )
+        self.population = cy.population(pop_size, range=[10, 10000], cls=cy.ResetPopulation)
+        self.slope = cy.validator(int, slope, [10, 50], "slope")
+        self.parameters = ["epoch", "pop_size", "m_clusters", "p1", "p2", "p3", "p4", "slope"]
 
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        rp = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        condition = np.logical_and(
-            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
-        )
-        return np.where(condition, solution, rp)
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         x = (0.5 * self.epoch - epoch) / self.slope
         epsilon = self.generator.uniform() * (1 / (1 + np.exp(-x)))
         if self.generator.random() < self.p1:  # p_5a
             idx = self.generator.integers(0, self.m_clusters)
-            self.centers[idx] = self._generate_agent()
+            self.centers[idx] = self.population.generate_agent()
         pop_group = self.pop_group
-        for idx in range(0, self.pop_size):  # Generate new individuals
+        for idx in range(0, pop_size):  # Generate new individuals
             cluster_id = int(idx / self.m_solution)
             location_id = int(idx % self.m_solution)
             if self.generator.uniform() < self.p2:  # p_6b
@@ -130,22 +126,18 @@ cdef class OriginalBSO(ImprovedBSO):
                             self.pop_group[id1][rand_id1].solution
                             + self.pop_group[id2][rand_id2].solution
                     ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_group[cluster_id][location_id] = agent
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                pop_group[cluster_id][location_id] = self._get_better_agent(
-                    agent, self.pop_group[cluster_id][location_id], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                pop_group[cluster_id][location_id] = cy.get_better_agent(agent, self.pop_group[cluster_id][location_id], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
             for idx in range(0, self.m_clusters):
-                pop_group[idx] = self._update_target_for_population(pop_group[idx])
-                pop_group[idx] = self._greedy_selection_population(
-                    self.pop_group[idx], pop_group[idx], self.problem.sense
-                )
+                pop_group[idx] = self.population.evaluate(pop_group[idx], self.mode)
+                pop_group[idx] = cy.greedy_agents(self.pop_group[idx], pop_group[idx], self.problem.sense)
         # Needed to update the centers and population
         self.centers = self.find_cluster__(pop_group)
-        self.pop = []
+        self.population = []
         for idx in range(0, self.m_clusters):
-            self.pop += pop_group[idx]
+            self.population += pop_group[idx]

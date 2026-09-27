@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -45,8 +45,8 @@ cdef class OriginalWDO(VectorizeOptimizer):
     >>>
     >>> model = WDO.OriginalWDO(epoch=1000, pop_size=50, RT = 3, g_c = 0.2, alp = 0.4, c_e = 0.4, max_v = 0.3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -100,12 +100,12 @@ cdef class OriginalWDO(VectorizeOptimizer):
         self.c_e = cy.validator(float, c_e, (0, 1.0), "c_e")
         self.max_v = cy.validator(float, max_v, (0, 1.0), "max_v")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_list_velocity = self.max_v * self.generator.uniform(
             self.problem.bounds.low, self.problem.bounds.up, (self.pop_size, self.problem.n_dims)
         )
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand

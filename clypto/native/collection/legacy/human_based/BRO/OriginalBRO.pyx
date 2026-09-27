@@ -3,9 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.human_based.BRO.DevBRO cimport DevBRO
 
@@ -36,8 +35,8 @@ cdef class OriginalBRO(DevBRO):
     >>>
     >>> model = BRO.OriginalBRO(epoch=1000, pop_size=50, threshold = 3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -60,43 +59,42 @@ cdef class OriginalBRO(DevBRO):
         super().__init__(epoch, pop_size, threshold, **kwargs)
         self.sort_flag = False
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        for idx in range(self.pop_size):
+        pop_size = self.population.size()
+        for idx in range(pop_size):
             # Compare ith soldier with nearest one (jth)
-            jdx = self.find_idx_min_distance__(self.pop[idx].solution, self.pop)
+            jdx = self.find_idx_min_distance__(self.population[idx].solution, self.population)
             dam, vic = (
                 idx,
                 jdx,
             )  ## This error in the algorithm's flow in the paper, But in the matlab code, he changed.
-            if self._compare_target(
-                self.pop[idx].target, self.pop[jdx].target, self.problem.sense
-            ):
+            if cy.is_better(self.population[idx], self.population[jdx], self.problem.sense):
                 dam, vic = jdx, idx  ## The mistake also here in the paper.
-            if self.pop[dam].damage < self.threshold:
+            if self.population[dam].damage < self.threshold:
                 pos_new = self.generator.uniform(0, 1, self.problem.n_dims) * (
-                    np.maximum(self.pop[dam].solution, self.g_best.solution)
-                    - np.minimum(self.pop[dam].solution, self.g_best.solution)
-                ) + np.maximum(self.pop[dam].solution, self.g_best.solution)
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                agent.damage = self.pop[dam].damage + 1
-                self.pop[dam] = agent
-                self.pop[vic].damage = 0
+                    np.maximum(self.population[dam].solution, self.g_best.solution)
+                    - np.minimum(self.population[dam].solution, self.g_best.solution)
+                ) + np.maximum(self.population[dam].solution, self.g_best.solution)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+                agent.damage = self.population[dam].damage + 1
+                self.population[dam] = agent
+                self.population[vic].damage = 0
             else:
                 pos_new = self.generator.uniform(
                     self.lb_updated, self.ub_updated
                 )
-                agent = self._generate_agent(pos_new)
-                self.pop[dam] = agent
+                agent = self.population.generate_agent(pos_new)
+                self.population[dam] = agent
         if epoch >= self.dyn_delta:
             pos_list = np.array(
-                [self.pop[idx].solution for idx in range(0, self.pop_size)]
+                [self.population[idx].solution for idx in range(0, pop_size)]
             )
             pos_std = np.std(pos_list, axis=0)
             lb = self.g_best.solution - pos_std

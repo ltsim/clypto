@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 09:56, 07/07/2021 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalAOA(LegacyOptimizer):
+cdef class OriginalAOA(cy.Optimizer):
     """
     The original version of: Arithmetic Optimization Algorithm (AOA)
 
@@ -36,14 +36,19 @@ cdef class OriginalAOA(LegacyOptimizer):
     >>>
     >>> model = AOA.OriginalAOA(epoch=1000, pop_size=50, alpha = 5, miu = 0.5, moa_min = 0.2, moa_max = 0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Abualigah, L., Diabat, A., Mirjalili, S., Abd Elaziz, M. and Gandomi, A.H., 2021. The arithmetic
     optimization algorithm. Computer methods in applied mechanics and engineering, 376, p.113609.
     """
+
+    cdef public int alpha
+    cdef public double miu
+    cdef public double moa_max
+    cdef public double moa_min
 
     def __init__(
             self,
@@ -64,23 +69,22 @@ cdef class OriginalAOA(LegacyOptimizer):
             moa_min (float): range min of Math Optimizer Accelerated, Default: 0.2,
             moa_max (float): range max of Math Optimizer Accelerated, Default: 0.9,
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.alpha = self.validator.check_int("alpha", alpha, [2, 10])
-        self.miu = self.validator.check_float("miu", miu, [0.1, 2.0])
-        self.moa_min = self.validator.check_float("moa_min", moa_min, (0, 0.41))
-        self.moa_max = self.validator.check_float("moa_max", moa_max, (0.41, 1.0))
-        self._set_parameters(["epoch", "pop_size", "alpha", "miu", "moa_min", "moa_max"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "alpha", "miu", "moa_min", "moa_max"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
+        self.alpha = cy.validator(int, alpha, [2, 10], "alpha")
+        self.miu = cy.validator(float, miu, [0.1, 2.0], "miu")
+        self.moa_min = cy.validator(float, moa_min, (0, 0.41), "moa_min")
+        self.moa_max = cy.validator(float, moa_max, (0.41, 1.0), "moa_max")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         moa = self.moa_min + epoch * (
                 (self.moa_max - self.moa_min) / self.epoch
         )  # Eq. 2
@@ -88,8 +92,8 @@ cdef class OriginalAOA(LegacyOptimizer):
                 self.epoch ** (1.0 / self.alpha)
         )  # Eq. 4
         pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution.copy()
+        for idx in range(0, pop_size):
+            pos_new = self.population[idx].solution.copy()
             for j in range(0, self.problem.n_dims):
                 r1, r2, r3 = self.generator.random(3)
                 if r1 > moa:  # Exploration phase
@@ -122,16 +126,12 @@ cdef class OriginalAOA(LegacyOptimizer):
                                 (self.problem.bounds.up[j] - self.problem.bounds.low[j]) * self.miu
                                 + self.problem.bounds.low[j]
                         )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

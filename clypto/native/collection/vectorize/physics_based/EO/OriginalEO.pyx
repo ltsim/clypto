@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -35,8 +35,8 @@ cdef class OriginalEO(VectorizeOptimizer):
     >>>
     >>> model = EO.OriginalEO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -75,7 +75,7 @@ cdef class OriginalEO(VectorizeOptimizer):
     def make_equilibrium_pool__(self, NativePopulation best4):
         """The four best agents plus their mean position (evaluated), as one population."""
         pos_mean = np.mean(np.ascontiguousarray(best4.X), axis=0)
-        pos_mean = self._correct_solution(pos_mean)
+        pos_mean = self.correct_solution(pos_mean)
         return best4.concat(self.new_population(pos_mean[None]))
 
     def candidates__(self, NativePopulation pop, NativePopulation c_pool, int epoch):
@@ -94,7 +94,7 @@ cdef class OriginalEO(VectorizeOptimizer):
         g = gcp * (c_eq - lamda * X) * f  # Eqs. 13, 14
         return c_eq + (X - c_eq) * f + (g * self.V / lamda) * (1.0 - f)  # Eq. 16
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         c_pool = self.make_equilibrium_pool__(pop.take(self.sorted_order(pop)[:4]))
         ops.step(self, self.candidates__(pop, c_pool, epoch_c))

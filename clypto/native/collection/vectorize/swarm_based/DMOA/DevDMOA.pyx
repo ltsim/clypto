@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -36,8 +36,8 @@ cdef class DevDMOA(VectorizeOptimizer):
     >>>
     >>> model = DMOA.DevDMOA(epoch=1000, pop_size=50, peep = 2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     cdef public object peep
@@ -64,7 +64,7 @@ cdef class DevDMOA(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [10, 10000], "pop_size")
         self.peep = cy.validator(float, peep, [1, 10.0], "peep")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.C = np.zeros(self.pop_size)
         self.L = np.round(0.6 * self.epoch)
 
@@ -90,7 +90,7 @@ cdef class DevDMOA(VectorizeOptimizer):
         phi = (self.peep / 2) * rng.uniform(-1, 1, (n, d))
         X = pop.X
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(X + phi * (X - X[k]))
+        cand.X[:] = self.correct_solution(X + phi * (X - X[k]))
         self.evaluate(cand, 0, n)
         cf, of = np.asarray(cand.F), np.asarray(pop.F)
         SM = (cf - of) / (np.maximum(cf, of) + eps)
@@ -108,7 +108,7 @@ cdef class DevDMOA(VectorizeOptimizer):
             pop.buf[rows] = fresh.buf
             self.C[rows] = 0
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

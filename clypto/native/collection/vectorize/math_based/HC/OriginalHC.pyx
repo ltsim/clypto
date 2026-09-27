@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class OriginalHC(VectorizeOptimizer):
     >>>
     >>> model = HC.OriginalHC(epoch=1000, pop_size=50, neighbour_size = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -76,8 +76,8 @@ cdef class OriginalHC(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [2, 10000], "pop_size")
         self.neighbour_size = cy.validator(int, neighbour_size, [2, 1000], "neighbour_size")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef Py_ssize_t k = self.neighbour_size, d = self.pop.d
         step_size = np.exp(-2 * epoch / self.epoch)
         pos = np.array(self.g_best_x()) + self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (k, d)) * step_size
-        self.pop = self.new_population(self._correct_solution(pos))
+        self.pop = self.new_population(self.correct_solution(pos))

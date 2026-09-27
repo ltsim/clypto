@@ -7,7 +7,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -43,8 +43,8 @@ cdef class OriginalSFO(AgentListOptimizer):
     >>>
     >>> model = SFO.OriginalSFO(epoch=1000, pop_size=50, pp = 0.1, AP = 4.0, epsilon = 0.0001)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -92,17 +92,15 @@ cdef class OriginalSFO(AgentListOptimizer):
         self.epsilon = cy.validator(float, epsilon, (0, 0.1), "epsilon")
         self.s_size = int(self.pop_size / self.pp)
 
-    def _initialization(self):
-        AgentListOptimizer._initialization(self)
+    def initialization(self):
+        AgentListOptimizer.initialization(self)
         if self.objs is None:
-            self.objs = self._generate_agents(self.pop_size)  # pop = sailfish
-        self.s_pop = self._generate_agents(self.s_size)
-        self.s_gbest = self._get_best_agent(
-            self.s_pop, self.problem.sense
-        )  # s_pop = sardines
+            self.objs = self.generate_agents(self.pop_size)  # pop = sailfish
+        self.s_pop = self.generate_agents(self.s_size)
+        self.s_gbest = cy.sort_agents(self.s_pop, self.problem.sense)[0].copy()  # s_pop = sardines
         self.pop = self.mirror__()
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         ## Calculate lamda_i using Eq.(7)
         ## Update the position of sailfish using Eq.(6)
         pop_new = []
@@ -115,19 +113,15 @@ cdef class OriginalSFO(AgentListOptimizer):
                     / 2
                     - self.objs[idx].solution
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.objs[idx] = self._get_better_agent(
-                    self.objs[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.objs[idx] = cy.get_better_agent(self.objs[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.objs = self._greedy_selection_population(
-                self.objs, pop_new, self.problem.sense
-            )
+            pop_new = self.evaluate_agents(pop_new)
+            self.objs = cy.greedy_agents(self.objs, pop_new, self.problem.sense)
         ## Calculate AttackPower using Eq.(10)
         AP = self.AP * (1.0 - 2.0 * epoch * self.epsilon)
         if AP < 0.5:
@@ -146,10 +140,10 @@ cdef class OriginalSFO(AgentListOptimizer):
                             self.generator.uniform(0, 1, self.problem.n_dims)
                             * (self.s_gbest.solution - self.s_pop[idx].solution + AP)
                     )[list2]
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_empty_agent(pos_new)
+                    pos_new = self.correct_solution(pos_new)
+                    agent = self.create_agent(pos_new)
                     if self.mode not in self.AVAILABLE_MODES:
-                        agent.target = self._get_target(pos_new)
+                        agent.evaluate(self.problem)
                         self.s_pop[idx] = agent
         else:
             ### Update the position of all sardine using Eq.(9)
@@ -157,35 +151,29 @@ cdef class OriginalSFO(AgentListOptimizer):
                 pos_new = self.generator.uniform() * (
                         self.g_best.solution - self.s_pop[idx].solution + AP
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.correct_solution(pos_new)
+                agent = self.create_agent(pos_new)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
+                    agent.evaluate(self.problem)
                     self.s_pop[idx] = agent
         ## Recalculate the fitness of all sardine
-        self.s_pop = self._update_target_for_population(self.s_pop)
+        self.s_pop = self.evaluate_agents(self.s_pop)
         ## Sort the population of sailfish and sardine (for reducing computational cost)
-        self.objs = self._get_sorted_and_trimmed_population(
-            self.objs, self.pop_size, self.problem.sense
-        )
-        self.s_pop = self._get_sorted_and_trimmed_population(
-            self.s_pop, len(self.s_pop), self.problem.sense
-        )
+        self.objs = cy.sort_agents(self.objs, self.problem.sense)[:self.pop_size]
+        self.s_pop = cy.sort_agents(self.s_pop, self.problem.sense)[:len(self.s_pop)]
         for idx in range(0, self.pop_size):
             for jdx in range(0, self.s_size):
                 ### If there is a better position in sardine population.
-                if self._compare_target(
-                        self.s_pop[jdx].target, self.objs[idx].target, self.problem.sense
-                ):
+                if cy.is_better(self.s_pop[jdx], self.objs[idx], self.problem.sense):
                     self.objs[idx] = self.s_pop[jdx].copy()
                     del self.s_pop[jdx]
                 break  #### This simple keyword helped reducing ton of comparing operation.
                 #### Especially when sardine pop size >> sailfish pop size
         temp = self.s_size - len(self.s_pop)
         if temp == 1:
-            self.s_pop = self.s_pop + [self._generate_agent()]
+            self.s_pop = self.s_pop + [self.generate_agent()]
         else:
-            self.s_pop = self.s_pop + self._generate_agents(
+            self.s_pop = self.s_pop + self.generate_agents(
                 self.s_size - len(self.s_pop)
             )
-        self.s_gbest = self._get_best_agent(self.s_pop, self.problem.sense)
+        self.s_gbest = cy.sort_agents(self.s_pop, self.problem.sense)[0].copy()

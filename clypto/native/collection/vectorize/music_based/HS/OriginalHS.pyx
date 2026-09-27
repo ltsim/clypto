@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 from clypto.native.collection.vectorize.music_based.HS.DevHS cimport DevHS
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class OriginalHS(DevHS):
     >>>
     >>> model = HS.OriginalHS(epoch=1000, pop_size=50, c_r = 0.95, pa_r = 0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -67,7 +67,7 @@ cdef class OriginalHS(DevHS):
         """
         super().__init__(epoch, pop_size, c_r, pa_r, name=name, mode=mode)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
@@ -81,7 +81,7 @@ cdef class OriginalHS(DevHS):
         pos = np.where(rng.uniform(size=(n, d)) <= self.c_r, X[rng.integers(0, n, size=(n, d)), np.arange(d)[None, :]], pos)
         pos = np.where(rng.uniform(size=(n, d)) <= self.pa_r, pos + self.dyn_fw * rng.normal(mean, std_dev, (n, d)), pos)
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
         self.dyn_fw = self.dyn_fw * self.fw_damp
         merged = pop.concat(cand)

@@ -5,13 +5,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +40,8 @@ cdef class OriginalSRSR(AgentListOptimizer):
     >>>
     >>> model = SRSR.OriginalSRSR(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -79,7 +77,7 @@ cdef class OriginalSRSR(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None):
+    def create_agent(self, solution: np.ndarray | None = None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
@@ -96,13 +94,13 @@ cdef class OriginalSRSR(AgentListOptimizer):
             target_move=target_move,
         )
 
-    def _generate_agent(self, solution: np.ndarray | None = None):
-        agent = self._generate_empty_agent(solution)
-        agent.target = self._get_target(agent.solution)
-        agent.target_new = agent.target.copy()
+    def generate_agent(self, solution: np.ndarray | None = None):
+        agent = self.create_agent(solution)
+        agent.evaluate(self.problem)
+        agent.target_new = agent.copy()
         return agent
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         # Control Parameters Of Algorithm
         # ==============================================================================================
         #  [c1] movement_factor : Determines Movement Pace Of Robots During Exploration Policy
@@ -118,7 +116,7 @@ cdef class OriginalSRSR(AgentListOptimizer):
         self.SIF = 2
         self.movement_factor = self.problem.bounds.up - self.problem.bounds.low
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         # ========================================================================================= %%
         #            PHASE 1 (ACCUMULATION): CALCULATING Mu AND SIGMA values FOR SOLUTIONS            %
         # ===========================================================================================%%
@@ -151,27 +149,24 @@ cdef class OriginalSRSR(AgentListOptimizer):
             pos_new = self.generator.normal(
                 self.objs[idx].mu, self.objs[idx].sigma, self.problem.n_dims
             )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.evaluate_agents(pop_new)
 
         for idx in range(0, self.pop_size):
             # --------- Calculate Degree Of Cost Movement Of Robots During Movement --------------
             self.objs[idx].target_move = (
-                self.objs[idx].target.fitness - self.objs[idx].target_new.fitness
+                self.objs[idx].fitness - self.objs[idx].target_new.fitness
             )
             self.objs[idx].solution_new = pop_new[idx].solution.copy()
-            self.objs[idx].target_new = pop_new[idx].target.copy()
+            self.objs[idx].target_new = pop_new[idx].copy()
             # ---------- Progress Assessment: Replacing More Quality Solutions With Previous Ones ------
             # Replace Solution If It Reached To A More Quality Position
-            if self._compare_target(
-                pop_new[idx].target, self.objs[idx].target, self.problem.sense
-            ):
-                self.objs[idx].solution = pop_new[idx].solution.copy()
-                self.objs[idx].target = pop_new[idx].target.copy()
+            if cy.is_better(pop_new[idx], self.objs[idx], self.problem.sense):
+                self.objs[idx].update_solution(pop_new[idx], pop_new[idx].solution.copy())
 
         # --------- Determining Sigma Improvement Factor (Sif) Based On Vvss Movement -------------------
         ## Get best improved fitness
@@ -199,27 +194,24 @@ cdef class OriginalSRSR(AgentListOptimizer):
                 + self.movement_factor
                 * self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.evaluate_agents(pop_new)
 
         for idx in range(0, self.pop_size):
             # --------- Calculate Degree Of Cost Movement Of Robots During Movement --------------
             self.objs[idx].target_move = (
-                self.objs[idx].target.fitness - self.objs[idx].target_new.fitness
+                self.objs[idx].fitness - self.objs[idx].target_new.fitness
             )
             self.objs[idx].solution_new = pop_new[idx].solution.copy()
-            self.objs[idx].target_new = pop_new[idx].target.copy()
+            self.objs[idx].target_new = pop_new[idx].copy()
             # ---------- Progress Assessment: Replacing More Quality Solutions With Previous Ones ------
             # Replace Solution If It Reached To A More Quality Position
-            if self._compare_target(
-                pop_new[idx].target, self.objs[idx].target, self.problem.sense
-            ):
-                self.objs[idx].solution = pop_new[idx].solution.copy()
-                self.objs[idx].target = pop_new[idx].target.copy()
+            if cy.is_better(pop_new[idx], self.objs[idx], self.problem.sense):
+                self.objs[idx].update_solution(pop_new[idx], pop_new[idx].solution.copy())
 
         # ========================================================================================= %%
         #        PHASE 3 (LOCAL SEARCH): CREATING SOME WORKER ROBOTS ASSIGNED TO SEARCH               %
@@ -318,16 +310,13 @@ cdef class OriginalSRSR(AgentListOptimizer):
             )
             pop_workers = []
             for idx in range(0, 5):
-                pos_new = self._correct_solution(workers[idx])
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.correct_solution(workers[idx])
+                agent = self.create_agent(pos_new)
                 pop_workers.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_workers[-1].target = self._get_target(pos_new)
-            pop_workers = self._update_target_for_population(pop_workers)
+                    pop_workers[-1].evaluate(self.problem)
+            pop_workers = self.evaluate_agents(pop_workers)
 
             for idx in range(0, 5):
-                if self._compare_target(
-                    pop_workers[idx].target, self.objs[1].target, self.problem.sense
-                ):
-                    self.objs[-(idx + 1)].solution = pop_workers[idx].solution.copy()
-                    self.objs[-(idx + 1)].target = pop_workers[idx].target.copy()
+                if cy.is_better(pop_workers[idx], self.objs[1], self.problem.sense):
+                    self.objs[-(idx + 1)].update_solution(pop_workers[idx], pop_workers[idx].solution.copy())

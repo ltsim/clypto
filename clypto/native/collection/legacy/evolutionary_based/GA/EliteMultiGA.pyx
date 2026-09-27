@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 from clypto.native.collection.legacy.evolutionary_based.GA.MultiGA import MultiGA
+cimport clypto.core as cy
 
 
 class EliteMultiGA(MultiGA):
@@ -43,8 +44,8 @@ class EliteMultiGA(MultiGA):
     >>>
     >>> model = GA.EliteMultiGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05, selection = "roulette", crossover = "uniform", mutation = "swap")
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -69,57 +70,40 @@ class EliteMultiGA(MultiGA):
         super().__init__(
             epoch, pop_size, pc, pm, selection, crossover, mutation, k_way, **kwargs
         )
-        self.elite_best = self.validator.check_is_int_and_float(
-            "elite_best", elite_best, [1, int(self.pop_size / 2) - 1], (0, 0.5)
-        )
+        self.elite_best = cy.check_is_int_and_float("elite_best", elite_best, [1, int(self.population.size() / 2) - 1], (0, 0.5))
         self.n_elite_best = (
-            int(self.elite_best * self.pop_size)
+            int(self.elite_best * self.population.size())
             if self.elite_best < 1
             else self.elite_best
         )
         if self.n_elite_best < 1:
             self.n_elite_best = 1
 
-        self.elite_worst = self.validator.check_is_int_and_float(
-            "elite_worst", elite_worst, [1, int(self.pop_size / 2) - 1], (0, 0.5)
-        )
+        self.elite_worst = cy.check_is_int_and_float("elite_worst", elite_worst, [1, int(self.population.size() / 2) - 1], (0, 0.5))
         self.n_elite_worst = (
-            int(self.elite_worst * self.pop_size)
+            int(self.elite_worst * self.population.size())
             if self.elite_worst < 1
             else self.elite_worst
         )
         if self.n_elite_worst < 1:
             self.n_elite_worst = 1
 
-        self.strategy = self.validator.check_int("strategy", strategy, [0, 1])
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "pc",
-                "pm",
-                "selection",
-                "crossover",
-                "mutation",
-                "k_way",
-                "elite_best",
-                "elite_worst",
-                "strategy",
-            ]
-        )
+        self.strategy = cy.validator(int, strategy, [0, 1], "strategy")
+        self.parameters = [ "epoch", "pop_size", "pc", "pm", "selection", "crossover", "mutation", "k_way", "elite_best", "elite_worst", "strategy", ]
         self.sort_flag = True
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop_new = self.pop[: self.n_elite_best]
+        pop_size = self.population.size()
+        pop_new = self.population[: self.n_elite_best]
         if self.strategy == 0:
-            pop_old = self.pop[self.n_elite_best:]
-            for idx in range(self.n_elite_best, self.pop_size):
+            pop_old = self.population[self.n_elite_best:]
+            for idx in range(self.n_elite_best, pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_00__(pop_old)
                 ### Crossover
@@ -129,18 +113,18 @@ class EliteMultiGA(MultiGA):
                 ### Mutation
                 child = self.mutation_process__(child)
                 ### Survivor Selection
-                pos_new = self._correct_solution(child)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(child)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self._get_target(pos_new)
-            self.pop = self._update_target_for_population(pop_new)
+                    pop_new[-1].evaluate(self.problem)
+            self.population = self.population.evaluate(pop_new, self.mode)
         else:
-            pop_dad = self.pop[
+            pop_dad = self.population[
                 self.n_elite_best: self.n_elite_best + self.n_elite_worst
             ]
-            pop_mom = self.pop[self.n_elite_best + self.n_elite_worst:]
-            for idx in range(self.n_elite_best, self.pop_size):
+            pop_mom = self.population[self.n_elite_best + self.n_elite_worst:]
+            for idx in range(self.n_elite_best, pop_size):
                 ### Selection
                 child1, child2 = self.selection_process_01__(pop_dad, pop_mom)
                 ### Crossover
@@ -150,9 +134,9 @@ class EliteMultiGA(MultiGA):
                 ### Mutation
                 child = self.mutation_process__(child)
                 ### Survivor Selection
-                pos_new = self._correct_solution(child)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(child)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self._get_target(pos_new)
-            self.pop = self._update_target_for_population(pop_new)
+                    pop_new[-1].evaluate(self.problem)
+            self.population = self.population.evaluate(pop_new, self.mode)

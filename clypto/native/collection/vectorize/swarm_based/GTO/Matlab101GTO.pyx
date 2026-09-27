@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -41,8 +41,8 @@ cdef class Matlab101GTO(VectorizeOptimizer):
     >>>
     >>> model = GTO.Matlab101GTO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -73,7 +73,7 @@ cdef class Matlab101GTO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d, m = pop.n * (pop.n - 1)
@@ -82,9 +82,9 @@ cdef class Matlab101GTO(VectorizeOptimizer):
         parent = np.repeat(np.arange(n), n - 1)  # n - 1 candidates per agent
         # Step 1: extensive search, Eq.(4): every agent keeps the best of its candidates and itself
         g = np.array(self.g_best_x())
-        levy = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(m, d), case=-1)
+        levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=(m, d), case=-1)
         cand = pop.take(parent)
-        cand.X[:] = self._correct_solution(g * rng.random((m, 1)) + ((ub - lb) * rng.random((m, 1)) + lb) * levy)
+        cand.X[:] = self.correct_solution(g * rng.random((m, 1)) + ((ub - lb) * rng.random((m, 1)) + lb) * levy)
         self.evaluate(cand, 0, m)
         ops.scatter(self, cand, parent)
         # Step 2: choosing area, Eq. 7
@@ -101,6 +101,6 @@ cdef class Matlab101GTO(VectorizeOptimizer):
         theta1 = 1.3296 * np.sin(np.radians(theta2))
         VD = np.sin(np.radians(theta1)) * dist
         cand = pop.take(parent)
-        cand.X[:] = self._correct_solution(X[parent] * np.sin(np.radians(theta2)) * np.asarray(pop.F)[parent][:, None] + VD + H)
+        cand.X[:] = self.correct_solution(X[parent] * np.sin(np.radians(theta2)) * np.asarray(pop.F)[parent][:, None] + VD + H)
         self.evaluate(cand, 0, m)
         ops.scatter(self, cand, parent)

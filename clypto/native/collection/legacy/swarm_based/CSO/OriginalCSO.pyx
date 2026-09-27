@@ -3,20 +3,34 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalCSOAgent(LegacyAgent):
+
+cdef class OriginalCSOAgent(cy.Agent):
     cdef public object velocity
     cdef public object flag
 
 
-cdef class OriginalCSO(LegacyOptimizer):
+cdef class OriginalCSOPopulation(cy.Population):
+    """Agents of :class:`OriginalCSO`."""
+    cdef public object mixture_ratio
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        """
+        + x: current position of cat
+        + v: vector v of cat (same amount of dimension as x)
+        + flag: the stage of cat, seeking (looking/finding around) or tracing (chasing/catching) => False: seeking mode , True: tracing mode
+        """
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        flag = True if self.generator.uniform() < self.mixture_ratio else False
+        return OriginalCSOAgent(solution=solution, velocity=velocity, flag=flag)
+
+
+cdef class OriginalCSO(cy.Optimizer):
     """
     The original version of: Cat Swarm Optimization (CSO)
 
@@ -51,14 +65,24 @@ cdef class OriginalCSO(LegacyOptimizer):
     >>>
     >>> model = CSO.OriginalCSO(epoch=1000, pop_size=50, mixture_ratio = 0.15, smp = 5, spc = False, cdc = 0.8, srd = 0.15, c1 = 0.4, w_min = 0.4, w_max = 0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Chu, S.C., Tsai, P.W. and Pan, J.S., 2006, August. Cat swarm optimization. In Pacific Rim
     international conference on artificial intelligence (pp. 854-858). Springer, Berlin, Heidelberg.
     """
+
+    cdef public double c1
+    cdef public double cdc
+    cdef public double mixture_ratio
+    cdef public int selected_strategy
+    cdef public int smp
+    cdef public bint spc
+    cdef public double srd
+    cdef public double w_max
+    cdef public double w_min
 
     def __init__(
         self,
@@ -89,54 +113,23 @@ cdef class OriginalCSO(LegacyOptimizer):
             w_max (float): same in PSO
             selected_strategy (int):  0: best fitness, 1: tournament, 2: roulette wheel, else: random (decrease by quality)
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.mixture_ratio = self.validator.check_float(
-            "mixture_ratio", mixture_ratio, (0, 1.0)
-        )
-        self.smp = self.validator.check_int("smp", smp, [2, 10000])
-        self.spc = self.validator.check_bool("spc", spc, (True, False))
-        self.cdc = self.validator.check_float("cdc", cdc, (0, 1.0))
-        self.srd = self.validator.check_float("srd", srd, (0, 1.0))
-        self.c1 = self.validator.check_float("c1", c1, (0, 3.0))
-        self.w_min = self.validator.check_float("w_min", w_min, [0.1, 0.5])
-        self.w_max = self.validator.check_float("w_max", w_max, [0.5, 2.0])
-        self.selected_strategy = self.validator.check_int(
-            "selected_strategy", selected_strategy, [0, 4]
-        )
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "mixture_ratio",
-                "smp",
-                "spc",
-                "cdc",
-                "srd",
-                "c1",
-                "w_min",
-                "w_max",
-                "selected_strategy",
-            ]
-        )
-        self.sort_flag = False
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        """
-        + x: current position of cat
-        + v: vector v of cat (same amount of dimension as x)
-        + flag: the stage of cat, seeking (looking/finding around) or tracing (chasing/catching) => False: seeking mode , True: tracing mode
-        """
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        flag = True if self.generator.uniform() < self.mixture_ratio else False
-        return _OriginalCSOAgent(solution=solution, velocity=velocity, flag=flag)
+        super().__init__(parameters=[ "epoch", "pop_size", "mixture_ratio", "smp", "spc", "cdc", "srd", "c1", "w_min", "w_max", "selected_strategy", ], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalCSOPopulation)
+        self.mixture_ratio = cy.validator(float, mixture_ratio, (0, 1.0), "mixture_ratio")
+        self.smp = cy.validator(int, smp, [2, 10000], "smp")
+        self.population.mixture_ratio = self.mixture_ratio
+        self.spc = cy.validator(bool, spc, (True, False), "spc")
+        self.cdc = cy.validator(float, cdc, (0, 1.0), "cdc")
+        self.srd = cy.validator(float, srd, (0, 1.0), "srd")
+        self.c1 = cy.validator(float, c1, (0, 3.0), "c1")
+        self.w_min = cy.validator(float, w_min, [0.1, 0.5], "w_min")
+        self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
+        self.selected_strategy = cy.validator(int, selected_strategy, [0, 4], "selected_strategy")
 
     def seeking_mode__(self, cat):
         candidate_cats = []
-        clone_cats = self._generate_population(self.smp)
+        clone_cats = self.population.generate(self.smp)
         if self.spc:
             candidate_cats.append(cat.copy())
             clone_cats = [cat.copy() for _ in range(self.smp - 1)]
@@ -152,60 +145,61 @@ cdef class OriginalCSO(LegacyOptimizer):
                 self.generator.random(self.problem.n_dims) < 0.5, pos_new1, pos_new2
             )
             pos_new[idx] = clone.solution[idx]
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             agent.update(velocity=clone.velocity, flag=clone.flag)
             candidate_cats.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                candidate_cats[-1].target = self._get_target(pos_new)
-        candidate_cats = self._update_target_for_population(candidate_cats)
+                candidate_cats[-1].evaluate(self.problem)
+        candidate_cats = self.population.evaluate(candidate_cats, self.mode)
 
         if self.selected_strategy == 0:  # Best fitness-self
-            cat = self._get_best_agent(candidate_cats, self.problem.sense)
+            cat = cy.sort_agents(candidate_cats, self.problem.sense)[0].copy()
         elif self.selected_strategy == 1:  # Tournament
             k_way = 4
             idx = self.generator.choice(range(0, self.smp), k_way, replace=False)
             cats_k_way = [candidate_cats[_] for _ in idx]
-            cat = self._get_best_agent(cats_k_way, self.problem.sense)
+            cat = cy.sort_agents(cats_k_way, self.problem.sense)[0].copy()
         elif self.selected_strategy == 2:  ### Roul-wheel selection
             list_fitness = [
-                candidate_cats[u].target.fitness for u in range(0, len(candidate_cats))
+                candidate_cats[u].fitness for u in range(0, len(candidate_cats))
             ]
-            idx = self._get_index_roulette_wheel_selection(list_fitness)
+            idx = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
             cat = candidate_cats[idx]
         else:
             idx = self.generator.choice(range(0, len(candidate_cats)))
             cat = candidate_cats[idx]  # Random
         return cat.solution
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         w = (self.epoch - epoch) / self.epoch * (self.w_max - self.w_min) + self.w_min
         pop_new = []
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             # tracing mode
-            if self.pop[idx].flag:
+            if self.population[idx].flag:
                 pos_new = (
-                    self.pop[idx].solution
-                    + w * self.pop[idx].velocity
+                    self.population[idx].solution
+                    + w * self.population[idx].velocity
                     + self.generator.uniform()
                     * self.c1
-                    * (self.g_best.solution - self.pop[idx].solution)
+                    * (self.g_best.solution - self.population[idx].solution)
                 )
-                pos_new = self._correct_solution(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
             else:
-                pos_new = self.seeking_mode__(self.pop[idx])
+                pos_new = self.seeking_mode__(self.population[idx])
             agent.solution = pos_new
             agent.flag = (
                 True if self.generator.uniform() < self.mixture_ratio else False
             )
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        self.pop = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        self.population = self.population.evaluate(pop_new, self.mode)

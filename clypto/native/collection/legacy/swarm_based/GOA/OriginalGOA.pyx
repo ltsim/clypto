@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalGOA(LegacyOptimizer):
+cdef class OriginalGOA(cy.Optimizer):
     """
     The original version of: Grasshopper Optimization Algorithm (GOA)
 
@@ -37,14 +37,17 @@ cdef class OriginalGOA(LegacyOptimizer):
     >>>
     >>> model = GOA.OriginalGOA(epoch=1000, pop_size=50, c_min = 0.00004, c_max = 1.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Saremi, S., Mirjalili, S. and Lewis, A., 2017. Grasshopper optimisation algorithm:
     theory and application. Advances in Engineering Software, 105, pp.30-47.
     """
+
+    cdef public double c_max
+    cdef public double c_min
 
     def __init__(
             self,
@@ -61,13 +64,11 @@ cdef class OriginalGOA(LegacyOptimizer):
             c_min (float): coefficient c min, default=0.00004
             c_max (float): coefficient c max, default=2.0
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.c_min = self.validator.check_float("c_min", c_min, [0.00001, 0.2])
-        self.c_max = self.validator.check_float("c_max", c_max, [0.2, 5.0])
-        self._set_parameters(["epoch", "pop_size", "c_min", "c_max"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "c_min", "c_max"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.c_min = cy.validator(float, c_min, [0.00001, 0.2], "c_min")
+        self.c_max = cy.validator(float, c_max, [0.2, 5.0], "c_max")
 
     def s_function__(self, r_vector=None):
         f = 0.5
@@ -75,23 +76,24 @@ cdef class OriginalGOA(LegacyOptimizer):
         # Eq.(2.3) in the paper
         return f * np.exp(-r_vector / l) - np.exp(-r_vector)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Eq.(2.8) in the paper
         c = self.c_max - epoch * ((self.c_max - self.c_min) / self.epoch)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             S_i_total = np.zeros(self.problem.n_dims)
-            for j in range(0, self.pop_size):
+            for j in range(0, pop_size):
                 dist = np.sqrt(
-                    np.sum((self.pop[idx].solution - self.pop[j].solution) ** 2)
+                    np.sum((self.population[idx].solution - self.population[j].solution) ** 2)
                 )
-                r_ij_vector = (self.pop[idx].solution - self.pop[j].solution) / (
+                r_ij_vector = (self.population[idx].solution - self.population[j].solution) / (
                         dist + self.EPSILON
                 )  # xj - xi / dij in Eq.(2.7)
                 xj_xi = 2 + np.remainder(dist, 2)  # |xjd - xid| in Eq. (2.7)
@@ -103,16 +105,12 @@ cdef class OriginalGOA(LegacyOptimizer):
                     c * self.generator.normal(0, 1, self.problem.n_dims) * S_i_total
                     + self.g_best.solution
             )  # Eq. (2.7) in the paper
-            pos_new = self._correct_solution(x_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(x_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

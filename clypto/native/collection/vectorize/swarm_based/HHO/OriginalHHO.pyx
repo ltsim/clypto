@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalHHO(VectorizeOptimizer):
@@ -35,8 +34,8 @@ cdef class OriginalHHO(VectorizeOptimizer):
     >>>
     >>> model = HHO.OriginalHHO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -67,7 +66,7 @@ cdef class OriginalHHO(VectorizeOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sub
@@ -92,16 +91,16 @@ cdef class OriginalHHO(VectorizeOptimizer):
         delta_X = g - X
         pounce = np.where(absE >= 0.5, delta_X - E * np.abs(J * g - X), g - E * np.abs(delta_X))  # Eqs. (6), (4)
         Y = np.where(absE >= 0.5, g - E * np.abs(J * g - X), g - E * np.abs(J * g - X_m))  # Eqs. (10), (11)
-        LF_D = self._get_levy_flight_step(beta=1.5, multiplier=0.01, size=(n, 1), case=-1)
+        LF_D = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=(n, 1), case=-1)
         Z = Y + rng.uniform(lb, ub, size=(n, d)) * LF_D
         pos = np.where(absE >= 1, explore, pounce)
         levy = np.flatnonzero((absE[:, 0] < 1) & (rng.random(n) < 0.5))
         if len(levy):  # rapid dives: keep Y or Z only if better than the agent, else stay
             sub = pop.take(levy)
-            sub.X[:] = self._correct_solution(Y[levy])
+            sub.X[:] = self.correct_solution(Y[levy])
             self.evaluate(sub, 0, len(levy))
             better_y = ops.better(self, sub.F, pop.F[levy])
-            sub.X[:] = self._correct_solution(Z[levy])
+            sub.X[:] = self.correct_solution(Z[levy])
             self.evaluate(sub, 0, len(levy))
             better_z = ops.better(self, sub.F, pop.F[levy])
             pos[levy] = np.where(better_y[:, None], Y[levy], np.where(better_z[:, None], Z[levy], X[levy]))

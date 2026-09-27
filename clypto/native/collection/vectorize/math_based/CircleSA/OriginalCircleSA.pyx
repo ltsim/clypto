@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -35,8 +35,8 @@ cdef class OriginalCircleSA(VectorizeOptimizer):
     >>>
     >>> model = CircleSA.OriginalCircleSA(epoch=1000, pop_size=50, c_factor=0.8)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -66,7 +66,7 @@ cdef class OriginalCircleSA(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.c_factor = cy.validator(float, c_factor, (0, 1.0), "c_factor")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t idx, n = pop.n
         a = np.pi - np.pi * (<object>(epoch / self.epoch)) ** 2  # Eq. 8
@@ -86,4 +86,4 @@ cdef class OriginalCircleSA(VectorizeOptimizer):
         else:
             tan = np.array([np.tan(w[idx] * p) for idx in range(n)])
             x_new = g - (g - X) * tan[:, None]
-        self.pop = self.new_population(self._correct_solution(x_new))
+        self.pop = self.new_population(self.correct_solution(x_new))

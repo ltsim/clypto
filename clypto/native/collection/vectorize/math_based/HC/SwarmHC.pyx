@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -43,8 +43,8 @@ cdef class SwarmHC(VectorizeOptimizer):
     >>>
     >>> model = HC.SwarmHC(epoch=1000, pop_size=50, neighbour_size = 10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     cdef public int neighbour_size
@@ -75,7 +75,7 @@ cdef class SwarmHC(VectorizeOptimizer):
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
         self.neighbour_size = cy.validator(int, neighbour_size, [2, int(self.pop_size / 2)], "neighbour_size")
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation best = pop.empty_like()
         cdef Py_ssize_t idx, n = pop.n, k = self.neighbour_size, d = pop.d
@@ -86,9 +86,8 @@ cdef class SwarmHC(VectorizeOptimizer):
         # per agent, k neighbours: one normal(0, 1, d) draw each
         N = self.generator.normal(0, 1, (n, k, d))
         pos = pop.X[:, None, :] + N * ss[:, None, None]
-        pos = self._correct_solution(pos.reshape(n * k, d))
+        pos = self.correct_solution(pos.reshape(n * k, d))
         F, R = self.problem.evaluate(pos)
-        self._nfe_counter += n * k
         for idx in range(n):
             # best neighbour of agent idx (the classic argsort tie rule)
             order = np.argsort(F[idx * k:(idx + 1) * k])

@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.human_based.TLO.DevTLO cimport DevTLO
 
@@ -34,8 +35,8 @@ cdef class OriginalTLO(DevTLO):
     >>>
     >>> model = TLO.OriginalTLO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -54,45 +55,40 @@ cdef class OriginalTLO(DevTLO):
         super().__init__(epoch, pop_size, **kwargs)
         self.sort_flag = False
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        for idx in range(0, self.pop_size):
+        pop_size = self.population.size()
+        for idx in range(0, pop_size):
             ## Teaching Phrase
             TF = self.generator.integers(1, 3)  # 1 or 2 (never 3)
             #### Remove third loop here
-            list_pos = np.array([agent.solution for agent in self.pop])
-            pos_new = self.pop[idx].solution + self.generator.uniform(
+            list_pos = np.array([agent.solution for agent in self.population])
+            pos_new = self.population[idx].solution + self.generator.uniform(
                 0, 1, self.problem.n_dims
             ) * (self.g_best.solution - TF * np.mean(list_pos, axis=0))
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
             ## Learning Phrase
             id_partner = self.generator.choice(
-                np.setxor1d(np.array(range(self.pop_size)), np.array([idx]))
+                np.setxor1d(np.array(range(pop_size)), np.array([idx]))
             )
             #### Remove third loop here
-            if self._compare_target(
-                    self.pop[idx].target, self.pop[id_partner].target, self.problem.sense
-            ):
-                diff = self.pop[idx].solution - self.pop[id_partner].solution
+            if cy.is_better(self.population[idx], self.population[id_partner], self.problem.sense):
+                diff = self.population[idx].solution - self.population[id_partner].solution
             else:
-                diff = self.pop[id_partner].solution - self.pop[idx].solution
+                diff = self.population[id_partner].solution - self.population[idx].solution
             pos_new = (
-                    self.pop[idx].solution
+                    self.population[idx].solution
                     + self.generator.uniform(0, 1, self.problem.n_dims) * diff
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent

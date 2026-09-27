@@ -7,7 +7,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +42,8 @@ cdef class WMQIMRFO(AgentListOptimizer):
     >>>
     >>> model = MRFO.WMQIMRFO(epoch=1000, pop_size=50, somersault_range = 2.0, pm=0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -83,7 +83,7 @@ cdef class WMQIMRFO(AgentListOptimizer):
         self.somersault_range = cy.validator(float, somersault_range, [1.0, 5.0], "somersault_range")
         self.pm = cy.validator(float, pm, (0.0, 1.0), "pm")
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         pop_new = []
         for idx in range(0, self.pop_size):
             x_t = self.objs[idx].solution
@@ -184,20 +184,17 @@ cdef class WMQIMRFO(AgentListOptimizer):
                     pos_new = (
                             x_t + r * (x_t1 - x_t) + alpha * (self.g_best.solution - x_t)
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.objs[idx] = self._get_better_agent(
-                    self.objs[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.objs[idx] = cy.get_better_agent(self.objs[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.objs = self._greedy_selection_population(
-                self.objs, pop_new, self.problem.sense
-            )
-        _, g_best = self._update_global_best_agent(self.objs)
+            pop_new = self.evaluate_agents(pop_new)
+            self.objs = cy.greedy_agents(self.objs, pop_new, self.problem.sense)
+        ranked = cy.sort_agents(self.objs, self.problem.sense)
+        g_best = ranked[0]
 
         # Somersault foraging   (Eq. 8)
         pop_child = []
@@ -206,20 +203,17 @@ cdef class WMQIMRFO(AgentListOptimizer):
                     self.generator.random() * g_best.solution
                     - self.generator.random() * self.objs[idx].solution
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.objs[idx] = self._get_better_agent(
-                    self.objs[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.objs[idx] = cy.get_better_agent(self.objs[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            self.objs = self._greedy_selection_population(
-                self.objs, pop_child, self.problem.sense
-            )
-        self.objs, g_best = self._update_global_best_agent(self.objs)
+            pop_child = self.evaluate_agents(pop_child)
+            self.objs = cy.greedy_agents(self.objs, pop_child, self.problem.sense)
+        self.objs = cy.sort_agents(self.objs, self.problem.sense)
+        g_best = self.objs[0]
 
         # Quadratic Interpolation
         pop_new = []
@@ -230,9 +224,9 @@ cdef class WMQIMRFO(AgentListOptimizer):
             if idx == self.pop_size - 1:
                 idx2, idx3 = 0, 1
             f1, f2, f3 = (
-                self.objs[idx].target.fitness,
-                self.objs[idx2].target.fitness,
-                self.objs[idx3].target.fitness,
+                self.objs[idx].fitness,
+                self.objs[idx2].fitness,
+                self.objs[idx3].fitness,
             )
             x1, x2, x3 = (
                 self.objs[idx].solution,
@@ -248,16 +242,12 @@ cdef class WMQIMRFO(AgentListOptimizer):
                          (x3 ** 2 - x2 ** 2) * f1 + (x1 ** 2 - x3 ** 2) * f2 + (x2 ** 2 - x1 ** 2) * f3
                  ) / (2 * ((x3 - x2) * f1 + (x1 - x3) * f2 + (x2 - x1) * f3) + self.EPSILON)
             pos_new = np.where(a > 0, gx, x1)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.objs[idx] = self._get_better_agent(
-                    self.objs[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.objs[idx] = cy.get_better_agent(self.objs[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.objs = self._greedy_selection_population(
-                self.objs, pop_new, self.problem.sense
-            )
+            pop_new = self.evaluate_agents(pop_new)
+            self.objs = cy.greedy_agents(self.objs, pop_new, self.problem.sense)

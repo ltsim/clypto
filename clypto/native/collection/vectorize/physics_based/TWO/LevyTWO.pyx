@@ -3,16 +3,13 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
 from clypto.native.collection.vectorize.physics_based.TWO.OriginalTWO cimport OriginalTWO
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class LevyTWO(OriginalTWO):
@@ -35,8 +32,8 @@ cdef class LevyTWO(OriginalTWO):
     >>>
     >>> model = TWO.LevyTWO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -54,17 +51,17 @@ cdef class LevyTWO(OriginalTWO):
         """
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sub
         pos = self.forces__(pop, epoch_c)
-        pop.X[:] = self._correct_solution(self.bound__(pos, epoch_c))
+        pop.X[:] = self.correct_solution(self.bound__(pos, epoch_c))
         self.evaluate(pop, 0, pop.n)
         # half of the teams try a Levy jump
         jump = np.flatnonzero(self.generator.random(pop.n) < 0.5)
         if len(jump):
             sub = pop.take(jump)
-            sub.X[:] = self._correct_solution(pop.X[jump] + self._get_levy_flight_step(beta=1.0, multiplier=0.01, size=(len(jump), pop.d), case=-1))
+            sub.X[:] = self.correct_solution(pop.X[jump] + cy.levy_flight(self.generator, beta=1.0, multiplier=0.01, size=(len(jump), pop.d), case=-1))
             self.evaluate(sub, 0, len(jump))
             ops.scatter(self, sub, jump)
         self.update_weight__(pop)

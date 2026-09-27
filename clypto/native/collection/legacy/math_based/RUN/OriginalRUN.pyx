@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalRUN(LegacyOptimizer):
+cdef class OriginalRUN(cy.Optimizer):
     """
     The original version of: RUNge Kutta optimizer (RUN)
 
@@ -34,8 +34,8 @@ cdef class OriginalRUN(LegacyOptimizer):
     >>>
     >>> model = RUN.OriginalRUN(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -51,11 +51,9 @@ cdef class OriginalRUN(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
     def runge_kutta__(self, xb, xw, delta_x):
         dim = len(xb)
@@ -84,29 +82,30 @@ cdef class OriginalRUN(LegacyOptimizer):
         return mu + sig * (2 * self.generator.uniform(0, 1, size) - 1)
 
     def get_index_of_best_agent__(self, pop):
-        fit_list = np.array([agent.target.fitness for agent in pop])
+        fit_list = np.array([agent.fitness for agent in pop])
         if self.problem.sense == "min":
             return np.argmin(fit_list)
         else:
             return np.argmax(fit_list)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         f = 20 * np.exp(-(12.0 * epoch / self.epoch))  # Eq.17.6
-        SF = 2.0 * (0.5 - self.generator.random(self.pop_size)) * f  # Eq.17.5
-        x_list = np.array([agent.solution for agent in self.pop])
+        SF = 2.0 * (0.5 - self.generator.random(pop_size)) * f  # Eq.17.5
+        x_list = np.array([agent.solution for agent in self.population])
         x_average = np.mean(x_list, axis=0)  # Determine the Average of Solutions
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ## Determine Delta X (Eqs. 11.1 to 11.3)
             gama = (
                     self.generator.random()
                     * (
-                            self.pop[idx].solution
+                            self.population[idx].solution
                             - self.generator.uniform(0, 1, self.problem.n_dims)
                             * (self.problem.bounds.up - self.problem.bounds.low)
                     )
@@ -120,23 +119,21 @@ cdef class OriginalRUN(LegacyOptimizer):
             )
             ## Determine Three Random Indices of Solutions
             a, b, c = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), 3, replace=False
+                list(set(range(0, pop_size)) - {idx}), 3, replace=False
             )
             id_min_x = self.get_index_of_best_agent__(
-                [self.pop[a], self.pop[b], self.pop[c]]
+                [self.population[a], self.population[b], self.population[c]]
             )
             ## Determine Xb and Xw for using in Runge Kutta method
-            if self._compare_target(
-                    self.pop[idx].target, self.pop[id_min_x].target, self.problem.sense
-            ):
-                xb, xw = self.pop[idx].solution, self.pop[id_min_x].solution
+            if cy.is_better(self.population[idx], self.population[id_min_x], self.problem.sense):
+                xb, xw = self.population[idx].solution, self.population[id_min_x].solution
             else:
-                xb, xw = self.pop[id_min_x].solution, self.pop[idx].solution
+                xb, xw = self.population[id_min_x].solution, self.population[idx].solution
             ## Search Mechanism (SM) of RUN based on Runge Kutta Method
             SM = self.runge_kutta__(xb, xw, delta_x)
-            local_best = self._get_best_agent(self.pop, self.problem.sense)
+            local_best = self.population.sort()[0].copy()
             L = self.generator.choice(range(0, 2), self.problem.n_dims)
-            xc = L * self.pop[idx].solution + (1 - L) * self.pop[a].solution  # Eq. 17.3
+            xc = L * self.population[idx].solution + (1 - L) * self.population[a].solution  # Eq. 17.3
             xm = L * self.g_best.solution + (1 - L) * local_best.solution  # Eq. 17.4
             r = self.generator.choice([1, -1], self.problem.n_dims)  # An integer number
             g = 2 * self.generator.random()
@@ -149,12 +146,12 @@ cdef class OriginalRUN(LegacyOptimizer):
                         xm
                         + r * SF[idx] * g * xm
                         + SF[idx] * SM
-                        + mu * (self.pop[a].solution - self.pop[b].solution)
+                        + mu * (self.population[a].solution - self.population[b].solution)
                 )
-            pos_new = self._correct_solution(pos_new)
-            tar_new = self._get_target(pos_new)
-            if self._compare_target(tar_new, self.pop[idx].target, self.problem.sense):
-                self.pop[idx].update(solution=pos_new, target=tar_new)
+            pos_new = self.population.correct_solution(pos_new)
+            tar_new = self.population.evaluate_solution(pos_new)
+            if cy.is_better(tar_new, self.population[idx], self.problem.sense):
+                self.population[idx].update_solution(tar_new, pos_new)
             ## Enhanced solution quality (ESQ)  (Eq. 19)
             if self.generator.random() < 0.5:
                 w = self.uniform_random__(0, 2, self.problem.n_dims) * np.exp(
@@ -163,10 +160,10 @@ cdef class OriginalRUN(LegacyOptimizer):
                 r = np.floor(self.uniform_random__(-1, 2, 1))
                 u = 2 * self.generator.random(self.problem.n_dims)
                 a, b, c = self.generator.choice(
-                    list(set(range(0, self.pop_size)) - {idx}), 3, replace=False
+                    list(set(range(0, pop_size)) - {idx}), 3, replace=False
                 )
                 x_ave = (
-                                self.pop[a].solution + self.pop[b].solution + self.pop[c].solution
+                                self.population[a].solution + self.population[b].solution + self.population[c].solution
                         ) / 3  # Eq.19-2
                 beta = self.generator.random(self.problem.n_dims)
                 x_new1 = beta * self.g_best.solution + (1 - beta) * x_ave  # Eq.19-3
@@ -185,19 +182,17 @@ cdef class OriginalRUN(LegacyOptimizer):
                 )
                 )
                 x_new2 = np.where(w < 1, x_new2_temp1, x_new2_temp2)
-                pos_new2 = self._correct_solution(x_new2)
-                tar_new2 = self._get_target(pos_new2)
-                if self._compare_target(
-                        tar_new2, self.pop[idx].target, self.problem.sense
-                ):
-                    self.pop[idx].update(solution=pos_new2, target=tar_new2)
+                pos_new2 = self.population.correct_solution(x_new2)
+                tar_new2 = self.population.evaluate_solution(pos_new2)
+                if cy.is_better(tar_new2, self.population[idx], self.problem.sense):
+                    self.population[idx].update_solution(tar_new2, pos_new2)
                 else:
                     if (
                             w[self.generator.integers(0, self.problem.n_dims)]
                             > self.generator.random()
                     ):
                         SM = self.runge_kutta__(
-                            self.pop[idx].solution, pos_new2, delta_x
+                            self.population[idx].solution, pos_new2, delta_x
                         )
                         x_new3 = (
                                 pos_new2
@@ -213,9 +208,7 @@ cdef class OriginalRUN(LegacyOptimizer):
                                         )
                                 )
                         )  # Eq. 20
-                        pos_new3 = self._correct_solution(x_new3)
-                        tar_new3 = self._get_target(pos_new3)
-                        if self._compare_target(
-                                tar_new3, self.pop[idx].target, self.problem.sense
-                        ):
-                            self.pop[idx].update(solution=pos_new3, target=tar_new3)
+                        pos_new3 = self.population.correct_solution(x_new3)
+                        tar_new3 = self.population.evaluate_solution(pos_new3)
+                        if cy.is_better(tar_new3, self.population[idx], self.problem.sense):
+                            self.population[idx].update_solution(tar_new3, pos_new3)

@@ -5,11 +5,9 @@
 # --------------------------------------------------%
 import numpy as np
 
-from clypto.optimizer.native cimport utils as cy
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
+cimport clypto.core as cy
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 from clypto.native.collection.vectorize.swarm_based.PSO.P_PSO cimport P_PSO
 
 
@@ -39,8 +37,8 @@ cdef class C_PSO(P_PSO):
     >>>
     >>> model = PSO.C_PSO(epoch=1000, pop_size=50, c1=2.05, c2=2.05, w_min=0.4, w_max=0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -91,7 +89,7 @@ cdef class C_PSO(P_PSO):
         self.w_min = cy.validator(float, w_min, (0, 0.5), "w_min")
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.v_min = -self.v_max
         self.N_CLS = int(self.pop_size / 5)  # Number of chaotic local searches
@@ -104,12 +102,12 @@ cdef class C_PSO(P_PSO):
             return temp1 if fit <= fit_avg else self.w_max
         return self.w_max if fit <= fit_avg else temp1
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef NativePopulation merged
-        cdef LegacyNativeAgent g_best
-        cdef NativeTarget target_best
+        cdef cy.Agent g_best
+        cdef cy.Agent target_best
         cdef Py_ssize_t start, stop, n = pop.n
         list_fits = pop.F.tolist()
         fit_avg = np.mean(list_fits)
@@ -130,7 +128,7 @@ cdef class C_PSO(P_PSO):
             v_new = np.clip(v_new, self.v_min, self.v_max)
             x_new = Xs + v_new
             V[start:stop] = v_new
-            cand.X[start:stop] = self._correct_solution(np.clip(x_new, self.dyn_lb, self.dyn_ub))
+            cand.X[start:stop] = self.correct_solution(np.clip(x_new, self.dyn_lb, self.dyn_ub))
             self.evaluate(cand, start, stop)
             self.accept(cand, start, stop)
 
@@ -139,12 +137,11 @@ cdef class C_PSO(P_PSO):
         cx_best_0 = (g_best.solution - self.problem.bounds.low) / (self.problem.bounds.up - self.problem.bounds.low)  # Eq. 7
         cx_best_1 = 4 * cx_best_0 * (1 - cx_best_0)  # Eq. 6
         x_best = self.problem.bounds.low + cx_best_1 * (self.problem.bounds.up - self.problem.bounds.low)  # Eq. 8
-        x_best = self._correct_solution(x_best)
-        target_best = self._get_target(x_best)
+        x_best = self.correct_solution(x_best)
+        target_best = self.evaluate_solution(x_best)
         # The classic engine compared with the default sense="min" here.
-        if cy.compare_target(target_best, g_best.target, "min"):
-            g_best.solution = x_best
-            g_best.target = target_best
+        if cy.is_better(target_best, g_best.copy(), "min"):
+            g_best.update_solution(target_best, x_best)
 
         r = self.generator.random()
         bound_min = np.stack([self.dyn_lb, g_best.solution - r * (self.dyn_ub - self.dyn_lb)])

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalPFA(LegacyOptimizer):
+cdef class OriginalPFA(cy.Optimizer):
     """
     The original version of: Pathfinder Algorithm (PFA)
 
@@ -32,8 +32,8 @@ cdef class OriginalPFA(LegacyOptimizer):
     >>>
     >>> model = PFA.OriginalPFA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -49,19 +49,18 @@ cdef class OriginalPFA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         alpha, beta = self.generator.uniform(1, 2, 2)
         A = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up) * np.exp(
             -2 * epoch / self.epoch
@@ -70,31 +69,31 @@ cdef class OriginalPFA(LegacyOptimizer):
         space = self.problem.bounds.up - self.problem.bounds.low
         ## Update the position of pathfinder and check the bound
         pos_new = (
-                self.pop[0].solution
+                self.population[0].solution
                 + 2
                 * self.generator.uniform()
-                * (self.g_best.solution - self.pop[0].solution)
+                * (self.g_best.solution - self.population[0].solution)
                 + A
         )
-        pos_new = self._correct_solution(pos_new)
-        agent = self._generate_agent(pos_new)
+        pos_new = self.population.correct_solution(pos_new)
+        agent = self.population.generate_agent(pos_new)
         pop_new = [
             agent,
         ]
         ## Update positions of members, check the bound and calculate new fitness
-        for idx in range(1, self.pop_size):
-            pos_new = self.pop[idx].solution.copy().astype(float)
-            for k in range(1, self.pop_size):
+        for idx in range(1, pop_size):
+            pos_new = self.population[idx].solution.copy().astype(float)
+            for k in range(1, pop_size):
                 dist = (
                         np.sqrt(
-                            np.sum((self.pop[k].solution - self.pop[idx].solution) ** 2)
+                            np.sum((self.population[k].solution - self.population[idx].solution) ** 2)
                         )
                         / self.problem.n_dims
                 )
                 t2 = (
                         alpha
                         * self.generator.uniform()
-                        * (self.pop[k].solution - self.pop[idx].solution)
+                        * (self.population[k].solution - self.population[idx].solution)
                 )
                 ## First stabilize the distance
                 t3 = self.generator.uniform() * t * (dist / space)
@@ -103,16 +102,14 @@ cdef class OriginalPFA(LegacyOptimizer):
             t1 = (
                     beta
                     * self.generator.uniform()
-                    * (self.g_best.solution - self.pop[idx].solution)
+                    * (self.g_best.solution - self.population[idx].solution)
             )
-            pos_new = (pos_new + t1) / self.pop_size
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = (pos_new + t1) / pop_size
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
+                pop_new[-1].evaluate(self.problem)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-        self.pop = self._greedy_selection_population(
-            self.pop, pop_new, self.problem.sense
-        )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+        self.population = self.population.greedy(pop_new)

@@ -3,14 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -45,8 +42,8 @@ cdef class OriginalBA(VectorizeOptimizer):
     >>>
     >>> model = BA.OriginalBA(epoch=1000, pop_size=50, loudness=0.8, pulse_rate=0.95, pf_min=0.1, pf_max=10.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -99,13 +96,13 @@ cdef class OriginalBA(VectorizeOptimizer):
         self.pf_max = cy.validator(float, pf_max, [5.0, 20.0], "pf_max")
         self.alpha = self.gamma = 0.9
 
-    def _initialization(self):
-        VectorizeOptimizer._initialization(self)
+    def initialization(self):
+        VectorizeOptimizer.initialization(self)
         n, d = self.pop.n, self.pop.d
         self.velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (n, d))
         self.pulse_frequency = self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform(size=(n, 1))
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -116,7 +113,7 @@ cdef class OriginalBA(VectorizeOptimizer):
         ## Local search around g_best position
         x_new = np.where((rng.random(n) > self.pulse_rate)[:, None], g + 0.001 * rng.normal(d, 1.0, (n, 1)), x_new)
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(x_new)
+        cand.X[:] = self.correct_solution(x_new)
         self.evaluate(cand, 0, n)
         ## Replace the old position by the new one when it is better (and the sound is quiet enough)
         ok = ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) < self.loudness)

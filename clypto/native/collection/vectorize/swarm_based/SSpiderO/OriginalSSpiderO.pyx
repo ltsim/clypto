@@ -5,14 +5,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -47,8 +44,8 @@ cdef class OriginalSSpiderO(AgentListOptimizer):
     >>>
     >>> model = SSpiderO.OriginalSSpiderO(epoch=1000, pop_size=50, fp_min = 0.65, fp_max = 0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -94,8 +91,8 @@ cdef class OriginalSSpiderO(AgentListOptimizer):
         fp_max = cy.validator(float, fp_max, (0.0, 1.0), "fp_max")
         self.fp_min, self.fp_max = min((fp_min, fp_max)), max((fp_min, fp_max))
 
-    def _initialization(self):
-        AgentListOptimizer._initialization(self)
+    def initialization(self):
+        AgentListOptimizer.initialization(self)
         fp_temp = (
             self.fp_min + (self.fp_max - self.fp_min) * self.generator.uniform()
         )  # Female Aleatory Percent
@@ -111,19 +108,19 @@ cdef class OriginalSSpiderO(AgentListOptimizer):
         )
         idx_females = set(range(0, self.pop_size)) - set(idx_males)
         if self.objs is None:
-            self.objs = self._generate_agents(self.pop_size)
+            self.objs = self.generate_agents(self.pop_size)
         self.pop_males = [self.objs[idx] for idx in idx_males]
         self.pop_females = [self.objs[idx] for idx in idx_females]
         self.objs = self.recalculate_weights__(self.objs)
         self.pop = self.mirror__()
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weight = 0.0
         return FieldAgent(solution=solution, weight=weight)
 
-    cdef object _amend_solution(self, object solution):
+    cdef object amend_solution(self, object solution):
         rd = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         condition = np.logical_and(
             self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
@@ -193,11 +190,11 @@ cdef class OriginalSSpiderO(AgentListOptimizer):
                     * gamma
                     + rd_pos
                 )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.correct_solution(pos_new)
             self.pop_females[idx].solution = pos_new
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop_females[idx].target = self._get_target(pos_new)
-        self.pop_females = self._update_target_for_population(self.pop_females)
+                self.pop_females[idx].evaluate(self.problem)
+        self.pop_females = self.evaluate_agents(self.pop_females)
 
     def move_males__(self, epoch=None):
         scale_distance = np.sum(self.problem.bounds.up - self.problem.bounds.low)
@@ -255,11 +252,11 @@ cdef class OriginalSSpiderO(AgentListOptimizer):
                     + delta * (mean - self.pop_males[idx].solution)
                     + rd_pos
                 )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.correct_solution(pos_new)
             self.pop_males[idx].solution = pos_new
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop_males[idx].target = self._get_target(pos_new)
-        self.pop_males = self._update_target_for_population(self.pop_males)
+                self.pop_males[idx].evaluate(self.problem)
+        self.pop_males = self.evaluate_agents(self.pop_males)
 
     def crossover__(self, mom=None, dad=None, id=0):
         child1 = np.zeros(self.problem.n_dims)
@@ -319,41 +316,38 @@ cdef class OriginalSSpiderO(AgentListOptimizer):
                 child1, child2 = self.crossover__(
                     couples[kdx][0].solution, couples[kdx][1].solution, 0
                 )
-                pos1 = self._correct_solution(child1)
-                pos2 = self._correct_solution(child2)
-                agent1 = self._generate_agent(pos1)
-                agent2 = self._generate_agent(pos2)
+                pos1 = self.correct_solution(child1)
+                pos2 = self.correct_solution(child2)
+                agent1 = self.generate_agent(pos1)
+                agent2 = self.generate_agent(pos2)
                 list_child.append(agent1)
                 list_child.append(agent2)
-        list_child += self._generate_agents(self.pop_size - len(list_child))
+        list_child += self.generate_agents(self.pop_size - len(list_child))
         return list_child
 
     def survive__(self, pop=None, pop_child=None):
         n_child = len(pop)
-        pop_child = self._get_sorted_and_trimmed_population(
-            pop_child, n_child, self.problem.sense
-        )
+        pop_child = cy.sort_agents(pop_child, self.problem.sense)[:n_child]
         for idx in range(0, n_child):
-            if self._compare_target(
-                pop_child[idx].target, pop[idx].target, self.problem.sense
-            ):
+            if cy.is_better(pop_child[idx], pop[idx], self.problem.sense):
                 pop[idx] = pop_child[idx].copy()
         return pop
 
     def recalculate_weights__(self, pop=None):
-        fit_total, fit_best, fit_worst = self._get_special_fitness(
-            pop, self.problem.sense
-        )
+        fit_total = np.sum([agent.fitness for agent in pop])
+        ranked = cy.sort_agents(pop, self.problem.sense)
+        fit_best = ranked[0].fitness
+        fit_worst = ranked[-1].fitness
         for idx in range(len(pop)):
             if fit_best == fit_worst:
                 pop[idx].weight = self.generator.uniform(0.2, 0.8)
             else:
-                pop[idx].weight = 0.001 + (pop[idx].target.fitness - fit_worst) / (
+                pop[idx].weight = 0.001 + (pop[idx].fitness - fit_worst) / (
                     fit_best - fit_worst + self.EPSILON
                 )
         return pop
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         ### Movement of spiders
         self.move_females__(epoch)
         self.move_males__(epoch)

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +42,8 @@ cdef class DevHS(VectorizeOptimizer):
     >>>
     >>> model = HS.DevHS(epoch=1000, pop_size=50, c_r = 0.95, pa_r = 0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
 
@@ -76,12 +76,12 @@ cdef class DevHS(VectorizeOptimizer):
         self.c_r = cy.validator(float, c_r, (0, 1.0), "c_r")
         self.pa_r = cy.validator(float, pa_r, (0, 1.0), "pa_r")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.fw = 0.0001 * (self.problem.bounds.up - self.problem.bounds.low)  # Fret Width (Bandwidth)
         self.fw_damp = 0.9995  # Fret Width Damp Ratio
         self.dyn_fw = self.fw
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand
@@ -95,7 +95,7 @@ cdef class DevHS(VectorizeOptimizer):
         pos = np.where(rng.random((n, d)) < self.c_r, g, pos)
         pos = np.where(rng.random((n, d)) < self.pa_r, pos + delta, pos)
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(pos)
+        cand.X[:] = self.correct_solution(pos)
         self.evaluate(cand, 0, n)
         self.dyn_fw = self.dyn_fw * self.fw_damp
         merged = pop.concat(cand)

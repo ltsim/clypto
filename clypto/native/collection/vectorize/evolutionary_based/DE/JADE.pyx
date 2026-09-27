@@ -3,16 +3,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 from scipy.stats import cauchy
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class JADE(VectorizeOptimizer):
@@ -44,8 +40,8 @@ cdef class JADE(VectorizeOptimizer):
     >>>
     >>> model = DE.JADE(epoch=1000, pop_size=50, miu_f = 0.5, miu_cr = 0.5, pt = 0.1, ap = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -97,7 +93,7 @@ cdef class JADE(VectorizeOptimizer):
         self.pt = cy.validator(float, pt, (0, 1.0), "pt")
         self.ap = cy.validator(float, ap, (0, 1.0), "ap")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_miu_cr = self.miu_cr
         self.dyn_miu_f = self.miu_f
         self.dyn_pop_archive = np.empty((0, self.problem.n_dims))
@@ -106,7 +102,7 @@ cdef class JADE(VectorizeOptimizer):
         temp = np.sum(list_objects)
         return 0 if temp == 0 else np.sum(list_objects**2) / temp
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

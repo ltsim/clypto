@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalTS(LegacyOptimizer):
+cdef class OriginalTS(cy.Optimizer):
     """
     The original version of: Tabu Search (TS)
 
@@ -39,14 +39,18 @@ cdef class OriginalTS(LegacyOptimizer):
     >>>
     >>> model = TS.OriginalTS(epoch=1000, pop_size=50, tabu_size = 5, neighbour_size = 20, perturbation_scale = 0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Hajji, O., Brisset, S., & Brochet, P. (2004). A new tabu search method for optimization
     with continuous parameters. IEEE Transactions on Magnetics, 40(2), 1184-1187.
     """
+
+    cdef public int neighbour_size
+    cdef public double perturbation_scale
+    cdef public int tabu_size
 
     def __init__(
             self,
@@ -65,27 +69,19 @@ cdef class OriginalTS(LegacyOptimizer):
             neighbour_size (int): Size of the neighborhood for generating candidate solutions, Default: 10
             perturbation_scale (float): Scale of the perturbations for generating candidate solutions. default = 0.05
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
-        self.tabu_size = self.validator.check_int("tabu_size", tabu_size, [2, 10000])
-        self.neighbour_size = self.validator.check_int(
-            "neighbour_size", neighbour_size, [2, 10000]
-        )
-        self.perturbation_scale = self.validator.check_float(
-            "perturbation_scale", perturbation_scale, (0, 100)
-        )
-        self._set_parameters(
-            ["epoch", "pop_size", "tabu_size", "neighbour_size", "perturbation_scale"]
-        )
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "tabu_size", "neighbour_size", "perturbation_scale"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[2, 10000])
+        self.tabu_size = cy.validator(int, tabu_size, [2, 10000], "tabu_size")
+        self.neighbour_size = cy.validator(int, neighbour_size, [2, 10000], "neighbour_size")
+        self.perturbation_scale = cy.validator(float, perturbation_scale, (0, 100), "perturbation_scale")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         self.x = self.g_best.solution.copy()
         self.tabu_list = []
-        self.pop = []
+        self.population = []
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -101,21 +97,21 @@ cdef class OriginalTS(LegacyOptimizer):
         # Evaluate candidate solutions and select best move
         list_candidates = []
         for candidate in candidates:
-            pos_new = self._correct_solution(candidate)
+            pos_new = self.population.correct_solution(candidate)
             if np.allclose(pos_new, self.x):
                 continue
             if tuple(pos_new) in self.tabu_list:
                 continue
-            agent = self._generate_empty_agent(pos_new)
+            agent = self.population.create_agent(pos_new)
             list_candidates.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                list_candidates[-1].target = self._get_target(pos_new)
-        list_candidates = self._update_target_for_population(list_candidates)
-        best_candidate = self._get_best_agent(list_candidates, self.problem.sense)
+                list_candidates[-1].evaluate(self.problem)
+        list_candidates = self.population.evaluate(list_candidates, self.mode)
+        best_candidate = cy.sort_agents(list_candidates, self.problem.sense)[0].copy()
         self.x = best_candidate.solution
         # Update tabu list
         self.tabu_list.append(tuple(self.x))
-        self.pop.append(best_candidate)
+        self.population.append(best_candidate)
         if len(self.tabu_list) > self.tabu_size:
             self.tabu_list.pop(0)
-            self.pop.pop(0)
+            self.population.pop(0)

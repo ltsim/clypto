@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalFDO(LegacyOptimizer):
+cdef class OriginalFDO(cy.Optimizer):
     """
     The original version of: Fitness Dependent Optimizer (FDO)
 
@@ -36,14 +36,16 @@ cdef class OriginalFDO(LegacyOptimizer):
     >>>
     >>> model = FDO.OriginalFDO(epoch=1000, pop_size=50, weight_factor=0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Abdullah, J. M., & Ahmed, T. (2019).
     Fitness dependent optimizer: inspired by the bee swarming reproductive process. IEEe Access, 7, 43473-43486.
     """
+
+    cdef public double weight_factor
 
     def __init__(
             self,
@@ -58,19 +60,16 @@ cdef class OriginalFDO(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             weight_factor (float): factor to adjust the fitness weight calculation, default = 0.1
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.weight_factor = self.validator.check_float(
-            "weight_factor", weight_factor, [0.0, 1.0]
-        )
-        self._set_parameters(["epoch", "pop_size", "weight_factor"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "weight_factor"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.weight_factor = cy.validator(float, weight_factor, [0.0, 1.0], "weight_factor")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
+        pop_size = self.population.size()
         self.pop_pace = [
                             0,
-                        ] * self.pop_size
+                        ] * pop_size
 
     def get_fit_weight(self, best_fit, current_fit, weight_factor=0.1):
         """
@@ -108,9 +107,7 @@ cdef class OriginalFDO(LegacyOptimizer):
         Returns:
             np.ndarray: The position clipped to the problem bounds.
         """
-        levy = self._get_levy_flight_step(
-            beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
-        )
+        levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1)
         levy_up = self.problem.bounds.up * np.abs(levy)
         levy_lb = self.problem.bounds.low * np.abs(levy)
         pos_new = np.select(
@@ -120,61 +117,52 @@ cdef class OriginalFDO(LegacyOptimizer):
         )
         return pos_new
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Update positions for each thief
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             fw = self.get_fit_weight(
-                self.g_best.target.fitness,
-                self.pop[idx].target.fitness,
+                self.g_best.fitness,
+                self.population[idx].fitness,
                 self.weight_factor,
             )
-            dist = self.g_best.solution - self.pop[idx].solution
-            levy = self._get_levy_flight_step(
-                beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
-            )
+            dist = self.g_best.solution - self.population[idx].solution
+            levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1)
             if fw == 1:
-                pace = self.pop[idx].solution * levy
+                pace = self.population[idx].solution * levy
             elif fw == 0:
                 pace = dist * levy
             else:
                 pace = dist * fw * np.sign(levy)
             self.pop_pace[idx] = pace
-            pos_new = self.pop[idx].solution + pace
+            pos_new = self.population[idx].solution + pace
             pos_new = self.get_into_levy_bound(pos_new)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
             # Check if new position is better
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
             else:
                 # Alternative update strategy
                 dist = self.g_best.solution - pos_new
                 pos_new = pos_new + (dist * fw) + self.pop_pace[idx]
                 pos_new = self.get_into_levy_bound(pos_new)
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                        agent.target, self.pop[idx].target, self.problem.sense
-                ):
-                    self.pop[idx] = agent
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+                if cy.is_better(agent, self.population[idx], self.problem.sense):
+                    self.population[idx] = agent
                 else:
                     # Third update strategy
-                    levy = self._get_levy_flight_step(
-                        beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1
-                    )
-                    pos_new = self.pop[idx].solution + self.pop[idx].solution * levy
+                    levy = cy.levy_flight(self.generator, beta=1.5, multiplier=0.01, size=self.problem.n_dims, case=-1)
+                    pos_new = self.population[idx].solution + self.population[idx].solution * levy
                     pos_new = self.get_into_levy_bound(pos_new)
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                            agent.target, self.pop[idx].target, self.problem.sense
-                    ):
-                        self.pop[idx] = agent
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
+                    if cy.is_better(agent, self.population[idx], self.problem.sense):
+                        self.population[idx] = agent

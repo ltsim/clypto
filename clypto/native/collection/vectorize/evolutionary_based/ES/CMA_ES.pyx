@@ -5,14 +5,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.agent_list cimport AgentListOptimizer
@@ -43,8 +40,8 @@ cdef class CMA_ES(AgentListOptimizer):
     >>>
     >>> model = ES.CMA_ES(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -91,7 +88,7 @@ cdef class CMA_ES(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         step = self.generator.multivariate_normal(
@@ -99,7 +96,7 @@ cdef class CMA_ES(AgentListOptimizer):
         )
         return FieldAgent(solution=solution, step=step)
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         self.mu = int(np.round(self.pop_size / 2))
         self.ps = np.zeros(self.problem.n_dims)
         self.C = np.eye(self.problem.n_dims)
@@ -142,17 +139,17 @@ cdef class CMA_ES(AgentListOptimizer):
             )
         return pop
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         pop_new = []
         for idx in range(0, self.pop_size):
             pos_new = self.x_mean + self.sigma * self.objs[idx].step
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        self.objs = self._get_sorted_population(pop_new, self.problem.sense)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.evaluate_agents(pop_new)
+        self.objs = cy.sort_agents(pop_new, self.problem.sense)
         # Update MEan
         self.objs = self.update_step__(self.objs, self.C)
         self.x_step = np.zeros(self.problem.n_dims)

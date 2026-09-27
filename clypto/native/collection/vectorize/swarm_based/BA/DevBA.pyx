@@ -3,10 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -44,8 +42,8 @@ cdef class DevBA(VectorizeOptimizer):
     >>>
     >>> model = BA.DevBA(epoch=1000, pop_size=50, pulse_rate = 0.95, pf_min = 0., pf_max = 10.)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     cdef public object pulse_rate
@@ -80,10 +78,10 @@ cdef class DevBA(VectorizeOptimizer):
         self.pf_max = cy.validator(float, pf_max, [2, 10], "pf_max")
         self.alpha = self.gamma = 0.9
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_list_velocity = np.zeros((self.pop_size, self.problem.n_dims))
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, child
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -94,13 +92,13 @@ cdef class DevBA(VectorizeOptimizer):
         pf = self.pf_min + (self.pf_max - self.pf_min) * rng.uniform(size=(n, 1))  # Eq. 2
         self.dyn_list_velocity = rng.uniform(size=(n, 1)) * self.dyn_list_velocity + (g - X) * pf  # Eq. 3
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution(X + self.dyn_list_velocity)  # Eq. 4
+        cand.X[:] = self.correct_solution(X + self.dyn_list_velocity)  # Eq. 4
         self.evaluate(cand, 0, n)
         # agents whose move did not improve them try a local search around the best
         retry = np.flatnonzero(~ops.better(self, np.asarray(cand.F), np.asarray(pop.F)) & (rng.random(n) > self.pulse_rate))
         if len(retry):
             child = pop.take(retry)
-            child.X[:] = self._correct_solution(g + 0.01 * rng.uniform(lb, ub, (len(retry), d)))
+            child.X[:] = self.correct_solution(g + 0.01 * rng.uniform(lb, ub, (len(retry), d)))
             self.evaluate(child, 0, len(retry))
             ops.scatter(self, child, retry, dst=cand)
         self.pop = cand

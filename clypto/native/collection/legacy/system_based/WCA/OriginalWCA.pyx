@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalWCA(LegacyOptimizer):
+cdef class OriginalWCA(cy.Optimizer):
     """
     The original version of: Water Cycle Algorithm (WCA)
 
@@ -44,14 +44,18 @@ cdef class OriginalWCA(LegacyOptimizer):
     >>>
     >>> model = WCA.OriginalWCA(epoch=1000, pop_size=50, nsr = 4, wc = 2.0, dmax = 1e-6)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Eskandar, H., Sadollah, A., Bahreininejad, A. and Hamdi, M., 2012. Water cycle algorithm–A novel metaheuristic
     optimization method for solving constrained engineering optimization problems. Computers & Structures, 110, pp.151-166.
     """
+
+    cdef public double dmax
+    cdef public int nsr
+    cdef public double wc
 
     def __init__(
             self,
@@ -70,30 +74,29 @@ cdef class OriginalWCA(LegacyOptimizer):
             wc (float): Weighting coefficient (C in the paper), default = 2.0
             dmax (float): Evaporation condition constant, default=1e-6
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.nsr = self.validator.check_int("nsr", nsr, [2, int(self.pop_size / 2)])
-        self.wc = self.validator.check_float("wc", wc, (1.0, 3.0))
-        self.dmax = self.validator.check_float("dmax", dmax, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "nsr", "wc", "dmax"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "nsr", "wc", "dmax"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.nsr = cy.validator(int, nsr, [2, int(self.population.size() / 2)], "nsr")
+        self.wc = cy.validator(float, wc, (1.0, 3.0), "wc")
+        self.dmax = cy.validator(float, dmax, (0, 1.0), "dmax")
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
-        self.pop = self._get_sorted_population(self.pop, self.problem.sense)
-        self.g_best = self.pop[0]
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
+        self.population = self.population.sort()
+        self.g_best = self.population[0]
         self.ecc = self.dmax  # Evaporation condition constant - variable
-        n_stream = self.pop_size - self.nsr
-        g_best = self.pop[0].copy()  # Global best solution (sea)
-        self.pop_best = self.pop[
+        n_stream = pop_size - self.nsr
+        g_best = self.population[0].copy()  # Global best solution (sea)
+        self.pop_best = self.population[
             : self.nsr
         ]  # Including sea and river (1st solution is sea)
-        self.pop_stream = self.pop[self.nsr:]  # Forming Stream
+        self.pop_stream = self.population[self.nsr:]  # Forming Stream
 
         # Designate streams to rivers and sea
-        cost_river_list = np.array([agent.target.fitness for agent in self.pop_best])
+        cost_river_list = np.array([agent.fitness for agent in self.pop_best])
         num_child_in_river_list = np.round(
             np.abs(cost_river_list / np.sum(cost_river_list)) * n_stream
         ).astype(int)
@@ -117,7 +120,7 @@ cdef class OriginalWCA(LegacyOptimizer):
             streams[self.nsr - 1].append(self.pop_stream[idx])
         self.streams = streams
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -132,17 +135,15 @@ cdef class OriginalWCA(LegacyOptimizer):
                 pos_new = stream.solution + self.generator.uniform() * self.wc * (
                         self.pop_best[idx].solution - stream.solution
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 stream_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    stream_new[-1].target = self._get_target(pos_new)
-            stream_new = self._update_target_for_population(stream_new)
+                    stream_new[-1].evaluate(self.problem)
+            stream_new = self.population.evaluate(stream_new, self.mode)
             self.streams[idx] = stream_new
-            stream_best = self._get_best_agent(stream_new, self.problem.sense)
-            if self._compare_target(
-                    stream_best.target, self.pop_best[idx].target, self.problem.sense
-            ):
+            stream_best = cy.sort_agents(stream_new, self.problem.sense)[0].copy()
+            if cy.is_better(stream_best, self.pop_best[idx], self.problem.sense):
                 self.pop_best[idx] = stream_best.copy()
             # Update river
             pos_new = self.pop_best[
@@ -150,11 +151,9 @@ cdef class OriginalWCA(LegacyOptimizer):
                       ].solution + self.generator.uniform() * self.wc * (
                               self.g_best.solution - self.pop_best[idx].solution
                       )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop_best[idx].target, self.problem.sense
-            ):
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.pop_best[idx], self.problem.sense):
                 self.pop_best[idx] = agent
         # Evaporation
         for idx in range(1, self.nsr):
@@ -162,14 +161,12 @@ cdef class OriginalWCA(LegacyOptimizer):
                 np.sum((self.g_best.solution - self.pop_best[idx].solution) ** 2)
             )
             if distance < self.ecc or self.generator.random() < 0.1:
-                child = self._generate_agent()
-                pop_current_best = self._get_sorted_population(
-                    self.streams[idx] + [child], self.problem.sense
-                )
+                child = self.population.generate_agent()
+                pop_current_best = cy.sort_agents(self.streams[idx] + [child], self.problem.sense)
                 self.pop_best[idx] = pop_current_best.pop(0)
                 self.streams[idx] = pop_current_best
-        self.pop = self.pop_best.copy()
+        self.population = self.pop_best.copy()
         for idx, stream_list in self.streams.items():
-            self.pop += stream_list
+            self.population += stream_list
         # Reduce the ecc
         self.ecc = self.ecc - self.ecc / self.epoch

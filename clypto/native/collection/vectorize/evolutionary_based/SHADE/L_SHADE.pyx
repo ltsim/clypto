@@ -6,7 +6,7 @@
 
 import numpy as np
 from scipy.stats import cauchy
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class L_SHADE(VectorizeOptimizer):
     >>>
     >>> model = SHADE.L_SHADE(epoch=1000, pop_size=50, miu_f = 0.5, miu_cr = 0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -86,7 +86,7 @@ cdef class L_SHADE(VectorizeOptimizer):
         self.miu_f = cy.validator(float, miu_f, (0, 1.0), "miu_f")
         self.miu_cr = cy.validator(float, miu_cr, (0, 1.0), "miu_cr")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.dyn_miu_f = self.miu_f * np.ones(self.pop_size)  # memory of the successful f,
         self.dyn_miu_cr = self.miu_cr * np.ones(self.pop_size)  # memory of the successful cr,
         self.dyn_pop_archive = np.empty((0, self.problem.n_dims))
@@ -99,7 +99,7 @@ cdef class L_SHADE(VectorizeOptimizer):
         down = np.sum(list_weights * list_objects)
         return up / down if down != 0 else 0.5
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

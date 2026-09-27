@@ -7,7 +7,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -47,8 +47,8 @@ cdef class OriginalICA(AgentListOptimizer):
     >>> model = ICA.OriginalICA(epoch=1000, pop_size=50, empire_count = 5, assimilation_coeff = 1.5,
     >>>                         revolution_prob = 0.05, revolution_rate = 0.1, revolution_step_size = 0.1, zeta = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -133,9 +133,9 @@ cdef class OriginalICA(AgentListOptimizer):
         solution[idx_list] = pos_new[idx_list]  # Change only those selected index
         return solution
 
-    def _initialization(self):
-        AgentListOptimizer._initialization(self)
-        self.objs = self._get_sorted_population(self.objs, self.problem.sense)
+    def initialization(self):
+        AgentListOptimizer.initialization(self)
+        self.objs = cy.sort_agents(self.objs, self.problem.sense)
         self.g_best = self.objs[0].copy()
         # Initialization
         self.n_revoluted_variables = int(
@@ -147,7 +147,7 @@ cdef class OriginalICA(AgentListOptimizer):
         self.pop_colonies = [agent.copy() for agent in self.objs[self.empire_count:]]
 
         cost_empires_list = np.array(
-            [agent.target.fitness for agent in self.pop_empires]
+            [agent.fitness for agent in self.pop_empires]
         )
         cost_empires_list_normalized = cost_empires_list - (
                 np.max(cost_empires_list) + np.min(cost_empires_list)
@@ -175,7 +175,7 @@ cdef class OriginalICA(AgentListOptimizer):
             self.empires[self.empire_count - 1].append(self.pop_colonies[idx].copy())
         self.pop = self.mirror__()
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         # Assimilation
         for idx, colonies in self.empires.items():
             for idx_colony, colony in enumerate(colonies):
@@ -185,40 +185,37 @@ cdef class OriginalICA(AgentListOptimizer):
                         * self.generator.uniform(0, 1, self.problem.n_dims)
                         * (self.pop_empires[idx].solution - colony.solution)
                 )
-                pos_new = self._correct_solution(pos_new)
+                pos_new = self.correct_solution(pos_new)
                 self.empires[idx][idx_colony].solution = pos_new
                 if self.mode not in self.AVAILABLE_MODES:
-                    self.empires[idx][idx_colony].target = self._get_target(pos_new)
-            self.empires[idx] = self._update_target_for_population(self.empires[idx])
+                    self.empires[idx][idx_colony].evaluate(self.problem)
+            self.empires[idx] = self.evaluate_agents(self.empires[idx])
         # Revolution
         for idx, colonies in self.empires.items():
             # Apply revolution to Imperialist
             pos_new_em = self.revolution_country__(
                 self.pop_empires[idx].solution, self.n_revoluted_variables
             )
-            pos_new_em = self._correct_solution(pos_new_em)
+            pos_new_em = self.correct_solution(pos_new_em)
             self.pop_empires[idx].solution = pos_new_em
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop_empires[idx].target = self._get_target(pos_new_em)
+                self.pop_empires[idx].evaluate(self.problem)
             # Apply revolution to Colonies
             for idx_colony, colony in enumerate(colonies):
                 if self.generator.random() < self.revolution_prob:
                     pos_new = self.revolution_country__(
                         colony.solution, self.n_revoluted_variables
                     )
-                    pos_new = self._correct_solution(pos_new)
+                    pos_new = self.correct_solution(pos_new)
                     self.empires[idx][idx_colony].solution = pos_new
                     if self.mode not in self.AVAILABLE_MODES:
-                        self.empires[idx][idx_colony].target = self._get_target(pos_new)
-            self.empires[idx] = self._update_target_for_population(self.empires[idx])
-        self.pop_empires = self._update_target_for_population(self.pop_empires)
-        self._update_global_best_agent(self.pop_empires)
+                        self.empires[idx][idx_colony].evaluate(self.problem)
+            self.empires[idx] = self.evaluate_agents(self.empires[idx])
+        self.pop_empires = self.evaluate_agents(self.pop_empires)
         # Intra-Empire Competition
         for idx, colonies in self.empires.items():
             for idx_colony, colony in enumerate(colonies):
-                if self._compare_target(
-                        colony.target, self.pop_empires[idx].target, self.problem.sense
-                ):
+                if cy.is_better(colony, self.pop_empires[idx], self.problem.sense):
                     self.empires[idx][idx_colony], self.pop_empires[idx] = (
                         self.pop_empires[idx].copy(),
                         colony.copy(),
@@ -226,8 +223,8 @@ cdef class OriginalICA(AgentListOptimizer):
         # Update Total Objective Values of Empires
         cost_empires_list = []
         for idx, colonies in self.empires.items():
-            fit_list = np.array([agent.target.fitness for agent in colonies])
-            fit_empire = self.pop_empires[idx].target.fitness + self.zeta * np.mean(
+            fit_list = np.array([agent.fitness for agent in colonies])
+            fit_empire = self.pop_empires[idx].fitness + self.zeta * np.mean(
                 fit_list
             )
             cost_empires_list.append(fit_empire)
@@ -245,9 +242,7 @@ cdef class OriginalICA(AgentListOptimizer):
         # Find the weakest empire and weakest colony inside it
         idx_weakest_empire = np.argmax(cost_empires_list)
         if len(self.empires[idx_weakest_empire]) > 0:
-            colonies_sorted = self._get_sorted_population(
-                self.empires[idx_weakest_empire], self.problem.sense
-            )
+            colonies_sorted = cy.sort_agents(self.empires[idx_weakest_empire], self.problem.sense)
             self.empires[idx_empire].append(colonies_sorted.pop(-1))
         else:
             self.empires[idx_empire].append(self.pop_empires.pop(idx_weakest_empire))

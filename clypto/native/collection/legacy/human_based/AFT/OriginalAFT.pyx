@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalAFT(LegacyOptimizer):
+cdef class OriginalAFT(cy.Optimizer):
     """
     The original version of: Ali baba and the Forty Thieves (AFT) optimizer
 
@@ -32,8 +32,8 @@ cdef class OriginalAFT(LegacyOptimizer):
     >>>
     >>> model = AFT.OriginalAFT(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -49,24 +49,23 @@ cdef class OriginalAFT(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Initialize best positions (Marjaneh's astute plans)
-        self.pop_best = self.pop.copy()  # It is like local best positions like in PSO
-        # self.pop is population of alibaba ==> It will always update with new version no matter what
+        self.pop_best = self.population.copy()  # It is like local best positions like in PSO
+        # self.population is population of alibaba ==> It will always update with new version no matter what
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Calculate AFT parameters
         # Perception potential - decreases over iterations
         Pp = 0.1 * np.log(2.75 * (epoch / self.epoch) ** 0.1)
@@ -75,10 +74,10 @@ cdef class OriginalAFT(LegacyOptimizer):
         Td = 2 * np.exp(-2 * (epoch / self.epoch) ** 2)
 
         # Generate random candidate followers indices
-        random_followers = self.generator.integers(0, self.pop_size, size=self.pop_size)
+        random_followers = self.generator.integers(0, pop_size, size=pop_size)
 
         # Update positions for each thief
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             if self.generator.random() >= 0.5:
                 # Thieves know where to search (TRUE case)
                 if self.generator.random() > Pp:
@@ -86,11 +85,11 @@ cdef class OriginalAFT(LegacyOptimizer):
                     direction = np.sign(self.generator.random() - 0.5)
                     movement = (
                             Td
-                            * (self.pop_best[idx].solution - self.pop[idx].solution)
+                            * (self.pop_best[idx].solution - self.population[idx].solution)
                             * self.generator.random()
                             + Td
                             * (
-                                    self.pop[idx].solution
+                                    self.population[idx].solution
                                     - self.pop_best[random_followers[idx]].solution
                             )
                             * self.generator.random()
@@ -106,26 +105,24 @@ cdef class OriginalAFT(LegacyOptimizer):
                 direction = np.sign(self.generator.random() - 0.5)
                 movement = (
                         Td
-                        * (self.pop_best[idx].solution - self.pop[idx].solution)
+                        * (self.pop_best[idx].solution - self.population[idx].solution)
                         * self.generator.random()
                         + Td
                         * (
-                                self.pop[idx].solution
+                                self.population[idx].solution
                                 - self.pop_best[random_followers[idx]].solution
                         )
                         * self.generator.random()
                 )
                 pos_new = self.g_best.solution - movement * direction
             # Clip to bounds
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
-            self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
+            self.population[idx] = agent
             # self.pop_baba[idx] = agent
             if self.mode not in self.AVAILABLE_MODES:
-                # self.pop_baba[idx].target = self._get_target(pos_new)
-                self.pop[idx].target = self._get_target(pos_new)
+                # self.pop_baba[idx].evaluate(self.problem)
+                self.population[idx].evaluate(self.problem)
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self._update_target_for_population(self.pop)
-            self.pop_best = self._greedy_selection_population(
-                self.pop_best, self.pop, self.problem.sense
-            )
+            self.population = self.population.evaluate(self.population, self.mode)
+            self.pop_best = cy.greedy_agents(self.pop_best, self.population, self.problem.sense)

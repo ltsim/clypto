@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class ImprovedLCO(LegacyOptimizer):
+cdef class ImprovedLCO(cy.Optimizer):
     """
     The improved version: Life Choice-based Optimization (ILCO)
 
@@ -34,8 +34,8 @@ cdef class ImprovedLCO(LegacyOptimizer):
     >>>
     >>> model = LCO.ImprovedLCO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -46,29 +46,28 @@ cdef class ImprovedLCO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.pop_len = int(self.pop_size / 2)
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.pop_len = int(self.population.size() / 2)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # epoch: current chance, self.epoch: number of chances
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             rand = self.generator.random()
             if rand > 0.875:  # Update using Eq. 1, update from n best position
-                n = int(np.ceil(np.sqrt(self.pop_size)))
+                n = int(np.ceil(np.sqrt(pop_size)))
                 pos_new = np.array(
                     [
-                        self.generator.random() * self.pop[j].solution
+                        self.generator.random() * self.population[j].solution
                         for j in range(0, n)
                     ]
                 )
@@ -79,42 +78,38 @@ cdef class ImprovedLCO(LegacyOptimizer):
                     better_diff = (
                             f
                             * self.generator.random()
-                            * (self.pop[idx - 1].solution - self.pop[idx].solution)
+                            * (self.population[idx - 1].solution - self.population[idx].solution)
                     )
                 else:
                     better_diff = (
                             f
                             * self.generator.random()
-                            * (self.g_best.solution - self.pop[idx].solution)
+                            * (self.g_best.solution - self.population[idx].solution)
                     )
                 best_diff = (
                         (1 - f)
                         * self.generator.random()
-                        * (self.pop[0].solution - self.pop[idx].solution)
+                        * (self.population[0].solution - self.population[idx].solution)
                 )
-                pos_new = self.pop[idx].solution + better_diff + best_diff
+                pos_new = self.population[idx].solution + better_diff + best_diff
             else:
                 pos_new = (
                         self.problem.bounds.up
-                        - (self.pop[idx].solution - self.problem.bounds.low)
+                        - (self.population[idx].solution - self.problem.bounds.low)
                         * self.generator.random()
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
 
         ## Sort the updated population based on fitness
-        pop = self._get_sorted_population(self.pop, self.problem.sense)
+        pop = self.population.sort()
         local_best = pop[0].copy()
         pop_s1 = [agent.copy() for agent in pop[: self.pop_len]]
         pop_s2 = [agent.copy() for agent in pop[self.pop_len:]]
@@ -126,19 +121,15 @@ cdef class ImprovedLCO(LegacyOptimizer):
                     + self.generator.normal(0, 1, self.problem.n_dims)
                     * pop_s1[idx].solution
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_child1.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                pop_s1[idx] = self._get_better_agent(
-                    agent, pop_s1[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                pop_s1[idx] = cy.get_better_agent(agent, pop_s1[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child1 = self._update_target_for_population(pop_child1)
-            pop_s1 = self._greedy_selection_population(
-                pop_s1, pop_child1, self.problem.sense
-            )
+            pop_child1 = self.population.evaluate(pop_child1, self.mode)
+            pop_s1 = cy.greedy_agents(pop_s1, pop_child1, self.problem.sense)
 
         ## Search Mechanism
         pos_s1_list = [agent.solution for agent in pop_s1]
@@ -148,18 +139,14 @@ cdef class ImprovedLCO(LegacyOptimizer):
             pos_new = local_best.solution + self.generator.uniform(
                 0, 1
             ) * pos_s1_mean * (epoch / self.epoch)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_child2.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                pop_s2[idx] = self._get_better_agent(
-                    pop_s2[idx], agent, self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                pop_s2[idx] = cy.get_better_agent(pop_s2[idx], agent, self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child2 = self._update_target_for_population(pop_s2)
-            pop_s2 = self._greedy_selection_population(
-                pop_s2, pop_child2, self.problem.sense
-            )
+            pop_child2 = self.population.evaluate(pop_s2, self.mode)
+            pop_s2 = cy.greedy_agents(pop_s2, pop_child2, self.problem.sense)
         ## Construct a new population
-        self.pop = pop_s1 + pop_s2
+        self.population = pop_s1 + pop_s2

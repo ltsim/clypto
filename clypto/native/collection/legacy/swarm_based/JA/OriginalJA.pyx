@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.swarm_based.JA.DevJA cimport DevJA
 
@@ -32,8 +33,8 @@ cdef class OriginalJA(DevJA):
     >>>
     >>> model = JA.OriginalJA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -51,30 +52,31 @@ cdef class OriginalJA(DevJA):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        _, (g_best,), (g_worst,) = self._get_special_agents(
-            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
-        )
+        pop_size = self.population.size()
+        ranked = self.population.sort()
+        (g_best,) = [agent.copy() for agent in ranked[:1]]
+        (g_worst,) = [agent.copy() for agent in ranked[::-1][:1]]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             pos_new = (
-                    self.pop[idx].solution
+                    self.population[idx].solution
                     + self.generator.uniform(0, 1, self.problem.n_dims)
-                    * (g_best.solution - np.abs(self.pop[idx].solution))
+                    * (g_best.solution - np.abs(self.population[idx].solution))
                     - self.generator.uniform(0, 1, self.problem.n_dims)
-                    * (g_worst.solution - np.abs(self.pop[idx].solution))
+                    * (g_worst.solution - np.abs(self.population[idx].solution))
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[idx].target = self._get_target(pos_new)
+                pop_new[idx].evaluate(self.problem)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-        self.pop = pop_new
+            pop_new = self.population.evaluate(pop_new, self.mode)
+        self.population = pop_new

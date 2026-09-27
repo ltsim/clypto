@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -39,8 +39,8 @@ cdef class OriginalEHO(VectorizeOptimizer):
     >>>
     >>> model = EHO.OriginalEHO(epoch=1000, pop_size=50, alpha = 0.5, beta = 0.5, n_clans = 5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -87,7 +87,7 @@ cdef class OriginalEHO(VectorizeOptimizer):
         self.n_clans = cy.validator(int, n_clans, [2, int(self.pop_size / 5)], "n_clans")
         self.n_individuals = int(self.pop_size / self.n_clans)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation fresh
         cdef Py_ssize_t n = pop.n, d = pop.d, nc = self.n_clans, ni = self.n_individuals, m = nc * ni  # (m <= n rows belong to a clan)
@@ -106,7 +106,7 @@ cdef class OriginalEHO(VectorizeOptimizer):
             order = order[:, ::-1]
         pop = pop.take(np.concatenate([(order + ni * np.arange(nc)[:, None]).ravel(), np.arange(m, n)]))
         fresh = pop.take(ni * np.arange(1, nc + 1) - 1)
-        fresh.X[:] = self._correct_solution(rng.uniform(self.problem.bounds.low, self.problem.bounds.up, (nc, d)))
+        fresh.X[:] = self.correct_solution(rng.uniform(self.problem.bounds.low, self.problem.bounds.up, (nc, d)))
         self.evaluate(fresh, 0, nc)
         pop.buf[ni * np.arange(1, nc + 1) - 1] = fresh.buf
         self.pop = pop

@@ -3,19 +3,28 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _CMA_ESAgent(LegacyAgent):
+
+cdef class CMA_ESAgent(cy.Agent):
     cdef public object step
 
 
-cdef class CMA_ES(LegacyOptimizer):
+cdef class CMA_ESPopulation(cy.Population):
+    """Agents of :class:`CMA_ES`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        step = self.generator.multivariate_normal(
+            np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
+        )
+        return CMA_ESAgent(solution=solution, step=step)
+
+
+cdef class CMA_ES(cy.Optimizer):
     """
     The original version of: Covariance Matrix Adaptation Evolution Strategy (CMA-ES)
 
@@ -38,8 +47,8 @@ cdef class CMA_ES(LegacyOptimizer):
     >>>
     >>> model = ES.CMA_ES(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -54,26 +63,17 @@ cdef class CMA_ES(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size (miu in the paper), default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=CMA_ESPopulation)
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        step = self.generator.multivariate_normal(
-            np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
-        )
-        return _CMA_ESAgent(solution=solution, step=step)
-
-    def _before_main_loop(self):
-        self.mu = int(np.round(self.pop_size / 2))
+    def before_main_loop(self):
+        pop_size = self.population.size()
+        self.mu = int(np.round(pop_size / 2))
         self.ps = np.zeros(self.problem.n_dims)
         self.C = np.eye(self.problem.n_dims)
         self.pc = np.zeros(self.problem.n_dims)
-        self.w = np.log(self.pop_size + 0.5) - np.log(np.arange(1, self.pop_size + 1))
+        self.w = np.log(pop_size + 0.5) - np.log(np.arange(1, pop_size + 1))
         self.w = self.w / np.sum(self.w)
         self.mu_eff = 1.0 / np.sum(self.w**2)  # Number of effective solutions
         # Step Size Control Parameters (c_sigma and d_sigma);
@@ -102,37 +102,39 @@ cdef class CMA_ES(LegacyOptimizer):
         )
         self.hth = (1.4 + 2 / (self.problem.n_dims + 1)) * self.ENN
         self.sigma = sigma0
-        self.x_mean = np.mean([agent.solution for agent in self.pop[: self.mu]], axis=0)
+        self.x_mean = np.mean([agent.solution for agent in self.population[: self.mu]], axis=0)
 
     def update_step__(self, pop, cc):
-        for idx in range(0, self.pop_size):
+        pop_size = self.population.size()
+        for idx in range(0, pop_size):
             pop[idx].step = self.generator.multivariate_normal(
                 np.zeros(self.problem.n_dims), cc
             )
         return pop
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.x_mean + self.sigma * self.pop[idx].step
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+        for idx in range(0, pop_size):
+            pos_new = self.x_mean + self.sigma * self.population[idx].step
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        self.pop = self._get_sorted_population(pop_new, self.problem.sense)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        self.population = cy.sort_agents(pop_new, self.problem.sense)
         # Update MEan
-        self.pop = self.update_step__(self.pop, self.C)
+        self.population = self.update_step__(self.population, self.C)
         self.x_step = np.zeros(self.problem.n_dims)
         for idx in range(0, self.mu):
-            self.x_step += self.w[idx] * self.pop[idx].step
+            self.x_step += self.w[idx] * self.population[idx].step
         self.x_mean = self.x_mean + self.sigma * self.x_step
         # Update Step Size
         t11 = np.dot(self.x_step, np.linalg.inv(np.linalg.cholesky(self.C).T))
@@ -163,7 +165,7 @@ cdef class CMA_ES(LegacyOptimizer):
         )
         for idx in range(0, self.mu):
             self.C = self.C + self.cmu * self.w[idx] * np.outer(
-                self.pop[idx].step, self.pop[idx].step
+                self.population[idx].step, self.population[idx].step
             )
         # If Covariance Matrix is not Positive Defenite or Near Singular
         E, V = np.linalg.eig(self.C)

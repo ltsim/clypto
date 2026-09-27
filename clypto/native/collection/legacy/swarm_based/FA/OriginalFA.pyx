@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalFA(LegacyOptimizer):
+cdef class OriginalFA(cy.Optimizer):
     """
     The original version of: Fireworks Algorithm (FA)
 
@@ -39,14 +39,20 @@ cdef class OriginalFA(LegacyOptimizer):
     >>>
     >>> model = FA.OriginalFA(epoch=1000, pop_size=50, max_sparks = 50, p_a = 0.04, p_b = 0.8, max_ea = 40, m_sparks = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Tan, Y. and Zhu, Y., 2010, June. Fireworks algorithm for optimization. In International
     conference in swarm intelligence (pp. 355-364). Springer, Berlin, Heidelberg.
     """
+
+    cdef public int m_sparks
+    cdef public int max_ea
+    cdef public int max_sparks
+    cdef public double p_a
+    cdef public double p_b
 
     def __init__(
             self,
@@ -69,38 +75,35 @@ cdef class OriginalFA(LegacyOptimizer):
             max_ea (int): maximum explosion amplitude, default=40
             m_sparks (int): number of sparks generated in each explosion generation, default=100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.max_sparks = self.validator.check_int("max_sparks", max_sparks, [2, 10000])
-        self.p_a = self.validator.check_float("p_a", p_a, (0, 1.0))
-        self.p_b = self.validator.check_float("p_b", p_b, (0, 1.0))
-        self.max_ea = self.validator.check_int("max_ea", max_ea, [2, 100])
-        self.m_sparks = self.validator.check_int("m_sparks", m_sparks, [2, 10000])
-        self._set_parameters(
-            ["epoch", "pop_size", "max_sparks", "p_a", "p_b", "max_ea", "m_sparks"]
-        )
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "max_sparks", "p_a", "p_b", "max_ea", "m_sparks"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.max_sparks = cy.validator(int, max_sparks, [2, 10000], "max_sparks")
+        self.p_a = cy.validator(float, p_a, (0, 1.0), "p_a")
+        self.p_b = cy.validator(float, p_b, (0, 1.0), "p_b")
+        self.max_ea = cy.validator(int, max_ea, [2, 100], "max_ea")
+        self.m_sparks = cy.validator(int, m_sparks, [2, 10000], "m_sparks")
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        fit_list = np.array([agent.target.fitness for agent in self.pop])
+        pop_size = self.population.size()
+        fit_list = np.array([agent.fitness for agent in self.population])
         fit_list = sorted(fit_list)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             si = (
                     self.max_sparks
-                    * (fit_list[-1] - self.pop[idx].target.fitness)
-                    / (self.pop_size * fit_list[-1] - np.sum(fit_list) + self.EPSILON)
+                    * (fit_list[-1] - self.population[idx].fitness)
+                    / (pop_size * fit_list[-1] - np.sum(fit_list) + self.EPSILON)
             )
             Ai = (
                     self.max_ea
-                    * (self.pop[idx].target.fitness - fit_list[0])
+                    * (self.population[idx].fitness - fit_list[0])
                     / (np.sum(fit_list) - fit_list[0] + self.EPSILON)
             )
             if si < self.p_a * self.max_sparks:
@@ -112,7 +115,7 @@ cdef class OriginalFA(LegacyOptimizer):
             ## Algorithm 1
             pop_new = []
             for j in range(0, si_):
-                pos_new = self.pop[idx].solution.copy()
+                pos_new = self.population[idx].solution.copy()
                 list_idx = self.generator.choice(
                     range(0, self.problem.n_dims),
                     round(self.generator.uniform() * self.problem.n_dims),
@@ -126,16 +129,16 @@ cdef class OriginalFA(LegacyOptimizer):
                     + np.abs(pos_new) % (self.problem.bounds.up - self.problem.bounds.low),
                     pos_new,
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    pop_new[-1].target = self._get_target(pos_new)
-            pop_new = self._update_target_for_population(pop_new)
+                    pop_new[-1].evaluate(self.problem)
+            pop_new = self.population.evaluate(pop_new, self.mode)
 
         for _ in range(0, self.m_sparks):
-            idx = self.generator.integers(0, self.pop_size)
-            pos_new = self.pop[idx].solution.copy()
+            idx = self.generator.integers(0, pop_size)
+            pos_new = self.population[idx].solution.copy()
             list_idx = self.generator.choice(
                 range(0, self.problem.n_dims),
                 round(self.generator.uniform() * self.problem.n_dims),
@@ -151,14 +154,12 @@ cdef class OriginalFA(LegacyOptimizer):
                     self.problem.bounds.up - self.problem.bounds.low
             )
             pos_new = np.where(condition, pos_true, pos_new)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
 
         ## Update the global best
-        self.pop = self._get_sorted_and_trimmed_population(
-            pop_new + self.pop, self.pop_size, self.problem.sense
-        )
+        self.population = cy.sort_agents(pop_new + self.population, self.problem.sense)[:pop_size]

@@ -3,14 +3,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -42,8 +39,8 @@ cdef class OriginalES(VectorizeOptimizer):
     >>>
     >>> model = ES.OriginalES(epoch=1000, pop_size=50, lamda = 0.75)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -81,7 +78,7 @@ cdef class OriginalES(VectorizeOptimizer):
     cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
         return [("S", d)]  # strategy (step size) of every agent
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
 
     cdef void init_fields(self, NativePopulation pop):
@@ -95,12 +92,12 @@ cdef class OriginalES(VectorizeOptimizer):
         tau = np.sqrt(2.0 * d) ** (-1.0)
         tau_p = np.sqrt(2.0 * np.sqrt(d)) ** (-1.0)
         kids = pop.take(np.arange(nc))
-        kids.X[:] = self._correct_solution(pos)
+        kids.X[:] = self.correct_solution(pos)
         kids.field("S")[:] = np.exp(tau_p * rng.normal(0, 1.0, (nc, d)) + tau * rng.normal(0, 1.0, (nc, d)))
         self.evaluate(kids, 0, nc)
         return kids
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation kids, both
         nc = self.n_child

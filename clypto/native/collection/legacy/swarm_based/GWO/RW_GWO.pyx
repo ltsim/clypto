@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class RW_GWO(LegacyOptimizer):
+cdef class RW_GWO(cy.Optimizer):
     """
     The original version of: Random Walk Grey Wolf Optimizer (RW-GWO)
 
@@ -29,8 +29,8 @@ cdef class RW_GWO(LegacyOptimizer):
     >>>
     >>> model = GWO.RW_GWO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -45,26 +45,24 @@ cdef class RW_GWO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # linearly decreased from 2 to 0, Eq. 5
         b = 2.0 - 2.0 * epoch / self.epoch
         # linearly decreased from 2 to 0
         a = 2.0 - 2.0 * epoch / self.epoch
-        _, leaders, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
+        ranked = self.population.sort()
+        leaders = [agent.copy() for agent in ranked[:3]]
 
         ## Random walk here
         leaders_new = []
@@ -72,23 +70,19 @@ cdef class RW_GWO(LegacyOptimizer):
             pos_new = leaders[idx].solution + a * self.generator.standard_cauchy(
                 self.problem.n_dims
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             leaders_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                leaders[idx] = self._get_better_agent(
-                    agent, leaders[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                leaders[idx] = cy.get_better_agent(agent, leaders[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            leaders_new = self._update_target_for_population(leaders_new)
-            leaders = self._greedy_selection_population(
-                leaders, leaders_new, self.problem.sense
-            )
+            leaders_new = self.population.evaluate(leaders_new, self.mode)
+            leaders = cy.greedy_agents(leaders, leaders_new, self.problem.sense)
 
         ## Update other wolfs
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Eq. 3 and 4
             miu1 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
             miu2 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
@@ -97,28 +91,22 @@ cdef class RW_GWO(LegacyOptimizer):
             c2 = 2 * self.generator.random(self.problem.n_dims)
             c3 = 2 * self.generator.random(self.problem.n_dims)
             X1 = leaders[0].solution - miu1 * np.abs(
-                c1 * self.g_best.solution - self.pop[idx].solution
+                c1 * self.g_best.solution - self.population[idx].solution
             )
             X2 = leaders[1].solution - miu2 * np.abs(
-                c2 * self.g_best.solution - self.pop[idx].solution
+                c2 * self.g_best.solution - self.population[idx].solution
             )
             X3 = leaders[2].solution - miu3 * np.abs(
-                c3 * self.g_best.solution - self.pop[idx].solution
+                c3 * self.g_best.solution - self.population[idx].solution
             )
             pos_new = (X1 + X2 + X3) / 3.0
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + leaders, self.pop_size, self.problem.sense
-        )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
+        self.population = cy.sort_agents(self.population + leaders, self.problem.sense)[:pop_size]

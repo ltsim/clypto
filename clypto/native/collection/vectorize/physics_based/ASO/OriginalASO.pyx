@@ -3,11 +3,9 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -41,8 +39,8 @@ cdef class OriginalASO(VectorizeOptimizer):
     >>>
     >>> model = ASO.OriginalASO(epoch=1000, pop_size=50, alpha = 50, beta = 0.2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -89,7 +87,7 @@ cdef class OriginalASO(VectorizeOptimizer):
         pop.field("V")[:] = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up, (pop.n, pop.d))
         pop.field("M")[:] = 0.0
 
-    cdef object _amend_solution(self, object solution):
+    cdef object amend_solution(self, object solution):
         condition = np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up)
         rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         return np.where(condition, solution, rand_pos)
@@ -151,7 +149,7 @@ cdef class OriginalASO(VectorizeOptimizer):
             acc_list[idx] = acc
         return acc_list
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t idx, n = pop.n
@@ -174,5 +172,5 @@ cdef class OriginalASO(VectorizeOptimizer):
         self.evaluate(cand, 0, n)
         ops.accept(self, cand)
         current_best = self.sorted_order(cand)[0]
-        if self._compare_fitness(g_fit, cand.F[current_best], self.problem.sense):
+        if cy.better_fitness(g_fit, cand.F[current_best], self.problem.sense):
             pop.buf[self.generator.integers(0, self.pop_size)] = g_row

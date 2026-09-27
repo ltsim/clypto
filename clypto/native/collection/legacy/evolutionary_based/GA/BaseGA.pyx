@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-class BaseGA(LegacyOptimizer):
+class BaseGA(cy.Optimizer):
     """
     The original version of: Genetic Algorithm (GA)
 
@@ -43,8 +43,8 @@ class BaseGA(LegacyOptimizer):
     >>>
     >>> model = GA.BaseGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     >>>
     >>> model2 = GA.BaseGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05, selection="tournament", k_way=0.4, crossover="multi_points")
     >>>
@@ -83,13 +83,11 @@ class BaseGA(LegacyOptimizer):
             mutation_multipoints (bool): Optional, True or False, effect on mutation process, default = False
             mutation (str): Optional, can be ["flip", "swap"] for multipoints and can be ["flip", "swap", "scramble", "inversion"] for one-point, default="flip"
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.pc = self.validator.check_float("pc", pc, (0, 1.0))
-        self.pm = self.validator.check_float("pm", pm, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "pc", "pm"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "pc", "pm"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.pc = cy.validator(float, pc, (0, 1.0), "pc")
+        self.pm = cy.validator(float, pm, (0, 1.0), "pm")
         self.selection = "tournament"
         self.k_way = 0.2
         self.crossover = "uniform"
@@ -97,33 +95,19 @@ class BaseGA(LegacyOptimizer):
         self.mutation_multipoints = True
 
         if "selection" in kwargs:
-            self.selection = self.validator.check_str(
-                "selection", kwargs["selection"], ["tournament", "random", "roulette"]
-            )
+            self.selection = cy.validator(str, kwargs["selection"], ["tournament", "random", "roulette"], "selection")
         if "k_way" in kwargs:
-            self.k_way = self.validator.check_float("k_way", kwargs["k_way"], (0, 1.0))
+            self.k_way = cy.validator(float, kwargs["k_way"], (0, 1.0), "k_way")
         if "crossover" in kwargs:
-            self.crossover = self.validator.check_str(
-                "crossover",
-                kwargs["crossover"],
-                ["one_point", "multi_points", "uniform", "arithmetic"],
-            )
+            self.crossover = cy.validator(str, kwargs["crossover"], ["one_point", "multi_points", "uniform", "arithmetic"], "crossover")
         if "mutation_multipoints" in kwargs:
-            self.mutation_multipoints = self.validator.check_bool(
-                "mutation_multipoints", kwargs["mutation_multipoints"]
-            )
+            self.mutation_multipoints = cy.validator(bool, kwargs["mutation_multipoints"], bound=None, name="mutation_multipoints")
         if self.mutation_multipoints:
             if "mutation" in kwargs:
-                self.mutation = self.validator.check_str(
-                    "mutation", kwargs["mutation"], ["flip", "swap"]
-                )
+                self.mutation = cy.validator(str, kwargs["mutation"], ["flip", "swap"], "mutation")
         else:
             if "mutation" in kwargs:
-                self.mutation = self.validator.check_str(
-                    "mutation",
-                    kwargs["mutation"],
-                    ["flip", "swap", "scramble", "inversion"],
-                )
+                self.mutation = cy.validator(str, kwargs["mutation"], ["flip", "swap", "scramble", "inversion"], "mutation")
 
     def selection_process__(self, list_fitness):
         """
@@ -139,9 +123,10 @@ class BaseGA(LegacyOptimizer):
         Returns:
             list: The position of dad and mom
         """
+        pop_size = self.population.size()
         if self.selection == "roulette":
-            id_c1 = self._get_index_roulette_wheel_selection(list_fitness)
-            id_c2 = self._get_index_roulette_wheel_selection(list_fitness)
+            id_c1 = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
+            id_c2 = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
             if id_c2 == id_c1:
                 # Fall back to a uniform pick among the remaining indices instead of
                 # retrying roulette selection, which can loop forever once floating-point
@@ -149,12 +134,10 @@ class BaseGA(LegacyOptimizer):
                 others = [i for i in range(len(list_fitness)) if i != id_c1]
                 id_c2 = self.generator.choice(others)
         elif self.selection == "random":
-            id_c1, id_c2 = self.generator.choice(range(self.pop_size), 2, replace=False)
+            id_c1, id_c2 = self.generator.choice(range(pop_size), 2, replace=False)
         else:  ## tournament
-            id_c1, id_c2 = self._get_index_kway_tournament_selection(
-                self.pop, k_way=self.k_way, output=2
-            )
-        return self.pop[id_c1].solution, self.pop[id_c2].solution
+            id_c1, id_c2 = cy.kway_tournament(self.generator, self.problem.sense, self.population, k_way=self.k_way, output=2)
+        return self.population[id_c1].solution, self.population[id_c2].solution
 
     def selection_process_00__(self, pop_selected):
         """
@@ -171,9 +154,9 @@ class BaseGA(LegacyOptimizer):
             list: The position of dad and mom
         """
         if self.selection == "roulette":
-            list_fitness = np.array([agent.target.fitness for agent in pop_selected])
-            id_c1 = self._get_index_roulette_wheel_selection(list_fitness)
-            id_c2 = self._get_index_roulette_wheel_selection(list_fitness)
+            list_fitness = np.array([agent.fitness for agent in pop_selected])
+            id_c1 = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
+            id_c2 = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
             if id_c2 == id_c1:
                 # Fall back to a uniform pick among the remaining indices instead of
                 # retrying roulette selection, which can loop forever once floating-point
@@ -185,9 +168,7 @@ class BaseGA(LegacyOptimizer):
                 range(len(pop_selected)), 2, replace=False
             )
         else:  ## tournament
-            id_c1, id_c2 = self._get_index_kway_tournament_selection(
-                pop_selected, k_way=self.k_way, output=2
-            )
+            id_c1, id_c2 = cy.kway_tournament(self.generator, self.problem.sense, pop_selected, k_way=self.k_way, output=2)
         return pop_selected[id_c1].solution, pop_selected[id_c2].solution
 
     def selection_process_01__(self, pop_dad, pop_mom):
@@ -202,20 +183,16 @@ class BaseGA(LegacyOptimizer):
             list: The position of dad and mom
         """
         if self.selection == "roulette":
-            list_fit_dad = np.array([agent.target.fitness for agent in pop_dad])
-            list_fit_mom = np.array([agent.target.fitness for agent in pop_mom])
-            id_c1 = self._get_index_roulette_wheel_selection(list_fit_dad)
-            id_c2 = self._get_index_roulette_wheel_selection(list_fit_mom)
+            list_fit_dad = np.array([agent.fitness for agent in pop_dad])
+            list_fit_mom = np.array([agent.fitness for agent in pop_mom])
+            id_c1 = cy.roulette_wheel(self.generator, self.problem.sense, list_fit_dad)
+            id_c2 = cy.roulette_wheel(self.generator, self.problem.sense, list_fit_mom)
         elif self.selection == "random":
             id_c1 = self.generator.choice(range(len(pop_dad)))
             id_c2 = self.generator.choice(range(len(pop_mom)))
         else:  ## tournament
-            id_c1 = self._get_index_kway_tournament_selection(
-                pop_dad, k_way=self.k_way, output=1
-            )[0]
-            id_c2 = self._get_index_kway_tournament_selection(
-                pop_mom, k_way=self.k_way, output=1
-            )[0]
+            id_c1 = cy.kway_tournament(self.generator, self.problem.sense, pop_dad, k_way=self.k_way, output=1)[0]
+            id_c2 = cy.kway_tournament(self.generator, self.problem.sense, pop_mom, k_way=self.k_way, output=1)[0]
         return pop_dad[id_c1].solution, pop_mom[id_c2].solution
 
     def crossover_process__(self, dad, mom):
@@ -234,7 +211,9 @@ class BaseGA(LegacyOptimizer):
             list: The position of child 1 and child 2
         """
         if self.crossover == "arithmetic":
-            w1, w2 = self._crossover_arithmetic(dad, mom)
+            r = self.generator.uniform()  # w1 = w2 when r = 0.5
+            w1 = np.multiply(r, dad) + np.multiply((1 - r), mom)
+            w2 = np.multiply(r, mom) + np.multiply((1 - r), dad)
         elif self.crossover == "one_point":
             cut = self.generator.integers(1, self.problem.n_dims - 1)
             w1 = np.concatenate([dad[:cut], mom[cut:]])
@@ -328,26 +307,26 @@ class BaseGA(LegacyOptimizer):
         Returns:
             The new population
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
-            id_child = self._get_index_kway_tournament_selection(
-                pop, k_way=0.1, output=1, reverse=True
-            )[0]
+        for idx in range(0, pop_size):
+            id_child = cy.kway_tournament(self.generator, self.problem.sense, pop, k_way=0.1, output=1, reverse=True)[0]
             agent_x = pop_child[idx]
             agent_y = pop[id_child]
-            pop_new.append(self._get_better_agent(agent_x, agent_y, self.problem.sense))
+            pop_new.append(cy.get_better_agent(agent_x, agent_y, self.problem.sense))
         return pop_new
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        list_fitness = np.array([agent.target.fitness for agent in self.pop])
+        pop_size = self.population.size()
+        list_fitness = np.array([agent.fitness for agent in self.population])
         pop_new = []
-        for i in range(0, -(-self.pop_size // 2)):  # ceil division, safe for odd pop_size
+        for i in range(0, -(-pop_size // 2)):  # ceil division, safe for odd pop_size
             ### Selection
             child1, child2 = self.selection_process__(list_fitness)
 
@@ -359,20 +338,20 @@ class BaseGA(LegacyOptimizer):
             child1 = self.mutation_process__(child1)
             child2 = self.mutation_process__(child2)
 
-            child1 = self._correct_solution(child1)
-            child2 = self._correct_solution(child2)
+            child1 = self.population.correct_solution(child1)
+            child2 = self.population.correct_solution(child2)
 
-            agent1 = self._generate_empty_agent(child1)
-            agent2 = self._generate_empty_agent(child2)
+            agent1 = self.population.create_agent(child1)
+            agent2 = self.population.create_agent(child2)
 
             pop_new.append(agent1)
             pop_new.append(agent2)
 
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-2].target = self._get_target(child1)
-                pop_new[-1].target = self._get_target(child2)
-        pop_new = pop_new[: self.pop_size]
+                pop_new[-2].evaluate(self.problem)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = pop_new[: pop_size]
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
+            pop_new = self.population.evaluate(pop_new, self.mode)
         ### Survivor Selection
-        self.pop = self.survivor_process__(self.pop, pop_new)
+        self.population = self.survivor_process__(self.population, pop_new)

@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalESO(LegacyOptimizer):
+cdef class OriginalESO(cy.Optimizer):
     """
     The original version of: Electrical Storm Optimization (ESO)
 
@@ -29,8 +29,8 @@ cdef class OriginalESO(LegacyOptimizer):
     >>>
     >>> model = ESO.OriginalESO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -45,22 +45,21 @@ cdef class OriginalESO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Calculate storm parameters
         # Calculate field resistance based on population spread
-        pos_pop = np.array([agent.solution for agent in self.pop])
+        pos_pop = np.array([agent.solution for agent in self.population])
         mean_pos = np.mean(pos_pop, axis=0)
         std_pos = np.sqrt(np.mean(np.sum((pos_pop - mean_pos) ** 2, axis=1)))
         # std_pos = np.std(pos_pop, axis=0)
@@ -75,10 +74,10 @@ cdef class OriginalESO(LegacyOptimizer):
             # Calculate percentile threshold
             percentile_threshold = (resistance / 2) * 100
             # Find solutions better than percentile
-            fits = np.array([agent.target.fitness for agent in self.pop])
+            fits = np.array([agent.fitness for agent in self.population])
             fitness_percentile = np.percentile(fits, percentile_threshold)
             ionized_indices = np.where(fits <= fitness_percentile)[0]
-            ionized_pop = [self.pop[idx] for idx in ionized_indices]
+            ionized_pop = [self.population[idx] for idx in ionized_indices]
 
         # Calculate field conductivity using logistic function
         if resistance <= 0:
@@ -121,10 +120,10 @@ cdef class OriginalESO(LegacyOptimizer):
 
         # Update each lighting agent
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Initialize new lighting position
             if idx == 0 or len(ionized_pop) == 0:
-                agent = self._generate_empty_agent()
+                agent = self.population.create_agent()
             else:
                 # Initialize near ionized areas
                 alpha = ionized_pop[self.generator.integers(0, len(ionized_pop))]
@@ -132,9 +131,9 @@ cdef class OriginalESO(LegacyOptimizer):
                     loc=0, scale=storm_power, size=self.problem.n_dims
                 )
                 pos_new = alpha.solution + perturbation
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-            agent.target = self._get_target(agent.solution)
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+            agent.evaluate(self.problem)
 
             ## Branching and propagation
             # Simulate branching and propagation of lightning
@@ -163,12 +162,12 @@ cdef class OriginalESO(LegacyOptimizer):
                     pos_new = self.generator.uniform(
                         self.problem.bounds.low, self.problem.bounds.up, self.problem.n_dims
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent_new = self._generate_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent_new = self.population.generate_agent(pos_new)
 
             # Select better position
-            if self._compare_target(agent_new.target, agent.target):
+            if cy.is_better(agent_new, agent, "min"):
                 pop_new.append(agent_new)
             else:
                 pop_new.append(agent)
-        self.pop = pop_new
+        self.population = pop_new

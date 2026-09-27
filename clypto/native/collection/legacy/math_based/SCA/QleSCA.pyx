@@ -3,15 +3,13 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 from clypto.native.collection.legacy.math_based.SCA.DevSCA cimport DevSCA
 
 
-cdef class _QleSCAAgent(LegacyAgent):
+cdef class QleSCAAgent(cy.Agent):
     cdef public object q_table
 
 
@@ -59,6 +57,16 @@ class QTable:
         )
 
 
+cdef class QleSCAPopulation(cy.ResetPopulation):
+    """Agents of :class:`QleSCA`."""
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
+        return QleSCAAgent(solution=solution, q_table=q_table)
+
+
 cdef class QleSCA(DevSCA):
     """
     The original version of: QLE Sine Cosine Algorithm (QLE-SCA)
@@ -86,14 +94,17 @@ cdef class QleSCA(DevSCA):
     >>>
     >>> model = SCA.QleSCA(epoch=1000, pop_size=50, alpha=0.1, gama=0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Hamad, Q. S., Samma, H., Suandi, S. A., & Mohamad-Saleh, J. (2022). Q-learning embedded sine cosine
     algorithm (QLESCA). Expert Systems with Applications, 193, 116417.
     """
+
+    cdef public double alpha
+    cdef public double gama
 
     def __init__(
         self,
@@ -111,24 +122,11 @@ cdef class QleSCA(DevSCA):
             gama (float): the discount factor, default=0.9
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.alpha = self.validator.check_float("alpha", alpha, [0.0, 1.0])
-        self.gama = self.validator.check_float("gama", gama, [0.0, 1.0])
-        self._set_parameters(["epoch", "pop_size", "alpha", "gama"])
+        self.population = cy.population(pop_size, range=[5, 10000], cls=QleSCAPopulation)
+        self.alpha = cy.validator(float, alpha, [0.0, 1.0], "alpha")
+        self.gama = cy.validator(float, gama, [0.0, 1.0], "gama")
+        self.parameters = ["epoch", "pop_size", "alpha", "gama"]
         self.sort_flag = False
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
-        return _QleSCAAgent(solution=solution, q_table=q_table)
-
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        return np.where(
-            np.logical_and(self.problem.bounds.low <= solution, solution <= self.problem.bounds.up),
-            solution,
-            rand_pos,
-        )
 
     def density__(self, pop):
         agents = np.array([agent.solution for agent in pop])
@@ -151,48 +149,47 @@ cdef class QleSCA(DevSCA):
         # calculate the distance
         return numerator / denominator
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        for idx in range(0, self.pop_size):
-            agent = self.pop[idx].copy()
+        pop_size = self.population.size()
+        for idx in range(0, pop_size):
+            agent = self.population[idx].copy()
             ## Step 3: State computation
-            den = self.density__(self.pop)
+            den = self.density__(self.population)
             dis = self.distance__(
-                self.g_best, self.pop, self.problem.bounds.low, self.problem.bounds.up
+                self.g_best, self.population, self.problem.bounds.low, self.problem.bounds.up
             )
             ## Step 4: Action execution
-            state = self.pop[idx].q_table.get_state(density=den, distance=dis)
-            action = self.pop[idx].q_table.get_action(state=state)
-            r1_bound, r3_bound = self.pop[idx].q_table.get_action_params(action)
+            state = self.population[idx].q_table.get_state(density=den, distance=dis)
+            action = self.population[idx].q_table.get_action(state=state)
+            r1_bound, r3_bound = self.population[idx].q_table.get_action_params(action)
             r1 = self.generator.uniform(r1_bound[0], r1_bound[1])
             r3 = self.generator.uniform(r3_bound[0], r3_bound[1])
             r2 = 2 * np.pi * self.generator.uniform()
             r4 = self.generator.uniform()
             if r4 < 0.5:
-                pos_new = self.pop[idx].solution + r1 * np.sin(r2) * (
-                    r3 * self.g_best.solution - self.pop[idx].solution
+                pos_new = self.population[idx].solution + r1 * np.sin(r2) * (
+                    r3 * self.g_best.solution - self.population[idx].solution
                 )
             else:
-                pos_new = self.pop[idx].solution + r1 * np.cos(r2) * (
-                    r3 * self.g_best.solution - self.pop[idx].solution
+                pos_new = self.population[idx].solution + r1 * np.cos(r2) * (
+                    r3 * self.g_best.solution - self.population[idx].solution
                 )
             # Check the bound
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
             agent.solution = pos_new
-            agent.target = self._get_target(pos_new)
-            if self._compare_target(
-                agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
-                self.pop[idx].q_table.update(
+            agent.evaluate(self.problem)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
+                self.population[idx].q_table.update(
                     state, action, reward=1, alpha=self.alpha, gama=self.gama
                 )
             else:
-                self.pop[idx].q_table.update(
+                self.population[idx].q_table.update(
                     state, action, reward=-1, alpha=self.alpha, gama=self.gama
                 )

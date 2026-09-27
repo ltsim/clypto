@@ -5,14 +5,11 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -58,8 +55,8 @@ cdef class OriginalBFO(AgentListOptimizer):
     >>>
     >>> model = BFO.OriginalBFO(epoch=1000, pop_size=50, Ci = 0.01, Ped = 0.25, Nc = 5, Ns = 4, d_attract=0.1, w_attract=0.2, h_repels=0.1, w_repels=10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -142,7 +139,7 @@ cdef class OriginalBFO(AgentListOptimizer):
         self.w_repels = cy.validator(float, w_repels, (2.0, 20.0), "w_repels")
         self.half_pop_size = int(self.pop_size / 2)
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         cost = 0.0
@@ -172,7 +169,7 @@ cdef class OriginalBFO(AgentListOptimizer):
 
     def evaluate__(self, idx, cells):
         cells[idx].interaction = self.attract_repel__(idx, cells)
-        cells[idx].cost = cells[idx].target.fitness + cells[idx].interaction
+        cells[idx].cost = cells[idx].fitness + cells[idx].interaction
         return cells
 
     def tumble_cell__(self, cell, step_size):
@@ -181,7 +178,7 @@ cdef class OriginalBFO(AgentListOptimizer):
         vector = cell.solution + step_size * unit_vector
         return [vector, 0.0, 0.0, 0.0, 0.0]
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         for j in range(0, self.chem_steps):
             for idx in range(0, self.pop_size):
                 sum_nutrients = 0.0
@@ -192,11 +189,9 @@ cdef class OriginalBFO(AgentListOptimizer):
                     delta_i = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
                     unit_vector = delta_i / np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
                     pos_new = self.objs[idx].solution + self.step_size * unit_vector
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
-                    if self._compare_target(
-                        agent.target, self.objs[idx].target, self.problem.sense
-                    ):
+                    pos_new = self.correct_solution(pos_new)
+                    agent = self.generate_agent(pos_new)
+                    if cy.is_better(agent, self.objs[idx], self.problem.sense):
                         self.objs[idx] = agent
                         break
                     sum_nutrients += self.objs[idx].cost
@@ -208,4 +203,4 @@ cdef class OriginalBFO(AgentListOptimizer):
             )
             for idc in range(self.pop_size):
                 if self.generator.random() < self.p_eliminate:
-                    self.objs[idc] = self._generate_agent()
+                    self.objs[idc] = self.generate_agent()

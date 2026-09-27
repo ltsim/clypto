@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalBES(LegacyOptimizer):
+cdef class OriginalBES(cy.Optimizer):
     """
     The original version of: Bald Eagle Search (BES)
 
@@ -39,14 +39,20 @@ cdef class OriginalBES(LegacyOptimizer):
     >>>
     >>> model = BES.OriginalBES(epoch=1000, pop_size=50, a_factor = 10, R_factor = 1.5, alpha = 2.0, c1 = 2.0, c2 = 2.0)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Alsattar, H.A., Zaidan, A.A. and Zaidan, B.B., 2020. Novel meta-heuristic bald eagle
     search optimisation algorithm. Artificial Intelligence Review, 53(3), pp.2237-2264.
     """
+
+    cdef public double R_factor
+    cdef public int a_factor
+    cdef public double alpha
+    cdef public double c1
+    cdef public double c2
 
     def __init__(
             self,
@@ -69,27 +75,24 @@ cdef class OriginalBES(LegacyOptimizer):
             c1 (float): default: 2, in [1, 2]
             c2 (float): c1 and c2 increase the movement intensity of bald eagles towards the best and centre points
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.a_factor = self.validator.check_int("a_factor", a_factor, [2, 20])
-        self.R_factor = self.validator.check_float("R_factor", R_factor, [0.1, 3.0])
-        self.alpha = self.validator.check_float("alpha", alpha, [0.5, 3.0])
-        self.c1 = self.validator.check_float("c1", c1, (0, 4.0))
-        self.c2 = self.validator.check_float("c2", c2, (0, 4.0))
-        self._set_parameters(
-            ["epoch", "pop_size", "a_factor", "R_factor", "alpha", "c1", "c2"]
-        )
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "a_factor", "R_factor", "alpha", "c1", "c2"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
+        self.a_factor = cy.validator(int, a_factor, [2, 20], "a_factor")
+        self.R_factor = cy.validator(float, R_factor, [0.1, 3.0], "R_factor")
+        self.alpha = cy.validator(float, alpha, [0.5, 3.0], "alpha")
+        self.c1 = cy.validator(float, c1, (0, 4.0), "c1")
+        self.c2 = cy.validator(float, c2, (0, 4.0), "c2")
 
     def create_x_y_x1_y1__(self):
         """Using numpy vector for faster computational time"""
+        pop_size = self.population.size()
         ## Eq. 2
-        phi = self.a_factor * np.pi * self.generator.uniform(0, 1, self.pop_size)
-        r = phi + self.R_factor * self.generator.uniform(0, 1, self.pop_size)
+        phi = self.a_factor * np.pi * self.generator.uniform(0, 1, pop_size)
+        r = phi + self.R_factor * self.generator.uniform(0, 1, pop_size)
         xr, yr = r * np.sin(phi), r * np.cos(phi)
         ## Eq. 3
-        r1 = phi1 = self.a_factor * np.pi * self.generator.uniform(0, 1, self.pop_size)
+        r1 = phi1 = self.a_factor * np.pi * self.generator.uniform(0, 1, pop_size)
         xr1, yr1 = r1 * np.sinh(phi1), r1 * np.cosh(phi1)
         x_list = xr / np.max(xr)
         y_list = yr / np.max(yr)
@@ -97,86 +100,75 @@ cdef class OriginalBES(LegacyOptimizer):
         y1_list = yr1 / np.max(yr1)
         return x_list, y_list, x1_list, y1_list
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## 0. Pre-definded
         x_list, y_list, x1_list, y1_list = self.create_x_y_x1_y1__()
 
         # Three parts: selecting the search space, searching within the selected search space and swooping.
         ## 1. Select space
-        pos_list = np.array([agent.solution for agent in self.pop])
+        pos_list = np.array([agent.solution for agent in self.population])
         pos_mean = np.mean(pos_list, axis=0)
 
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             pos_new = self.g_best.solution + self.alpha * self.generator.uniform() * (
-                    pos_mean - self.pop[idx].solution
+                    pos_mean - self.population[idx].solution
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
 
         ## 2. Search in space
-        pos_list = np.array([agent.solution for agent in self.pop])
+        pos_list = np.array([agent.solution for agent in self.population])
         pos_mean = np.mean(pos_list, axis=0)
         pop_child = []
-        for idx in range(0, self.pop_size):
-            idx_rand = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
+        for idx in range(0, pop_size):
+            idx_rand = self.generator.choice(list(set(range(0, pop_size)) - {idx}))
             pos_new = (
-                    self.pop[idx].solution
-                    + y_list[idx] * (self.pop[idx].solution - self.pop[idx_rand].solution)
-                    + x_list[idx] * (self.pop[idx].solution - pos_mean)
+                    self.population[idx].solution
+                    + y_list[idx] * (self.population[idx].solution - self.population[idx_rand].solution)
+                    + x_list[idx] * (self.population[idx].solution - pos_mean)
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_child, self.problem.sense
-            )
+            pop_child = self.population.evaluate(pop_child, self.mode)
+            self.population = self.population.greedy(pop_child)
 
         ## 3. Swoop
-        pos_list = np.array([agent.solution for agent in self.pop])
+        pos_list = np.array([agent.solution for agent in self.population])
         pos_mean = np.mean(pos_list, axis=0)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             pos_new = (
                     self.generator.uniform() * self.g_best.solution
-                    + x1_list[idx] * (self.pop[idx].solution - self.c1 * pos_mean)
+                    + x1_list[idx] * (self.population[idx].solution - self.c1 * pos_mean)
                     + y1_list[idx]
-                    * (self.pop[idx].solution - self.c2 * self.g_best.solution)
+                    * (self.population[idx].solution - self.c2 * self.g_best.solution)
             )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

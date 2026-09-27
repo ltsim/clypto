@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -45,8 +45,8 @@ cdef class BaseGA(VectorizeOptimizer):
     >>>
     >>> model = GA.BaseGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     >>>
     >>> model2 = GA.BaseGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05, selection="tournament", k_way=0.4, crossover="multi_points")
     >>>
@@ -234,11 +234,11 @@ cdef class BaseGA(VectorizeOptimizer):
         c1, c2 = np.where(cross, c1, dad), np.where(cross, c2, mom)
         child = np.where((self.generator.random(m) <= 0.5)[:, None], c1, c2)
         kids = pop.take(np.arange(e, n))
-        kids.X[:] = self._correct_solution(self.mutation_batch__(child))
+        kids.X[:] = self.correct_solution(self.mutation_batch__(child))
         self.evaluate(kids, 0, m)
         self.pop = pop.take(np.arange(e)).concat(kids)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation kids, both
         cdef Py_ssize_t n = pop.n
@@ -246,7 +246,7 @@ cdef class BaseGA(VectorizeOptimizer):
         i1, i2 = self.select_pairs__(F, -(-n // 2))  # ceil division, safe for odd pop_size
         children = self.breed__(X, i1, i2)
         kids = pop.take(np.arange(n))
-        kids.X[:] = self._correct_solution(children[:n])
+        kids.X[:] = self.correct_solution(children[:n])
         self.evaluate(kids, 0, n)
         # survivor selection: every child fights the worst of a random tenth of the population
         rival = self.tournament__(F, n, 1, reverse=True)[:, 0]

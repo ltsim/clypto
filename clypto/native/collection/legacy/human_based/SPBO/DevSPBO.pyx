@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.human_based.SPBO.OriginalSPBO cimport OriginalSPBO
 
@@ -33,59 +34,56 @@ cdef class DevSPBO(OriginalSPBO):
     >>>
     >>> model = SPBO.DevSPBO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(self, epoch=10000, pop_size=100, **kwargs):
         super().__init__(epoch, pop_size, **kwargs)
         self.sort_flag = True
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        good = int(self.pop_size / 3)
-        average = 2 * int(self.pop_size / 3)
-        x_mean = np.mean([agent.solution for agent in self.pop], axis=0)
+        pop_size = self.population.size()
+        good = int(pop_size / 3)
+        average = 2 * int(pop_size / 3)
+        x_mean = np.mean([agent.solution for agent in self.population], axis=0)
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if idx == 0:
-                j = self.generator.choice(list(set(range(0, self.pop_size)) - {idx}))
+                j = self.generator.choice(list(set(range(0, pop_size)) - {idx}))
                 new_pos = self.g_best.solution + self.generator.normal(
                     0, 1, self.problem.n_dims
-                ) * (self.g_best.solution - self.pop[j].solution)
+                ) * (self.g_best.solution - self.population[j].solution)
             elif idx < good:  ## Good Student
                 if self.generator.random() > self.generator.random():
                     new_pos = self.g_best.solution + self.generator.normal(
                         0, 1, self.problem.n_dims
-                    ) * (self.g_best.solution - self.pop[idx].solution)
+                    ) * (self.g_best.solution - self.population[idx].solution)
                 else:
                     ra = self.generator.random(self.problem.n_dims)
                     new_pos = (
-                            self.pop[idx].solution
-                            + ra * (self.g_best.solution - self.pop[idx].solution)
-                            + (1 - ra) * (self.pop[idx].solution - x_mean)
+                            self.population[idx].solution
+                            + ra * (self.g_best.solution - self.population[idx].solution)
+                            + (1 - ra) * (self.population[idx].solution - x_mean)
                     )
             elif idx < average:  ## Average Student
-                new_pos = self.pop[idx].solution + self.generator.normal(
+                new_pos = self.population[idx].solution + self.generator.normal(
                     0, 1, self.problem.n_dims
-                ) * (x_mean - self.pop[idx].solution)
+                ) * (x_mean - self.population[idx].solution)
             else:
                 new_pos = self.problem.generate_solution()
-            new_pos = self._correct_solution(new_pos)
-            agent = self._generate_empty_agent(new_pos)
+            new_pos = self.population.correct_solution(new_pos)
+            agent = self.population.create_agent(new_pos)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(new_pos)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

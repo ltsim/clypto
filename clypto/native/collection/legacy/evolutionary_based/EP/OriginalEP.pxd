@@ -1,5 +1,5 @@
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class OriginalEP(LegacyOptimizer):
-    pass
+cdef class OriginalEP(cy.Optimizer):
+    cdef public double bout_size

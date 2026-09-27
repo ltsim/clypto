@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class SwarmSA(LegacyOptimizer):
+cdef class SwarmSA(cy.Optimizer):
     """
     The swarm version of: Simulated Annealing (SwarmSA)
 
@@ -39,14 +39,22 @@ cdef class SwarmSA(LegacyOptimizer):
     >>> model = SA.SwarmSA(epoch=1000, pop_size=50, max_sub_iter = 5, t0 = 1000, t1 = 1,
     >>>         move_count = 5, mutation_rate = 0.1, mutation_step_size = 0.1, mutation_step_size_damp = 0.99)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Van Laarhoven, P.J. and Aarts, E.H., 1987. Simulated annealing. In Simulated
     annealing: Theory and applications (pp. 7-15). Springer, Dordrecht.
     """
+
+    cdef public int max_sub_iter
+    cdef public int move_count
+    cdef public double mutation_rate
+    cdef public double mutation_step_size
+    cdef public double mutation_step_size_damp
+    cdef public int t0
+    cdef public int t1
 
     def __init__(
             self,
@@ -73,40 +81,16 @@ cdef class SwarmSA(LegacyOptimizer):
             mutation_step_size (float): Mutation Step Size, default=0.1
             mutation_step_size_damp (float): Mutation Step Size Damp, default=0.99
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.max_sub_iter = self.validator.check_int(
-            "max_sub_iter", max_sub_iter, [1, 100000]
-        )
-        self.t0 = self.validator.check_int("t0", t0, [500, 2000])
-        self.t1 = self.validator.check_int("t1", t1, [1, 100])
-        self.move_count = self.validator.check_int(
-            "move_count", move_count, [2, int(self.pop_size / 2)]
-        )
-        self.mutation_rate = self.validator.check_float(
-            "mutation_rate", mutation_rate, (0, 1.0)
-        )
-        self.mutation_step_size = self.validator.check_float(
-            "mutation_step_size", mutation_step_size, (0, 1.0)
-        )
-        self.mutation_step_size_damp = self.validator.check_float(
-            "mutation_step_size_damp", mutation_step_size_damp, (0, 1.0)
-        )
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "max_sub_iter",
-                "t0",
-                "t1",
-                "move_count",
-                "mutation_rate",
-                "mutation_step_size",
-                "mutation_step_size_damp",
-            ]
-        )
-        self.sort_flag = True
+        super().__init__(parameters=[ "epoch", "pop_size", "max_sub_iter", "t0", "t1", "move_count", "mutation_rate", "mutation_step_size", "mutation_step_size_damp", ], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.max_sub_iter = cy.validator(int, max_sub_iter, [1, 100000], "max_sub_iter")
+        self.t0 = cy.validator(int, t0, [500, 2000], "t0")
+        self.t1 = cy.validator(int, t1, [1, 100], "t1")
+        self.move_count = cy.validator(int, move_count, [2, int(self.population.size() / 2)], "move_count")
+        self.mutation_rate = cy.validator(float, mutation_rate, (0, 1.0), "mutation_rate")
+        self.mutation_step_size = cy.validator(float, mutation_step_size, (0, 1.0), "mutation_step_size")
+        self.mutation_step_size_damp = cy.validator(float, mutation_step_size_damp, (0, 1.0), "mutation_step_size_damp")
         self.dyn_t, self.t_damp, self.dyn_sigma = None, None, None
 
     def mutate__(self, position, sigma):
@@ -123,58 +107,56 @@ cdef class SwarmSA(LegacyOptimizer):
             pos_new[self.generator.integers(0, self.problem.n_dims)] = (
                 self.generator.uniform()
             )
-        return self._correct_solution(pos_new)
+        return self.population.correct_solution(pos_new)
 
-    def _initialization(self):
+    def initialization(self):
+        pop_size = self.population.size()
         # Initial Temperature
         self.dyn_t = self.t0  # Initial Temperature
         self.t_damp = (self.t1 / self.t0) ** (
                 1.0 / self.epoch
         )  # Calculate Temperature Damp Rate
         self.dyn_sigma = self.mutation_step_size  # Initial Value of Step Size
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Sub-Iterations
         for g in range(0, self.max_sub_iter):
             # Create new population
             pop_new = []
-            for idx in range(0, self.pop_size):
+            for idx in range(0, pop_size):
                 for j in range(0, self.move_count):
                     # Perform Mutation (Move)
-                    pos_new = self.mutate__(self.pop[idx].solution, self.dyn_sigma)
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_empty_agent(pos_new)
+                    pos_new = self.mutate__(self.population[idx].solution, self.dyn_sigma)
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.create_agent(pos_new)
                     pop_new.append(agent)
                     if self.mode not in self.AVAILABLE_MODES:
-                        pop_new[-1].target = self._get_target(pos_new)
-            pop_new = self._update_target_for_population(pop_new)
+                        pop_new[-1].evaluate(self.problem)
+            pop_new = self.population.evaluate(pop_new, self.mode)
             # Columnize and Sort Newly Created Population
-            pop_new = self._get_sorted_and_trimmed_population(
-                pop_new, self.pop_size, self.problem.sense
-            )
+            pop_new = cy.sort_agents(pop_new, self.problem.sense)[:pop_size]
             # Randomized Selection
-            for idx in range(0, self.pop_size):
+            for idx in range(0, pop_size):
                 # Check if new solution is better than current
-                if self._compare_target(
-                        pop_new[idx].target, self.pop[idx].target, self.problem.sense
-                ):
-                    self.pop[idx] = pop_new[idx].copy()
+                if cy.is_better(pop_new[idx], self.population[idx], self.problem.sense):
+                    self.population[idx] = pop_new[idx].copy()
                 else:
                     # Compute difference according to problem type
                     delta = np.abs(
-                        pop_new[idx].target.fitness - self.pop[idx].target.fitness
+                        pop_new[idx].fitness - self.population[idx].fitness
                     )
                     p = np.exp(-delta / self.dyn_t)  # Compute Acceptance Probability
                     if self.generator.uniform() <= p:  # Accept / Reject
-                        self.pop[idx] = pop_new[idx].copy()
+                        self.population[idx] = pop_new[idx].copy()
         # Update Temperature
         self.dyn_t = self.t_damp * self.dyn_t
         self.dyn_sigma = self.mutation_step_size_damp * self.dyn_sigma

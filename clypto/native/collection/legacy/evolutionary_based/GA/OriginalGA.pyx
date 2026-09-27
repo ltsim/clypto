@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 09:33, 16/03/2020 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-class OriginalGA(LegacyOptimizer):
+class OriginalGA(cy.Optimizer):
     """
     The fully tuned version of: Genetic Algorithm (GA)
 
@@ -41,8 +41,8 @@ class OriginalGA(LegacyOptimizer):
     >>>
     >>> model = GA.OriginalGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     >>>
     >>> model2 = GA.BaseGA(epoch=1000, pop_size=50, pc=0.9, pm=0.05, selection="tournament", k_way=0.4, crossover="multi_points")
     >>>
@@ -86,42 +86,16 @@ class OriginalGA(LegacyOptimizer):
             k_way (float): Optional, set it when use "tournament" selection, default = 0.2
             mutation_multipoints (bool): Optional, True or False, effect on mutation process, default = False
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.pc = self.validator.check_float("pc", pc, (0, 1.0))
-        self.pm = self.validator.check_float("pm", pm, (0, 1.0))
-        self.selection = self.validator.check_str(
-            "selection", selection, ["tournament", "random", "roulette"]
-        )
-        self.crossover = self.validator.check_str(
-            "crossover",
-            crossover,
-            ["one_point", "multi_points", "uniform", "arithmetic"],
-        )
-        self.mutation_multipoints = self.validator.check_bool(
-            "mutation_multipoints", mutation_multipoints
-        )
+        super().__init__(parameters=[ "epoch", "pop_size", "pc", "pm", "selection", "crossover", "mutation", "k_way", "mutation_multipoints", ], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.pc = cy.validator(float, pc, (0, 1.0), "pc")
+        self.pm = cy.validator(float, pm, (0, 1.0), "pm")
+        self.selection = cy.validator(str, selection, ["tournament", "random", "roulette"], "selection")
+        self.crossover = cy.validator(str, crossover, ["one_point", "multi_points", "uniform", "arithmetic"], "crossover")
+        self.mutation_multipoints = cy.validator(bool, mutation_multipoints, bound=None, name="mutation_multipoints")
         if self.mutation_multipoints:
-            self.mutation = self.validator.check_str(
-                "mutation", mutation, ["flip", "swap"]
-            )
+            self.mutation = cy.validator(str, mutation, ["flip", "swap"], "mutation")
         else:
-            self.mutation = self.validator.check_str(
-                "mutation", mutation, ["flip", "swap", "scramble", "inversion"]
-            )
-        self.k_way = self.validator.check_float("k_way", k_way, (0, 1.0))
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "pc",
-                "pm",
-                "selection",
-                "crossover",
-                "mutation",
-                "k_way",
-                "mutation_multipoints",
-            ]
-        )
-        self.sort_flag = False
+            self.mutation = cy.validator(str, mutation, ["flip", "swap", "scramble", "inversion"], "mutation")
+        self.k_way = cy.validator(float, k_way, (0, 1.0), "k_way")

@@ -5,11 +5,10 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
-from clypto.optimizer.native.target cimport NativeTarget
 
 
 cdef class OriginalMSO(VectorizeOptimizer):
@@ -35,8 +34,8 @@ cdef class OriginalMSO(VectorizeOptimizer):
     >>>
     >>> model = MSO.OriginalMSO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -92,13 +91,13 @@ cdef class OriginalMSO(VectorizeOptimizer):
             return 1.0
         return np.arctanh(x)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         # The classic code reads the evaluation counter while it builds the candidates (every
         # agent is evaluated as soon as it is built), so each agent is evaluated inline.
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation new, merged
-        cdef NativeTarget tar
+        cdef cy.Agent tar
         cdef Py_ssize_t i, idx, k, n = pop.n, d = pop.d
         Xp = pop.X
         g_best = np.array(self.g_best_x())
@@ -147,8 +146,8 @@ cdef class OriginalMSO(VectorizeOptimizer):
                 dx = dx * zf
                 pos_new[k] = Xp[idx][k] + dx
             # Bound the variables
-            pos_new = self._correct_solution(pos_new)
-            ops.set_row(new, i, pos_new, self._get_target(pos_new))
+            pos_new = self.correct_solution(pos_new)
+            ops.set_row(new, i, pos_new, self.evaluate_solution(pos_new))
         merged = pop.concat(new)
         pop = merged.take(self.sorted_order(merged)[:self.pop_size])
         self.pop = pop
@@ -175,7 +174,7 @@ cdef class OriginalMSO(VectorizeOptimizer):
                     )
                     * self.cosd(omg)
             ) / self.cosd(omg - gama)
-            pos_new = self._correct_solution(Xp[idx] + x * zf)
-            ops.set_row(new, idx, pos_new, self._get_target(pos_new))
+            pos_new = self.correct_solution(Xp[idx] + x * zf)
+            ops.set_row(new, idx, pos_new, self.evaluate_solution(pos_new))
         merged = pop.concat(new)
         self.pop = merged.take(self.sorted_order(merged)[:self.pop_size])

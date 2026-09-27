@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OGWO(LegacyOptimizer):
+cdef class OGWO(cy.Optimizer):
     """
     The original version of: Opposition-based learning Grey Wolf Optimizer (OGWO)
 
@@ -32,13 +32,16 @@ cdef class OGWO(LegacyOptimizer):
     >>>
     >>> model = GWO.OGWO(epoch=1000, pop_size=50, miu_factor=2.0, jumping_rate=0.05)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Yu, X., Xu, W., & Li, C. (2021). Opposition-based learning grey wolf optimizer for global optimization. Knowledge-Based Systems, 226, 107139.
     """
+
+    cdef public double jumping_rate
+    cdef public double miu_factor
 
     def __init__(
         self,
@@ -55,49 +58,42 @@ cdef class OGWO(LegacyOptimizer):
             miu_factor (float): nonlinear coefficient for equation (11), default = 2.0
             jumping_rate (float):  jumping rate for OBL, default = 0.05
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.miu_factor = self.validator.check_float(
-            "miu_factor", miu_factor, [0.0, 10.0]
-        )
-        self.jumping_rate = self.validator.check_float(
-            "jumping_rate", jumping_rate, [0.0, 1.0]
-        )
-        self._set_parameters(["epoch", "pop_size", "miu_factor", "jumping_rate"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "miu_factor", "jumping_rate"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.miu_factor = cy.validator(float, miu_factor, [0.0, 10.0], "miu_factor")
+        self.jumping_rate = cy.validator(float, jumping_rate, [0.0, 1.0], "jumping_rate")
 
-    def _initialization(self) -> None:
+    def initialization(self) -> None:
         """Initialize population with opposition-based learning"""
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
 
         # Generate opposition population using equation (12)
         pop_opposite = []
-        for agent in self.pop:
+        for agent in self.population:
             pos_opposite = self.problem.bounds.low + self.problem.bounds.up - agent.solution
-            agent_opposite = self._generate_empty_agent(pos_opposite)
-            agent_opposite.target = self._get_target(pos_opposite)
+            agent_opposite = self.population.create_agent(pos_opposite)
+            agent_opposite.evaluate(self.problem)
             pop_opposite.append(agent_opposite)
         # Combine original and opposite populations
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_opposite, self.pop_size, sense=self.problem.sense
-        )
+        self.population = cy.sort_agents(self.population + pop_opposite, self.problem.sense)[:pop_size]
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # linearly decreased from 2 to 0
         a = 2.0 * (1 - (epoch / self.epoch) ** self.miu_factor)
-        _, list_best, _ = self._get_special_agents(
-            self.pop, n_best=3, sense=self.problem.sense
-        )
+        ranked = self.population.sort()
+        list_best = [agent.copy() for agent in ranked[:3]]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             A1 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
             A2 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
             A3 = a * (2 * self.generator.random(self.problem.n_dims) - 1)
@@ -105,39 +101,33 @@ cdef class OGWO(LegacyOptimizer):
             C2 = 2 * self.generator.random(self.problem.n_dims)
             C3 = 2 * self.generator.random(self.problem.n_dims)
             X1 = list_best[0].solution - A1 * np.abs(
-                C1 * list_best[0].solution - self.pop[idx].solution
+                C1 * list_best[0].solution - self.population[idx].solution
             )
             X2 = list_best[1].solution - A2 * np.abs(
-                C2 * list_best[1].solution - self.pop[idx].solution
+                C2 * list_best[1].solution - self.population[idx].solution
             )
             X3 = list_best[2].solution - A3 * np.abs(
-                C3 * list_best[2].solution - self.pop[idx].solution
+                C3 * list_best[2].solution - self.population[idx].solution
             )
             pos_new = (X1 + X2 + X3) / 3.0
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
 
         # Apply opposition-based learning
         if self.generator.random() < self.jumping_rate:
             # Generate opposition population using equation (12)
             pop_opposite = []
-            for agent in self.pop:
+            for agent in self.population:
                 pos_opposite = self.problem.bounds.low + self.problem.bounds.up - agent.solution
-                agent_opposite = self._generate_empty_agent(pos_opposite)
-                agent_opposite.target = self._get_target(pos_opposite)
+                agent_opposite = self.population.create_agent(pos_opposite)
+                agent_opposite.evaluate(self.problem)
                 pop_opposite.append(agent_opposite)
             # Combine original and opposite populations
-            self.pop = self._get_sorted_and_trimmed_population(
-                self.pop + pop_opposite, self.pop_size, sense=self.problem.sense
-            )
+            self.population = cy.sort_agents(self.population + pop_opposite, self.problem.sense)[:pop_size]

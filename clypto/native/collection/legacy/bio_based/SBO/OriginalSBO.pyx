@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.bio_based.SBO.DevSBO cimport DevSBO
 
@@ -38,8 +39,8 @@ cdef class OriginalSBO(DevSBO):
     >>>
     >>> model = SBO.OriginalSBO(epoch=1000, pop_size=50, alpha = 0.9, p_m=0.05, psw = 0.02)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -83,19 +84,20 @@ cdef class OriginalSBO(DevSBO):
         f = np.where(r < c)[0][0]
         return f
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # (percent of the difference between the upper and lower limit (Eq. 7))
         self.sigma = self.psw * (self.problem.bounds.up - self.problem.bounds.low)
         ## Calculate the probability of bowers using Eqs. (1) and (2)
-        fx_list = np.array([agent.target.fitness for agent in self.pop])
+        fx_list = np.array([agent.fitness for agent in self.population])
         fit_list = fx_list.copy()
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if fx_list[idx] < 0:
                 fit_list[idx] = 1.0 + np.abs(fx_list[idx])
             else:
@@ -104,27 +106,28 @@ cdef class OriginalSBO(DevSBO):
         ## Calculating the probability of each bower
         prob_list = fit_list / fit_sum
         pop_new = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.pop[idx].solution.copy()
+        for idx in range(0, pop_size):
+            pos_new = self.population[idx].solution.copy()
             for jdx in range(0, self.problem.n_dims):
                 ### Select a bower using roulette wheel
                 rdx = self.roulette_wheel_selection__(prob_list)
                 ### Calculating Step Size
                 lamda = self.alpha / (1 + prob_list[rdx])
-                pos_new[jdx] = self.pop[idx].solution[jdx] + lamda * (
-                        (self.pop[rdx].solution[jdx] + self.g_best.solution[jdx]) / 2
-                        - self.pop[idx].solution[jdx]
+                pos_new[jdx] = self.population[idx].solution[jdx] + lamda * (
+                        (self.population[rdx].solution[jdx] + self.g_best.solution[jdx]) / 2
+                        - self.population[idx].solution[jdx]
                 )
                 ### Mutation
                 if self.generator.uniform() < self.p_m:
                     pos_new[jdx] = (
-                            self.pop[idx].solution[jdx]
+                            self.population[idx].solution[jdx]
                             + self.generator.normal(0, 1) * self.sigma[jdx]
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                self.pop[idx].target = self._get_target(pos_new)
+                # the classic code evaluates pos_new, not self.population[idx].solution (MEALPY behaviour, kept)
+                self.population[idx].update_solution(self.population.evaluate_solution(pos_new), self.population[idx].solution)
         if self.mode in self.AVAILABLE_MODES:
-            self.pop = self._update_target_for_population(pop_new)
+            self.population = self.population.evaluate(pop_new, self.mode)

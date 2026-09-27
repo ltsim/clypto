@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalWarSO(LegacyOptimizer):
+cdef class OriginalWarSO(cy.Optimizer):
     """
     The original version of: War Strategy Optimization (WarSO) algorithm
 
@@ -35,14 +35,16 @@ cdef class OriginalWarSO(LegacyOptimizer):
     >>>
     >>> model = WarSO.OriginalWarSO(epoch=1000, pop_size=50, rr=0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Ayyarao, Tummala SLV, and Polamarasetty P. Kumar. "Parameter estimation of solar PV models with a new proposed
     war strategy optimization algorithm." International Journal of Energy Research (2022).
     """
+
+    cdef public double rr
 
     def __init__(
         self, epoch: int = 10000, pop_size: int = 100, rr: float = 0.1, **kwargs: object
@@ -53,49 +55,45 @@ cdef class OriginalWarSO(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             rr (float): the probability of switching position updating, default=0.1
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.rr = self.validator.check_float("rr", rr, (0.0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "rr"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "rr"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.rr = cy.validator(float, rr, (0.0, 1.0), "rr")
 
-    def _initialize_variables(self):
-        self.wl = 2 * np.ones(self.pop_size)
-        self.wg = np.zeros(self.pop_size)
+    def initialize_variables(self):
+        pop_size = self.population.size()
+        self.wl = 2 * np.ones(pop_size)
+        self.wg = np.zeros(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop_sorted, indices = self._get_sorted_indices_population(
-            self.pop, self.problem.sense
-        )
+        pop_size = self.population.size()
+        pop_sorted, indices = (cy.sort_agents(self.population, self.problem.sense), cy.argsort_agents(self.population, self.problem.sense))
         self.wl = self.wl[indices]
         self.wg = self.wg[indices]
-        com = self.generator.permutation(self.pop_size)
-        for idx in range(0, self.pop_size):
+        com = self.generator.permutation(pop_size)
+        for idx in range(0, pop_size):
             r1 = self.generator.random()
             if r1 < self.rr:
                 pos_new = 2 * r1 * (
-                    self.g_best.solution - self.pop[com[idx]].solution
+                    self.g_best.solution - self.population[com[idx]].solution
                 ) + self.wl[idx] * self.generator.random() * (
-                    pop_sorted[idx].solution - self.pop[idx].solution
+                    pop_sorted[idx].solution - self.population[idx].solution
                 )
             else:
                 pos_new = 2 * r1 * (
                     pop_sorted[idx].solution - self.g_best.solution
                 ) + self.generator.random() * (
-                    self.wl[idx] * self.g_best.solution - self.pop[idx].solution
+                    self.wl[idx] * self.g_best.solution - self.population[idx].solution
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
                 self.wg[idx] += 1
                 self.wl[idx] = 1 * self.wl[idx] * (1 - self.wg[idx] / self.epoch) ** 2

@@ -7,7 +7,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.swarm_based.JA.DevJA cimport DevJA
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -36,8 +36,8 @@ cdef class OriginalJA(DevJA):
     >>>
     >>> model = JA.OriginalJA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -60,7 +60,7 @@ cdef class OriginalJA(DevJA):
         """
         super().__init__(epoch, pop_size, name=name, mode=mode)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -70,6 +70,6 @@ cdef class OriginalJA(DevJA):
         R = self.generator.uniform(0, 1, (n, 2, d))
         X = pop.X
         pos_new = X + R[:, 0] * (g_best - np.abs(X)) - R[:, 1] * (g_worst - np.abs(X))
-        cand.X[:] = self._correct_solution(pos_new)
+        cand.X[:] = self.correct_solution(pos_new)
         self.evaluate(cand, 0, n)
         self.pop = cand

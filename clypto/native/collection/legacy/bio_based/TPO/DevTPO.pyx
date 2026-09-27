@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevTPO(LegacyOptimizer):
+cdef class DevTPO(cy.Optimizer):
     """
     The original version: Tree Physiology Optimization (TPO)
 
@@ -44,14 +44,18 @@ cdef class DevTPO(LegacyOptimizer):
     >>>
     >>> model = TPO.DevTPO(epoch=1000, pop_size=50, alpha = 0.3, beta = 50., theta = 0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Halim, A. H., & Ismail, I. (2017). Tree physiology optimization in benchmark function and
     traveling salesman problem. Journal of Intelligent Systems, 28(5), 849-871.
     """
+
+    cdef public double alpha
+    cdef public double beta
+    cdef public double theta
 
     def __init__(
             self,
@@ -70,42 +74,41 @@ cdef class DevTPO(LegacyOptimizer):
             beta (float): Diversification factor of tree shoot, default=50.
             theta (float): Factor to reduce randomization, Theta = Power law to reduce randomization as iteration increases, default=0.9
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int(
-            "pop_size", pop_size, [5, 10000]
-        )  # Number of branches
-        self.alpha = self.validator.check_float("alpha", alpha, [-10.0, 10.0])
-        self.beta = self.validator.check_float("beta", beta, [-100.0, 100])
-        self.theta = self.validator.check_float("theta", theta, (0, 1.0))
-        self._set_parameters(["epoch", "pop_size", "alpha", "beta", "theta"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "alpha", "beta", "theta"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)  # Number of branches
+        self.alpha = cy.validator(float, alpha, [-10.0, 10.0], "alpha")
+        self.beta = cy.validator(float, beta, [-100.0, 100], "beta")
+        self.theta = cy.validator(float, theta, (0, 1.0), "theta")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         """
         The idea is a tree has a pop_size of branches (n_branches), each branch will have several leafs.
         """
-        self.n_leafs = int(np.sqrt(self.pop_size) + 1)  # Number of leafs
+        pop_size = self.population.size()
+        self.n_leafs = int(np.sqrt(pop_size) + 1)  # Number of leafs
         self._theta = self.theta
         self.roots = self.generator.uniform(0, 1, (self.n_leafs, self.problem.n_dims))
 
-    def _initialization(self):
+    def initialization(self):
+        pop_size = self.population.size()
         self.pop_total = []
-        self.pop = []  # The best leaf in each branches
-        for idx in range(self.pop_size):
-            leafs = self._generate_population(self.n_leafs)
-            best = self._get_best_agent(leafs, self.problem.sense)
-            self.pop.append(best)
+        self.population = []  # The best leaf in each branches
+        for idx in range(pop_size):
+            leafs = self.population.generate(self.n_leafs)
+            best = cy.sort_agents(leafs, self.problem.sense)[0].copy()
+            self.population.append(best)
             self.pop_total.append(leafs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        for idx in range(0, self.pop_size):
+        pop_size = self.population.size()
+        for idx in range(0, pop_size):
             pos_list = np.array([agent.solution for agent in self.pop_total[idx]])
             carbon_gain = self._theta * self.g_best.solution - pos_list
             roots_old = np.copy(self.roots)
@@ -118,20 +121,16 @@ cdef class DevTPO(LegacyOptimizer):
             pos_list_new = self.g_best.solution + self.beta * nutrient_value
             pop_new = []
             for jdx in range(0, self.n_leafs):
-                pos_new = self._correct_solution(pos_list_new[jdx])
-                agent = self._generate_empty_agent(pos_new)
+                pos_new = self.population.correct_solution(pos_list_new[jdx])
+                agent = self.population.create_agent(pos_new)
                 pop_new.append(agent)
                 if self.mode not in self.AVAILABLE_MODES:
-                    agent.target = self._get_target(pos_new)
-                    self.pop_total[idx][jdx] = self._get_better_agent(
-                        agent, self.pop_total[idx][jdx], self.problem.sense
-                    )
+                    agent.evaluate(self.problem)
+                    self.pop_total[idx][jdx] = cy.get_better_agent(agent, self.pop_total[idx][jdx], self.problem.sense)
             if self.mode in self.AVAILABLE_MODES:
-                pop_new = self._update_target_for_population(pop_new)
-                self.pop_total[idx] = self._greedy_selection_population(
-                    pop_new, self.pop_total[idx], self.problem.sense
-                )
+                pop_new = self.population.evaluate(pop_new, self.mode)
+                self.pop_total[idx] = cy.greedy_agents(pop_new, self.pop_total[idx], self.problem.sense)
         self._theta = self._theta * self.theta
-        for idx in range(0, self.pop_size):
-            best = self._get_best_agent(self.pop_total[idx], self.problem.sense)
-            self.pop[idx] = best
+        for idx in range(0, pop_size):
+            best = cy.sort_agents(self.pop_total[idx], self.problem.sense)[0].copy()
+            self.population[idx] = best

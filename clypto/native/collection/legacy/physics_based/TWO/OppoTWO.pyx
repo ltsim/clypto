@@ -3,9 +3,8 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.physics_based.TWO.OriginalTWO cimport OriginalTWO
 
@@ -30,8 +29,8 @@ cdef class OppoTWO(OriginalTWO):
     >>>
     >>> model = TWO.OppoTWO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -44,47 +43,49 @@ cdef class OppoTWO(OriginalTWO):
         """
         super().__init__(epoch, pop_size, **kwargs)
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
-        half_size = -(-self.pop_size // 2)  # ceil division, safe for odd pop_size
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
+        half_size = -(-pop_size // 2)  # ceil division, safe for odd pop_size
         list_idx = self.generator.choice(
-            range(0, self.pop_size), half_size, replace=False
+            range(0, pop_size), half_size, replace=False
         )
-        pop_temp = [self.pop[list_idx[idx]] for idx in range(0, half_size)]
+        pop_temp = [self.population[list_idx[idx]] for idx in range(0, half_size)]
         pop_oppo = []
         for idx in range(len(pop_temp)):
             pos_opposite = self.problem.bounds.up + self.problem.bounds.low - pop_temp[idx].solution
-            pos_opposite = self._correct_solution(pos_opposite)
-            agent = self._generate_empty_agent(pos_opposite)
+            pos_opposite = self.population.correct_solution(pos_opposite)
+            agent = self.population.create_agent(pos_opposite)
             pop_oppo.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_oppo[-1].target = self._get_target(pos_opposite)
-        pop_oppo = self._update_target_for_population(pop_oppo)
-        self.pop = (pop_temp + pop_oppo)[: self.pop_size]
-        self.pop = self.update_weight__(self.pop)
+                pop_oppo[-1].evaluate(self.problem)
+        pop_oppo = self.population.evaluate(pop_oppo, self.mode)
+        self.population = (pop_temp + pop_oppo)[: pop_size]
+        self.population = self.update_weight__(self.population)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Apply force of others solution on each individual solution
-        pop_new = self.pop.copy()
-        for idx in range(self.pop_size):
+        pop_new = self.population.copy()
+        for idx in range(pop_size):
             pos_new = pop_new[idx].solution.copy().astype(float)
-            for jdx in range(self.pop_size):
-                if self.pop[idx].weight < self.pop[jdx].weight:
+            for jdx in range(pop_size):
+                if self.population[idx].weight < self.population[jdx].weight:
                     force = max(
-                        self.pop[idx].weight * self.muy_s,
-                        self.pop[jdx].weight * self.muy_s,
+                        self.population[idx].weight * self.muy_s,
+                        self.population[jdx].weight * self.muy_s,
                     )
-                    resultant_force = force - self.pop[idx].weight * self.muy_k
-                    g = self.pop[jdx].solution - self.pop[idx].solution
+                    resultant_force = force - self.population[idx].weight * self.muy_k
+                    g = self.population[jdx].solution - self.population[idx].solution
                     acceleration = (
-                        resultant_force * g / (self.pop[idx].weight * self.muy_k)
+                        resultant_force * g / (self.population[idx].weight * self.muy_k)
                     )
                     delta_x = 1 / 2 * acceleration + np.power(
                         self.alpha, epoch
@@ -94,9 +95,9 @@ cdef class OppoTWO(OriginalTWO):
                         0, 1, self.problem.n_dims
                     )
                     pos_new += delta_x
-            self.pop[idx].solution = pos_new
+            self.population[idx].solution = pos_new
         ## Amend solution and update fitness value
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             pos_new = self.g_best.solution + self.generator.normal(
                 0, 1, self.problem.n_dims
             ) / (epoch) * (self.g_best.solution - pop_new[idx].solution)
@@ -107,33 +108,26 @@ cdef class OppoTWO(OriginalTWO):
             conditions = np.logical_and(
                 conditions, self.generator.random(self.problem.n_dims) < 0.5
             )
-            pos_new = np.where(conditions, pos_new, self.pop[idx].solution)
-            pop_new[idx].solution = self._correct_solution(pos_new)
+            pos_new = np.where(conditions, pos_new, self.population[idx].solution)
+            pop_new[idx].solution = self.population.correct_solution(pos_new)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[idx].target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    pop_new[idx], self.pop[idx], self.problem.sense
-                )
+                # the classic code evaluates pos_new, not pop_new[idx].solution (MEALPY behaviour, kept)
+                pop_new[idx].update_solution(self.population.evaluate_solution(pos_new), pop_new[idx].solution)
+                self.population[idx] = cy.get_better_agent(pop_new[idx], self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
         ## Opposition-based here
         pop = []
-        for idx in range(self.pop_size):
-            C_op = self._generate_opposition_solution(self.pop[idx], self.g_best)
-            pos_new = self._correct_solution(C_op)
-            agent = self._generate_empty_agent(pos_new)
+        for idx in range(pop_size):
+            C_op = self.population.opposite_solution(self.population[idx], self.g_best)
+            pos_new = self.population.correct_solution(C_op)
+            agent = self.population.create_agent(pos_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop = self._update_target_for_population(pop)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop, self.problem.sense
-            )
-        self.pop = self.update_weight__(self.pop)
+            pop = self.population.evaluate(pop, self.mode)
+            self.population = self.population.greedy(pop)
+        self.population = self.update_weight__(self.population)

@@ -3,19 +3,32 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class _OriginalMAAgent(LegacyAgent):
+
+cdef class OriginalMAAgent(cy.Agent):
     cdef public object bitstring
 
 
-cdef class OriginalMA(LegacyOptimizer):
+cdef class OriginalMAPopulation(cy.Population):
+    """Agents of :class:`OriginalMA`."""
+    cdef public object bits_total
+
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        bitstring = "".join(
+            [
+                "1" if self.generator.uniform() < 0.5 else "0"
+                for _ in range(0, self.bits_total)
+            ]
+        )
+        return OriginalMAAgent(solution=solution, bitstring=bitstring)
+
+
+cdef class OriginalMA(cy.Optimizer):
     """
     The original version of: Memetic Algorithm (MA)
 
@@ -46,14 +59,20 @@ cdef class OriginalMA(LegacyOptimizer):
     >>>
     >>> model = MA.OriginalMA(epoch=1000, pop_size=50, pc = 0.85, pm = 0.15, p_local = 0.5, max_local_gens = 10, bits_per_param = 4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Moscato, P., 1989. On evolution, search, optimization, genetic algorithms and martial arts:
     Towards memetic algorithms. Caltech concurrent computation program, C3P Report, 826, p.1989.
     """
+
+    cdef public int bits_per_param
+    cdef public int max_local_gens
+    cdef public double p_local
+    cdef public double pc
+    cdef public double pm
 
     def __init__(
         self,
@@ -76,44 +95,18 @@ cdef class OriginalMA(LegacyOptimizer):
             max_local_gens (int): Number of local search agent will be created during local search mechanism, default=10
             bits_per_param (int): Number of bits to decode a real number to 0-1 bitstring, default=4
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.pc = self.validator.check_float("pc", pc, (0, 1.0))
-        self.pm = self.validator.check_float("pm", pm, (0, 1.0))
-        self.p_local = self.validator.check_float("p_local", p_local, (0, 1.0))
-        self.max_local_gens = self.validator.check_int(
-            "max_local_gens", max_local_gens, [2, int(pop_size / 2)]
-        )
-        self.bits_per_param = self.validator.check_int(
-            "bits_per_param", bits_per_param, [2, 32]
-        )
-        self._set_parameters(
-            [
-                "epoch",
-                "pop_size",
-                "pc",
-                "pm",
-                "p_local",
-                "max_local_gens",
-                "bits_per_param",
-            ]
-        )
-        self.sort_flag = True
+        super().__init__(parameters=[ "epoch", "pop_size", "pc", "pm", "p_local", "max_local_gens", "bits_per_param", ], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalMAPopulation)
+        self.pc = cy.validator(float, pc, (0, 1.0), "pc")
+        self.pm = cy.validator(float, pm, (0, 1.0), "pm")
+        self.p_local = cy.validator(float, p_local, (0, 1.0), "p_local")
+        self.max_local_gens = cy.validator(int, max_local_gens, [2, int(pop_size / 2)], "max_local_gens")
+        self.bits_per_param = cy.validator(int, bits_per_param, [2, 32], "bits_per_param")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
-
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        bitstring = "".join(
-            [
-                "1" if self.generator.uniform() < 0.5 else "0"
-                for _ in range(0, self.bits_total)
-            ]
-        )
-        return _OriginalMAAgent(solution=solution, bitstring=bitstring)
+        self.population.bits_total = self.bits_total
 
     def decode__(self, bitstring: str | None = None) -> np.ndarray:
         """
@@ -164,60 +157,60 @@ cdef class OriginalMA(LegacyOptimizer):
             child = current
             bitstring_new = self.point_mutation__(child.bitstring)
             pos_new = self.decode__(bitstring_new)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             agent.update(solution=pos_new, bitstring=bitstring_new)
             list_local.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                list_local[-1].target = self._get_target(pos_new)
-        list_local = self._update_target_for_population(list_local)
+                list_local[-1].evaluate(self.problem)
+        list_local = self.population.evaluate(list_local, self.mode)
         list_local.append(child)
-        best = self._get_best_agent(list_local, self.problem.sense)
+        best = cy.sort_agents(list_local, self.problem.sense)[0].copy()
         return best
 
     def create_child__(self, idx, pop_copy):
+        pop_size = self.population.size()
         ancient = pop_copy[idx + 1] if idx % 2 == 0 else pop_copy[idx - 1]
-        if idx == self.pop_size - 1:
+        if idx == pop_size - 1:
             ancient = pop_copy[0]
         bitstring_new = self.crossover__(pop_copy[idx].bitstring, ancient.bitstring)
         bitstring_new = self.point_mutation__(bitstring_new)
         pos_new = self.decode__(bitstring_new)
-        pos_new = self._correct_solution(pos_new)
-        agent = self._generate_agent(pos_new)
+        pos_new = self.population.correct_solution(pos_new)
+        agent = self.population.generate_agent(pos_new)
         agent.bitstring = bitstring_new
         return agent
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         ## Binary tournament
         children = []
-        for idx in range(0, self.pop_size):
-            idx_offspring = self._get_index_kway_tournament_selection(
-                self.pop, k_way=2, output=1
-            )[0]
-            children.append(self.pop[idx_offspring].copy())
+        for idx in range(0, pop_size):
+            idx_offspring = cy.kway_tournament(self.generator, self.problem.sense, self.population, k_way=2, output=1)[0]
+            children.append(self.population[idx_offspring].copy())
         pop = []
-        for idx in range(0, self.pop_size):
-            if idx == self.pop_size - 1:
+        for idx in range(0, pop_size):
+            if idx == pop_size - 1:
                 ancient = children[0]
             else:
                 ancient = children[idx + 1] if idx % 2 == 0 else children[idx - 1]
             bitstring_new = self.crossover__(children[idx].bitstring, ancient.bitstring)
             bitstring_new = self.point_mutation__(bitstring_new)
             pos_new = self.decode__(bitstring_new)
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             agent.update(bitstring=bitstring_new)
             pop.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop[-1].target = self._get_target(pos_new)
-        self.pop = self._update_target_for_population(pop)
+                pop[-1].evaluate(self.problem)
+        self.population = self.population.evaluate(pop, self.mode)
         # Searching in local
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             if self.generator.random() < self.p_local:
-                self.pop[idx] = self.bits_climber__(pop[idx])
+                self.population[idx] = self.bits_climber__(pop[idx])

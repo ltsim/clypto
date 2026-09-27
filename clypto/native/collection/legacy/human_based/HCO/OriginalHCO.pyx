@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalHCO(LegacyOptimizer):
+cdef class OriginalHCO(cy.Optimizer):
     """
     The original version of: Human Conception Optimizer (HCO)
 
@@ -43,13 +43,18 @@ cdef class OriginalHCO(LegacyOptimizer):
     >>>
     >>> model = HCO.OriginalHCO(epoch=1000, pop_size=50, wfp=0.65, wfv=0.05, c1=1.4, c2=1.4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Acharya, D., & Das, D. K. (2022). A novel Human Conception Optimizer for solving optimization problems. Scientific Reports, 12(1), 21631.
     """
+
+    cdef public double c1
+    cdef public double c2
+    cdef public double wfp
+    cdef public double wfv
 
     def __init__(
             self,
@@ -70,97 +75,85 @@ cdef class OriginalHCO(LegacyOptimizer):
             c1 (float): acceleration coefficient, same as PSO, default=1.4
             c2 (float): acceleration coefficient, same as PSO, default=1.4
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.wfp = self.validator.check_float("wfp", wfp, [0, 1.0])
-        self.wfv = self.validator.check_float("wfv", wfv, [0, 1.0])
-        self.c1 = self.validator.check_float("c1", c1, [0.0, 100.0])
-        self.c2 = self.validator.check_float("c2", c2, [1.0, 100.0])
-        self._set_parameters(["epoch", "pop_size", "wfp", "wfv", "c1", "c2"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "wfp", "wfv", "c1", "c2"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.wfp = cy.validator(float, wfp, [0, 1.0], "wfp")
+        self.wfv = cy.validator(float, wfv, [0, 1.0], "wfv")
+        self.c1 = cy.validator(float, c1, [0.0, 100.0], "c1")
+        self.c2 = cy.validator(float, c2, [1.0, 100.0], "c2")
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
+    def initialization(self):
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
         pop_op = []
-        for idx in range(0, self.pop_size):
-            pos_new = self.problem.bounds.up + self.problem.bounds.low - self.pop[idx].solution
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+        for idx in range(0, pop_size):
+            pos_new = self.problem.bounds.up + self.problem.bounds.low - self.population[idx].solution
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_op.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_op = self._update_target_for_population(pop_op)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_op, self.problem.sense
-            )
-        _, (best,), (worst,) = self._get_special_agents(
-            self.pop, n_best=1, n_worst=1, sense=self.problem.sense
-        )
+            pop_op = self.population.evaluate(pop_op, self.mode)
+            self.population = self.population.greedy(pop_op)
+        ranked = self.population.sort()
+        (best,) = [agent.copy() for agent in ranked[:1]]
+        (worst,) = [agent.copy() for agent in ranked[::-1][:1]]
         pfit = (
-                       worst.target.fitness - best.target.fitness
-               ) * self.wfp + best.target.fitness
-        for idx in range(0, self.pop_size):
-            if self._compare_fitness(
-                    pfit, self.pop[idx].target.fitness, self.problem.sense
-            ):
+                       worst.fitness - best.fitness
+               ) * self.wfp + best.fitness
+        for idx in range(0, pop_size):
+            if cy.better_fitness(pfit, self.population[idx].fitness, self.problem.sense):
                 while True:
-                    agent = self._generate_agent()
-                    if self._compare_fitness(
-                            agent.target.fitness, pfit, self.problem.sense
-                    ):
-                        self.pop[idx] = agent
+                    agent = self.population.generate_agent()
+                    if cy.better_fitness(agent.fitness, pfit, self.problem.sense):
+                        self.population[idx] = agent
                         break
         self.vec = self.generator.uniform(
-            self.problem.bounds.low, self.problem.bounds.up, (self.pop_size, self.problem.n_dims)
+            self.problem.bounds.low, self.problem.bounds.up, (pop_size, self.problem.n_dims)
         )
-        self.pop_p = [agent.copy() for agent in self.pop]
+        self.pop_p = [agent.copy() for agent in self.population]
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         lamda = self.generator.random()
         neu = 2
-        fits = np.array([agent.target.fitness for agent in self.pop])
+        fits = np.array([agent.fitness for agent in self.population])
         fit_mean = np.mean(fits)
-        RR = (self.g_best.target.fitness - fits) ** 2
+        RR = (self.g_best.fitness - fits) ** 2
         rr = (fit_mean - fits) ** 2
         ll = RR - rr
-        LL = self.g_best.target.fitness - fit_mean
+        LL = self.g_best.fitness - fit_mean
         VV = lamda * (ll / (4 * neu * LL))
         pop_new = []
-        for idx in range(0, self.pop_size):
-            a1 = self.pop_p[idx].solution - self.pop[idx].solution
-            a2 = self.g_best.solution - self.pop[idx].solution
+        for idx in range(0, pop_size):
+            a1 = self.pop_p[idx].solution - self.population[idx].solution
+            a2 = self.g_best.solution - self.population[idx].solution
             self.vec[idx] = (
                     self.wfv * (VV[idx] + self.vec[idx])
                     + self.c1 * a1 * np.sin(2 * np.pi * epoch / self.epoch)
                     + self.c2 * a2 * np.sin(2 * np.pi * epoch / self.epoch)
             )
-            pos_new = self.pop[idx].solution + self.vec[idx]
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population[idx].solution + self.vec[idx]
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
+                pop_new[-1].evaluate(self.problem)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
+            pop_new = self.population.evaluate(pop_new, self.mode)
 
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                    pop_new[idx].target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = pop_new[idx].copy()
-                if self._compare_target(
-                        pop_new[idx].target, self.pop_p[idx].target, self.problem.sense
-                ):
+        for idx in range(0, pop_size):
+            if cy.is_better(pop_new[idx], self.population[idx], self.problem.sense):
+                self.population[idx] = pop_new[idx].copy()
+                if cy.is_better(pop_new[idx], self.pop_p[idx], self.problem.sense):
                     self.pop_p[idx] = pop_new[idx].copy()

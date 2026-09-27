@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCA(LegacyOptimizer):
+cdef class OriginalCA(cy.Optimizer):
     """
     The original version of: Culture Algorithm (CA)
 
@@ -35,14 +35,16 @@ cdef class OriginalCA(LegacyOptimizer):
     >>>
     >>> model = CA.OriginalCA(epoch=1000, pop_size=50, accepted_rate = 0.15)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Chen, B., Zhao, L. and Lu, J.H., 2009, April. Wind power forecast using RBF network and culture algorithm.
     In 2009 International Conference on Sustainable Power Generation and Supply (pp. 1-6). IEEE.
     """
+
+    cdef public double accepted_rate
 
     def __init__(
             self,
@@ -57,27 +59,24 @@ cdef class OriginalCA(LegacyOptimizer):
             pop_size (int): number of population size, default = 100
             accepted_rate (float): probability of accepted rate, default: 0.15
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.accepted_rate = self.validator.check_float(
-            "accepted_rate", accepted_rate, (0, 1.0)
-        )
-        self._set_parameters(["epoch", "pop_size", "accepted_rate"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size", "accepted_rate"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.accepted_rate = cy.validator(float, accepted_rate, (0, 1.0), "accepted_rate")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
+        pop_size = self.population.size()
         ## Dynamic variables
         self.dyn_belief_space = {
             "lb": self.problem.bounds.low,
             "ub": self.problem.bounds.up,
         }
-        self.dyn_accepted_num = int(self.accepted_rate * self.pop_size)
+        self.dyn_accepted_num = int(self.accepted_rate * pop_size)
         # update situational knowledge (g_best here is an element inside belief space)
 
     def create_faithful__(self, lb, ub):
         pos = self.generator.uniform(lb, ub)
-        return self._generate_agent(pos)
+        return self.population.generate_agent(pos)
 
     def update_belief_space__(self, belief_space, pop_accepted):
         pos_list = np.array([agent.solution for agent in pop_accepted])
@@ -85,33 +84,32 @@ cdef class OriginalCA(LegacyOptimizer):
         belief_space["ub"] = np.max(pos_list, axis=0)
         return belief_space
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # create next generation
         pop_child = [
             self.create_faithful__(
                 self.dyn_belief_space["lb"], self.dyn_belief_space["ub"]
             )
-            for _ in range(0, self.pop_size)
+            for _ in range(0, pop_size)
         ]
         # select next generation
         pop_new = []
-        pop_full = self.pop + pop_child
+        pop_full = self.population + pop_child
         size_new = len(pop_full)
-        for _ in range(0, self.pop_size):
+        for _ in range(0, pop_size):
             id1, id2 = self.generator.choice(list(range(0, size_new)), 2, replace=False)
-            agent = self._get_better_agent(
-                pop_full[id1], pop_full[id2], self.problem.sense
-            )
+            agent = cy.get_better_agent(pop_full[id1], pop_full[id2], self.problem.sense)
             pop_new.append(agent)
-        self.pop = self._get_sorted_population(pop_new, self.problem.sense)
+        self.population = cy.sort_agents(pop_new, self.problem.sense)
         # Get accepted faithful
-        accepted = self.pop[: self.dyn_accepted_num]
+        accepted = self.population[: self.dyn_accepted_num]
         # Update belief_space
         self.dyn_belief_space = self.update_belief_space__(
             self.dyn_belief_space, accepted

@@ -9,7 +9,7 @@
 import numpy as np
 
 from clypto.native.collection.vectorize.human_based.CHIO.OriginalCHIO cimport OriginalCHIO
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -41,8 +41,8 @@ cdef class DevCHIO(OriginalCHIO):
     >>>
     >>> model = CHIO.DevCHIO(epoch=1000, pop_size=50, brr = 0.15, max_age = 10)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -64,7 +64,7 @@ cdef class DevCHIO(OriginalCHIO):
         """
         super().__init__(epoch, pop_size, brr, max_age, name=name, mode=mode)
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
         pop_new = []
         is_corona_list = [
                              False,
@@ -111,7 +111,7 @@ cdef class DevCHIO(OriginalCHIO):
                         self.immunity_type_list == 2
                     )  # Immunity list
                     fit_list = np.array(
-                        [self.objs[item].target.fitness for item in idx_candidates[0]]
+                        [self.objs[item].fitness for item in idx_candidates[0]]
                     )
                     idx_selected = idx_candidates[0][
                         np.argmin(fit_list)
@@ -121,42 +121,36 @@ cdef class DevCHIO(OriginalCHIO):
                     )
             if self.finished:
                 break
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.correct_solution(pos_new)
+            agent = self.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.evaluate_agents(pop_new)
 
         for idx in range(0, self.pop_size):
             # Step 4: Update herd immunity population
-            if self._compare_target(
-                    pop_new[idx].target, self.objs[idx].target, self.problem.sense
-            ):
+            if cy.is_better(pop_new[idx], self.objs[idx], self.problem.sense):
                 self.objs[idx] = pop_new[idx].copy()
             else:
                 self.age_list[idx] += 1
             ## Calculate immunity mean of population
-            fit_list = np.array([agent.target.fitness for agent in self.objs])
+            fit_list = np.array([agent.fitness for agent in self.objs])
             delta_fx = np.mean(fit_list)
             if (
-                    self._compare_fitness(
-                        pop_new[idx].target.fitness, delta_fx, self.problem.sense
-                    )
+                    cy.better_fitness(pop_new[idx].fitness, delta_fx, self.problem.sense)
                     and (self.immunity_type_list[idx] == 0)
                     and is_corona_list[idx]
             ):
                 self.immunity_type_list[idx] = 1
                 self.age_list[idx] = 1
-            if self._compare_fitness(
-                    delta_fx, pop_new[idx].target.fitness, self.problem.sense
-            ) and (self.immunity_type_list[idx] == 1):
+            if cy.better_fitness(delta_fx, pop_new[idx].fitness, self.problem.sense) and (self.immunity_type_list[idx] == 1):
                 self.immunity_type_list[idx] = 2
                 self.age_list[idx] = 0
             # Step 5: Fatality condition
             if (self.age_list[idx] >= self.max_age) and (
                     self.immunity_type_list[idx] == 1
             ):
-                self.objs[idx] = self._generate_agent()
+                self.objs[idx] = self.generate_agent()
                 self.immunity_type_list[idx] = 0
                 self.age_list[idx] = 0

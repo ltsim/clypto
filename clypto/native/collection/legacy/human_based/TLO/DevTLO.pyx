@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevTLO(LegacyOptimizer):
+cdef class DevTLO(cy.Optimizer):
     """
     The developed version: Teaching Learning-based Optimization (TLO)
 
@@ -36,8 +36,8 @@ cdef class DevTLO(LegacyOptimizer):
     >>>
     >>> model = TLO.DevTLO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -53,68 +53,57 @@ cdef class DevTLO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ## Teaching Phrase
             TF = self.generator.integers(1, 3)  # 1 or 2 (never 3)
-            list_pos = np.array([agent.solution for agent in self.pop])
+            list_pos = np.array([agent.solution for agent in self.population])
             DIFF_MEAN = self.generator.random(self.problem.n_dims) * (
                     self.g_best.solution - TF * np.mean(list_pos, axis=0)
             )
-            pos_new = self.pop[idx].solution + DIFF_MEAN
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population[idx].solution + DIFF_MEAN
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
         pop_child = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ## Learning Phrase
-            pos_new = self.pop[idx].solution.copy().astype(float)
+            pos_new = self.population[idx].solution.copy().astype(float)
             id_partner = self.generator.choice(
-                np.setxor1d(np.array(range(self.pop_size)), np.array([idx]))
+                np.setxor1d(np.array(range(pop_size)), np.array([idx]))
             )
-            if self._compare_target(
-                    self.pop[idx].target, self.pop[id_partner].target, self.problem.sense
-            ):
+            if cy.is_better(self.population[idx], self.population[id_partner], self.problem.sense):
                 pos_new += self.generator.random(self.problem.n_dims) * (
-                        self.pop[idx].solution - self.pop[id_partner].solution
+                        self.population[idx].solution - self.population[id_partner].solution
                 )
             else:
                 pos_new += self.generator.random(self.problem.n_dims) * (
-                        self.pop[id_partner].solution - self.pop[idx].solution
+                        self.population[id_partner].solution - self.population[idx].solution
                 )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_child, self.problem.sense
-            )
+            pop_child = self.population.evaluate(pop_child, self.mode)
+            self.population = self.population.greedy(pop_child)

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -40,8 +40,8 @@ cdef class DevFOX(VectorizeOptimizer):
     >>>
     >>> model = FOX.DevFOX(epoch=1000, pop_size=50, c1=0.18, c2=0.82, pp=0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -77,10 +77,10 @@ cdef class DevFOX(VectorizeOptimizer):
         self.c2 = cy.validator(float, c2, (-100.0, 100.0), "c2")
         self.pp = cy.validator(float, pp, (0.0, 1.0), "pp")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.mint = 10000000
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
         cdef object rng = self.generator

@@ -7,7 +7,7 @@ import numpy as np
 
 from cython.parallel cimport prange
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation, np_clip
 from clypto.native.collection.vectorize.swarm_based.PSO._base cimport _PSOBase
@@ -68,8 +68,8 @@ cdef class OriginalPSO(_PSOBase):
     >>>
     >>> model = PSO.OriginalPSO(epoch=1000, pop_size=50, c1=2.05, c2=20.5, w=0.4)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -115,7 +115,7 @@ cdef class OriginalPSO(_PSOBase):
     cdef bint clips_velocity(self):
         return False
 
-    def _evolve(self, int epoch):
+    def evolve(self, int epoch):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand = pop.empty_like()
         cdef Py_ssize_t start, stop, n = pop.n, d = pop.d

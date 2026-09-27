@@ -1,13 +1,13 @@
+cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 00:08, 27/10/2022 ----------%
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalCoatiOA(LegacyOptimizer):
+cdef class OriginalCoatiOA(cy.Optimizer):
     """
     The original version of: Coati Optimization Algorithm (CoatiOA)
 
@@ -36,8 +36,8 @@ cdef class OriginalCoatiOA(LegacyOptimizer):
     >>>
     >>> model = CoatiOA.OriginalCoatiOA(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -53,62 +53,53 @@ cdef class OriginalCoatiOA(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         # Phase1: Hunting and attacking strategy on iguana (Exploration Phase)
-        size2 = int(self.pop_size / 2)
+        size2 = int(pop_size / 2)
         for idx in range(0, size2):
-            pos_new = self.pop[idx].solution + self.generator.random() * (
+            pos_new = self.population[idx].solution + self.generator.random() * (
                     self.g_best.solution
-                    - self.generator.integers(1, 3) * self.pop[idx].solution
+                    - self.generator.integers(1, 3) * self.population[idx].solution
             )  # Eq. 4
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
 
-        for idx in range(size2, self.pop_size):
-            iguana = self._generate_agent()
-            if self._compare_target(
-                    iguana.target, self.pop[idx].target, self.problem.sense
-            ):
-                pos_new = self.pop[idx].solution + self.generator.random() * (
+        for idx in range(size2, pop_size):
+            iguana = self.population.generate_agent()
+            if cy.is_better(iguana, self.population[idx], self.problem.sense):
+                pos_new = self.population[idx].solution + self.generator.random() * (
                         iguana.solution
-                        - self.generator.integers(1, 3) * self.pop[idx].solution
+                        - self.generator.integers(1, 3) * self.population[idx].solution
                 )  # Eq. 6
             else:
-                pos_new = self.pop[idx].solution + self.generator.random() * (
-                        self.pop[idx].solution - iguana.solution
+                pos_new = self.population[idx].solution + self.generator.random() * (
+                        self.population[idx].solution - iguana.solution
                 )  # Eq. 6
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent
 
         # Phase2: The process of escaping from predators (Exploitation Phase)
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             LO, HI = self.problem.bounds.low / epoch, self.problem.bounds.up / epoch
-            pos_new = self.pop[idx].solution + (1 - 2 * self.generator.random()) * (
+            pos_new = self.population[idx].solution + (1 - 2 * self.generator.random()) * (
                     LO + self.generator.random() * (HI - LO)
             )  # Eq. 8
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_agent(pos_new)
-            if self._compare_target(
-                    agent.target, self.pop[idx].target, self.problem.sense
-            ):
-                self.pop[idx] = agent
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.generate_agent(pos_new)
+            if cy.is_better(agent, self.population[idx], self.problem.sense):
+                self.population[idx] = agent

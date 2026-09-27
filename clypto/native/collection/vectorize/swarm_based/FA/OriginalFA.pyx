@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -41,8 +41,8 @@ cdef class OriginalFA(VectorizeOptimizer):
     >>>
     >>> model = FA.OriginalFA(epoch=1000, pop_size=50, max_sparks = 50, p_a = 0.04, p_b = 0.8, max_ea = 40, m_sparks = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -94,7 +94,7 @@ cdef class OriginalFA(VectorizeOptimizer):
         self.max_ea = cy.validator(int, max_ea, [2, 100], "max_ea")
         self.m_sparks = cy.validator(int, m_sparks, [2, 10000], "m_sparks")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         cdef NativePopulation sparks, both
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -118,7 +118,7 @@ cdef class OriginalFA(VectorizeOptimizer):
         pos = X[parent] + np.where(subset, shift, 0.0)
         pos = np.where((pos < lb) | (pos > ub), lb + np.abs(pos) % (ub - lb), pos)
         sparks = pop.take(np.zeros(total, dtype=int))
-        sparks.X[:] = self._correct_solution(pos)
+        sparks.X[:] = self.correct_solution(pos)
         self.evaluate(sparks, 0, total)
         both = sparks.concat(pop)
         self.pop = both.take(self.sorted_order(both)[:self.pop_size])

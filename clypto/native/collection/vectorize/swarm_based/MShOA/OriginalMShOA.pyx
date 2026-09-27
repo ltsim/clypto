@@ -16,7 +16,7 @@
 # not inter-iteration change. PTI update happens AFTER strategy application.
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -61,8 +61,8 @@ cdef class OriginalMShOA(VectorizeOptimizer):
     >>>
     >>> model = MShOA.OriginalMShOA(epoch=1000, pop_size=50, polarization_rate=0.5, strike_factor=1.5, k_value=0.3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -119,14 +119,14 @@ cdef class OriginalMShOA(VectorizeOptimizer):
         self.k_value = cy.validator(float, k_value, (0.0, 1.0), "k_value")
         self.pti = None
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         # Initialize PTI according to paper: PTI_i = round(1 + 2 * rand_i)
         u = self.generator.random(self.pop_size)  # uniform(0, 1) for each agent
         pti_raw = 1 + 2 * u  # produces values in [1, 3)
         self.pti = np.round(pti_raw).astype(int)  # round to nearest integer
         self.pti = np.clip(self.pti, 1, 3)  # ensure values are in {1, 2, 3}
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation pop = self.pop
         pop_pos = np.array(pop.X)  # X_i(t)
         g_best_pos = np.array(self.g_best_x())  # Shape: (n_dims,)

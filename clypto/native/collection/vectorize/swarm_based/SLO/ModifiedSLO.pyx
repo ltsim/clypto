@@ -5,15 +5,12 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-# --- dedicated agents (private to this module) ---
-
 from math import gamma
 import numpy as np
 
-from clypto.optimizer.native.agent cimport LegacyAgent
 
 
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -46,8 +43,8 @@ cdef class ModifiedSLO(AgentListOptimizer):
     >>>
     >>> model = SLO.ModifiedSLO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -73,29 +70,27 @@ cdef class ModifiedSLO(AgentListOptimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.pop_size = cy.validator(int, pop_size, [5, 10000], "pop_size")
 
-    def _generate_empty_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
+    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         local_pos = self.problem.bounds.low + self.problem.bounds.up - solution
-        local_pos = self._correct_solution(local_pos)
+        local_pos = self.correct_solution(local_pos)
         return FieldAgent(solution=solution, local_solution=local_pos)
 
-    def _generate_agent(self, solution: np.ndarray | None = None) -> LegacyAgent:
-        agent = self._generate_empty_agent(solution)
-        target = self._get_target(agent.solution)
-        local_target = self._get_target(agent.local_solution)
-        if self._compare_target(target, local_target, self.problem.sense):
+    def generate_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+        agent = self.create_agent(solution)
+        target = self.evaluate_solution(agent.solution)
+        local_best = self.evaluate_solution(agent.local_solution)
+        if cy.is_better(target, local_best, self.problem.sense):
             t1 = agent.local_solution.copy()
             t2 = agent.solution.copy()
-            agent.update(
-                solution=t1, target=local_target, local_solution=t2, local_target=target
-            )
+            agent.update_solution(local_best, t1)
+            agent.update(local_solution=t2, local_best=target)
         else:
             t1 = agent.solution.copy()
             t2 = agent.local_solution.copy()
-            agent.update(
-                solution=t1, target=target, local_solution=t2, local_target=local_target
-            )
+            agent.update_solution(target, t1)
+            agent.update(local_solution=t2, local_best=local_best)
         return agent
 
     def shrink_encircling_levy__(self, current_pos, epoch, dist, c, beta=1):
@@ -112,7 +107,7 @@ cdef class ModifiedSLO(AgentListOptimizer):
             current_pos - np.sqrt(epoch + 1) * np.sign(self.generator.random() - 0.5)
         ) * levy
 
-    def _evolve_agents(self, epoch):
+    def evolve_agents(self, epoch):
 
         c = 2.0 - 2.0 * epoch / self.epoch
         if c > 1:
@@ -145,19 +140,15 @@ cdef class ModifiedSLO(AgentListOptimizer):
                     pos_new = rand_SL - c * np.abs(
                         self.generator.uniform() * rand_SL - self.objs[idx].solution
                     )
-            pos_new = self._correct_solution(pos_new)
+            pos_new = self.correct_solution(pos_new)
             agent.solution = pos_new
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(agent.solution)
-        pop_new = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.evaluate_agents(pop_new)
         for idx in range(0, self.pop_size):
-            if self._compare_target(
-                pop_new[idx].target, self.objs[idx].target, self.problem.sense
-            ):
+            if cy.is_better(pop_new[idx], self.objs[idx], self.problem.sense):
                 self.objs[idx] = pop_new[idx].copy()
-                if self._compare_target(
-                    pop_new[idx].target, self.objs[idx].local_target, self.problem.sense
-                ):
+                if cy.is_better(pop_new[idx], self.objs[idx].local_best, self.problem.sense):
                     self.objs[idx].local_solution = pop_new[idx].solution.copy()
-                    self.objs[idx].local_target = pop_new[idx].target.copy()
+                    self.objs[idx].local_best = pop_new[idx].copy()

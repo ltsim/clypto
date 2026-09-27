@@ -6,4 +6,4 @@ cdef class DevSARO(AgentListOptimizer):
     cdef public object mu
     cdef public object dyn_USN
 
-    cdef object _amend_solution(self, object solution)
+    cdef object amend_solution(self, object solution)

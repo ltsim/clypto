@@ -6,11 +6,11 @@
 
 import math
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalNRO(LegacyOptimizer):
+cdef class OriginalNRO(cy.Optimizer):
     """
     The original version of: Nuclear Reaction Optimization (NRO)
 
@@ -33,8 +33,8 @@ cdef class OriginalNRO(LegacyOptimizer):
     >>>
     >>> model = NRO.OriginalNRO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -53,26 +53,18 @@ cdef class OriginalNRO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.ResetPopulation)
 
-    def _amend_solution(self, solution: np.ndarray) -> np.ndarray:
-        rand_pos = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        condition = np.logical_and(
-            self.problem.bounds.low <= solution, solution <= self.problem.bounds.up
-        )
-        return np.where(condition, solution, rand_pos)
-
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         xichma_v = 1
         xichma_u = (
                            (math.gamma(1 + 1.5) * math.sin(math.pi * 1.5 / 2))
@@ -87,18 +79,18 @@ cdef class OriginalNRO(LegacyOptimizer):
         freq = 0.05
         alpha = 0.01
         pop_new = []
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             ## Calculate neutron vector Nei by Eq. (2)
             ## Random 1 more index to select neutron
-            temp1 = list(set(range(0, self.pop_size)) - {idx})
+            temp1 = list(set(range(0, pop_size)) - {idx})
             i1 = self.generator.choice(temp1, replace=False)
-            Nei = (self.pop[idx].solution + self.pop[i1].solution) / 2
+            Nei = (self.population[idx].solution + self.population[i1].solution) / 2
             ## Update population of fission products according to Eq.(3), (6) or (9);
             if self.generator.uniform() <= Pfi:
                 ### Update based on Eq. 3
                 if self.generator.uniform() <= Pb:
                     xichma1 = (np.log(epoch) * 1.0 / epoch) * np.abs(
-                        np.subtract(self.pop[idx].solution, self.g_best.solution)
+                        np.subtract(self.population[idx].solution, self.g_best.solution)
                     )
                     gauss = np.array(
                         [
@@ -115,11 +107,11 @@ cdef class OriginalNRO(LegacyOptimizer):
                 else:
                     i2 = self.generator.choice(temp1, replace=False)
                     xichma2 = (np.log(epoch) * 1.0 / epoch) * np.abs(
-                        np.subtract(self.pop[i2].solution, self.g_best.solution)
+                        np.subtract(self.population[i2].solution, self.g_best.solution)
                     )
                     gauss = np.array(
                         [
-                            self.generator.normal(self.pop[idx].solution[j], xichma2[j])
+                            self.generator.normal(self.population[idx].solution[j], xichma2[j])
                             for j in range(self.problem.n_dims)
                         ]
                     )
@@ -132,116 +124,107 @@ cdef class OriginalNRO(LegacyOptimizer):
             else:
                 i3 = self.generator.choice(temp1, replace=False)
                 xichma2 = (np.log(epoch) * 1.0 / epoch) * np.abs(
-                    np.subtract(self.pop[i3].solution, self.g_best.solution)
+                    np.subtract(self.population[i3].solution, self.g_best.solution)
                 )
                 Xi = np.array(
                     [
-                        self.generator.normal(self.pop[idx].solution[j], xichma2[j])
+                        self.generator.normal(self.population[idx].solution[j], xichma2[j])
                         for j in range(self.problem.n_dims)
                     ]
                 )
             ## Check the boundary and evaluate the fitness function
-            pos_new = self._correct_solution(Xi)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(Xi)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
 
         # NFu phase
         ## Ionization stage
         ## Calculate the Pa through Eq. (10)
         pop_child = []
         ranked_pop = np.argsort(
-            [self.pop[i].target.fitness for i in range(self.pop_size)]
+            [self.population[i].fitness for i in range(pop_size)]
         )
-        for idx in range(self.pop_size):
-            X_ion = self.pop[idx].solution.copy()
-            if (ranked_pop[idx] * 1.0 / self.pop_size) < self.generator.random():
+        for idx in range(pop_size):
+            X_ion = self.population[idx].solution.copy()
+            if (ranked_pop[idx] * 1.0 / pop_size) < self.generator.random():
                 i1, i2 = self.generator.choice(
-                    list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+                    list(set(range(0, pop_size)) - {idx}), 2, replace=False
                 )
                 for j in range(self.problem.n_dims):
                     #### Levy flight strategy is described as Eq. 18
-                    if self.pop[i2].solution[j] == self.pop[idx].solution[j]:
-                        X_ion[j] = self.pop[idx].solution[j] + alpha * levy_b * (
-                                self.pop[idx].solution[j] - self.g_best.solution[j]
+                    if self.population[i2].solution[j] == self.population[idx].solution[j]:
+                        X_ion[j] = self.population[idx].solution[j] + alpha * levy_b * (
+                                self.population[idx].solution[j] - self.g_best.solution[j]
                         )
                     #### If not, based on Eq. 11, 12
                     else:
                         if self.generator.uniform() <= 0.5:
-                            X_ion[j] = self.pop[i1].solution[
+                            X_ion[j] = self.population[i1].solution[
                                            j
                                        ] + self.generator.uniform() * (
-                                               self.pop[i2].solution[j] - self.pop[idx].solution[j]
+                                               self.population[i2].solution[j] - self.population[idx].solution[j]
                                        )
                         else:
-                            X_ion[j] = self.pop[i1].solution[
+                            X_ion[j] = self.population[i1].solution[
                                            j
                                        ] - self.generator.uniform() * (
-                                               self.pop[i2].solution[j] - self.pop[idx].solution[j]
+                                               self.population[i2].solution[j] - self.population[idx].solution[j]
                                        )
             else:  #### Levy flight strategy is described as Eq. 21
-                _, _, worst = self._get_special_agents(
-                    self.pop, n_worst=1, sense=self.problem.sense
-                )
+                ranked = self.population.sort()
+                worst = [agent.copy() for agent in ranked[::-1][:1]]
                 X_worst = worst[0]
                 for j in range(self.problem.n_dims):
                     ##### Based on Eq. 21
                     if X_worst.solution[j] == self.g_best.solution[j]:
-                        X_ion[j] = self.pop[idx].solution[j] + alpha * levy_b * (
+                        X_ion[j] = self.population[idx].solution[j] + alpha * levy_b * (
                                 self.problem.bounds.up[j] - self.problem.bounds.low[j]
                         )
                     ##### Based on Eq. 13
                     else:
-                        X_ion[j] = self.pop[idx].solution[j] + round(
+                        X_ion[j] = self.population[idx].solution[j] + round(
                             self.generator.uniform()
                         ) * self.generator.uniform() * (
                                            X_worst.solution[j] - self.g_best.solution[j]
                                    )
             ## Check the boundary and evaluate the fitness function for X_ion
-            pos_new = self._correct_solution(X_ion)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(X_ion)
+            agent = self.population.create_agent(pos_new)
             pop_child.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_child = self._update_target_for_population(pop_child)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_child, self.problem.sense
-            )
+            pop_child = self.population.evaluate(pop_child, self.mode)
+            self.population = self.population.greedy(pop_child)
 
         ## Fusion Stage
         ### all ions obtained from ionization are ranked based on (14) - Calculate the Pc through Eq. (14)
         pop_new = []
         ranked_pop = np.argsort(
-            [self.pop[i].target.fitness for i in range(self.pop_size)]
+            [self.population[i].fitness for i in range(pop_size)]
         )
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             i1, i2 = self.generator.choice(
-                list(set(range(0, self.pop_size)) - {idx}), 2, replace=False
+                list(set(range(0, pop_size)) - {idx}), 2, replace=False
             )
             #### Generate fusion nucleus
-            if (ranked_pop[idx] * 1.0 / self.pop_size) < self.generator.random():
+            if (ranked_pop[idx] * 1.0 / pop_size) < self.generator.random():
                 t1 = self.generator.uniform() * (
-                        self.pop[i1].solution - self.g_best.solution
+                        self.population[i1].solution - self.g_best.solution
                 )
                 t2 = self.generator.uniform() * (
-                        self.pop[i2].solution - self.g_best.solution
+                        self.population[i2].solution - self.g_best.solution
                 )
-                temp2 = self.pop[i1].solution - self.pop[i2].solution
+                temp2 = self.population[i1].solution - self.population[i2].solution
                 X_fu = (
-                        self.pop[idx].solution
+                        self.population[idx].solution
                         + t1
                         + t2
                         - np.exp(-np.linalg.norm(temp2)) * temp2
@@ -249,36 +232,32 @@ cdef class OriginalNRO(LegacyOptimizer):
             #### Else
             else:
                 ##### Based on Eq. 22
-                if np.allclose(self.pop[i1].solution, self.pop[i2].solution):
-                    X_fu = self.pop[idx].solution + alpha * levy_b * (
-                            self.pop[idx].solution - self.g_best.solution
+                if np.allclose(self.population[i1].solution, self.population[i2].solution):
+                    X_fu = self.population[idx].solution + alpha * levy_b * (
+                            self.population[idx].solution - self.g_best.solution
                     )
                 ##### Based on Eq. 16, 17
                 else:
                     if self.generator.uniform() > 0.5:
-                        X_fu = self.pop[idx].solution - 0.5 * (
+                        X_fu = self.population[idx].solution - 0.5 * (
                                 np.sin(2 * np.pi * freq * epoch + np.pi)
                                 * (self.epoch - epoch)
                                 / self.epoch
                                 + 1
-                        ) * (self.pop[i1].solution - self.pop[i2].solution)
+                        ) * (self.population[i1].solution - self.population[i2].solution)
                     else:
-                        X_fu = self.pop[idx].solution - 0.5 * (
+                        X_fu = self.population[idx].solution - 0.5 * (
                                 np.sin(2 * np.pi * freq * epoch + np.pi)
                                 * epoch
                                 / self.epoch
                                 + 1
-                        ) * (self.pop[i1].solution - self.pop[i2].solution)
-            pos_new = self._correct_solution(X_fu)
-            agent = self._generate_empty_agent(pos_new)
+                        ) * (self.population[i1].solution - self.population[i2].solution)
+            pos_new = self.population.correct_solution(X_fu)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                agent.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    agent, self.pop[idx], self.problem.sense
-                )
+                agent.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(agent, self.population[idx], self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)

@@ -15,7 +15,7 @@ cdef class _PSOBase(VectorizeOptimizer):
     cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
         return [("V", d), ("P", d), ("PO", m), ("PF", 1)]
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
         self.v_min = -self.v_max
 

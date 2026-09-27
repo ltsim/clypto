@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 from clypto.native.collection.legacy.human_based.SARO.DevSARO cimport DevSARO
+cimport clypto.core as cy
 
 
 cdef class OriginalSARO(DevSARO):
@@ -34,8 +35,8 @@ cdef class OriginalSARO(DevSARO):
     >>>
     >>> model = SARO.OriginalSARO(epoch=1000, pop_size=50, se = 0.5, mu = 50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -60,47 +61,44 @@ cdef class OriginalSARO(DevSARO):
         """
         super().__init__(epoch, pop_size, se, mu, **kwargs)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        pop_x = [agent.copy() for agent in self.pop[: self.pop_size]]
-        pop_m = [agent.copy() for agent in self.pop[self.pop_size:]]
+        pop_size = self.population.size()
+        pop_x = [agent.copy() for agent in self.population[: pop_size]]
+        pop_m = [agent.copy() for agent in self.population[pop_size:]]
         pop_new = []
-        for idx in range(self.pop_size):
+        for idx in range(pop_size):
             ## Social Phase
-            k = self.generator.choice(list(set(range(0, 2 * self.pop_size)) - {idx}))
-            sd = pop_x[idx].solution - self.pop[k].solution
+            k = self.generator.choice(list(set(range(0, 2 * pop_size)) - {idx}))
+            sd = pop_x[idx].solution - self.population[k].solution
             j_rand = self.generator.integers(0, self.problem.n_dims)
             r1 = self.generator.uniform(-1, 1)
 
             pos_new = pop_x[idx].solution.copy()
             for j in range(0, self.problem.n_dims):
                 if self.generator.uniform() < self.se or j == j_rand:
-                    if self._compare_target(
-                            self.pop[k].target, pop_x[idx].target, self.problem.sense
-                    ):
-                        pos_new[j] = self.pop[k].solution[j] + r1 * sd[j]
+                    if cy.is_better(self.population[k], pop_x[idx], self.problem.sense):
+                        pos_new[j] = self.population[k].solution[j] + r1 * sd[j]
                     else:
                         pos_new[j] = pop_x[idx].solution[j] + r1 * sd[j]
                 if pos_new[j] < self.problem.bounds.low[j]:
                     pos_new[j] = (pop_x[idx].solution[j] + self.problem.bounds.low[j]) / 2
                 if pos_new[j] > self.problem.bounds.up[j]:
                     pos_new[j] = (pop_x[idx].solution[j] + self.problem.bounds.up[j]) / 2
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
-            ):
-                pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx].copy()
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        for idx in range(0, pop_size):
+            if cy.is_better(pop_new[idx], pop_x[idx], self.problem.sense):
+                pop_m[self.generator.integers(0, pop_size)] = pop_x[idx].copy()
                 pop_x[idx] = pop_new[idx].copy()
                 self.dyn_USN[idx] = 0
             else:
@@ -109,9 +107,9 @@ cdef class OriginalSARO(DevSARO):
         ## Individual phase
         pop = pop_x.copy() + pop_m.copy()
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             k, m = self.generator.choice(
-                list(set(range(0, 2 * self.pop_size)) - {idx}), 2, replace=False
+                list(set(range(0, 2 * pop_size)) - {idx}), 2, replace=False
             )
             pos_new = pop_x[idx].solution + self.generator.uniform() * (
                     pop[k].solution - pop[m].solution
@@ -121,23 +119,21 @@ cdef class OriginalSARO(DevSARO):
                     pos_new[j] = (pop_x[idx].solution[j] + self.problem.bounds.low[j]) / 2
                 if pos_new[j] > self.problem.bounds.up[j]:
                     pos_new[j] = (pop_x[idx].solution[j] + self.problem.bounds.up[j]) / 2
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        pop_new = self._update_target_for_population(pop_new)
-        for idx in range(0, self.pop_size):
-            if self._compare_target(
-                    pop_new[idx].target, pop_x[idx].target, self.problem.sense
-            ):
-                pop_m[self.generator.integers(0, self.pop_size)] = pop_x[idx]
+                pop_new[-1].evaluate(self.problem)
+        pop_new = self.population.evaluate(pop_new, self.mode)
+        for idx in range(0, pop_size):
+            if cy.is_better(pop_new[idx], pop_x[idx], self.problem.sense):
+                pop_m[self.generator.integers(0, pop_size)] = pop_x[idx]
                 pop_x[idx] = pop_new[idx].copy()
                 self.dyn_USN[idx] = 0
             else:
                 self.dyn_USN[idx] += 1
 
             if self.dyn_USN[idx] > self.mu:
-                pop_x[idx] = self._generate_agent()
+                pop_x[idx] = self.population.generate_agent()
                 self.dyn_USN[idx] = 0
-        self.pop = pop_x + pop_m
+        self.population = pop_x + pop_m

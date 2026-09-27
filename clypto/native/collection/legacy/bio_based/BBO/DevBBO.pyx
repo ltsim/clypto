@@ -5,6 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
 from clypto.native.collection.legacy.bio_based.BBO.OriginalBBO cimport OriginalBBO
 
@@ -33,8 +34,8 @@ cdef class DevBBO(OriginalBBO):
     >>>
     >>> model = BBO.DevBBO(epoch=1000, pop_size=50, p_m=0.01, n_elites=2)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
     """
 
     def __init__(
@@ -56,46 +57,40 @@ cdef class DevBBO(OriginalBBO):
         """
         super().__init__(epoch, pop_size, p_m, n_elites, **kwargs)
 
-    def _evolve(self, epoch: int) -> None:
+    def evolve(self, epoch: int) -> None:
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
-        _, pop_elites, _ = self._get_special_agents(
-            self.pop, n_best=self.n_elites, sense=self.problem.sense
-        )
-        list_fitness = [agent.target.fitness for agent in self.pop]
+        pop_size = self.population.size()
+        ranked = self.population.sort()
+        pop_elites = [agent.copy() for agent in ranked[:self.n_elites]]
+        list_fitness = [agent.fitness for agent in self.population]
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             # Probabilistic migration to the i-th position
             # Pick a position from which to emigrate (roulette wheel selection)
-            idx_selected = self._get_index_roulette_wheel_selection(list_fitness)
+            idx_selected = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
             # this is the migration step
             condition = self.generator.random(self.problem.n_dims) < self.mr[idx]
             pos_new = np.where(
-                condition, self.pop[idx_selected].solution, self.pop[idx].solution
+                condition, self.population[idx_selected].solution, self.population[idx].solution
             )
             # Mutation
             mutated = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
             pos_new = np.where(
                 self.generator.random(self.problem.n_dims) < self.p_m, mutated, pos_new
             )
-            pos_new = self._correct_solution(pos_new)
-            agent_new = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent_new = self.population.create_agent(pos_new)
             pop_new.append(agent_new)
             if self.mode not in self.AVAILABLE_MODES:
-                agent_new.target = self._get_target(pos_new)
-                self.pop[idx] = self._get_better_agent(
-                    self.pop[idx], agent_new, sense=self.problem.sense
-                )
+                agent_new.evaluate(self.problem)
+                self.population[idx] = cy.get_better_agent(self.population[idx], agent_new, sense=self.problem.sense)
         if self.mode in self.AVAILABLE_MODES:
-            pop_new = self._update_target_for_population(pop_new)
-            self.pop = self._greedy_selection_population(
-                self.pop, pop_new, self.problem.sense
-            )
+            pop_new = self.population.evaluate(pop_new, self.mode)
+            self.population = self.population.greedy(pop_new)
         # replace the solutions with their new migrated and mutated versions then Merge Populations
-        self.pop = self._get_sorted_and_trimmed_population(
-            self.pop + pop_elites, self.pop_size, self.problem.sense
-        )
+        self.population = cy.sort_agents(self.population + pop_elites, self.problem.sense)[:pop_size]

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -35,8 +35,8 @@ cdef class OriginalALO(VectorizeOptimizer):
     >>>
     >>> model = ALO.OriginalALO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -95,7 +95,7 @@ cdef class OriginalALO(VectorizeOptimizer):
             out[i0:i1] = ((X[:, :, column] - a) * (ub[i0:i1] - lb[i0:i1])) / (b - a) + lb[i0:i1]  # Eq. (2.7)
         return out
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef NativePopulation cand, both
@@ -115,10 +115,10 @@ cdef class OriginalALO(VectorizeOptimizer):
         RA = self.random_walk_antlion__(X[selected], epoch, self.epoch, epoch - 1)
         RE = self.random_walk_antlion__(np.broadcast_to(elite_x, (n, pop.d)), epoch, self.epoch, epoch - 1)
         cand = pop.empty_like()
-        cand.X[:] = self._correct_solution((RA + RE) / 2)  # Equation(2.13)
+        cand.X[:] = self.correct_solution((RA + RE) / 2)  # Equation(2.13)
         self.evaluate(cand, 0, n)
         # an ant fitter than an antlion is caught by it: the antlion moves to its position
         both = pop.concat(cand)
         pop = self.pop = both.take(self.sorted_order(both)[:n])
         # Keep the elite in the population
-        ops.set_row(pop, n - 1, elite_x, elite.target)
+        ops.set_row(pop, n - 1, elite_x, elite)

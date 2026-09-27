@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DevSMO(LegacyOptimizer):
+cdef class DevSMO(cy.Optimizer):
     """
     The developed version of: Spider Monkey Optimization (SMO)
 
@@ -43,14 +43,17 @@ cdef class DevSMO(LegacyOptimizer):
     >>>
     >>> model = SMO.DevSMO(epoch=1000, pop_size=50, max_groups = 5, perturbation_rate = 0.7)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Bansal, J. C., Sharma, H., Jadon, S. S., & Clerc, M. (2014).
     Spider monkey optimization algorithm for numerical optimization. Memetic computing, 6(1), 31-47.
     """
+
+    cdef public int max_groups
+    cdef public double perturbation_rate
 
     def __init__(
         self,
@@ -67,15 +70,11 @@ cdef class DevSMO(LegacyOptimizer):
             max_groups (int): Maximum number of groups for spider monkeys, default = 5
             perturbation_rate (float): Perturbation rate for spider monkeys, default = 0.7
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.max_groups = self.validator.check_int("max_groups", max_groups, [2, 100])
-        self.perturbation_rate = self.validator.check_float(
-            "perturbation_rate", perturbation_rate, [0.0, 1.0]
-        )
-        self._set_parameters(["epoch", "pop_size", "max_groups", "perturbation_rate"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "max_groups", "perturbation_rate"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.max_groups = cy.validator(int, max_groups, [2, 100], "max_groups")
+        self.perturbation_rate = cy.validator(float, perturbation_rate, [0.0, 1.0], "perturbation_rate")
 
     def split_fill_by_group(self, pop, n_groups):
         """
@@ -92,11 +91,12 @@ cdef class DevSMO(LegacyOptimizer):
     def merge_groups(self, groups):
         return [x for g in groups for x in g]
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
+        pop_size = self.population.size()
         # Set default parameters as per paper
-        max_possible_groups = self.pop_size // 3
+        max_possible_groups = pop_size // 3
         self.num_groups = min(self.max_groups, max_possible_groups)
-        self.group_size = -(-self.pop_size // self.num_groups)
+        self.group_size = -(-pop_size // self.num_groups)
         self.LLL = self.epoch // 10  # local_leader_limit
         self.GLL = self.epoch // 20  # global_leader_limit
 
@@ -104,14 +104,15 @@ cdef class DevSMO(LegacyOptimizer):
         self.local_limit_counts = [0] * self.num_groups
         self.global_limit_count = 0
 
-    def _initialization(self) -> None:
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
+    def initialization(self) -> None:
+        pop_size = self.population.size()
+        if len(self.population) == 0:
+            self.population = self.population.generate(pop_size)
         # Split groups
-        self.groups = self.split_fill_by_group(self.pop, self.num_groups)
+        self.groups = self.split_fill_by_group(self.population, self.num_groups)
         # Get local leaders
         self.local_leaders = [
-            self._get_best_agent(group, self.problem.sense) for group in self.groups
+            cy.sort_agents(group, self.problem.sense)[0].copy() for group in self.groups
         ]
 
     def local_leader_phase(self):
@@ -140,19 +141,17 @@ cdef class DevSMO(LegacyOptimizer):
                     pos_new,
                     group[idx].solution,
                 )
-                pos_new = self._correct_solution(pos_new)
-                agent = self._generate_agent(pos_new)
-                if self._compare_target(
-                    agent.target, group[idx].target, self.problem.sense
-                ):
+                pos_new = self.population.correct_solution(pos_new)
+                agent = self.population.generate_agent(pos_new)
+                if cy.is_better(agent, group[idx], self.problem.sense):
                     self.groups[group_idx][idx] = agent
-        self.pop = self.merge_groups(self.groups)
+        self.population = self.merge_groups(self.groups)
 
     def global_leader_phase(self):
         """Global Leader Phase - selected monkeys update based on global leader"""
         # Calculate selection probabilities
         list_fits = np.array(
-            [agent.target.fitness for group in self.groups for agent in group]
+            [agent.fitness for group in self.groups for agent in group]
         )
         # Calculate fitness using formula from paper
         fitness = np.where(list_fits >= 0, 1 / (1 + list_fits), 1 + np.abs(list_fits))
@@ -185,26 +184,20 @@ cdef class DevSMO(LegacyOptimizer):
                             * (group[jdx].solution[k] - pos_new[k])
                         )
                         # Apply bounds
-                        pos_new = self._correct_solution(pos_new)
-                        agent = self._generate_agent(pos_new)
+                        pos_new = self.population.correct_solution(pos_new)
+                        agent = self.population.generate_agent(pos_new)
                         # Greedy selection
-                        if self._compare_target(
-                            agent.target, self.g_best.target, self.problem.sense
-                        ):
+                        if cy.is_better(agent, self.g_best, self.problem.sense):
                             self.groups[group_idx][idx] = agent
 
     def local_leader_decision_phase(self):
         """Local Leader Decision Phase - handle stagnated local leaders"""
         local_leaders_new = [
-            self._get_best_agent(group, self.problem.sense) for group in self.groups
+            cy.sort_agents(group, self.problem.sense)[0].copy() for group in self.groups
         ]
         for group_idx, group in enumerate(self.groups):
             # Update local limit count
-            if self._compare_target(
-                self.local_leaders[group_idx].target,
-                local_leaders_new[group_idx].target,
-                self.problem.sense,
-            ):
+            if cy.is_better(self.local_leaders[group_idx], local_leaders_new[group_idx], self.problem.sense):
                 self.local_limit_counts[group_idx] += 1
             else:
                 self.local_limit_counts[group_idx] = 0
@@ -234,8 +227,8 @@ cdef class DevSMO(LegacyOptimizer):
                         pos_new_02,
                     )
                     # Apply bounds
-                    pos_new = self._correct_solution(pos_new)
-                    agent = self._generate_agent(pos_new)
+                    pos_new = self.population.correct_solution(pos_new)
+                    agent = self.population.generate_agent(pos_new)
                     # Always accept new position in this phase
                     self.groups[group_idx][idx] = agent
 
@@ -245,33 +238,31 @@ cdef class DevSMO(LegacyOptimizer):
             self.global_limit_count = 0
             if self.generator.random() < 0.5:
                 # Fission - divide groups
-                self.pop = self.merge_groups(self.groups)
-                self.rng.shuffle(self.pop)
-                self.groups = self.split_fill_by_group(self.pop, self.num_groups)
+                self.population = self.merge_groups(self.groups)
+                self.rng.shuffle(self.population)
+                self.groups = self.split_fill_by_group(self.population, self.num_groups)
             else:
                 # Fusion - combine all groups
-                self.pop = self.merge_groups(self.groups)
+                self.population = self.merge_groups(self.groups)
             # Update local leaders after fission/fusion
             self.local_limit_counts = [0] * self.num_groups
             self.local_leaders = [
-                self._get_best_agent(group, self.problem.sense)
+                cy.sort_agents(group, self.problem.sense)[0].copy()
                 for group in self.groups
             ]
 
     def update_leaders(self):
-        self.pop = self.merge_groups(self.groups)
+        self.population = self.merge_groups(self.groups)
         # Update global leader
-        g_best_current = self._get_best_agent(self.pop, self.problem.sense)
-        if self._compare_target(
-            g_best_current.target, self.g_best.target, self.problem.sense
-        ):
+        g_best_current = self.population.sort()[0].copy()
+        if cy.is_better(g_best_current, self.g_best, self.problem.sense):
             self.g_best = g_best_current
             # Update global limit count
             self.global_limit_count = 0
         else:
             self.global_limit_count += 1
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 

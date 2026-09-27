@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalINFO(LegacyOptimizer):
+cdef class OriginalINFO(cy.Optimizer):
     """
     The original version of: weIghted meaN oF vectOrs (INFO)
 
@@ -34,8 +34,8 @@ cdef class OriginalINFO(LegacyOptimizer):
     >>>
     >>> model = INFO.OriginalINFO(epoch=1000, pop_size=50)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -51,36 +51,35 @@ cdef class OriginalINFO(LegacyOptimizer):
             epoch (int): maximum number of iterations, default = 10000
             pop_size (int): number of population size, default = 100
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
         Args:
             epoch (int): The current iteration
         """
+        pop_size = self.population.size()
         alpha = 2 * np.exp(-4 * (epoch / self.epoch))  # Eqs.(5.1) - Eq.(9.1)
         idx_better = self.generator.integers(2, 6)
-        better = self.pop[idx_better]
-        g_worst = self.pop[-1]
+        better = self.population[idx_better]
+        g_worst = self.population[-1]
 
         pop_new = []
-        for idx in range(0, self.pop_size):
+        for idx in range(0, pop_size):
             ## Updating rule stage
             delta = 2 * self.generator.random() * alpha - alpha  # Eq. (5)
             sigma = 2 * self.generator.random() * alpha - alpha  # Eq. (9)
             ## Select three random solution
-            a, b, c = self.generator.choice(range(0, self.pop_size), 3, replace=False)
+            a, b, c = self.generator.choice(range(0, pop_size), 3, replace=False)
             e1 = 1e-25
             epsilon = e1 * self.generator.random()
-            fit_a = self.pop[a].target.fitness
-            fit_b = self.pop[b].target.fitness
-            fit_c = self.pop[c].target.fitness
+            fit_a = self.population[a].fitness
+            fit_b = self.population[b].fitness
+            fit_c = self.population[c].fitness
             omg1 = np.max([fit_a, fit_b, fit_c])
             MM1 = np.array([fit_a - fit_b, fit_a - fit_c, fit_b - fit_c])
 
@@ -91,17 +90,17 @@ cdef class OriginalINFO(LegacyOptimizer):
             WM1 = (
                     delta
                     * (
-                            w1 * (self.pop[a].solution - self.pop[b].solution)  # Eq.(4.1)
-                            + w2 * (self.pop[a].solution - self.pop[c].solution)
-                            + w3 * (self.pop[b].solution - self.pop[c].solution)
+                            w1 * (self.population[a].solution - self.population[b].solution)  # Eq.(4.1)
+                            + w2 * (self.population[a].solution - self.population[c].solution)
+                            + w3 * (self.population[b].solution - self.population[c].solution)
                     )
                     / (Wt1 + 1)
                     + epsilon
             )
 
-            fit_1 = self.g_best.target.fitness
-            fit_2 = better.target.fitness
-            fit_3 = g_worst.target.fitness
+            fit_1 = self.g_best.fitness
+            fit_2 = better.fitness
+            fit_3 = g_worst.fitness
             omg2 = np.max([fit_1, fit_2, fit_3])
             MM2 = np.array([fit_1 - fit_2, fit_1 - fit_3, fit_2 - fit_3])
             w4 = np.cos(MM2[0] + np.pi) * np.exp(-np.abs(MM2[0] / omg2))  # Eq. (4.7)
@@ -123,32 +122,32 @@ cdef class OriginalINFO(LegacyOptimizer):
             mean_rule = r * WM1 + (1 - r) * WM2  # Eq. (4)
             if self.generator.random() < 0.5:  # Eq. (8)
                 z1 = (
-                        self.pop[idx].solution
+                        self.population[idx].solution
                         + sigma * (self.generator.random() * mean_rule)
                         + self.generator.random()
-                        * (self.g_best.solution - self.pop[a].solution)
+                        * (self.g_best.solution - self.population[a].solution)
                         / (fit_1 - fit_a + 1)
                 )
                 z2 = (
                         self.g_best.solution
                         + sigma * (self.generator.random() * mean_rule)
                         + self.generator.random()
-                        * (self.pop[a].solution - self.pop[b].solution)
+                        * (self.population[a].solution - self.population[b].solution)
                         / (fit_a - fit_b + 1)
                 )
             else:
                 z1 = (
-                        self.pop[a].solution
+                        self.population[a].solution
                         + sigma * (self.generator.random() * mean_rule)
                         + self.generator.random()
-                        * (self.pop[b].solution - self.pop[c].solution)
+                        * (self.population[b].solution - self.population[c].solution)
                         / (fit_b - fit_c + 1)
                 )
                 z2 = (
                         better.solution
                         + sigma * (self.generator.random() * mean_rule)
                         + self.generator.random()
-                        * (self.pop[a].solution - self.pop[b].solution)
+                        * (self.population[a].solution - self.population[b].solution)
                         / (fit_a - fit_b + 1)
                 )
             ## Vector combining stage
@@ -158,14 +157,14 @@ cdef class OriginalINFO(LegacyOptimizer):
             cond1 = self.generator.random(self.problem.n_dims) < 0.05
             cond2 = self.generator.random(self.problem.n_dims) < 0.05
             x1 = np.where(cond1, u1, u2)
-            pos_new = np.where(cond2, x1, self.pop[idx].solution)  # Eq. (10.3)
+            pos_new = np.where(cond2, x1, self.population[idx].solution)  # Eq. (10.3)
             ## Local search stage
             if self.generator.random() < 0.5:
                 L = int(self.generator.random() < 0.5)  # 0 or 1
                 v1 = (1 - L) * 2 * self.generator.random() + L  # Eqs. (11.5)
                 v2 = self.generator.random() * L + (1 - L)  # Eq. (11.6)
                 x_avg = (
-                                self.pop[a].solution + self.pop[b].solution + self.pop[c].solution
+                                self.population[a].solution + self.population[b].solution + self.population[c].solution
                         ) / 3  # Eq. (11.4)
                 phi = self.generator.random()
                 x_rand = phi * x_avg + (1 - phi) * (
@@ -179,7 +178,7 @@ cdef class OriginalINFO(LegacyOptimizer):
                     pos_new = self.g_best.solution + n_rand * (
                             mean_rule
                             + self.generator.random()
-                            * (self.g_best.solution - self.pop[a].solution)
+                            * (self.g_best.solution - self.population[a].solution)
                     )
                 else:  # Eq. (11.2)
                     pos_new = x_rand + n_rand * (
@@ -187,9 +186,9 @@ cdef class OriginalINFO(LegacyOptimizer):
                             + self.generator.random()
                             * (v1 * self.g_best.solution - v2 * x_rand)
                     )
-            pos_new = self._correct_solution(pos_new)
-            agent = self._generate_empty_agent(pos_new)
+            pos_new = self.population.correct_solution(pos_new)
+            agent = self.population.create_agent(pos_new)
             pop_new.append(agent)
             if self.mode not in self.AVAILABLE_MODES:
-                pop_new[-1].target = self._get_target(pos_new)
-        self.pop = self._update_target_for_population(pop_new)
+                pop_new[-1].evaluate(self.problem)
+        self.population = self.population.evaluate(pop_new, self.mode)

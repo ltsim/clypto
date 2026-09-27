@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class DS_GWO(LegacyOptimizer):
+cdef class DS_GWO(cy.Optimizer):
     """
     The original version of: Diversity enhanced Strategy based Grey Wolf Optimizer (DS-GWO)
 
@@ -36,13 +36,16 @@ cdef class DS_GWO(LegacyOptimizer):
     >>>
     >>> model = GWO.DS_GWO(epoch=1000, pop_size=50, explore_ratio=0.4, n_groups=5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Jiang, Jianhua, Ziying Zhao, Yutong Liu, Weihua Li, and Huan Wang. "DSGWO: An improved grey wolf optimizer with diversity enhanced strategy based on group-stage competition and balance mechanisms." Knowledge-Based Systems 250 (2022): 109100.
     """
+
+    cdef public double explore_ratio
+    cdef public int n_groups
 
     def __init__(
         self,
@@ -59,23 +62,19 @@ cdef class DS_GWO(LegacyOptimizer):
             explore_ratio (float): ratio to control exploration, default = 0.4
             n_groups (int): number of groups for group-stage competition, default = 5
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [10, 10000])
-        self.explore_ratio = self.validator.check_float(
-            "explore_ratio", explore_ratio, [0.0, 1.0]
-        )
-        self.n_groups = self.validator.check_int("n_groups", n_groups, [5, 100])
-        self._set_parameters(["epoch", "pop_size", "explore_ratio", "n_groups"])
-        self.sort_flag = False
+        super().__init__(parameters=["epoch", "pop_size", "explore_ratio", "n_groups"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[10, 10000])
+        self.explore_ratio = cy.validator(float, explore_ratio, [0.0, 1.0], "explore_ratio")
+        self.n_groups = cy.validator(int, n_groups, [5, 100], "n_groups")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         """
         Initialize any variables needed for the algorithm.
         """
         self.explore_epoch = int(self.epoch * self.explore_ratio)
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         """
         Initialize variables before the main loop starts.
         """
@@ -103,29 +102,27 @@ cdef class DS_GWO(LegacyOptimizer):
         3. Set best overall as alpha
         4. Set delta candidate farthest from alpha as beta
         """
+        pop_size = self.population.size()
         # Divide population into n_groups
-        group_size = self.pop_size // self.n_groups
+        group_size = pop_size // self.n_groups
         self.delta_candidates = []
 
         for idx in range(self.n_groups):
             start_idx = idx * group_size
             if idx == self.n_groups - 1:  # Last group takes remaining wolves
-                end_idx = self.pop_size
+                end_idx = pop_size
             else:
                 end_idx = (idx + 1) * group_size
 
             # Get group members
-            group_population = self.pop[start_idx:end_idx]
+            group_population = self.population[start_idx:end_idx]
             # Find best wolf in group
-            group_sorted = self._get_sorted_population(
-                group_population, sense=self.problem.sense
-            )
+            group_sorted = cy.sort_agents(group_population, self.problem.sense)
             self.delta_candidates.append(group_sorted[0].copy())
 
         # Set alpha wolf (best among all delta candidates)
-        _, list_best, _ = self._get_special_agents(
-            self.delta_candidates, n_best=1, sense=self.problem.sense
-        )
+        ranked = cy.sort_agents(self.delta_candidates, self.problem.sense)
+        list_best = [agent.copy() for agent in ranked[:1]]
         self.alpha = list_best[0].copy()
 
         # Set beta wolf (delta candidate farthest from alpha)

@@ -1,5 +1,6 @@
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
+cimport clypto.core as cy
 
 
-cdef class DevHS(LegacyOptimizer):
-    pass
+cdef class DevHS(cy.Optimizer):
+    cdef public double c_r
+    cdef public double pa_r

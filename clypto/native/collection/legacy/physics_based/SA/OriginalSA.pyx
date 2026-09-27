@@ -5,11 +5,11 @@
 # --------------------------------------------------%
 
 import numpy as np
+cimport clypto.core as cy
 
-from clypto.optimizer.native.legacy cimport LegacyOptimizer
 
 
-cdef class OriginalSA(LegacyOptimizer):
+cdef class OriginalSA(cy.Optimizer):
     """
     The original version of: Simulated Annealing (SA)
 
@@ -36,13 +36,16 @@ cdef class OriginalSA(LegacyOptimizer):
     >>>
     >>> model = SA.OriginalSA(epoch=1000, pop_size=50, temp_init = 100, step_size = 0.1)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
     [1] Kirkpatrick, S., Gelatt Jr, C. D., & Vecchi, M. P. (1983). Optimization by simulated annealing. science, 220(4598), 671-680.
     """
+
+    cdef public double step_size
+    cdef public double temp_init
 
     def __init__(
             self,
@@ -59,19 +62,16 @@ cdef class OriginalSA(LegacyOptimizer):
             temp_init (float): initial temperature, default=100
             step_size (float): the step size of random movement, default=0.1
         """
-        LegacyOptimizer.__init__(self, **kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [2, 10000])
-        self.temp_init = self.validator.check_float("temp_init", temp_init, [1, 10000])
-        self.step_size = self.validator.check_float(
-            "step_size", step_size, (-100.0, 100.0)
-        )
-        self._set_parameters(["epoch", "temp_init", "step_size"])
+        super().__init__(parameters=["epoch", "temp_init", "step_size"], **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[2, 10000])
+        self.temp_init = cy.validator(float, temp_init, [1, 10000], "temp_init")
+        self.step_size = cy.validator(float, step_size, (-100.0, 100.0), "step_size")
 
-    def _before_main_loop(self):
+    def before_main_loop(self):
         self.agent_current = self.g_best.copy()
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
         """
         The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
 
@@ -84,19 +84,17 @@ cdef class OriginalSA(LegacyOptimizer):
                 self.agent_current.solution
                 + self.generator.standard_normal(self.problem.n_dims) * self.step_size
         )
-        agent = self._generate_agent(pos_new)
+        agent = self.population.generate_agent(pos_new)
         # Accept or reject the new solution
-        if self._compare_target(
-                agent.target, self.agent_current.target, self.problem.sense
-        ):
+        if cy.is_better(agent, self.agent_current, self.problem.sense):
             self.agent_current = agent
         else:
             # Calculate the energy difference
             delta_energy = np.abs(
-                self.agent_current.target.fitness - agent.target.fitness
+                self.agent_current.fitness - agent.fitness
             )
             # calculate probability acceptance criterion
             p_accept = np.exp(-delta_energy / (self.temp_init / epoch))
             if self.generator.random() < p_accept:
                 self.agent_current = agent
-        self.pop = [self.g_best.copy(), self.agent_current.copy()]
+        self.population = [self.g_best.copy(), self.agent_current.copy()]

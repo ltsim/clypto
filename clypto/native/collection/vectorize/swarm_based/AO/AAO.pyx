@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -34,8 +34,8 @@ cdef class AAO(VectorizeOptimizer):
     >>>
     >>> model = AO.AAO(epoch=1000, pop_size=50, sharpness=10.0, sigmoid_midpoint=0.5)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -75,7 +75,7 @@ cdef class AAO(VectorizeOptimizer):
         self.sharpness = cy.validator(float, sharpness, [0.1, 10000.0], "sharpness")
         self.sigmoid_midpoint = cy.validator(float, sigmoid_midpoint, [0.0, 1.0], "sigmoid_midpoint")
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -93,7 +93,7 @@ cdef class AAO(VectorizeOptimizer):
         y = r * np.cos(phi)  # Eq.(10)
         QF = epoch ** ((2 * rng.random() - 1) / (1 - self.epoch) ** 2)  # Eq.(15) quality function
         x_mean = np.mean(np.array(X), axis=0)
-        levy_step = self._get_levy_flight_step(beta=1.5, multiplier=1.0, size=(n, 1), case=-1)
+        levy_step = cy.levy_flight(self.generator, beta=1.5, multiplier=1.0, size=(n, 1), case=-1)
         sigmoid_factor = 1 / (1 + np.exp(-self.sharpness * (epoch / self.epoch - self.sigmoid_midpoint)))
         R = rng.random((n, 6, 1))
         other = X[ops.others(self, n)[:, 0]]

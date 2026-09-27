@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -37,8 +37,8 @@ cdef class OriginalCSA(VectorizeOptimizer):
     >>>
     >>> model = CSA.OriginalCSA(epoch=1000, pop_size=50, p_a = 0.3)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -76,7 +76,7 @@ cdef class OriginalCSA(VectorizeOptimizer):
         self.p_a = cy.validator(float, p_a, (0, 1.0), "p_a")
         self.n_cut = int(self.p_a * self.pop_size)
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef object epoch = epoch_c
         cdef NativePopulation pop = self.pop
         cdef Py_ssize_t n = pop.n, d = pop.d
@@ -84,7 +84,7 @@ cdef class OriginalCSA(VectorizeOptimizer):
         X = pop.X
         g = np.array(self.g_best_x())
         ## Generate levy-flight solution
-        levy = self._get_levy_flight_step(multiplier=0.001, size=n, case=-1)
+        levy = cy.levy_flight(self.generator, beta=1.0, multiplier=0.001, size=n, case=-1)
         k = 1.0 / np.sqrt(epoch) * np.sign(rng.random(n) - 0.5) * levy
         ops.step(self, X + k[:, None] * (X - g))
         ## Abandoned some worst nests

@@ -5,7 +5,7 @@
 # --------------------------------------------------%
 
 import numpy as np
-from clypto.optimizer.native cimport utils as cy
+cimport clypto.core as cy
 from clypto.optimizer.native import ops
 from clypto.optimizer.native.vectorize cimport VectorizeOptimizer
 from clypto.optimizer.native.population cimport NativePopulation
@@ -46,8 +46,8 @@ cdef class DevTPO(VectorizeOptimizer):
     >>>
     >>> model = TPO.DevTPO(epoch=1000, pop_size=50, alpha = 0.3, beta = 50., theta = 0.9)
     >>> g_best = model.solve(problem_dict)
-    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.target.fitness}")
-    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.target.fitness}")
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
 
     References
     ~~~~~~~~~~
@@ -95,12 +95,12 @@ cdef class DevTPO(VectorizeOptimizer):
         self.beta = cy.validator(float, beta, [-100.0, 100], "beta")
         self.theta = cy.validator(float, theta, (0, 1.0), "theta")
 
-    def _initialize_variables(self):
+    def initialize_variables(self):
         self.n_leafs = int(np.sqrt(self.pop_size) + 1)  # Number of leafs
         self._theta = self.theta
         self.roots = self.generator.uniform(0, 1, (self.n_leafs, self.problem.n_dims))
 
-    def _initialization(self):
+    def initialization(self):
         cdef NativePopulation leafs, pop
         self.pop_total = []
         pop = None
@@ -111,7 +111,7 @@ cdef class DevTPO(VectorizeOptimizer):
             self.pop_total.append(leafs)
         self.pop = pop
 
-    def _evolve(self, int epoch_c):
+    def evolve(self, int epoch_c):
         cdef NativePopulation leafs, cand, pop
         cdef Py_ssize_t idx
         g_best = np.array(self.g_best_x())
@@ -128,7 +128,7 @@ cdef class DevTPO(VectorizeOptimizer):
             nutrient_value = self._theta * (self.roots - roots_old)
             pos_list_new = g_best + self.beta * nutrient_value
             cand = leafs.empty_like()
-            cand.X[:] = self._correct_solution(pos_list_new)
+            cand.X[:] = self.correct_solution(pos_list_new)
             self.evaluate(cand, 0, cand.n)
             if self.mode in self.AVAILABLE_MODES:
                 # greedy_selection_population(candidates, leafs): a leaf stays only if strictly better
