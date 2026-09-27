@@ -163,31 +163,31 @@ problem = cy.Problem(
 g_best = MyOptimizer(epoch=200, pop_size=50).solve(problem, seed=7)
 ```
 
-Agents can carry their own state with `@cy.agent` + `cy.Attribute`, while
-classic MEALPY-style code keeps working untouched through `@cy.legacy`:
+Agents can carry their own state with `@cy.agent` + `cy.Attribute`. The classic
+API, used by the built-in catalog, subclasses `cy.LegacyOptimizer` (`cy.Optimizer`
+in Cython):
 
 ```python
 import clypto as cy
 
 
-@cy.legacy
-class MyClassicOptimizer:
+class MyClassicOptimizer(cy.LegacyOptimizer):
     def __init__(self, epoch=100, pop_size=30, **kwargs):
-        super().__init__(**kwargs)          # LegacyOptimizer is injected
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000])
 
-    def _evolve(self, epoch):
+    def evolve(self, epoch):
+        pop_size = self.population.size()
         ...
 ```
 
-The classic base class is the compiled `LegacyOptimizer` (`cy.Optimizer` is an
-alias); its hooks and helpers are private (`_evolve`, `_get_target`, ...). See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
+An agent holds its `solution` and a read-only `fitness`/`objectives`; the
+population creates, repairs and evaluates agents (`create_agent`,
+`correct_solution`, `evaluate_solution`). See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
 
-Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or
-`precompile=True` to `@cy.legacy`, and install the `compile` extra:
+Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent` and
+install the `compile` extra:
 
 ```bash
 $ pip install "clypto[compile]"

@@ -18,7 +18,7 @@ reachable with `cy.get_all_optimizers(engine="legacy")`, `cy.get_optimizer_by_na
   thread. The same seed always gives the same result; no OpenMP kernel draws random numbers.
 * **Synchronous phases.** Classic code updates agents one at a time and lets later agents read the rows already updated.
   The vectorized code computes all candidates of a phase from the same population, evaluates them in **one** batch
-  (`_evolve` calls `ops.step`, `ops.replace` or `ops.scatter`) and keeps the better rows.
+  (`evolve` calls `ops.step`, `ops.replace` or `ops.scatter`) and keeps the better rows.
 * **One objective call per phase** with `Problem(vectorized=True)`.
 
 Because of the synchronous update the results are *statistically* equivalent to legacy, not bit-identical. The classes

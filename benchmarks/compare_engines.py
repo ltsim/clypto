@@ -48,7 +48,7 @@ def run(cls, fn, bound, dim, seed, epoch, pop):
     problem = cy.Problem(obj_func=fn, bounds=cy.NumberBounds(float, low=[-bound] * dim, up=[bound] * dim), sense="min")
     model = cls(epoch=epoch, pop_size=pop)
     best = model.solve(problem, seed=seed)
-    return float(best.target.fitness), int(model.nf_counter)
+    return float(best.fitness), int(model.nf_counter)
 
 
 def holm(pvalues):

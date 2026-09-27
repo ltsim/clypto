@@ -41,7 +41,7 @@ model = PSO.OriginalPSO(epoch=500, pop_size=50)
 g_best = model.solve(problem, seed=42)
 
 print(f"Best solution: {g_best.solution}")
-print(f"Best fitness:  {g_best.target.fitness}")
+print(f"Best fitness:  {g_best.fitness}")
 ```
 
 ### Engines: `vectorize` and `legacy`
@@ -74,7 +74,7 @@ model = PSO.OriginalPSO(epoch=500, pop_size=50)
 g_best = model.solve(problem, seed=42)
 
 print(f"Best solution: {g_best.solution}")
-print(f"Best fitness:  {g_best.target.fitness}")
+print(f"Best fitness:  {g_best.fitness}")
 ```
 
 ## What next?

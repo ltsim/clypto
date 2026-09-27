@@ -56,7 +56,7 @@ uv run pytest tests/          # or: make uv-test
 
 ## Just-in-time compilation (`compile` extra)
 
-The `@cy.optimizer`, `@cy.agent` and `@cy.legacy` decorators can compile a
+The `@cy.optimizer` and `@cy.agent` decorators can compile a
 user-defined class on import via `pyximport`, which needs Cython and
 `setuptools`. Install the `compile` extra:
 

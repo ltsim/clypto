@@ -1,33 +1,73 @@
 # Classic API and compilation
 
-## Reuse classic algorithms with `@cy.legacy`
+## Write a classic algorithm
 
-The classic MEALPY-style API is still available. Decorate a class instead of
-naming a base, and `super().__init__`, `self.validator`, `self.pop` and
-`generate_empty_agent` work exactly as before:
+The catalog's classic algorithms subclass `cy.Optimizer` (`cy.LegacyOptimizer`
+from Python). The constructor registers the hyper-parameters, validates them
+with `cy.validator` and declares the population with `cy.population`; `evolve`
+works on `self.population`:
 
 ```python
-@cy.legacy
-class ClassicRandomSearch:
-    def __init__(self, epoch=100, pop_size=30, **kwargs):
-        super().__init__(**kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self._set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+import clypto as cy
 
-    def _evolve(self, epoch):
-        for idx in range(self.pop_size):
-            pos_new = self._correct_solution(self.problem.generate_solution(encoded=True))
-            agent = self._generate_empty_agent(pos_new)
-            agent.target = self._get_target(pos_new)
-            self.pop[idx] = self._get_better_agent(self.pop[idx], agent, self.problem.sense)
+
+class RandomSearch(cy.LegacyOptimizer):
+    def __init__(self, epoch=100, pop_size=30, **kwargs):
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000])
+
+    def evolve(self, epoch):
+        pop_size = self.population.size()
+        candidates = []
+        for idx in range(pop_size):
+            pos_new = self.population.correct_solution(self.problem.generate_solution())
+            candidates.append(self.population.evaluate_solution(pos_new))
+        self.population = self.population.greedy(candidates)
 ```
 
-## Compile it
+- `self.population` is a `cy.Population`: `size()` is the configured
+  `pop_size`, `len()` the agents it holds right now. `solve()` binds it to the
+  problem and fills it before `evolve` runs.
+- An agent holds `solution`, `objectives`, `weights` and `fitness`; the last
+  three are read-only and change only through `agent.evaluate(problem)` or
+  `agent.update_solution(other)`.
+- Agent creation, bounds repair and evaluation belong to the population
+  (`create_agent`, `generate_agent`, `amend_solution`, `correct_solution`,
+  `evaluate_solution`, `evaluate`). An algorithm with its own agents subclasses
+  `cy.Population` and passes it as `cy.population(pop_size, range=[5, 10000], cls=MyPopulation)`;
+  `cy.ResetPopulation` redraws out-of-bounds values instead of clipping them.
 
-Install the `compile` extra once, then opt in per class with `compile=True` (or
-`precompile=True` on `@cy.legacy`):
+## The compiled form
+
+The catalog writes the same class as a Cython extension type. `cimport
+clypto.core as cy` gives `cy.Optimizer`, `cy.Agent`, `cy.Population`,
+`cy.validator`, `cy.population` and the helpers (`cy.is_better`,
+`cy.get_better_agent`, `cy.sort_agents`, `cy.levy_flight`, ...):
+
+```cython
+cimport clypto.core as cy
+
+
+cdef class RandomSearch(cy.Optimizer):
+    def __init__(self, epoch=100, pop_size=30, **kwargs):
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000])
+
+    def evolve(self, int epoch):
+        ...
+```
+
+`clypto/native/collection/legacy/swarm_based/PSO/` is the reference: a
+`PSOAgent` that moves itself (`update_velocity`, `move`, `update_pbest`) and a
+`PSOPopulation` that builds the particles. Build such a module with Cython
+(`cythonize(..., include_path=[<clypto source root>])` and NumPy's include
+directory).
+
+## Compile the decorator API
+
+Install the `compile` extra once, then opt in per class with `compile=True`:
 
 ```bash
 pip install "clypto[compile]"

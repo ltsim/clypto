@@ -23,4 +23,4 @@ g_best = model.solve(problem, debug=False)
 
 # 4. Access the results
 print(f"Best solution: {g_best.solution}")
-print(f"Best fitness: {g_best.target.fitness}")
+print(f"Best fitness: {g_best.fitness}")

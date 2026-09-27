@@ -70,7 +70,8 @@ def _pythonize_signature(line: str) -> str:
 
 def _parse(path: Path):
     text = path.read_text(encoding="utf-8")
-    if path.suffix == ".pyx":
+    # a .pyx written in plain Python (the authoring API) parses as is
+    if path.suffix == ".pyx" and re.search(r"^\s*(cdef|cpdef|cimport|from \S+ cimport)\b", text, re.M):
         text = _pythonize_pyx(text)
     return ast.parse(text)
 
@@ -94,20 +95,19 @@ CORE_MODULES = [
     "clypto/optimizer/native/legacy.pyx",
     "clypto/optimizer/native/vectorize.pyx",
     "clypto/optimizer/native/problem.pyx",
-    "clypto/optimizer/bounds.py",
+    "clypto/optimizer/bounds.pyx",
     "clypto/optimizer/native/population.pyx",
     "clypto/optimizer/native/agent.pyx",
-    "clypto/optimizer/native/target.pyx",
-    "clypto/optimizer/precompile/declaration.py",
-    "clypto/optimizer/precompile/base.py",
-    "clypto/optimizer/precompile/decorator.py",
-    "clypto/optimizer/agents/declaration.py",
-    "clypto/optimizer/agents/runtime.py",
-    "clypto/optimizer/agents/decorator.py",
-    "clypto/optimizer/precompile/compiler.py",
-    "clypto/optimizer/precompile/decoration.py",
-    "clypto/optimizer/termination.py",
-    "clypto/optimizer/validator.py",
+    "clypto/optimizer/native/utils.pyx",
+    "clypto/optimizer/precompile/declaration.pyx",
+    "clypto/optimizer/precompile/base.pyx",
+    "clypto/optimizer/precompile/decorator.pyx",
+    "clypto/optimizer/agents/declaration.pyx",
+    "clypto/optimizer/agents/runtime.pyx",
+    "clypto/optimizer/agents/decorator.pyx",
+    "clypto/optimizer/precompile/compiler.pyx",
+    "clypto/optimizer/precompile/decoration.pyx",
+    "clypto/optimizer/termination.pyx",
     "clypto/hints/array.py",
     "clypto/hints/primitives.py",
     "clypto/hints/sense.py",

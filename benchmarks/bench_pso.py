@@ -105,7 +105,7 @@ def worker(reps):
             start = time.perf_counter()
             g_best = model.solve(problem, seed=7)
             best = min(best, time.perf_counter() - start)
-            fitness = float(g_best.target.fitness)
+            fitness = float(g_best.fitness)
         results.append({"label": label, "algo": algo, "objective": objective, "used": used,
                             "seconds": best, "fitness": fitness})
     json.dump(results, sys.stdout)

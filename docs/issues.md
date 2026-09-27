@@ -179,7 +179,14 @@ These affect every optimizer rather than a single taxonomy group.
 
 ### Open issues
 
-No known issues.
+- **Evaluation of a vector other than the agent's solution.** A few MEALPY
+  algorithms give an agent the fitness of a vector it does not hold:
+  `OriginalWOA` and `OriginalSBO` evaluate the new position into the *current*
+  agent, `OriginalArchOA`, `OppoTWO`, `LevyTWO` and `EnhancedTWO` evaluate the
+  position before its last correction, and the FOA variants evaluate the
+  position rather than the smell vector the fly stores. The behaviour is kept
+  (results are unchanged) and each site is marked in the source
+  (`agent.update_solution(candidate, agent.solution)`).
 
 ### Fixed in 2026
 
