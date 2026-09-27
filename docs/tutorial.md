@@ -11,7 +11,7 @@ variables:
 ```python
 import numpy as np
 from clypto import NumberBounds
-from clypto.native.collection.vectorize.bio_based import BBO
+from clypto.native.collection.bio_based import BBO
 
 def objective(solution):
     return np.sum(solution ** 2)
@@ -34,7 +34,7 @@ subclass `Problem`. The only requirement is that `__init__` passes `bounds` and
 ```python
 import numpy as np
 from clypto import Problem, NumberBounds
-from clypto.native.collection.vectorize.system_based import AEO
+from clypto.native.collection.system_based import AEO
 
 class Squared(Problem):
     def __init__(self, bounds=None, sense="min", data=None, **kwargs):
@@ -88,9 +88,9 @@ cy.get_optimizer_by_class("BaseGA") # a single class by name
 The same classes are importable directly from their category package:
 
 ```python
-from clypto.native.collection.vectorize.swarm_based import PSO
-from clypto.native.collection.vectorize.evolutionary_based import DE, GA
-from clypto.native.collection.vectorize.physics_based import MVO
+from clypto.native.collection.swarm_based import PSO
+from clypto.native.collection.evolutionary_based import DE, GA
+from clypto.native.collection.physics_based import MVO
 ```
 
 Each algorithm lives in a module (e.g. `PSO`) that exposes one or more variants

@@ -6,6 +6,30 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### One collection: static agents, snapshots and the batch pipeline (2026-09)
+
++ **One collection.** The vectorize tree and its engine (`VectorizeOptimizer`, `NativePopulation`, `ops`, `AgentListOptimizer`) are removed; the classic collection is the only one and moved from `clypto/native/collection/legacy/<category>` to `clypto/native/collection/<category>`. Recoverable from `0d839435`.
++ **`cdef void evolve(self, int epoch)`.** The engine calls `evolve` through the C vtable. `solve()` rejects a Python `def evolve` on a `cy.Optimizer` subclass (Python optimizers use `@cy.optimizer`). The 8 Python-class optimizers (GA family, `ImprovedQSA`, `EnhancedTWO`) became `cdef class`es; `ImprovedQSA`/`EnhancedTWO` lost their second base (the opposition step is a shared function / `OppoTWO` base).
++ **No dynamic reflection in agents.** `Agent.copy()`, `Agent.update(**fields)` and `Agent(**fields)` are gone: `cy.duplicate_agent(agent)` calls the virtual `cdef Agent clone(self)`, overridden by every agent class with typed fields; populations copy their state with `cdef void copy_state` instead of `setattr`/`__dict__`.
++ **Snapshots and iteration.** `cy.empty_snapshot(pop)` / `cy.snapshot(pop)` replace `pop_new = []` / `population.duplicate()`; `population.toarray()` is the live agent list, iterated as `for idx, agent in enumerate(self.population.toarray())`. `self.population` is a typed C field (`self.population.spawn(list)` for a list).
++ **Repair functions.** `cy.correct_solution(problem, x)`, `cy.reset_solution(problem, generator, x)` and `cy.opposite_solution(problem, generator, agent, g_best)` replace the population methods and `cy.ResetPopulation`; FPA and VCS keep their own repair as a module function.
++ **Modes.** `mode="sequential"` (default, was `None`), `"swarm"` or `"parallel"`; `"thread"`/`"process"` (aliases of parallel) and `AVAILABLE_MODES` are removed. `Population.evaluate` also runs in sequential mode (only the agents not evaluated yet) and makes one `problem.evaluate(X)` call for a `vectorized` problem. `greedy`/`greedy_agents` take the mode: sequential keeps the tie rule of `get_better_agent`.
++ **Batch pipeline.** 73 classes evaluate each batch at once in every mode (`empty_snapshot` -> `evaluate` -> `greedy`), 124 are order-dependent and keep their one-by-one step in sequential mode, 46 evaluate one agent at a time (including the PSO family: `g_best` moves in place). Every class was checked in sequential and swarm mode against the previous build: results are bit-identical. See `docs/parallel-evaluation.md`.
++ **Strategies as member functions.** `OriginalDE`'s six mutation strategies are `cdef strategy_0 .. strategy_5` (plus `trial`, `mutation`, `select`); the Elite GAs' two parent selections are `BaseGA.strategy_0/strategy_1` with a shared `offspring` step.
++ **Build.** `cpow=True` (C `double ** double` is a real `pow`, not complex: with a C `int epoch` the complex path was 1 ulp off); `CLYPTO_COLLECTION=0` replaces `CLYPTO_LEGACY=0`.
++ **Fixed.** `OriginalSOO` and `OriginalSSpiderA` crashed in `"swarm"`/`"parallel"` mode (MEALPY list bugs); sequential results unchanged.
++ **Tests and tools.** `tests/_engines.py` -> `tests/_collection.py`; the engine comparison (`test_native_statistical.py`, `test_vectorized_pso.py`, `benchmarks/compare_engines.py`, `golden/vectorize_exactness.json`) is removed; `benchmarks/bench_engines.py` -> `bench_collection.py` (sequential vs batch).
+
+| Removed / renamed | Use instead |
+| --- | --- |
+| `cy.get_all_optimizers(engine=...)`, `get_optimizer_by_*(engine=...)` | no `engine` argument |
+| `clypto.native.collection.{legacy,vectorize}.<category>` | `clypto.native.collection.<category>` |
+| `cy.VectorizeOptimizer`, `cy.NativePopulation`, `cy.ResetPopulation` | `cy.Optimizer`, `cy.Population`, `cy.reset_solution` |
+| `agent.copy()`, `agent.update(**kw)`, `Agent(..., **fields)` | `cy.duplicate_agent(agent)`, attribute assignment, explicit `__init__` |
+| `population.correct_solution/amend_solution/opposite_solution`, `population.duplicate()` | `cy.correct_solution`, `cy.reset_solution`, `cy.opposite_solution`, `cy.snapshot` |
+| `def evolve(self, epoch)` on a `cy.Optimizer` subclass | `cdef void evolve(self, int epoch)` |
+| `mode=None`, `"thread"`, `"process"`, `self.AVAILABLE_MODES` | `"sequential"`, `"parallel"`, `self.mode == "sequential"` |
+
 ### Core migration: the `cy` API (2026-09)
 
 + **`cimport clypto.core as cy`** (`clypto/core.pxd`) is the one namespace of the collection: `cy.Optimizer`, `cy.Agent`, `cy.Population`, `cy.ResetPopulation`, `cy.population`, `cy.validator`, `cy.check_is_int_and_float`, `cy.is_better`, `cy.better_fitness`, `cy.get_better_agent`, `cy.sort_agents`, `cy.argsort_agents`, `cy.greedy_agents`, `cy.levy_flight`, `cy.roulette_wheel`, `cy.kway_tournament`, `cy.split_groups`, plus `cy.VectorizeOptimizer` / `cy.NativePopulation`.

@@ -4,29 +4,47 @@ This guide covers the 2026 optimizer-API changes and how to move code onto them.
 Nothing about the built-in algorithms' mathematics changed: every catalog
 optimizer returns the same result for the same seed.
 
-## 1. The classic API (`cy.LegacyOptimizer`)
+## 1. The classic API (`cimport clypto.core as cy`)
 
-A classic algorithm subclasses `cy.LegacyOptimizer` (`cy.Optimizer` when written
-in Cython with `cimport clypto.core as cy`):
+A classic algorithm is a Cython extension type on `cy.Optimizer`; `evolve` is
+the C method `cdef void evolve(self, int epoch)`:
 
-```python
-import clypto as cy
+```cython
+cimport clypto.core as cy
 
 
-class RandomSearch(cy.LegacyOptimizer):
+cdef class RandomSearch(cy.Optimizer):
     def __init__(self, epoch=100, pop_size=30, **kwargs):
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
 
-    def evolve(self, epoch):
-        pop_size = self.population.size()
-        for idx in range(pop_size):
-            pos_new = self.population.correct_solution(self.problem.generate_solution())
-            candidate = self.population.evaluate_solution(pos_new)
-            if candidate.fitness < self.population[idx].fitness:
-                self.population[idx] = candidate
+    cdef void evolve(self, int epoch):
+        cdef cy.Population n_population = cy.empty_snapshot(self.population)
+        for agent in self.population.toarray():
+            x = cy.correct_solution(self.problem, self.problem.generate_solution())
+            n_population.append(self.population.create_agent(x))
+        self.population = self.population.greedy(self.population.evaluate(n_population, self.mode), self.mode)
 ```
+
+Moving an algorithm of the previous classic API onto it:
+
+| Before | After |
+| --- | --- |
+| `def evolve(self, epoch)` (Python subclass of `cy.LegacyOptimizer`) | `cdef void evolve(self, int epoch)` in a `.pyx`; `solve()` rejects a Python `evolve` |
+| `agent.copy()` | `cy.duplicate_agent(agent)` (the agent's static `cdef clone`) |
+| `agent.update(field=value, ...)` | `agent.field = value` (typed `cdef public` fields) |
+| `XAgent(solution, field=value)` (`**fields`) | an explicit `__init__(self, solution=None, ..., field=None)` on the agent class |
+| `self.population.correct_solution(x)` | `cy.correct_solution(self.problem, x)` |
+| `cy.ResetPopulation` / an `amend_solution` override | `cy.reset_solution(self.problem, self.generator, x)` / a module-level repair function |
+| `self.population.opposite_solution(a, g)` | `cy.opposite_solution(self.problem, self.generator, a, g)` |
+| `self.population.duplicate()` / `pop_new = []` | `cy.snapshot(self.population)` / `cy.empty_snapshot(self.population)` |
+| `for idx in range(0, pop_size): ... self.population[idx]` | `for idx, agent in enumerate(self.population.toarray()): ... agent` |
+| `self.population = [agents]` | `self.population = self.population.spawn([agents])` (a typed C field) |
+| `self.mode not in self.AVAILABLE_MODES` | `self.mode == "sequential"` |
+| `mode=None` / `"thread"` / `"process"` | `mode="sequential"` (default) / `"parallel"` |
+| a Population subclass with Python attributes | typed `cdef public` fields and a `cdef void copy_state(self, cy.Population new)` override |
+| `cy.get_all_optimizers(engine=...)`, `clypto.native.collection.{legacy,vectorize}.*` | `cy.get_all_optimizers()`, `clypto.native.collection.<category>.*` |
 
 ## 2. From the MEALPY-style API
 
@@ -35,15 +53,15 @@ public again and the helpers moved to the population, the agent or `cy`:
 
 | Before | After |
 | --- | --- |
-| `@cy.legacy` / `@cy.legacy(precompile=True)` | subclass `cy.LegacyOptimizer`; compile a `.pyx` with `cimport clypto.core as cy` |
+| `@cy.legacy` / `@cy.legacy(precompile=True)` | a `.pyx` with `cimport clypto.core as cy` (section 1) |
 | `super().__init__(**kwargs)` + `self._set_parameters([...])` + `self.sort_flag = X` | `super().__init__(parameters=[...], sort_flag=X, **kwargs)` |
 | `self.validator.check_int("n", v, bound)` (and `check_float/str/bool`) | `cy.validator(int, v, bound, "n")` |
 | `self.pop_size = self.validator.check_int("pop_size", ...)` | `self.population = cy.population(pop_size, range=[5, 10000])` |
 | `self.pop_size` | `self.population.size()` (`model.pop_size` still reads it) |
 | `_evolve`, `_initialize_variables`, `_initialization`, `_before_main_loop` | `evolve`, `initialize_variables`, `initialization`, `before_main_loop` |
 | `self._generate_empty_agent(x)` / `self._generate_agent(x)` / `self._generate_population(n)` | `self.population.create_agent(x)` / `.generate_agent(x)` / `.generate(n)` |
-| overriding `_generate_empty_agent` / `_amend_solution` | a `cy.Population` subclass with `create_agent` / `amend_solution`, passed as `cls=` |
-| `self._correct_solution(x)` | `self.population.correct_solution(x)` |
+| overriding `_generate_empty_agent` / `_amend_solution` | a `cy.Population` subclass with `create_agent`, passed as `cls=` / `cy.reset_solution` or a repair function |
+| `self._correct_solution(x)` | `cy.correct_solution(self.problem, x)` |
 | `agent.target = self._get_target(agent.solution)` | `agent.evaluate(self.problem)` |
 | `t = self._get_target(x)` | `candidate = self.population.evaluate_solution(x)` (an evaluated `Agent`) |
 | `agent.update(solution=x, target=t)` | `agent.update_solution(candidate)` |
@@ -51,7 +69,7 @@ public again and the helpers moved to the population, the agent or `cy`:
 | `self._compare_target(t1, t2, sense)` | `cy.is_better(a1, a2, sense)` |
 | `self._get_better_agent(a, b, sense)` | `cy.get_better_agent(a, b, sense)` |
 | `self._get_sorted_population(pop, sense)` | `self.population.sort()` / `cy.sort_agents(agents, sense)` |
-| `self._greedy_selection_population(old, new, sense)` | `self.population.greedy(new)` / `cy.greedy_agents(old, new, sense)` |
+| `self._greedy_selection_population(old, new, sense)` | `self.population.greedy(new, self.mode)` / `cy.greedy_agents(old, new, sense, self.mode)` |
 | `self._update_target_for_population(agents)` | `self.population.evaluate(agents, self.mode)` |
 | `self._get_levy_flight_step(...)` | `cy.levy_flight(self.generator, ...)` |
 | `self._get_index_roulette_wheel_selection(f)` | `cy.roulette_wheel(self.generator, self.problem.sense, f)` |

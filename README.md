@@ -127,9 +127,8 @@ $ make build-ext            # python setup.py build_ext --inplace
 $ uv run --no-sync pytest tests/   # or: make uv-test
 ```
 
-The collection is built twice: `clypto/native/collection/vectorize` (whole-population NumPy/C code, the default) and
-`clypto/native/collection/legacy` (the frozen classic per-agent algorithms). `CLYPTO_LEGACY=0 make build-ext` skips the legacy
-tree for faster development builds; `cy.get_all_optimizers(engine="legacy")` then raises an `ImportError`.
+The collection lives in `clypto/native/collection/<category>/<Module>/<Class>.pyx`. `CLYPTO_COLLECTION=0 make build-ext`
+builds only the core for faster development builds; `cy.get_all_optimizers()` then raises an `ImportError`.
 
 > **Note:** a fresh clone ships `.pyx`/`.pxd` sources, not compiled extensions. Build first (`make build-ext` or `pip install .`); without a build, `import clypto` fails because the compiled collection modules do not exist.
 
@@ -164,27 +163,32 @@ g_best = MyOptimizer(epoch=200, pop_size=50).solve(problem, seed=7)
 ```
 
 Agents can carry their own state with `@cy.agent` + `cy.Attribute`. The classic
-API, used by the built-in catalog, subclasses `cy.LegacyOptimizer` (`cy.Optimizer`
-in Cython):
+API, used by the built-in catalog, is Cython: `cimport clypto.core as cy` and
+implement the C method `cdef void evolve`:
 
-```python
-import clypto as cy
+```cython
+cimport clypto.core as cy
 
 
-class MyClassicOptimizer(cy.LegacyOptimizer):
+cdef class MyClassicOptimizer(cy.Optimizer):
     def __init__(self, epoch=100, pop_size=30, **kwargs):
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
 
-    def evolve(self, epoch):
-        pop_size = self.population.size()
-        ...
+    cdef void evolve(self, int epoch):
+        cdef cy.Population n_population = cy.empty_snapshot(self.population)
+        for agent in self.population.toarray():
+            x = cy.correct_solution(self.problem, agent.solution + self.generator.normal(0, 0.1, self.problem.n_dims))
+            n_population.append(self.population.create_agent(x))
+        self.population = self.population.greedy(self.population.evaluate(n_population, self.mode), self.mode)
 ```
 
-An agent holds its `solution` and a read-only `fitness`/`objectives`; the
-population creates, repairs and evaluates agents (`create_agent`,
-`correct_solution`, `evaluate_solution`). See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
+An agent holds its `solution` and a read-only `fitness`/`objectives`; copies are
+static (`cy.duplicate_agent`), bounds repair is a function (`cy.correct_solution`)
+and `mode="sequential" | "swarm" | "parallel"` picks how a batch is evaluated
+([batch and parallel evaluation](https://ltsim.github.io/clypto/parallel-evaluation/)).
+See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
 
 Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent` and
 install the `compile` extra:

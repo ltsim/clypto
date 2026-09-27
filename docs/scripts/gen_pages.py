@@ -16,7 +16,7 @@ from pathlib import Path
 from mkdocs_gen_files import open as gen_open
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-COLLECTION_ROOT = REPO_ROOT / "clypto" / "native" / "collection" / "vectorize"
+COLLECTION_ROOT = REPO_ROOT / "clypto" / "native" / "collection"
 REPO_URL = "https://github.com/ltsim/clypto/blob/master"
 
 
@@ -93,7 +93,6 @@ CATEGORY_ORDER = list(CATEGORY_LABELS)
 CORE_MODULES = [
     "clypto/optimizer/native/optimizer.pyx",
     "clypto/optimizer/native/legacy.pyx",
-    "clypto/optimizer/native/vectorize.pyx",
     "clypto/optimizer/native/problem.pyx",
     "clypto/optimizer/bounds.pyx",
     "clypto/optimizer/native/population.pyx",
@@ -270,13 +269,11 @@ def _generate_category(category: str) -> tuple[int, int]:
     lines: list[str] = [
         f"# {label} algorithms",
         "",
-        f"`clypto.native.collection.vectorize.{category}` ships **{len(catalog)} optimizer "
+        f"`clypto.native.collection.{category}` ships **{len(catalog)} optimizer "
         f"{'class' if len(catalog) == 1 else 'classes'}** across "
         f"**{len(modules)} {'module' if len(modules) == 1 else 'modules'}**.",
         "",
-        "Sources link to the vectorized collection (`clypto/native/collection/vectorize`); the classic "
-        "implementations are frozen in `clypto/native/collection/legacy` "
-        '(`cy.get_all_optimizers(engine="legacy")`).',
+        "[Batch and parallel evaluation](../parallel-evaluation.md) lists which of them evaluate a whole batch at once.",
         "",
         "| Module | Class | Summary | Source |",
         "| --- | --- | --- | --- |",

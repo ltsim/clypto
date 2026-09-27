@@ -2,48 +2,15 @@
 
 ## Write a classic algorithm
 
-The catalog's classic algorithms subclass `cy.Optimizer` (`cy.LegacyOptimizer`
-from Python). The constructor registers the hyper-parameters, validates them
-with `cy.validator` and declares the population with `cy.population`; `evolve`
-works on `self.population`:
-
-```python
-import clypto as cy
-
-
-class RandomSearch(cy.LegacyOptimizer):
-    def __init__(self, epoch=100, pop_size=30, **kwargs):
-        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
-        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000])
-
-    def evolve(self, epoch):
-        pop_size = self.population.size()
-        candidates = []
-        for idx in range(pop_size):
-            pos_new = self.population.correct_solution(self.problem.generate_solution())
-            candidates.append(self.population.evaluate_solution(pos_new))
-        self.population = self.population.greedy(candidates)
-```
-
-- `self.population` is a `cy.Population`: `size()` is the configured
-  `pop_size`, `len()` the agents it holds right now. `solve()` binds it to the
-  problem and fills it before `evolve` runs.
-- An agent holds `solution`, `objectives`, `weights` and `fitness`; the last
-  three are read-only and change only through `agent.evaluate(problem)` or
-  `agent.update_solution(other)`.
-- Agent creation, bounds repair and evaluation belong to the population
-  (`create_agent`, `generate_agent`, `amend_solution`, `correct_solution`,
-  `evaluate_solution`, `evaluate`). An algorithm with its own agents subclasses
-  `cy.Population` and passes it as `cy.population(pop_size, range=[5, 10000], cls=MyPopulation)`;
-  `cy.ResetPopulation` redraws out-of-bounds values instead of clipping them.
-
-## The compiled form
-
-The catalog writes the same class as a Cython extension type. `cimport
+The catalog's classic algorithms are Cython extension types. `cimport
 clypto.core as cy` gives `cy.Optimizer`, `cy.Agent`, `cy.Population`,
-`cy.validator`, `cy.population` and the helpers (`cy.is_better`,
-`cy.get_better_agent`, `cy.sort_agents`, `cy.levy_flight`, ...):
+`cy.validator`, `cy.population`, the snapshots (`cy.empty_snapshot`,
+`cy.snapshot`), the copies (`cy.duplicate_agent`), the bounds repair
+(`cy.correct_solution`, `cy.reset_solution`, `cy.opposite_solution`) and the
+helpers (`cy.is_better`, `cy.get_better_agent`, `cy.sort_agents`,
+`cy.levy_flight`, ...). The constructor registers the hyper-parameters,
+validates them and declares the population; `evolve` is the C method
+`cdef void evolve(self, int epoch)`:
 
 ```cython
 cimport clypto.core as cy
@@ -55,15 +22,40 @@ cdef class RandomSearch(cy.Optimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
 
-    def evolve(self, int epoch):
-        ...
+    cdef void evolve(self, int epoch):
+        cdef cy.Population n_population = cy.empty_snapshot(self.population)
+        cdef cy.Agent agent
+        for agent in self.population.toarray():
+            x = cy.correct_solution(self.problem, self.problem.generate_solution())
+            n_population.append(self.population.create_agent(x))
+        self.population = self.population.greedy(self.population.evaluate(n_population, self.mode), self.mode)
 ```
 
-`clypto/native/collection/legacy/swarm_based/PSO/` is the reference: a
-`PSOAgent` that moves itself (`update_velocity`, `move`, `update_pbest`) and a
-`PSOPopulation` that builds the particles. Build such a module with Cython
-(`cythonize(..., include_path=[<clypto source root>])` and NumPy's include
-directory).
+- `self.population` is a `cy.Population`: `size()` is the configured
+  `pop_size`, `len()` the agents it holds right now, `toarray()` the live list
+  of agents (a typed `for` over it is a C loop). `solve()` binds it to the
+  problem and fills it before `evolve` runs. A list of agents is assigned as
+  `self.population.spawn(agents)`.
+- An agent holds `solution`, `objectives`, `weights` and `fitness`; the last
+  three are read-only and change only through `agent.evaluate(problem)` or
+  `agent.update_solution(other)`. There is no dynamic `copy()`/`update()`:
+  `cy.duplicate_agent(agent)` calls the agent's static `cdef clone`.
+- The pipeline `empty_snapshot` -> `evaluate(..., self.mode)` ->
+  `greedy(..., self.mode)` evaluates a whole batch at once in every mode. Use it
+  only when each candidate depends on the population at the start of the phase;
+  an order-dependent step keeps `if self.mode == "sequential":` (see
+  [Batch and parallel evaluation](../parallel-evaluation.md)).
+- An algorithm with its own agents subclasses `cy.Agent` with typed
+  `cdef public` fields and overrides `cdef cy.Agent clone(self)`; its
+  `cy.Population` subclass builds them (`create_agent`, `generate_agent`),
+  holds problem-dependent state (`bind`) and overrides `cdef void copy_state`.
+  `clypto/native/collection/swarm_based/PSO/` is the reference.
+- `evolve` must be a `cdef` method: a Python subclass of `cy.Optimizer` that
+  defines `def evolve` is rejected by `solve()`. Write Python optimizers with
+  the decorator API.
+
+Build such a module with Cython (`cythonize(..., include_path=[<clypto source
+root>], compiler_directives={"cpow": True})` and NumPy's include directory).
 
 ## Compile the decorator API
 

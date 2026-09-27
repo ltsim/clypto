@@ -35,7 +35,7 @@ Optimizers live in category packages. Import the module (`PSO`) and instantiate
 the variant you want (`OriginalPSO`):
 
 ```python
-from clypto.native.collection.vectorize.swarm_based import PSO
+from clypto.native.collection.swarm_based import PSO
 
 model = PSO.OriginalPSO(epoch=500, pop_size=50)
 g_best = model.solve(problem, seed=42)
@@ -44,20 +44,20 @@ print(f"Best solution: {g_best.solution}")
 print(f"Best fitness:  {g_best.fitness}")
 ```
 
-### Engines: `vectorize` and `legacy`
+### Batch and parallel evaluation
 
-The collection ships twice, both Cythonized. `cy.get_all_optimizers()` and
-`clypto.native.collection.vectorize.*` return the
-**vectorized** classes (`clypto/native/collection/vectorize`). The classic per-agent implementations are frozen in
-`clypto/native/collection/legacy` and reachable with `cy.get_all_optimizers(engine="legacy")` or
-`from clypto.native.collection.legacy.swarm_based import PSO`. Class names are the same in both.
+`mode="swarm"` evaluates each batch of candidates at once and `mode="parallel"`
+does it on OpenMP threads when the problem has a nogil evaluator; the default,
+`"sequential"`, follows the classic one-by-one order. A problem built with
+`vectorized=True` gets one objective call per batch. See
+[Batch and parallel evaluation](parallel-evaluation.md) for which algorithms batch.
 
 ## Complete script
 
 ```python
 import numpy as np
 import clypto as cy
-from clypto.native.collection.vectorize.swarm_based import PSO
+from clypto.native.collection.swarm_based import PSO
 
 
 def objective(solution):

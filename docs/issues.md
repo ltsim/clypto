@@ -11,6 +11,10 @@ catalog. Issues fall into four groups:
 | **Fixed** | A bug that was found and repaired during the 2026 Cython refactor. Kept here for traceability. |
 | **Open** | A defect present in the current build that has not been fixed yet. |
 
+Which algorithms evaluate a whole batch at once, and which are order-dependent
+and only batch in `mode="swarm"`/`"parallel"`, is listed in
+[Batch and parallel evaluation](parallel-evaluation.md).
+
 The quality annotations are the maintainer's own notes; the plagiarism list
 follows the warning in the upstream MEALPY project. Every flagged algorithm is
 shipped by clypto — follow the module links to its category page.
@@ -49,6 +53,8 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 
 ### Fixed in 2026
 
+- `SSpiderA` — the candidate was appended only in sequential mode, so the
+  batch modes failed with an `IndexError`. The sequential results are unchanged.
 - `CSO` — `Validator.check_bool` list/tuple type mismatch (Cython enforces
   concrete types at compiled call boundaries).
 - `SMO` — `local_leaders` built from the wrong return shape at four call sites.
@@ -104,6 +110,9 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 
 ### Fixed in 2026
 
+- `SOO` — the second phase appended to the first phase's candidate list, so
+  `mode="swarm"`/`"parallel"` failed (`greedy` of two populations of different
+  length). The sequential results are unchanged.
 - `TWO` (`OppoTWO`) — odd-`pop_size` population-halving `IndexError`.
 - `MSO` — `self.nfe_counter` typo (the real attribute is `self.nf_counter`).
 - `MSO` — `nf_counter` now starts at 0 on every `solve()` (it started at 1 and
