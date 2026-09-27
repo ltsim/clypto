@@ -1,12 +1,15 @@
-"""Engine root shared by ``LegacyOptimizer`` and ``VectorizeOptimizer``.
+"""Engine root of ``LegacyOptimizer`` (``cy.Optimizer``).
 
 ``solve()`` binds the problem, the RNGs and the termination, runs the lifecycle
-and the epoch loop, and tracks the run. Algorithms implement ``evolve(epoch)``
-and may override ``initialize_variables``, ``initialization`` and
-``before_main_loop``. Each engine declares ``self.population``, ``self.problem``
-and ``self.g_best`` its own way and implements the C-level engine steps
-(``check_problem``, ``before_initialization``, ``after_initialization``,
+and the epoch loop, and tracks the run. Algorithms implement the C method
+``cdef void evolve(self, int epoch)`` and may override ``initialize_variables``,
+``initialization`` and ``before_main_loop``. The engine implements the C-level
+steps (``check_problem``, ``before_initialization``, ``after_initialization``,
 ``after_evolve``, which refreshes ``g_best``).
+
+``mode`` picks how a batch of agents is evaluated: ``"sequential"`` (default),
+``"swarm"`` (one batch, one call per agent) or ``"parallel"`` (one batch on
+OpenMP threads when the problem has a nogil evaluator).
 """
 import random
 import time
@@ -16,18 +19,23 @@ import numpy as np
 from clypto.optimizer.history import Tracker
 from clypto.optimizer.termination import Termination
 
+cdef tuple MODES = ("sequential", "swarm", "parallel")
+
 
 cdef class NativeOptimizer:
-    def __init__(self, parameters=(), sort_flag=False, name=None, mode=None):
+    def __init__(self, parameters=(), sort_flag=False, name=None, mode="sequential"):
         self.tracker = Tracker()
         self.EPSILON = 10e-10
-        self.AVAILABLE_MODES = ("swarm", "parallel", "thread", "process")
         self.SUPPORTED_ARRAYS = (list, tuple, np.ndarray)
         self.name = type(self).__name__ if name is None else name
         self._params_name_ordered = tuple(parameters)
         self._termination = None
         self.generator = None
         self.rng = None
+        if mode is None:
+            mode = "sequential"
+        if mode not in MODES:
+            raise ValueError(f"mode must be one of {MODES}, got {mode!r}.")
         self.mode = mode
         self.epoch = 0
         self.sort_flag = sort_flag
@@ -76,7 +84,7 @@ cdef class NativeOptimizer:
     def before_main_loop(self):
         pass
 
-    def evolve(self, epoch):
+    cdef void evolve(self, int epoch):
         raise NotImplementedError(f"{type(self).__name__} does not implement evolve().")
 
     # -- engine steps ----------------------------------------------------------------
@@ -112,6 +120,12 @@ cdef class NativeOptimizer:
 
         self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for the random module
+        for klass in type(self).__mro__:
+            if "evolve" in vars(klass):
+                raise TypeError(
+                    f"{klass.__name__}.evolve is a Python method; the engine calls the C method "
+                    "`cdef void evolve(self, int epoch)` (write a Python optimizer with @cy.optimizer)."
+                )
         self.check_problem(problem, seed)
         self.problem.n_evals = 0
 

@@ -10,6 +10,8 @@ from operator import itemgetter
 
 import numpy as np
 
+from clypto.optimizer.native.agent cimport duplicate_agent
+
 cdef double EPSILON = 10e-10
 
 
@@ -129,4 +131,4 @@ cpdef list kway_tournament(object generator, str sense, object agents, object k_
 
 cpdef list split_groups(object agents, Py_ssize_t n_groups, Py_ssize_t m_agents):
     """``n_groups`` groups of ``m_agents`` consecutive agents (copies)."""
-    return [[agent.copy() for agent in agents[idx * m_agents:(idx + 1) * m_agents]] for idx in range(n_groups)]
+    return [[duplicate_agent(agent) for agent in agents[idx * m_agents:(idx + 1) * m_agents]] for idx in range(n_groups)]

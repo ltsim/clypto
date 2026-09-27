@@ -13,9 +13,11 @@ from clypto.optimizer.bounds import (
     TransferBounds,
 )
 from clypto.optimizer.history import Tracker
-from clypto.optimizer.native.agent import Agent
+from clypto.optimizer.native.agent import Agent, duplicate_agent
 from clypto.optimizer.native.legacy import LegacyOptimizer
-from clypto.optimizer.native.population import Population, ResetPopulation, population
+from clypto.optimizer.native.population import (
+    Population, correct_solution, empty_snapshot, opposite_solution, population, reset_solution, snapshot,
+)
 from clypto.optimizer.native.problem import Problem
 from clypto.optimizer.native.utils import validator
 from clypto.optimizer.termination import Termination
@@ -35,7 +37,6 @@ __all__ = [
     "PermutationBounds",
     "Population",
     "Problem",
-    "ResetPopulation",
     "RuntimeAgent",
     "SequenceBounds",
     "StringBounds",
@@ -43,7 +44,13 @@ __all__ = [
     "TransferBounds",
     "Tracker",
     "agent",
+    "correct_solution",
+    "duplicate_agent",
+    "empty_snapshot",
+    "opposite_solution",
     "optimizer",
     "population",
+    "reset_solution",
+    "snapshot",
     "validator",
 ]

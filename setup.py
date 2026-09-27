@@ -11,9 +11,9 @@ from setuptools import setup
 # setup.py is kept only because cythonize() must run as code -- it can't be
 # expressed declaratively in pyproject.toml.
 #
-# Everything is compiled: the algorithm collections (clypto/native/collection/{vectorize,legacy})
-# and the whole optimizer package (clypto/optimizer/**, engine and authoring API; .pyi stubs keep
-# the public modules typed). CLYPTO_LEGACY=0 skips the legacy collection (development builds).
+# Everything is compiled: the algorithm collection (clypto/native/collection/**) and the whole
+# optimizer package (clypto/optimizer/**, engine and authoring API; .pyi stubs keep the public
+# modules typed). CLYPTO_COLLECTION=0 skips the collection (development builds of the core).
 # ponytail: the authoring API runs once per solve(), so compiling it buys no speed; it is .pyx only so
 # the core is one language.
 
@@ -24,6 +24,9 @@ COMPILER_DIRECTIVES = {
     "initializedcheck": False,
     "embedsignature": True,
     "annotation_typing": False,
+    # C ``double ** double`` is a real ``pow()`` (Python floats' result); Cython's default types it as
+    # complex, which is slower and 1 ulp off whenever evolve's C ``int epoch`` makes the operands C types.
+    "cpow": True,
 }
 
 
@@ -54,17 +57,17 @@ def openmp_flags():
 
 
 def get_ext_modules():
-    sources = ["clypto/native/collection/vectorize/**/*.pyx", "clypto/optimizer/**/*.pyx"]
-    if os.environ.get("CLYPTO_LEGACY", "1") != "0":
-        sources.append("clypto/native/collection/legacy/**/*.pyx")
+    sources = ["clypto/optimizer/**/*.pyx"]
+    if os.environ.get("CLYPTO_COLLECTION", "1") != "0":
+        sources.append("clypto/native/collection/**/*.pyx")
     extensions = cythonize(sources, compiler_directives=COMPILER_DIRECTIVES, quiet=True)
     compile_args, link_args = openmp_flags()
     for ext in extensions:
         # agents and populations type their arrays as numpy.ndarray (cimport numpy)
         ext.include_dirs.append(numpy.get_include())
         ext.define_macros.append(("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION"))
-        if ext.name.startswith("clypto.native.collection.legacy."):
-            # classic per-agent code never uses prange: no OpenMP, only the no-FMA flag shared with the golden baseline
+        if ext.name.startswith("clypto.native.collection."):
+            # algorithms never use prange (parallel evaluation lives in the core): only the no-FMA flag of the golden baseline
             ext.extra_compile_args += [a for a in compile_args if a == "-ffp-contract=off"]
             continue
         ext.extra_compile_args += compile_args

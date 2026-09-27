@@ -8,8 +8,8 @@
 An agent holds its ``solution`` and, once evaluated, its ``objectives``, their
 ``weights`` and the weighted ``fitness``. The evaluation is read-only: it changes
 only through ``evaluate(problem)`` or ``update_solution(other)``. Algorithms that
-need extra per-agent state subclass ``Agent`` and declare ``cdef public`` fields;
-``copy()`` and ``update(**fields)`` then work without being overridden.
+need extra per-agent state subclass ``Agent``, declare typed ``cdef public`` fields
+and override ``clone`` to copy them: copies are static C code, never ``setattr``.
 """
 import numbers
 
@@ -21,36 +21,9 @@ from clypto.optimizer.native.problem cimport Problem
 cnp.import_array()
 
 cdef tuple SUPPORTED_ARRAY = (tuple, list, np.ndarray)
-cdef dict _FIELDS = {}
-
-
-cdef tuple fields_of(type cls, type base):
-    """The ``cdef public`` (and ``__dict__``-less Python) data fields ``cls`` adds on top of ``base`` (cached)."""
-    key = (cls, base)
-    fields = _FIELDS.get(key)
-    if fields is None:
-        fields = tuple(
-            name
-            for klass in cls.__mro__
-            if klass is not base and issubclass(klass, base)
-            for name, attr in vars(klass).items()
-            if type(attr).__name__ == "getset_descriptor" and not name.startswith("__")
-        )
-        _FIELDS[key] = fields
-    return fields
-
-
-cpdef object duplicate_agent(Agent agent):
-    """Copy of ``agent``: every field and the evaluation are shared (they are replaced, never mutated)."""
-    cls = type(agent)
-    cdef Agent new = cls.__new__(cls)
-    for name in fields_of(cls, Agent):
-        setattr(new, name, getattr(agent, name))
-    if hasattr(agent, "__dict__"):
-        new.__dict__.update(agent.__dict__)
-    new.solution = agent.solution
-    new.copy_evaluation(agent)
-    return new
+cpdef Agent duplicate_agent(Agent agent):
+    """Copy of ``agent`` (``agent.clone()``): its fields and evaluation are shared (replaced, never mutated)."""
+    return agent.clone()
 
 
 cpdef bint sync_if_duplicate(Agent that, Agent other):
@@ -77,8 +50,8 @@ cpdef Agent get_better_agent(Agent x, Agent y, str sense="min", bint reverse=Fal
     """Copy of the better agent; a tie keeps ``y`` when minimizing, ``x`` when maximizing."""
     cdef bint maximize = (sense != "min") != reverse
     if x.fitness < y.fitness:
-        return y.copy() if maximize else x.copy()
-    return x.copy() if maximize else y.copy()
+        return y.clone() if maximize else x.clone()
+    return x.clone() if maximize else y.clone()
 
 
 cpdef list argsort_agents(object agents, str sense):
@@ -87,10 +60,17 @@ cpdef list argsort_agents(object agents, str sense):
     return order[::-1] if sense == "max" else order
 
 
-cpdef list greedy_agents(object old, object new, str sense):
-    """Per position, the ``new`` agent when strictly better, else the ``old`` one (lists of equal length)."""
+cpdef list greedy_agents(object old, object new, str sense, str mode="swarm"):
+    """Per position, the ``new`` agent when better, else the ``old`` one (lists of equal length).
+
+    The batch modes keep ``new`` only when strictly better. ``mode="sequential"`` applies the
+    one-by-one rule of ``get_better_agent`` (``better_fitness``: when maximizing, a tie keeps ``new``),
+    so an algorithm that evaluates its whole batch at once keeps its sequential results exactly.
+    """
     if len(old) != len(new):
         raise ValueError("Greedy selection of two population with different length.")
+    if mode == "sequential":
+        return [n if better_fitness(n.fitness, o.fitness, sense) else o for o, n in zip(old, new)]
     if sense == "max":
         return [n if n.fitness > o.fitness else o for o, n in zip(old, new)]
     return [n if n.fitness < o.fitness else o for o, n in zip(old, new)]
@@ -105,12 +85,20 @@ cdef class Agent:
     def __cinit__(self):
         self.fitness = np.nan
 
-    def __init__(self, solution=None, objectives=None, weights=None, **fields):
+    def __init__(self, solution=None, objectives=None, weights=None):
         self.solution = solution
         if objectives is not None:
             self.set_evaluation(objectives, weights)
-        for name, value in fields.items():
-            setattr(self, name, value)
+
+    cdef Agent clone(self):
+        """A new agent of the same class sharing ``solution`` and the evaluation.
+
+        Subclasses with fields override it: ``new = <XAgent>Agent.clone(self)``, then copy each field.
+        """
+        cdef Agent new = <Agent>type(self).__new__(type(self))
+        new.solution = self.solution
+        new.copy_evaluation(self)
+        return new
 
     cdef void set_evaluation(self, object objectives, object weights):
         """Store ``objectives`` (number or sequence) and ``weights``; fitness is their dot product."""
@@ -152,13 +140,6 @@ cdef class Agent:
         """
         self.solution = other.solution.copy() if solution is None else solution
         self.copy_evaluation(other)
-
-    def copy(self):
-        return duplicate_agent(self)
-
-    def update(self, **fields):
-        for name, value in fields.items():
-            setattr(self, name, value)
 
     def __repr__(self):
         return f"{type(self).__name__}(fitness={self.fitness}, solution={self.solution})"

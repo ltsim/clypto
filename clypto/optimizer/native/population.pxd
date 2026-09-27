@@ -8,48 +8,19 @@ cdef class Population:
     cdef public object idx
     cdef Py_ssize_t _size
 
+    cdef void copy_state(self, Population new)
     cpdef Population spawn(self, object agents)
-
-
-cdef class ResetPopulation(Population):
-    pass
+    cpdef Py_ssize_t size(self)
+    cpdef list toarray(self)
+    cpdef object evaluate(self, object agents, object mode)
+    cpdef void append(self, object agent)
+    cpdef Population sort(self)
+    cpdef Population greedy(self, object candidates, str mode=*)
 
 
 cpdef Population population(object size, object range=*, type cls=*)
-
-
-cdef class NativePopulation:
-    cdef public object buf              # (n, width) float64, C-contiguous
-    cdef double[:, ::1] view
-    cdef readonly Py_ssize_t n
-    cdef readonly Py_ssize_t d
-    cdef readonly Py_ssize_t m
-    cdef readonly Py_ssize_t width
-    cdef readonly Py_ssize_t cF         # fitness column
-    cdef readonly Py_ssize_t cO         # first objective column (m columns)
-    cdef readonly Py_ssize_t cX         # first solution column (d columns)
-    cdef dict _fields
-    cdef public object weights          # objective weights of the agent snapshots
-
-    cpdef Py_ssize_t offset(self, str name)
-    cpdef Agent agent(self, Py_ssize_t i, Py_ssize_t c_obj=*)
-    cpdef NativePopulation take(self, object rows)
-    cpdef NativePopulation concat(self, NativePopulation other)
-    cpdef NativePopulation empty_like(self)
-
-
-cdef inline double np_clip(double x, double lo, double hi) noexcept nogil:
-    # np.clip for float64: NaN in x propagates; otherwise min(max(x, lo), hi).
-    if x != x:
-        return x
-    x = x if x > lo else lo
-    if x != x:
-        return x
-    return x if x < hi else hi
-
-
-cdef void select_better(
-    NativePopulation dst, Py_ssize_t dst_x, Py_ssize_t dst_o, Py_ssize_t dst_f,
-    NativePopulation src, Py_ssize_t src_x, Py_ssize_t src_o, Py_ssize_t src_f,
-    Py_ssize_t start, Py_ssize_t stop, bint maximize,
-) noexcept nogil
+cpdef Population empty_snapshot(Population population)
+cpdef Population snapshot(Population population)
+cpdef object correct_solution(object problem, object solution)
+cpdef object reset_solution(object problem, object generator, object solution)
+cpdef object opposite_solution(object problem, object generator, Agent agent, Agent g_best)

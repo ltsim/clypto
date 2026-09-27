@@ -1,1 +1,1 @@
-"""Cythonized algorithm collections (``collection.legacy`` and ``collection.vectorize``)."""
+"""Cythonized algorithm collection (``clypto.native.collection``)."""
