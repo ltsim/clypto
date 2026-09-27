@@ -3,11 +3,11 @@ import pytest
 
 import clypto as cy
 
-from tests._engines import ENGINES, NO_EVOLVE
+from tests._collection import NO_EVOLVE
 
 CASES = [
-    pytest.param(cls, id=f"{engine}-{name}", marks=[pytest.mark.xfail(raises=NotImplementedError, strict=True)] if name in NO_EVOLVE else [])
-    for engine in ENGINES for name, cls in cy.get_all_optimizers(engine=engine).items()
+    pytest.param(cls, id=name, marks=[pytest.mark.xfail(raises=NotImplementedError, strict=True)] if name in NO_EVOLVE else [])
+    for name, cls in cy.get_all_optimizers().items()
 ]
 OPTIMIZERS = cy.get_all_optimizers()
 N_DIMS = 5
@@ -50,3 +50,24 @@ def test_all_optimizers_run(optimizer, problem):
     target = np.asarray(g_best.objectives).flatten()
     assert target.size == 1
     assert np.all(np.isfinite(target))
+
+
+def test_mode_is_validated():
+    optimizer = OPTIMIZERS["OriginalGWO"]
+    assert optimizer().mode == "sequential" and optimizer(mode=None).mode == "sequential"
+    with pytest.raises(ValueError):
+        optimizer(mode="thread")
+
+
+def test_python_evolve_is_rejected(problem):
+    class PythonSearch(cy.Optimizer):
+        def __init__(self, **kwargs):
+            super().__init__(parameters=["epoch"], **kwargs)
+            self.epoch = 2
+            self.population = cy.population(5)
+
+        def evolve(self, epoch):
+            pass
+
+    with pytest.raises(TypeError, match="cdef void evolve"):
+        PythonSearch().solve(problem, seed=1)

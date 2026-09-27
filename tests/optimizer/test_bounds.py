@@ -180,19 +180,20 @@ def test_agent_functions():
     assert fn.sync_if_duplicate(twin, better) and twin.fitness == 1.0 and twin.objectives is better.objectives
 
 
-def test_copy_shares_fields_and_the_evaluation():
-    from clypto.native.collection.legacy.swarm_based.PSO._base import PSOAgent
+def test_duplicate_agent_shares_fields_and_the_evaluation():
+    from clypto.native.collection.swarm_based.PSO._base import PSOAgent
 
-    class Tagged(cy.Agent):
-        pass
-
-    compiled = PSOAgent(np.zeros(2), 1.0, velocity=np.ones(2))
-    python = Tagged(np.zeros(2), 1.0, tag=[1])
-    for agent, field in ((compiled, "velocity"), (python, "tag")):
-        copy = agent.copy()
-        assert type(copy) is type(agent) and getattr(copy, field) is getattr(agent, field)
-        assert copy.solution is agent.solution and copy.fitness == 1.0
-    compiled.update(velocity=None, solution=np.ones(2))
-    assert compiled.velocity is None and compiled.solution.tolist() == [1.0, 1.0]
+    plain = cy.Agent(np.zeros(2), 1.0)
+    particle = PSOAgent(np.zeros(2), 1.0, velocity=np.ones(2), pbest_fitness=0.5)
+    for agent in (plain, particle):
+        copy = cy.duplicate_agent(agent)
+        assert type(copy) is type(agent) and copy is not agent
+        assert copy.solution is agent.solution and copy.fitness == 1.0 and copy.objectives is agent.objectives
+    copy = cy.duplicate_agent(particle)
+    assert copy.velocity is particle.velocity and copy.pbest_fitness == 0.5
+    # no dynamic reflection left: fields are typed, the evaluation is read-only
+    assert not hasattr(plain, "copy") and not hasattr(plain, "update") and not hasattr(plain, "__dict__")
+    with pytest.raises(TypeError):
+        cy.Agent(np.zeros(2), tag=1)
     with pytest.raises(AttributeError):
-        compiled.fitness = 3.0
+        particle.fitness = 3.0

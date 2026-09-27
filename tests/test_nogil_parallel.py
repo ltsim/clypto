@@ -57,7 +57,7 @@ def _problem(evaluator=None):
 
 
 def test_parallel_mode_runs_with_compiled_evaluator(sphere_evaluator):
-    from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO
+    from clypto.native.collection.swarm_based.ARO import OriginalARO
 
     model = OriginalARO(epoch=15, pop_size=12, mode="parallel")
     g_best = model.solve(_problem(sphere_evaluator), seed=1)
@@ -70,7 +70,7 @@ def test_parallel_mode_runs_with_compiled_evaluator(sphere_evaluator):
 
 
 def test_parallel_mode_without_evaluator_falls_back():
-    from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO
+    from clypto.native.collection.swarm_based.ARO import OriginalARO
 
     model = OriginalARO(epoch=15, pop_size=12, mode="parallel")
     g_best = model.solve(_problem(None), seed=1)
@@ -79,9 +79,19 @@ def test_parallel_mode_without_evaluator_falls_back():
 
 
 def test_default_mode_is_unchanged():
-    from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO
+    from clypto.native.collection.swarm_based.ARO import OriginalARO
 
     default = OriginalARO(epoch=15, pop_size=12).solve(_problem(None), seed=1)
     identical = OriginalARO(epoch=15, pop_size=12).solve(_problem(None), seed=1)
 
     assert default.fitness == identical.fitness
+
+
+def test_batch_pipeline_gives_the_same_run_in_every_mode(sphere_evaluator):
+    """An order-independent algorithm evaluates its whole batch at once: the mode only changes how."""
+    from clypto.native.collection.swarm_based.GWO import OriginalGWO
+
+    runs = {mode: OriginalGWO(epoch=15, pop_size=12, mode=mode).solve(_problem(None), seed=1) for mode in ("sequential", "swarm")}
+    assert np.array_equal(runs["sequential"].solution, runs["swarm"].solution)
+    parallel = OriginalGWO(epoch=15, pop_size=12, mode="parallel").solve(_problem(sphere_evaluator), seed=1)
+    assert parallel.fitness == pytest.approx(runs["sequential"].fitness, rel=1e-9)

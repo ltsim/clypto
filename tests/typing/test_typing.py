@@ -61,5 +61,6 @@ def test_typed_patterns_solve(problem):
     new = fixture.NewStyleSearch(epoch=5, pop_size=6)
     assert new.solve(problem, seed=1).fitness is not None
 
-    classic = fixture.ClassicSearch(epoch=5, pop_size=6)
-    assert classic.solve(problem, seed=1).fitness is not None
+    # the classic base runs `cdef void evolve` (a Cython method): a Python subclass is typed, not runnable
+    with pytest.raises(NotImplementedError):
+        fixture.ClassicSearch(epoch=5, pop_size=6).solve(problem, seed=1)
