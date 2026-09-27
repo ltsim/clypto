@@ -1,17 +1,22 @@
-from clypto.optimizer.native.target cimport NativeTarget
-
-cdef class LegacyAgent:
-    cdef public object solution
-    cdef public object target
+cimport numpy as cnp
 
 
-cdef class LegacyNativeAgent:
-    cdef public object solution
-    cdef public NativeTarget target
+cdef class Agent:
+    cdef public cnp.ndarray solution
+    cdef readonly cnp.ndarray objectives
+    cdef readonly double fitness
+    cdef readonly object weights
+
+    cdef void set_evaluation(self, object objectives, object weights)
+    cdef void copy_evaluation(self, Agent other)
 
 
-cpdef object duplicate_agent(object agent)
-cpdef bint sync_if_duplicate(object that, object other)
-cpdef int compare_fitness(object that, object other, str sense=*)
-cpdef object get_better_solution(object that, object other, str sense=*)
-cpdef bint is_better_than(object that, object other, str sense=*)
+cdef tuple fields_of(type cls, type base)
+cpdef object duplicate_agent(Agent agent)
+cpdef bint sync_if_duplicate(Agent that, Agent other)
+cpdef bint better_fitness(double x, double y, str sense)
+cpdef bint is_better(Agent x, Agent y, str sense)
+cpdef Agent get_better_agent(Agent x, Agent y, str sense=*, bint reverse=*)
+cpdef list argsort_agents(object agents, str sense)
+cpdef list sort_agents(object agents, str sense)
+cpdef list greedy_agents(object old, object new, str sense)

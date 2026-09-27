@@ -1,5 +1,21 @@
-from clypto.optimizer.native.agent cimport LegacyNativeAgent
-from clypto.optimizer.native.target cimport NativeTarget
+from clypto.optimizer.native.agent cimport Agent
+
+
+cdef class Population:
+    cdef public list agents
+    cdef public object problem
+    cdef public object generator
+    cdef public object idx
+    cdef Py_ssize_t _size
+
+    cpdef Population spawn(self, object agents)
+
+
+cdef class ResetPopulation(Population):
+    pass
+
+
+cpdef Population population(object size, object range=*, type cls=*)
 
 
 cdef class NativePopulation:
@@ -13,11 +29,10 @@ cdef class NativePopulation:
     cdef readonly Py_ssize_t cO         # first objective column (m columns)
     cdef readonly Py_ssize_t cX         # first solution column (d columns)
     cdef dict _fields
-    cdef public object weights          # NativeTarget weights for snapshots
+    cdef public object weights          # objective weights of the agent snapshots
 
     cpdef Py_ssize_t offset(self, str name)
-    cpdef NativeTarget target_at(self, Py_ssize_t i, Py_ssize_t c_obj)
-    cpdef LegacyNativeAgent agent(self, Py_ssize_t i)
+    cpdef Agent agent(self, Py_ssize_t i, Py_ssize_t c_obj=*)
     cpdef NativePopulation take(self, object rows)
     cpdef NativePopulation concat(self, NativePopulation other)
     cpdef NativePopulation empty_like(self)

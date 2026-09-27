@@ -78,7 +78,7 @@ def decorate_with_base(cls: typing.Any, base: typing.Any) -> typing.Any:
     ("deallocator differs from 'object'"), so the decorator returns a new class
     that inherits from both the user class and the base. Keeping the original
     class in the MRO preserves zero-arg ``super()`` calls such as
-    ``super().__init__(**kwargs)`` in a ``@cy.legacy`` class.
+    ``super().__init__(**kwargs)`` in a decorated class.
     """
     if issubclass(cls, base):
         return cls

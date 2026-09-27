@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 
+import numpy
 from Cython.Build import cythonize
 from setuptools import setup
 
@@ -10,9 +11,11 @@ from setuptools import setup
 # setup.py is kept only because cythonize() must run as code -- it can't be
 # expressed declaratively in pyproject.toml.
 #
-# Only native .pyx is compiled: the algorithm collections (clypto/native/collection/{vectorize,legacy})
-# and the Cython-only engine they cimport (clypto/optimizer/native). The public optimizer API ships
-# as plain Python. CLYPTO_LEGACY=0 skips the frozen legacy collection (development builds).
+# Everything is compiled: the algorithm collections (clypto/native/collection/{vectorize,legacy})
+# and the whole optimizer package (clypto/optimizer/**, engine and authoring API; .pyi stubs keep
+# the public modules typed). CLYPTO_LEGACY=0 skips the legacy collection (development builds).
+# ponytail: the authoring API runs once per solve(), so compiling it buys no speed; it is .pyx only so
+# the core is one language.
 
 COMPILER_DIRECTIVES = {
     "language_level": "3",
@@ -51,12 +54,15 @@ def openmp_flags():
 
 
 def get_ext_modules():
-    sources = ["clypto/native/collection/vectorize/**/*.pyx", "clypto/optimizer/native/*.pyx"]
+    sources = ["clypto/native/collection/vectorize/**/*.pyx", "clypto/optimizer/**/*.pyx"]
     if os.environ.get("CLYPTO_LEGACY", "1") != "0":
         sources.append("clypto/native/collection/legacy/**/*.pyx")
     extensions = cythonize(sources, compiler_directives=COMPILER_DIRECTIVES, quiet=True)
     compile_args, link_args = openmp_flags()
     for ext in extensions:
+        # agents and populations type their arrays as numpy.ndarray (cimport numpy)
+        ext.include_dirs.append(numpy.get_include())
+        ext.define_macros.append(("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION"))
         if ext.name.startswith("clypto.native.collection.legacy."):
             # classic per-agent code never uses prange: no OpenMP, only the no-FMA flag shared with the golden baseline
             ext.extra_compile_args += [a for a in compile_args if a == "-ffp-contract=off"]

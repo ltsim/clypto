@@ -30,9 +30,9 @@ def agent(cls=None, *, compile=False):
     """Turn a plain class into an agent usable by ``@cy.optimizer``.
 
     The class may declare per-agent attributes with :class:`Attribute`; the
-    decorated class gains ``solution``/``fitness``/``target`` from
+    decorated class gains ``solution``/``fitness``/``objectives`` from
     :class:`RuntimeAgent`. When ``compile`` is ``True`` the class is also
-    Cython-compiled through the same JIT builder used by the legacy API.
+    Cython-compiled through the same JIT builder as ``@cy.optimizer``.
     """
 
     def decorate(user_cls):

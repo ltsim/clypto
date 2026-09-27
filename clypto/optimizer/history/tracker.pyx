@@ -238,14 +238,14 @@ class Tracker:
     def _fitnesses(pop) -> np.ndarray:
         if hasattr(pop, "F"):
             return np.asarray(pop.F, dtype=np.float64)
-        return np.asarray([agent.target.fitness for agent in pop], dtype=np.float64)
+        return np.asarray([agent.fitness for agent in pop], dtype=np.float64)
 
     @staticmethod
     def _objectives(pop) -> np.ndarray:
         if hasattr(pop, "O"):
             return np.asarray(pop.O, dtype=np.float64)
         return np.asarray(
-            [np.asarray(agent.target.objectives).ravel() for agent in pop],
+            [np.asarray(agent.objectives).ravel() for agent in pop],
             dtype=np.float64,
         )
 

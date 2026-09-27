@@ -10,13 +10,13 @@ import numpy as np
 from clypto.optimizer.agents.runtime import RuntimeAgent
 from clypto.hints.array import NDArrayType
 from clypto.optimizer.bounds import Bounds
+from clypto.optimizer.native.agent import Agent
 from clypto.optimizer.native.population import Population
 from clypto.optimizer.native.problem import Problem
-from clypto.optimizer.native.target import NativeTarget as Target
+from clypto.optimizer.native.utils import validator
 from clypto.optimizer.precompile.declaration import Argument
 from clypto.optimizer.precompile.decoration import collect_declarations
 from clypto.optimizer.termination import Termination
-from clypto.optimizer.validator import Validator
 
 __all__ = ["DecoratedOptimizer"]
 
@@ -30,13 +30,11 @@ def _coerce_argument(name: str, declaration: Argument, value: typing.Any) -> typ
     bound = declaration.bound
 
     if dtype in (int, np.integer):
-        return Validator.check_int(name, value, bound)
+        return validator(int, value, bound, name)
     if dtype in (float, np.floating):
-        return Validator.check_float(name, value, bound)
-    if dtype is str:
-        return Validator.check_str(name, value, bound)
-    if dtype is bool:
-        return Validator.check_bool(name, value, bound)
+        return validator(float, value, bound, name)
+    if dtype in (str, bool):
+        return validator(dtype, value, bound, name)
 
     expected = np.ndarray if dtype in (np.ndarray, np.array) else dtype
     if isinstance(value, expected):
@@ -83,8 +81,6 @@ class DecoratedOptimizer:
         if kwargs:
             raise TypeError(f"Unexpected optimizer argument(s): {sorted(kwargs)}.")
 
-        self._nfe = 0
-
     # -- lifecycle ---------------------------------------------------------
     def initialize(self) -> None:
         """Hook the algorithm may override to set up ``self.population``.
@@ -107,12 +103,14 @@ class DecoratedOptimizer:
         self._bind_problem(problem, seed)
         assert self.problem is not None and self.bounds is not None
 
-        self._nfe = 0
+        self.problem.n_evals = 0
         pop_size = typing.cast(int, self.pop_size)
         epochs = typing.cast(int, self.epoch)
         self.rng = np.random.default_rng(seed)
         self.termination = self._build_termination(termination)
-        self.population = Population([self.generate_agent() for _ in range(pop_size)], self.problem.sense)
+        self.population = Population(pop_size)
+        self.population.bind(self.problem, self.rng)
+        self.population.extend([self.generate_agent() for _ in range(pop_size)])
 
         self.initialize()
         self.g_best = self.population.best
@@ -122,18 +120,17 @@ class DecoratedOptimizer:
             self.g_best = self.population.best
 
             if self.termination is not None and self.termination.should_terminate(
-                epoch, self._nfe, time.perf_counter(), 0
+                epoch, self.problem.n_evals, time.perf_counter(), 0
             ):
                 break
 
         return self.g_best
 
     # -- helpers -----------------------------------------------------------
-    def evaluate_agent(self, solution: NDArrayType) -> Target:
-        """Evaluate one solution, counting a function evaluation."""
+    def evaluate_agent(self, solution: NDArrayType) -> Agent:
+        """Evaluate one solution (counted by the problem)."""
         assert self.problem is not None
-        self._nfe += 1
-        return self.problem.get_target(solution)
+        return Agent(solution).evaluate(self.problem)
 
     def generate(self, agent: RuntimeAgent, solution: NDArrayType) -> RuntimeAgent:
         """Seed extra state on a freshly created agent before it is evaluated.
@@ -173,5 +170,5 @@ class DecoratedOptimizer:
         else:
             raise ValueError("Termination needs to be a dict or an instance of Termination class.")
 
-        term.set_start_values(0, self._nfe, time.perf_counter(), 0)
+        term.set_start_values(0, 0, time.perf_counter(), 0)
         return term

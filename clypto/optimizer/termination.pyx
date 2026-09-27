@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-from clypto.optimizer.validator import Validator
+from clypto.optimizer.native.utils import validator
 
 
 class Termination:
@@ -64,7 +64,6 @@ class Termination:
         self.max_early_stop = max_early_stop
         self.epsilon = 1e-10
         self.__set_keyword_arguments(kwargs)
-        self.validator = Validator()
         self.name, self.message, self.log_to, self.log_file = (
             "Termination",
             "",
@@ -95,21 +94,13 @@ class Termination:
             )
         else:
             if max_epoch is not None:
-                self.max_epoch = self.validator.check_int(
-                    "max_epoch", max_epoch, [1, 10000000]
-                )
+                self.max_epoch = validator(int, max_epoch, [1, 10000000], "max_epoch")
             if max_fe is not None:
-                self.max_fe = self.validator.check_int(
-                    "max_fe", max_fe, [10, 1000000000]
-                )
+                self.max_fe = validator(int, max_fe, [10, 1000000000], "max_fe")
             if max_time is not None:
-                self.max_time = self.validator.check_float(
-                    "max_time", max_time, [0.1, 1000000]
-                )
+                self.max_time = validator(float, max_time, [0.1, 1000000], "max_time")
             if max_early_stop is not None:
-                self.max_early_stop = self.validator.check_int(
-                    "max_early_stop", max_early_stop, [1, 100000]
-                )
+                self.max_early_stop = validator(int, max_early_stop, [1, 100000], "max_early_stop")
 
     def get_name(self):
         return self.name

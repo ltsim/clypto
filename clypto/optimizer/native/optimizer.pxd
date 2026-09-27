@@ -1,6 +1,5 @@
 cdef class NativeOptimizer:
     cdef public int epoch
-    cdef public int pop_size
     cdef public object generator
     cdef public object rng
     cdef public object tracker
@@ -12,8 +11,9 @@ cdef class NativeOptimizer:
     cdef readonly str name
     cdef object _termination
     cdef tuple _params_name_ordered
-    cdef object _last_gbest_fit
-    cdef long long _nfe_counter
-    cdef int _repeated_times
 
-    cdef void _update_repeated_times(self)
+    # Engine steps, implemented by each engine (not by algorithms).
+    cdef void check_problem(self, object problem, object seed)
+    cdef void before_initialization(self, object starting_solutions)
+    cdef void after_initialization(self)
+    cdef void after_evolve(self)

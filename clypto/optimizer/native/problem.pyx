@@ -18,6 +18,9 @@ cdef class Problem:
     ``(n,)`` or ``(n, n_objs)``. ``evaluator`` is an optional nogil batch
     evaluator used by ``evaluate(X, parallel=True)``. ``obj_weights`` turn
     several objectives into one fitness (default: all ones).
+
+    ``n_evals`` counts the evaluations (``evaluate_solution`` and ``evaluate``);
+    ``solve()`` resets it, and ``optimizer.nf_counter`` reads it.
     """
 
     def __init__(self, bounds, sense="min", obj_func=None, name="Problem",
@@ -32,6 +35,7 @@ cdef class Problem:
         self._obj_weights = obj_weights
         self.vectorized = vectorized
         self._n_objs = -1
+        self.n_evals = 0
         self.seed = seed
 
     @staticmethod
@@ -104,11 +108,13 @@ cdef class Problem:
             return self.bounds.generate()
         return [block.generate() for block in self.bounds.blocks]
 
-    cpdef NativeTarget get_target(self, object solution):
-        return NativeTarget(self.obj_func(solution), self._obj_weights)
+    cpdef object evaluate_solution(self, object solution):
+        """The objectives of one solution (counted)."""
+        self.n_evals += 1
+        return self.obj_func(solution)
 
     cpdef object fitness(self, object objectives):
-        """Fitness of each ``(k, n_objs)`` objective row, computed like a ``Target``."""
+        """Fitness of each ``(k, n_objs)`` objective row, computed like ``Agent.fitness``."""
         cdef Py_ssize_t i, k = objectives.shape[0], m = objectives.shape[1]
         w = self._obj_weights
         fw = (1.0,) * m if w is None else np.array(w).flatten()
@@ -142,4 +148,5 @@ cdef class Problem:
             O = np.asarray(self._obj_func(X), dtype=float).reshape(k, -1)
         else:
             O = np.array([np.array(self.obj_func(X[i])).flatten() for i in range(k)], dtype=float)
+        self.n_evals += k
         return self.fitness(O), O

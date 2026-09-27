@@ -4,10 +4,9 @@ import inspect
 import sys
 import textwrap
 
-from clypto.optimizer.native.legacy import LegacyOptimizer
 from clypto.optimizer.precompile import _runtime, _builder
 
-__all__ = ["precompile", "compile_decorated", "is_precompiling"]
+__all__ = ["compile_decorated", "is_precompiling"]
 
 _PRECOMPILING = False
 
@@ -25,8 +24,7 @@ def compile_decorated(
 ) -> type:
     """Compile a class produced by the decorator API.
 
-    Unlike :func:`precompile`, the caller is not the defining module, so the
-    globals are read from ``cls.__module__``. ``source`` may override the class
+    The globals are read from ``cls.__module__``. ``source`` may override the class
     source (used when a decorator injects a base the source does not name), and
     ``imports`` are added to the generated preamble so that injected base names
     resolve in the compiled module.
@@ -73,24 +71,3 @@ def compile_decorated(
 
     return compiled_cls
 
-
-def precompile(cls: type) -> type:
-    """
-    Compile a user-defined ``Optimizer`` subclass with Cython through pyximport.
-
-    The decorator rebuilds the class from its source and returns the compiled
-    class, so the name it is assigned to is the fast one. Requires Cython and a
-    working C compiler; it raises ``ImportError`` if Cython is missing and
-    ``RuntimeError`` if the source is unavailable or compilation fails.
-
-    Args:
-        cls: The optimizer class to compile.
-
-    Returns:
-        The Cython-compiled class (or ``cls`` itself when re-entered during
-        compilation).
-    """
-    if not (inspect.isclass(cls) and issubclass(cls, LegacyOptimizer)):
-        raise TypeError("precompile() only supports LegacyOptimizer subclasses.")
-
-    return compile_decorated(cls)

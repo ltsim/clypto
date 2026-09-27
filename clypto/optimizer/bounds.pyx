@@ -175,7 +175,8 @@ class SequenceBounds(StringBounds):
         self.return_type = return_type
 
     def decode(self, x):
-        return [self.return_type(v) for v in super().decode(x)]
+        values = super().decode(x)  # (zero-argument super() is not available inside a compiled comprehension)
+        return [self.return_type(v) for v in values]
 
 
 class PermutationBounds(BaseBounds):

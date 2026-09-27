@@ -7,15 +7,16 @@ attribute is a typed field, and subclasses declare their own.
 
 Faithfulness to the legacy engine is part of the contract:
 
-* After ``_after_initialization`` ``g_best`` is a *copy* of the best agent; from
+* After ``after_initialization`` ``g_best`` is a *copy* of the best agent; from
   the first epoch on the legacy engine made it an *alias* of the best agent in
-  ``pop``, so an update of that agent during ``_evolve`` is seen by the agents
+  ``pop``, so an update of that agent during ``evolve`` is seen by the agents
   that come after it. ``_g_best_row`` records the aliased row (``-1`` = copy)
   and ``g_best_x()`` / ``current_g_best()`` read it live.
 * Random numbers are drawn from ``self.generator`` in the legacy order, so
   vectorized algorithms draw whole blocks up front (``random((n, k, d))``).
 """
 import numpy as np
+
 
 cdef tuple PARALLEL_MODES = ("parallel", "thread", "process")
 
@@ -25,10 +26,16 @@ cdef class VectorizeOptimizer(NativeOptimizer):
         NativeOptimizer.__init__(self, parameters, sort_flag, name, mode)
         self._g_best_row = -1
         self._starting = None
+        self.pop_size = 0
         self.pop = None
-        self.g_best = LegacyNativeAgent()
+        self.g_best = Agent()
         self.g_worst = None
         self.problem = None
+
+    @property
+    def population(self):
+        """The :class:`NativePopulation` buffer (``self.pop``), named as in the legacy engine."""
+        return self.pop
 
     # -- lifecycle hooks -------------------------------------------------------
     cdef list layout(self, Py_ssize_t d, Py_ssize_t m):
@@ -39,13 +46,13 @@ cdef class VectorizeOptimizer(NativeOptimizer):
         """Fill the extra fields of freshly evaluated rows (``generate_agent``)."""
         pass
 
-    def _check_problem(self, problem, seed):
+    cdef void check_problem(self, object problem, object seed):
         self.problem = Problem.coerce(problem, seed)
         self.pop, self.g_best, self.g_worst = None, None, None
         self._starting = None
         self._g_best_row = -1
 
-    def _before_initialization(self, starting_solutions=None):
+    cdef void before_initialization(self, object starting_solutions):
         if starting_solutions is None:
             return
         if not (type(starting_solutions) in self.SUPPORTED_ARRAYS and len(starting_solutions) == self.pop_size):
@@ -58,13 +65,13 @@ cdef class VectorizeOptimizer(NativeOptimizer):
             )
         self._starting = np.array(starting_solutions, dtype=float)
 
-    def _initialization(self):
+    def initialization(self):
         if self._starting is not None:
             self.pop = self.new_population(self._starting)
         else:
             self.pop = self.generate_population(self.pop_size)
 
-    def _after_initialization(self):
+    cdef void after_initialization(self):
         # The initial population is sorted or not depending on the algorithm.
         order = self.sorted_order(self.pop)
         self.g_best = self.pop.agent(order[0])
@@ -73,7 +80,7 @@ cdef class VectorizeOptimizer(NativeOptimizer):
         if self.sort_flag:
             self.pop = self.pop.take(order)
 
-    def _after_evolve(self):
+    cdef void after_evolve(self):
         # g_best becomes an alias of the best row (see module docstring);
         # rows are only reordered when the algorithm asks for it.
         cdef Py_ssize_t b = 0
@@ -86,12 +93,16 @@ cdef class VectorizeOptimizer(NativeOptimizer):
         self.g_best = self.pop.agent(b)
         self._g_best_row = b
 
-    cdef object _amend_solution(self, object solution):
+    cdef object amend_solution(self, object solution):
         return np.clip(solution, self.problem.bounds.low, self.problem.bounds.up)
 
-    cpdef object _correct_solution(self, object solution):
-        """``_amend_solution`` then the problem's own correction (rows or a matrix)."""
-        return self.problem.correct_solution(self._amend_solution(solution))
+    cpdef object correct_solution(self, object solution):
+        """``amend_solution`` then the problem's own correction (rows or a matrix)."""
+        return self.problem.correct_solution(self.amend_solution(solution))
+
+    def evaluate_solution(self, solution):
+        """An evaluated :class:`Agent` at ``solution`` (counted by the problem)."""
+        return Agent(solution).evaluate(self.problem)
 
     # -- population ----------------------------------------------------------
     cdef NativePopulation generate_population(self, Py_ssize_t k):
@@ -101,7 +112,6 @@ cdef class VectorizeOptimizer(NativeOptimizer):
     cdef NativePopulation new_population(self, object X):
         """Evaluate ``X`` (k, d) into a new population and fill its fields."""
         F, O = self.problem.evaluate(X)
-        self._nfe_counter += X.shape[0]
         cdef Py_ssize_t d = X.shape[1], m = O.shape[1]
         cdef NativePopulation pop = NativePopulation(
             X.shape[0], d, m, self.layout(d, m), self.problem._obj_weights
@@ -123,10 +133,9 @@ cdef class VectorizeOptimizer(NativeOptimizer):
         F, O = self.problem.evaluate(pop.X[start:stop], self.mode in PARALLEL_MODES)
         pop.O[start:stop] = O
         pop.F[start:stop] = F
-        self._nfe_counter += stop - start
 
     cdef object sorted_order(self, NativePopulation pop):
-        """Row order best-first, identical to the legacy ``_get_sorted_population``."""
+        """Row order best-first, identical to the legacy ``Population.sort()``."""
         order = np.argsort(np.ascontiguousarray(pop.F))
         return order[::-1] if self.problem.sense == "max" else order
 
@@ -136,7 +145,7 @@ cdef class VectorizeOptimizer(NativeOptimizer):
             return self.pop.X[self._g_best_row]
         return self.g_best.solution
 
-    cdef LegacyNativeAgent current_g_best(self):
+    cdef Agent current_g_best(self):
         if self._g_best_row >= 0:
             return self.pop.agent(self._g_best_row)
         return self.g_best

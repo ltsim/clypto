@@ -1,13 +1,13 @@
 import typing
 
 from clypto.optimizer.native.optimizer import NativeOptimizer
-from clypto.optimizer.validator import Validator
+from clypto.optimizer.native.population import Population
 
 class LegacyOptimizer(NativeOptimizer):
-    pop: typing.Any
+    population: Population
+    pop_size: int
     g_best: typing.Any
     g_worst: typing.Any
     problem: typing.Any
-    validator: Validator
 
-    def __init__(self, **kwargs: object) -> None: ...
+    def __init__(self, parameters: typing.Sequence[str] = ..., sort_flag: bool = ..., **kwargs: object) -> None: ...

@@ -3,36 +3,61 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-"""Legacy engine: the population is a list of agent objects evolved one at a time.
+"""Legacy engine: the population is a :class:`Population` of agents evolved one at a time.
 
-This is the base of the legacy collection and of ``@cy.legacy`` classes. Subclasses
-set their hyper-parameters in ``__init__`` (register them with ``_set_parameters``),
-implement ``_evolve(epoch)`` and may override the other ``_`` hooks.
+This is the base of the legacy collection (``cy.Optimizer``). An algorithm
+declares its hyper-parameters in ``__init__``::
+
+    super().__init__(parameters=["epoch", "pop_size", "c1"], sort_flag=False, **kwargs)
+    self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+    self.population = cy.population(pop_size, range=[5, 10000])
+    self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
+
+and implements ``evolve(epoch)``. ``solve()`` binds the population to the problem
+and fills it; a plain list assigned to ``self.population`` is wrapped in a
+population of the same class.
 """
-import numpy as np
-
-from clypto.optimizer.native.agent cimport LegacyAgent
-from clypto.optimizer.native.population import Population
+from clypto.optimizer.native.population cimport Population
 from clypto.optimizer.native.problem import Problem
-from clypto.optimizer.native.target import NativeTarget
-from clypto.optimizer.validator import Validator
 
 
 cdef class LegacyOptimizer(NativeOptimizer):
-    def __init__(self, **kwargs):
-        NativeOptimizer.__init__(self, name=kwargs.get("name"), mode=kwargs.get("mode"))
-        self.validator = Validator()
-        self.pop = None
-        self.g_best = LegacyAgent()
+    def __init__(self, parameters=(), sort_flag=False, **kwargs):
+        NativeOptimizer.__init__(self, parameters, sort_flag, kwargs.get("name"), kwargs.get("mode"))
+        self._population = None
+        self.g_best = None
         self.g_worst = None
         self.problem = None
 
-    # -- lifecycle hooks -----------------------------------------------------------
-    def _check_problem(self, problem, seed):
-        self.problem = Problem.coerce(problem, seed)
-        self.pop, self.g_best, self.g_worst = None, None, None
+    @property
+    def population(self):
+        return self._population
 
-    def _before_initialization(self, starting_solutions=None):
+    @population.setter
+    def population(self, value):
+        if value is None or isinstance(value, Population):
+            self._population = value
+        else:
+            self._population = self._population.spawn(value)
+
+    @property
+    def pop_size(self):
+        """The configured population size (``population.size()``)."""
+        return self._population.size()
+
+    @pop_size.setter
+    def pop_size(self, value):
+        self._population.resize(value)
+
+    # -- engine steps --------------------------------------------------------------
+    cdef void check_problem(self, object problem, object seed):
+        if self._population is None:
+            raise ValueError(f"{type(self).__name__} must declare self.population = cy.population(pop_size) in __init__.")
+        self.problem = Problem.coerce(problem, seed)
+        self.g_best, self.g_worst = None, None
+        self._population.bind(self.problem, self.generator)
+
+    cdef void before_initialization(self, object starting_solutions):
         if starting_solutions is None:
             return
         if not (type(starting_solutions) in self.SUPPORTED_ARRAYS and len(starting_solutions) == self.pop_size):
@@ -43,80 +68,23 @@ cdef class LegacyOptimizer(NativeOptimizer):
             raise ValueError(
                 "Invalid starting_solutions. It should be a list of positions or 2D matrix of positions only."
             )
-        self.pop = [self._generate_agent(solution) for solution in starting_solutions]
+        self.population = self._population.generate(starting=starting_solutions)
 
-    def _initialization(self):
-        if self.pop is None:
-            self.pop = self._generate_population(self.pop_size)
+    def initialization(self):
+        if len(self._population) == 0:
+            self.population = self._population.generate()
 
-    def _after_initialization(self):
+    cdef void after_initialization(self):
         # The initial population is sorted or not depending on the algorithm;
         # g_best/g_worst start as copies.
-        self._wrap_pop()
-        ranked = self.pop.sort()
+        ranked = self._population.sort()
         self.g_best, self.g_worst = ranked[0].copy(), ranked[-1].copy()
         if self.sort_flag:
-            self.pop = ranked
+            self.population = ranked
 
-    def _after_evolve(self):
-        # g_best is the best agent of pop itself (an alias, not a copy).
-        self._wrap_pop()
-        ranked = self.pop.sort()
+    cdef void after_evolve(self):
+        # g_best is the best agent of the population itself (an alias, not a copy).
+        ranked = self._population.sort()
         self.g_best = ranked[0]
         if self.sort_flag:
-            self.pop = ranked
-
-    def _wrap_pop(self):
-        # _evolve may leave a plain list (or a Population of the other sense) in self.pop.
-        if not isinstance(self.pop, Population) or self.pop.sense != self.problem.sense:
-            self.pop = Population(self.pop, self.problem.sense)
-
-    # -- agents --------------------------------------------------------------------
-    def _generate_empty_agent(self, solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        return LegacyAgent(solution=solution)
-
-    def _generate_agent(self, solution=None):
-        agent = self._generate_empty_agent(solution)
-        agent.target = self._get_target(agent.solution)
-        return agent
-
-    def _generate_population(self, pop_size=None):
-        if pop_size is None:
-            pop_size = self.pop_size
-        return Population([self._generate_agent() for _ in range(pop_size)], self.problem.sense)
-
-    def _amend_solution(self, solution):
-        return np.clip(solution, self.problem.bounds.low, self.problem.bounds.up)
-
-    def _correct_solution(self, solution):
-        return self.problem.correct_solution(self._amend_solution(solution))
-
-    def _update_target_for_population(self, pop):
-        """Evaluate every agent of ``pop`` (only in a batch ``mode``; otherwise a no-op)."""
-        cdef Py_ssize_t idx, n = len(pop)
-        if self.mode == "swarm":
-            for idx in range(n):
-                pop[idx].target = self._get_target(pop[idx].solution, counted=False)
-        elif self.mode in ("parallel", "thread", "process"):
-            self._evaluate_parallel(pop, n)
-        else:
-            return pop
-        self._nfe_counter += n
-        return pop
-
-    def _evaluate_parallel(self, pop, Py_ssize_t n):
-        """Re-evaluate ``pop`` in place, on OpenMP threads when the problem has a nogil evaluator.
-
-        Without a ``Problem.evaluator`` (the default) this is the sequential Python
-        evaluation, preserving the legacy results.
-        """
-        cdef Py_ssize_t i
-        if self.problem.evaluator is None or self.problem.n_objs != 1:
-            for i in range(n):
-                pop[i].target = self._get_target(pop[i].solution, counted=False)
-            return
-        _, O = self.problem.evaluate(np.array([agent.solution for agent in pop], dtype=np.float64), True)
-        for i in range(n):
-            pop[i].target = NativeTarget(O[i], self.problem.obj_weights)
+            self.population = ranked

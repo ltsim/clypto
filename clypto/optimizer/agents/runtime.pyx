@@ -13,7 +13,7 @@ import typing
 
 import numpy as np
 from clypto.hints.array import NDArrayType
-from clypto.optimizer.native.target import NativeTarget as Target
+from clypto.optimizer.native.agent import Agent
 
 __all__ = ["RuntimeAgent"]
 
@@ -27,17 +27,14 @@ class RuntimeAgent:
     """
 
     _solution: typing.Optional[NDArrayType]
-    _target: typing.Optional[Target]
-    _evaluator: typing.Optional[typing.Callable[[NDArrayType], Target]]
+    _objectives: typing.Optional[NDArrayType]
+    _fitness: typing.Optional[float]
+    _evaluator: typing.Optional[typing.Callable[[NDArrayType], Agent]]
 
-    def __init__(
-        self,
-        solution: typing.Optional[NDArrayType] = None,
-        target: typing.Optional[Target] = None,
-        **attributes: typing.Any,
-    ) -> None:
+    def __init__(self, solution: typing.Optional[NDArrayType] = None, **attributes: typing.Any) -> None:
         object.__setattr__(self, "_solution", None)
-        object.__setattr__(self, "_target", target)
+        object.__setattr__(self, "_objectives", None)
+        object.__setattr__(self, "_fitness", None)
         object.__setattr__(self, "_evaluator", None)
 
         for name, value in attributes.items():
@@ -54,27 +51,27 @@ class RuntimeAgent:
     def solution(self, value: typing.Optional[NDArrayType]) -> None:
         # The only way to change fitness is through this setter: it stores the
         # new vector and immediately re-runs the evaluation callback, so the
-        # cached target/fitness can never go stale.
+        # cached objectives/fitness can never go stale.
         object.__setattr__(self, "_solution", None if value is None else np.asarray(value, dtype=float))
 
         evaluator = self._evaluator
         if evaluator is not None and self._solution is not None:
-            object.__setattr__(self, "_target", evaluator(self._solution))
+            evaluated = evaluator(self._solution)
+            object.__setattr__(self, "_objectives", evaluated.objectives)
+            object.__setattr__(self, "_fitness", evaluated.fitness)
 
     @property
-    def target(self) -> typing.Optional[Target]:
-        return self._target
+    def objectives(self) -> typing.Optional[NDArrayType]:
+        return self._objectives
 
     @property
     def fitness(self) -> typing.Optional[float]:
-        target = self._target
-        return None if target is None else target.fitness
+        return self._fitness
 
     def copy(self) -> "RuntimeAgent":
-        new = type(self)(
-            self._solution,
-            self._target.copy() if self._target is not None else None,
-        )
+        new = type(self)(self._solution)
+        object.__setattr__(new, "_objectives", self._objectives)
+        object.__setattr__(new, "_fitness", self._fitness)
         object.__setattr__(new, "_evaluator", self._evaluator)
 
         for name in getattr(type(self), "_attributes", {}):

@@ -12,27 +12,28 @@ import inspect
 import pkgutil
 
 from clypto.optimizer import (
+    Agent,
     Argument,
     Attribute,
     BaseBounds,
     Bounds,
     DecoratedOptimizer,
-    LegacyAgent,
     LegacyOptimizer,
     NumberBounds,
     Optimizer,
     PermutationBounds,
     Population,
     Problem,
+    ResetPopulation,
     RuntimeAgent,
     SequenceBounds,
     StringBounds,
-    Target,
     Termination,
     TransferBounds,
     agent,
-    legacy,
     optimizer,
+    population,
+    validator,
 )
 from clypto.optimizer.native.optimizer import NativeOptimizer
 from clypto.optimizer.native.vectorize import VectorizeOptimizer
@@ -142,7 +143,7 @@ def get_optimizer_by_name(name: str, verbose=False, *, engine="vectorize"):
 
 __all__ = [
     "Problem", "Optimizer", "NativeOptimizer", "LegacyOptimizer", "VectorizeOptimizer",
-    "agent", "optimizer", "legacy", "Attribute", "Argument", "Population", "LegacyAgent", "Target", "Termination",
+    "agent", "optimizer", "Attribute", "Argument", "Agent", "Population", "ResetPopulation", "population", "validator", "Termination",
     "DecoratedOptimizer", "RuntimeAgent",
     "get_all_optimizers", "get_optimizer_by_name", "get_optimizer_by_class",
     "Bounds", "BaseBounds", "NumberBounds", "TransferBounds", "StringBounds", "SequenceBounds", "PermutationBounds",

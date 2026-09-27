@@ -1,26 +1,20 @@
 #!/usr/bin/env python
 # Created for clypto's decorator-based optimizer API.
 # --------------------------------------------------%
-"""The ``@cy.optimizer`` and ``@cy.legacy`` decorators.
+"""The ``@cy.optimizer`` decorator.
 
-* ``@cy.optimizer(agent=MyAgent)`` — a new-style optimizer. Its hyper-parameters
-  are declared as :class:`Argument` attributes and it implements ``initialize``
-  and ``evolve``. The base class supplies ``solve``, ``self.population``,
-  ``self.rng``, ``self.bounds`` and ``generate_agent``, plus the overridable
-  ``generate(agent, solution)`` hook for seeding custom agent state.
-* ``@cy.legacy(precompile=False)`` — the classic MEALPY-style API (``self.pop``,
-  ``self.validator``, ``generate_empty_agent``, ...) without having to name the
-  base class; ``precompile=True`` Cython-compiles it.
-
-Both inject their base class instead of asking for inheritance, and both accept
-a compile flag to run the same JIT Cython builder.
+``@cy.optimizer(agent=MyAgent)`` turns a plain class into an optimizer. Its
+hyper-parameters are declared as :class:`Argument` attributes and it implements
+``initialize`` and ``evolve``. The injected base supplies ``solve``,
+``self.population``, ``self.rng``, ``self.bounds`` and ``generate_agent``, plus
+the overridable ``generate(agent, solution)`` hook for seeding custom agent
+state; ``compile=True`` runs the JIT Cython builder.
 """
 
 import typing
 
 from clypto.optimizer.agents.runtime import RuntimeAgent
 from clypto.optimizer.agents.declaration import Attribute
-from clypto.optimizer.native.legacy import LegacyOptimizer
 from clypto.optimizer.precompile.declaration import Argument
 from clypto.optimizer.precompile.base import DecoratedOptimizer
 from clypto.optimizer.precompile.decoration import (
@@ -29,7 +23,7 @@ from clypto.optimizer.precompile.decoration import (
     maybe_compile,
 )
 
-__all__ = ["optimizer", "legacy"]
+__all__ = ["optimizer"]
 
 _C = typing.TypeVar("_C")
 
@@ -74,29 +68,3 @@ def optimizer(cls=None, *, agent=None, compile=False):
 
     return decorate(cls) if cls is not None else decorate
 
-
-@typing.overload
-def legacy(cls: _C) -> _C: ...
-
-
-@typing.overload
-def legacy(*, precompile: bool = False) -> typing.Callable[[_C], _C]: ...
-
-
-def legacy(cls=None, *, precompile=False):
-    """Use the classic optimizer API without inheriting from it explicitly.
-
-    ``precompile=True`` Cython-compiles the class through the JIT builder.
-    """
-
-    def decorate(user_cls):
-        decorated = decorate_with_base(user_cls, LegacyOptimizer)
-        return maybe_compile(
-            decorated,
-            precompile,
-            source_cls=user_cls,
-            base_name="LegacyOptimizer",
-            import_line="from clypto import LegacyOptimizer",
-        )
-
-    return decorate(cls) if cls is not None else decorate
