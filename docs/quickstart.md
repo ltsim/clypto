@@ -4,8 +4,8 @@ This page gets you from zero to a solved optimization problem in a few lines.
 
 ## 1. Define the objective
 
-The search space is described with one or more `*Var` objects. For a continuous
-problem, use `FloatVar`:
+The search space is described with one or more bounds blocks. For a continuous
+problem, use `NumberBounds`:
 
 ```python
 import numpy as np
@@ -24,8 +24,8 @@ import clypto as cy
 
 problem = cy.Problem(
     obj_func=objective,
-    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
-    minmax="min",  # "min" to minimize, "max" to maximize
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",  # "min" to minimize, "max" to maximize
 )
 ```
 
@@ -35,21 +35,29 @@ Optimizers live in category packages. Import the module (`PSO`) and instantiate
 the variant you want (`OriginalPSO`):
 
 ```python
-from clypto.collection.swarm_based import PSO
+from clypto.native.collection.swarm_based import PSO
 
 model = PSO.OriginalPSO(epoch=500, pop_size=50)
 g_best = model.solve(problem, seed=42)
 
 print(f"Best solution: {g_best.solution}")
-print(f"Best fitness:  {g_best.target.fitness}")
+print(f"Best fitness:  {g_best.fitness}")
 ```
+
+### Batch and parallel evaluation
+
+`mode="swarm"` evaluates each batch of candidates at once and `mode="parallel"`
+does it on OpenMP threads when the problem has a nogil evaluator; the default,
+`"sequential"`, follows the classic one-by-one order. A problem built with
+`vectorized=True` gets one objective call per batch. See
+[Batch and parallel evaluation](parallel-evaluation.md) for which algorithms batch.
 
 ## Complete script
 
 ```python
 import numpy as np
 import clypto as cy
-from clypto.collection.swarm_based import PSO
+from clypto.native.collection.swarm_based import PSO
 
 
 def objective(solution):
@@ -58,15 +66,15 @@ def objective(solution):
 
 problem = cy.Problem(
     obj_func=objective,
-    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
-    minmax="min",
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",
 )
 
 model = PSO.OriginalPSO(epoch=500, pop_size=50)
 g_best = model.solve(problem, seed=42)
 
 print(f"Best solution: {g_best.solution}")
-print(f"Best fitness:  {g_best.target.fitness}")
+print(f"Best fitness:  {g_best.fitness}")
 ```
 
 ## What next?

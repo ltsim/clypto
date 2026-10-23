@@ -13,7 +13,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macOS builds natively per architecture: Homebrew's libomp only exists
+        # for the runner's own arch, so x86_64 cannot be cross-built on arm64.
+        include:
+          - os: ubuntu-latest
+          - os: windows-latest
+          - os: macos-15-intel
+            macos_arch: x86_64
+            macos_target: "15.0"
+          - os: macos-14
+            macos_arch: arm64
+            macos_target: "14.0"
 
     steps:
       - uses: actions/checkout@v4
@@ -25,7 +35,15 @@ jobs:
           CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_WINDOWS: "AMD64"
-          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_ARCHS_MACOS: ${{ matrix.macos_arch }}
+          # OpenMP on macOS: build against Homebrew's libomp; the default repair
+          # step (delocate) copies libomp.dylib into the wheel, so users need
+          # nothing installed. The deployment target must not be older than the
+          # libomp bottle, which is built for the runner's macOS version.
+          CIBW_BEFORE_ALL_MACOS: brew install libomp
+          CIBW_ENVIRONMENT_MACOS: >-
+            MACOSX_DEPLOYMENT_TARGET=${{ matrix.macos_target }}
+            LIBOMP_PREFIX=$(brew --prefix libomp)
           # numpy >= 2.4 dropped manylinux2014 (glibc 2.17) wheels and now
           # ships manylinux_2_28 only. On the default manylinux2014 image pip
           # falls back to compiling numpy from source, which fails against the

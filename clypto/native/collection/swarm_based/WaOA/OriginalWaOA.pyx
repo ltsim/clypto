@@ -1,0 +1,92 @@
+cimport clypto.core as cy
+#!/usr/bin/env python
+# Created by "Thieu" at 23:18, 11/03/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
+# --------------------------------------------------%
+
+
+
+cdef class OriginalWaOA(cy.Optimizer):
+    """
+    The original version of: Walrus Optimization Algorithm (WaOA)
+
+    Links:
+        1. https://www.researchgate.net/publication/364684780_Walrus_Optimization_Algorithm_A_New_Bio-Inspired_Metaheuristic_Algorithm
+
+    Notes:
+        1. This is somewhat concerning, as there appears to be a high degree of similarity between the source code for this algorithm and the Northern Goshawk Optimization (NGO)
+        2. Algorithm design is similar to Zebra Optimization Algorithm (ZOA), Osprey Optimization Algorithm (OOA), Coati Optimization Algorithm (CoatiOA), Siberian Tiger Optimization (STO), Language Education Optimization (LEO), Serval Optimization Algorithm (SOA), Northern Goshawk Optimization (NGO), Fennec Fox Optimization (FFO), Three-periods optimization algorithm (TPOA), Teamwork optimization algorithm (TOA), Pelican Optimization Algorithm (POA), Tasmanian devil optimization (TDO), Archery algorithm (AA), Cat and mouse based optimizer (CMBO)
+        3. It may be useful to compare the Matlab code of this algorithm with those of the similar algorithms to ensure its accuracy and completeness.
+        4. The article may share some similarities with previous work by the same authors, further investigation may be warranted to verify the benchmark results reported in the papers and ensure their reliability and accuracy.
+
+    Examples
+    ~~~~~~~~
+    >>> from clypto.native.collection.swarm_based import WaOA    >>> import numpy as np
+    >>> from clypto import NumberBounds
+    >>>
+    >>> def objective_function(solution):
+    >>>     return np.sum(solution**2)
+    >>>
+    >>> problem_dict = {
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
+    >>>     "obj_func": objective_function
+    >>> }
+    >>>
+    >>> model = WaOA.OriginalWaOA(epoch=1000, pop_size=50)
+    >>> g_best = model.solve(problem_dict)
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
+
+    References
+    ~~~~~~~~~~
+    [1] Trojovský, P., & Dehghani, M. (2022). Walrus Optimization Algorithm: A New Bio-Inspired Metaheuristic Algorithm.
+    """
+
+    def __init__(
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
+        """
+        Args:
+            epoch (int): maximum number of iterations, default = 10000
+            pop_size (int): number of population size, default = 100
+        """
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+
+    cdef void evolve(self, int epoch):
+        """
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+
+        Args:
+            epoch (int): The current iteration
+        """
+        pop_size = self.population.size()
+        for idx, agent in enumerate(self.population.toarray()):
+            # Phase 1: Feeding strategy (exploration)
+            kk = self.generator.permutation(pop_size)[0]
+            if cy.is_better(self.population[kk], agent, self.problem.sense):  # Eq. 4
+                x = agent.solution + self.generator.random() * (
+                        self.population[kk].solution
+                        - self.generator.integers(1, 3) * agent.solution
+                )
+            else:
+                x = agent.solution + self.generator.random() * (
+                        agent.solution - self.population[kk].solution
+                )
+            x = cy.correct_solution(self.problem, x)
+            child = self.population.generate_agent(x)
+            if cy.is_better(child, agent, self.problem.sense):
+                self.population[idx] = child
+
+            # PHASE 2 Exploitation
+            LB, UB = self.problem.bounds.low / epoch, self.problem.bounds.up / epoch
+            x = (
+                    self.population[idx].solution + LB + (UB - self.generator.random() * LB)
+            )  # Eq. 7
+            x = cy.correct_solution(self.problem, x)
+            child = self.population.generate_agent(x)
+            if cy.is_better(child, self.population[idx], self.problem.sense):
+                self.population[idx] = child

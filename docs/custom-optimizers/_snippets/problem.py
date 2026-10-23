@@ -8,6 +8,6 @@ def sphere(solution):
 
 problem = cy.Problem(
     obj_func=sphere,
-    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
-    minmax="min",
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",
 )

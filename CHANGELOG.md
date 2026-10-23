@@ -26,6 +26,185 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### The global best is now the best ever found (2026-10)
+
+Found by the full-catalog audit (`docs/audit.md`): `g_best` was the best agent of the *current* population, not the best the run had found.
+
++ **`LegacyOptimizer.after_evolve()` ratchets.** It overwrote `self.g_best` with `population.sort()[0]` every epoch, with no comparison against the stored value. An algorithm whose `evolve()` replaces the population without per-agent elitism -- how most "Original", paper-faithful variants are published -- silently lost results it had already found and reported the worse one (`OriginalESO` returned `0.0404` for a run that had reached `5e-34`). It is now replaced only when the candidate is better.
++ **Both engines.** `DecoratedOptimizer.solve()` (`@cy.optimizer`) had the same defect twice, at initialization and per epoch; it now shares the ratchet. The audit named only the legacy engine.
++ **`g_best` is an independent snapshot.** `cy.duplicate_agent` is `Agent.clone`, which *shares* the solution vector, so cloning alone leaves the stored best mutable through the population. The snapshot copies the vector too (`OriginalHBO` and `OriginalBCO` mutate solution vectors in place). This supersedes the 2026-09 note "the PSO family: `g_best` moves in place" -- that in-epoch visibility was itself the deviation from `mealpy-lts`, which reads the previous epoch's best during `evolve()`.
++ **`g_worst` deliberately unchanged.** It stays the initialization's agent, as in `mealpy-lts`, whose loop assigns only `self.g_best` (`optimizer.py:266`). Ratcheting it was measured to diverge `OriginalBBOA` and `OriginalEVO`, which are bit-identical today.
++ **Breaking: reported results change for 98 of 243 classes.** Paired against `mealpy-lts` at 20 seeds, the affected classes went from 17 `distribution_mismatch` flags to none; 33 now find a *better* optimum on the golden problem than they reported before. Reproduce the measurement with `benchmarks/bench_correctness.py` (see Reproducing in `docs/audit.md`).
++ **Termination.** `debug`/`track_population` history and the convergence check now see a monotonic `g_best` instead of one that wanders; `@cy.optimizer` passed a literal `0` as its no-improvement counter, so `max_early_stop` could never fire there.
++ **Not fixed (inherited).** The six hard-coded `"min"` comparisons (`OriginalIMODE`, `OriginalNGO`, `OriginalESO`, `C_PSO`, `OriginalBCO`) are faithful transcriptions of `mealpy-lts` calling `compare_target` without its `minmax` argument; see `docs/issues.md`. `benchmarks/bench_collection.py --mealpy-python`, which had silently compared against nothing since the `NumberBounds` → `FloatVar` rename, is fixed.
++ **No automated guard.** The catalog-wide behavior pins (`tests/test_golden_baseline.py`, `tests/test_golden_scenarios.py`, their `tests/golden/` captures) and the per-epoch ratchet test were removed, so nothing in `tests/` asserts that `g_best` stays monotonic. To check it by hand: run a non-elitist class (`SAP_DE`, `OriginalWOA`) with `debug=True, after_iteration=...` over `epoch=1..N` at one seed and confirm the recorded fitness never rises.
+
+### One collection: static agents, snapshots and the batch pipeline (2026-09)
+
++ **One collection.** The vectorize tree and its engine (`VectorizeOptimizer`, `NativePopulation`, `ops`, `AgentListOptimizer`) are removed; the classic collection is the only one and moved from `clypto/native/collection/legacy/<category>` to `clypto/native/collection/<category>`. Recoverable from `0d839435`.
++ **`cdef void evolve(self, int epoch)`.** The engine calls `evolve` through the C vtable. `solve()` rejects a Python `def evolve` on a `cy.Optimizer` subclass (Python optimizers use `@cy.optimizer`). The 8 Python-class optimizers (GA family, `ImprovedQSA`, `EnhancedTWO`) became `cdef class`es; `ImprovedQSA`/`EnhancedTWO` lost their second base (the opposition step is a shared function / `OppoTWO` base).
++ **No dynamic reflection in agents.** `Agent.copy()`, `Agent.update(**fields)` and `Agent(**fields)` are gone: `cy.duplicate_agent(agent)` calls the virtual `cdef Agent clone(self)`, overridden by every agent class with typed fields; populations copy their state with `cdef void copy_state` instead of `setattr`/`__dict__`.
++ **Snapshots and iteration.** `cy.empty_snapshot(pop)` / `cy.snapshot(pop)` replace `pop_new = []` / `population.duplicate()`; `population.toarray()` is the live agent list, iterated as `for idx, agent in enumerate(self.population.toarray())`. `self.population` is a typed C field (`self.population.spawn(list)` for a list).
++ **Repair functions.** `cy.correct_solution(problem, x)`, `cy.reset_solution(problem, generator, x)` and `cy.opposite_solution(problem, generator, agent, g_best)` replace the population methods and `cy.ResetPopulation`; FPA and VCS keep their own repair as a module function.
++ **Modes.** `mode="sequential"` (default, was `None`), `"swarm"` or `"parallel"`; `"thread"`/`"process"` (aliases of parallel) and `AVAILABLE_MODES` are removed. `Population.evaluate` also runs in sequential mode (only the agents not evaluated yet) and makes one `problem.evaluate(X)` call for a `vectorized` problem. `greedy`/`greedy_agents` take the mode: sequential keeps the tie rule of `get_better_agent`.
++ **Batch pipeline.** 73 classes evaluate each batch at once in every mode (`empty_snapshot` -> `evaluate` -> `greedy`), 124 are order-dependent and keep their one-by-one step in sequential mode, 46 evaluate one agent at a time (including the PSO family: `g_best` moves in place). Every class was checked in sequential and swarm mode against the previous build: results are bit-identical. See `docs/parallel-evaluation.md`.
++ **Strategies as member functions.** `OriginalDE`'s six mutation strategies are `cdef strategy_0 .. strategy_5` (plus `trial`, `mutation`, `select`); the Elite GAs' two parent selections are `BaseGA.strategy_0/strategy_1` with a shared `offspring` step.
++ **Build.** `cpow=True` (C `double ** double` is a real `pow`, not complex: with a C `int epoch` the complex path was 1 ulp off); `CLYPTO_COLLECTION=0` replaces `CLYPTO_LEGACY=0`.
++ **Fixed.** `OriginalSOO` and `OriginalSSpiderA` crashed in `"swarm"`/`"parallel"` mode (MEALPY list bugs); sequential results unchanged.
++ **Tests and tools.** `tests/_engines.py` -> `tests/_collection.py`; the engine comparison (`test_native_statistical.py`, `test_vectorized_pso.py`, `benchmarks/compare_engines.py`, `golden/vectorize_exactness.json`) is removed; `benchmarks/bench_engines.py` -> `bench_collection.py` (sequential vs batch).
+
+| Removed / renamed | Use instead |
+| --- | --- |
+| `cy.get_all_optimizers(engine=...)`, `get_optimizer_by_*(engine=...)` | no `engine` argument |
+| `clypto.native.collection.{legacy,vectorize}.<category>` | `clypto.native.collection.<category>` |
+| `cy.VectorizeOptimizer`, `cy.NativePopulation`, `cy.ResetPopulation` | `cy.Optimizer`, `cy.Population`, `cy.reset_solution` |
+| `agent.copy()`, `agent.update(**kw)`, `Agent(..., **fields)` | `cy.duplicate_agent(agent)`, attribute assignment, explicit `__init__` |
+| `population.correct_solution/amend_solution/opposite_solution`, `population.duplicate()` | `cy.correct_solution`, `cy.reset_solution`, `cy.opposite_solution`, `cy.snapshot` |
+| `def evolve(self, epoch)` on a `cy.Optimizer` subclass | `cdef void evolve(self, int epoch)` |
+| `mode=None`, `"thread"`, `"process"`, `self.AVAILABLE_MODES` | `"sequential"`, `"parallel"`, `self.mode == "sequential"` |
+
+### Core migration: the `cy` API (2026-09)
+
++ **`cimport clypto.core as cy`** (`clypto/core.pxd`) is the one namespace of the collection: `cy.Optimizer`, `cy.Agent`, `cy.Population`, `cy.ResetPopulation`, `cy.population`, `cy.validator`, `cy.check_is_int_and_float`, `cy.is_better`, `cy.better_fitness`, `cy.get_better_agent`, `cy.sort_agents`, `cy.argsort_agents`, `cy.greedy_agents`, `cy.levy_flight`, `cy.roulette_wheel`, `cy.kway_tournament`, `cy.split_groups`, plus `cy.VectorizeOptimizer` / `cy.NativePopulation`.
++ **Constructors**: `super().__init__(parameters=[...], sort_flag=..., **kwargs)`, then `cy.validator(type, value, bound, name)`; `self.population = cy.population(pop_size, range=[5, 10000], cls=...)` declares the population (and validates `pop_size`). Validated hyper-parameters are typed `cdef public double|int|str|bint` fields (362 fields in 125 legacy classes).
++ **`Agent` absorbs `Target`**: one `cy.Agent` for both engines holds `solution` and a read-only `objectives`/`weights`/`fitness`, changed only by `agent.evaluate(problem)` or `agent.update_solution(other, solution=None)`. `Target`/`NativeTarget`, `LegacyAgent`/`LegacyNativeAgent` and `agent.target` are gone.
++ **`Population`** is a cdef class that owns the agents' life cycle: `create_agent`, `generate_agent`, `generate(n)`, `amend_solution`, `correct_solution`, `evaluate_solution(x)` (an evaluated candidate agent), `evaluate(agents, mode)`, `opposite_solution`. `size()` is the configured `pop_size` (`len()` the current count), `resize(n)` changes it. It is declared unbound in `__init__` and bound by `solve()` (`bind(problem, generator)`); slices, `sort()`, `greedy()`, `+` keep the subclass and its state. Algorithms with custom agents or bounds repair define a `Population` subclass (29 in the legacy tree); `cy.ResetPopulation`, which redraws out-of-bounds values, serves 9 more directly.
++ **Public hooks, no `_` helpers**: `evolve`, `initialize_variables`, `initialization`, `before_main_loop` (and `evolve_agents` on `AgentListOptimizer`) are public again; the engine steps (`check_problem`, `before_initialization`, `after_initialization`, `after_evolve`) are C-level `cdef` methods; every `_` helper of the engine moved to the population, the agent or a `cy` function. The per-module agent classes are public (`OriginalBAAgent`, ...).
++ **Evaluations are counted by the problem** (`problem.n_evals`, reset by `solve()`, read by `nf_counter` and the termination); the manual counters are gone.
++ **Legacy PSO** follows the issue's design: `PSOAgent` (`velocity`, `pbest_solution`, `pbest_fitness`; `update_velocity`, `move`, `update_pbest`) and `PSOPopulation` / `ResetPSOPopulation` (`legacy/swarm_based/PSO/_base.pyx`).
++ **`self.pop` is `self.population`** in the legacy engine; the vectorize engine keeps its `pop` buffer and gains a read-only `population` property.
++ **Removed**: `@cy.legacy` (and `precompile=True`, `precompile()`), `self.validator` / `Validator` (use `cy.validator`, also `clypto.validator`), `Target`, `LegacyAgent`.
++ **The whole `clypto/optimizer` package is compiled** (`.py` -> `.pyx`, same import paths); `.pyi` stubs keep the public modules typed.
++ **Results**: a seeded `min` and `max` run of every optimizer on both engines (972 runs) is bit-identical to the previous build. Seven MEALPY call sites evaluate a vector other than the agent's own solution (`OriginalSBO`, `OriginalArchOA`, `OriginalWOA`, `OppoTWO`, `LevyTWO`, `EnhancedTWO` x2) and three FOA variants evaluate the position rather than its smell; they are kept, written as `agent.update_solution(candidate, agent.solution)` with a comment.
+
+| Before | After |
+| --- | --- |
+| `from clypto.optimizer.native.legacy cimport LegacyOptimizer` / `... cimport utils as cy` | `cimport clypto.core as cy` (`cy.Optimizer`) |
+| `self.validator.check_int("n", v, b)` | `cy.validator(int, v, b, "n")` |
+| `self.pop_size = self.validator.check_int("pop_size", pop_size, b)` / `self.pop_size` | `self.population = cy.population(pop_size, range=b)` / `self.population.size()` |
+| `LegacyOptimizer.__init__(self, **kwargs)` + `self._set_parameters([...])` + `self.sort_flag = X` | `super().__init__(parameters=[...], sort_flag=X, **kwargs)` |
+| `_evolve`, `_initialize_variables`, `_initialization`, `_before_main_loop` | `evolve`, `initialize_variables`, `initialization`, `before_main_loop` |
+| `self._generate_empty_agent(x)`, `self._generate_agent(x)`, `self._generate_population(n)` | `self.population.create_agent(x)`, `.generate_agent(x)`, `.generate(n)` |
+| overriding `_generate_empty_agent` / `_amend_solution` | a `cy.Population` subclass, `cy.population(..., cls=...)` |
+| `self._correct_solution(x)` | `self.population.correct_solution(x)` |
+| `agent.target = self._get_target(agent.solution)` / `t = self._get_target(x)` | `agent.evaluate(self.problem)` / `c = self.population.evaluate_solution(x)` |
+| `agent.target.fitness`, `agent.update(solution=x, target=t)` | `agent.fitness`, `agent.update_solution(c)` |
+| `self._compare_target(t1, t2, s)`, `self._compare_fitness(f1, f2, s)` | `cy.is_better(a1, a2, s)`, `cy.better_fitness(f1, f2, s)` |
+| `self._get_better_agent`, `_get_sorted_population`, `_greedy_selection_population`, `_update_target_for_population` | `cy.get_better_agent`, `population.sort()` / `cy.sort_agents`, `population.greedy` / `cy.greedy_agents`, `population.evaluate(agents, mode)` |
+| `self._get_levy_flight_step(...)`, `_get_index_roulette_wheel_selection(f)`, `_get_index_kway_tournament_selection(...)`, `_generate_group_population(...)` | `cy.levy_flight(self.generator, ...)`, `cy.roulette_wheel(self.generator, sense, f)`, `cy.kway_tournament(self.generator, sense, ...)`, `cy.split_groups(...)` |
+| `_OriginalPSOAgent` ..., `local_solution` / `local_target` (legacy PSO) | `PSOAgent`, `pbest_solution` / `pbest_fitness` |
+| `@cy.legacy`, `Validator`, `Target`, `LegacyAgent` | subclass `cy.LegacyOptimizer`, `cy.validator`, `cy.Agent` |
+
+### Optimizer core refactor (2026-09)
+
++ **One engine hierarchy.** `NativeOptimizer` (`clypto.optimizer.native.optimizer`) owns `solve()`, the RNGs, termination, tracking and the list-of-agents helpers. `LegacyOptimizer` (the classic per-agent engine, `native/legacy.pyx`) and `VectorizeOptimizer` (the former `LegacyNativeOptimizer`, `native/vectorize.pyx`) derive from it; each refreshes `g_best` in `_after_evolve()`. The pure-Python duplicate engine (`clypto/optimizer/{base,legacy}.py`) is deleted: `cy.LegacyOptimizer` / `@cy.legacy` now run on the compiled class. `AgentListOptimizer` keeps only its list lifecycle (the helpers come from `NativeOptimizer`).
++ **Private hooks and helpers.** `solve()` is the only public method. Lifecycle hooks and helpers gained a `_` prefix (`_evolve`, `_initialization`, `_get_target`, `_correct_solution`, `_amend_solution`, `_generate_agent`, `_get_better_agent`, `_set_parameters`, ...) in both collections. Vectorize hooks moved from `cdef void` to `def _...`: a compiled `def` override of a `cdef`/`cpdef` base method is skipped when the base calls it from C, and one Python call per epoch is noise next to the NumPy work.
++ **`LegacyAgent`** (`native/agent.pyx`) only stores data; `copy()`/`update(**fields)` work for any subclass, so the 30 hand-written `copy()`/`update()` overrides in the legacy collection are gone (subclasses only declare `cdef public` fields). The comparison logic is in module functions: `duplicate_agent`, `sync_if_duplicate`, `compare_fitness`, `get_better_solution`, `is_better_than`. `cy.LegacyAgent` is the compiled class (the Python copy is deleted).
++ **`Problem` is compiled** (`native/problem.pyx`, replaces `problem.py` and `NativeProblem`): `Problem(bounds, sense="min", obj_func=..., name=..., evaluator=..., obj_weights=..., vectorized=..., seed=...)`. `Problem.evaluate(X, parallel=False)` returns `(fitness, objectives)` for a matrix (nogil evaluator on OpenMP threads when `parallel`); both engines use it. A problem given as a dict is now seeded by `solve(seed=...)` (it was not, so its initial population was not reproducible).
++ **`Bounds` replaces `*Var`** (`clypto.optimizer.bounds`): `NumberBounds(float | int | bool, low, up, n_vars=)`, `TransferBounds`, `StringBounds` (any hashable label), `SequenceBounds`, `PermutationBounds`, concatenated by `Bounds(*blocks)` (`low`, `up`, `n_dims`, `dtype == float64`, unique names, per-block seeded streams, `encode`/`correct`/`decode`/`generate`). Integers and booleans are searched on `[low - 0.5, up + 0.5]` so both ends get a full cell. This also fixes 8 of the 11 `*Var` classes that raised on construction, `TransferBinaryVar` ignoring `lb`, and `decode_solution` failing for every type (it read the name-mangled `var.__name`).
++ **`Population`** (`native/population.pyx`) is a `MutableSequence` (and `Generic`): `Population[Agent](agents, sense)`, slices and `+` give populations, `best`/`worst`, `sort()` (with `.idx`), `argsort()`, `greedy(candidates)`, `fitness`/`solutions` arrays (assigning `solutions` writes the rows back), `copy()`/`duplicate()`, `popleft()`. The legacy engine keeps `self.population` as a `Population` and ranks through it; the decorator API uses the same class.
++ **`minmax` is `sense`** everywhere (problems, helpers, `Population`, tracker metadata key `"sense"`). `cy.Target` is the compiled `NativeTarget` (the Python `Target` is deleted).
++ **Fixes**: `nf_counter` starts at 0 on every `solve()` (it started at 1 and accumulated across runs; `OriginalMSO` reads it, so its results change). `OriginalGA` and `DS_GWO`, which never had an evolve step (not even in the pre-Cython sources), raise `NotImplementedError` instead of silently returning the best random initial agent.
++ **Removed**: `duplicate_pop`, `get_worst_agent`, `improved_ms` (no callers), `get_name`/`get_parameters`/`get_attributes` (use `name`/`parameters`), the `is_parallelizable` flag (written, never read) and `parallelizable=`, the unused `save` argument of `_update_global_best_agent`, `RuntimeAgent.id`, `Population.generate()`, the `LabelEncoder`.
++ **Results**: a seeded `min` and `max` run of every optimizer on both engines (972 runs) is bit-identical to the pre-refactor build except `OriginalGA`, `DS_GWO` and `OriginalMSO` (and the scipy-RNG classes, which differ between any two runs).
+
+| Before | After |
+| --- | --- |
+| `Problem(bounds, minmax=..., **kwargs)` | `Problem(bounds, sense=..., obj_func=..., ...)` |
+| `problem.lb`, `problem.ub`, `problem.minmax`, `problem.get_name()` | `problem.bounds.low`, `problem.bounds.up`, `problem.sense`, `problem.name` |
+| `FloatVar(lb=..., ub=...)` / `IntegerVar` / `BinaryVar` / `BoolVar` | `NumberBounds(float, low=..., up=...)` / `NumberBounds(int, ...)` / `NumberBounds(int, 0, 1, n_vars=n)` / `NumberBounds(bool, n_vars=n)` |
+| `TransferBinaryVar` / `TransferBoolVar` | `TransferBounds(int / bool, n_vars, tf_func)` |
+| `StringVar` / `CategoricalVar`, `SequenceVar`, `PermutationVar` | `StringBounds(valid_sets)`, `SequenceBounds(valid_sets, return_type)`, `PermutationBounds(valid_set)` |
+| `def evolve(self, epoch)` in classic optimizers | `def _evolve(self, epoch)` |
+| `self.get_target(...)`, `self.correct_solution(...)`, `self.set_parameters(...)`, ... | `self._get_target(...)`, `self._correct_solution(...)`, `self._set_parameters(...)`, ... |
+| `model.get_name()`, `model.get_parameters()` | `model.name`, `model.parameters` |
+| `_LegacyAgent`, `LegacyNativeOptimizer`, `NativeProblem` | `LegacyAgent`, `VectorizeOptimizer`, `Problem` |
+| decorator API `population.remove(agent.id)`, `population.generate()` | `population.remove(agent)`, `self.generate_agent()` |
+| decorator API `self.bounds.lb` / `ub` / `ndim` | `self.bounds.low` / `up` / `n_dims` |
+| history metadata `"minmax"` | `"sense"` |
+
+### Public collection paths, lookup-only top level (2026-09)
+
++ **`clypto/collection/` is gone.** The shim layer that re-exported the vectorized tree has been deleted; the Cython sources are now the public API: `from clypto.native.collection.vectorize.swarm_based import PSO` (or `...legacy...` for the classic classes). Every class docstring, example, benchmark and doc page uses the direct native path.
++ **`clypto.optimizer._native` -> `clypto.optimizer.native`** (public): custom optimizers legitimately cimport `agent`, `utils as cy`, `ops`, `nogil`, so the engine is not private. The `setup.py` sources glob and every cimport/import were updated.
++ **Top-level algorithm names removed**: `clypto/__init__.py` no longer eagerly imports ~480 extensions, so `import clypto` stays light and `cy.PSO` / `from clypto import PSO` no longer exist. The lookup helpers are the entry point (now listed in `__all__`): `get_all_optimizers()`, `get_optimizer_by_name("PSO")`, `get_optimizer_by_class("OriginalPSO")`, each with `engine="vectorize"` (default) or `engine="legacy"`.
++ **`get_optimizer_by_name()` always returns a dict** (empty when the module is unknown) instead of returning `None` under `verbose=True`, and its `name` argument is documented as the *module* name (`"PSO"`, `"GA"`) to match what it actually matches.
+
+| Old | New |
+|-----|-----|
+| `from clypto.collection.<cat> import <Module>` | `from clypto.native.collection.vectorize.<cat> import <Module>` (or `...legacy...`) |
+| `from clypto.collection.<cat>.<Module> import <Class>` | `from clypto.native.collection.vectorize.<cat>.<Module> import <Class>` |
+| `cy.<Module>.<Class>(...)` / `from clypto import <Module>` | `cy.get_optimizer_by_name("<Module>")["<Class>"](...)` or the direct native import |
+| `clypto.optimizer._native.<mod>` | `clypto.optimizer.native.<mod>` |
+
+The 2026 entries below describe the intermediate `clypto.collection` shim layer and the `clypto.optimizer._native` path; both no longer exist.
+
+### Legacy and vectorize collections (2026-09)
+
++ **`clypto/native/collection/{legacy,vectorize}`**: the Cythonized collection now lives in two trees with the same classes and module layout (`<category>/<Module>/<Class>.pyx`). `legacy` is the frozen classic per-agent implementation (on `_LegacyOptimizer`, regenerated from the pre-native sources and checked against the golden baselines); `vectorize` is the vectorized collection. `clypto.native.collection.vectorize.<category>.<Module>` is the vectorized tree and `get_all_optimizers()` resolves to `vectorize`; `get_all_optimizers(engine="legacy")` / `get_optimizer_by_name(name, engine="legacy")` return the classic classes (`engine` is keyword-only).
++ **Free vectorization**: `vectorize` no longer has to be bit-identical to `legacy`. Algorithms that updated agents one at a time now draw block random numbers, update the whole population per phase and evaluate each phase in one batch (`ops.step`, `ops.scatter`, `ops.replace`, `ops.roulette`, ...). Classes that are not bit-identical are listed in `tests/golden/vectorize_exactness.json` and checked by `benchmarks/compare_engines.py` (30 seeds, four functions, Mann-Whitney U with Holm correction, median guard, NFE budget) instead of golden hashes.
++ **Determinism**: JADE and SHADE (scipy's global RNG in legacy) now draw from `self.generator`; the same seed gives the same result.
++ **Build**: `setup.py` compiles both trees (about 490 extensions); `CLYPTO_LEGACY=0` skips `legacy`.
++ **Benchmark**: `benchmarks/bench_engines.py` times every class on both engines (scalar and `vectorized=True` objectives) and optionally against `mealpy-lts`.
++ **Result** (d=30, pop=50, epoch=100, sphere): the vectorize collection runs at a median **x5.9** of legacy (was x1.4 before the vectorization) and **x7.1** of `mealpy-lts`; a batch objective adds another x2.0 median. 57 classes are more than 10x faster (GSKA x137, SCSO x103, SMA x83, SCA x62), 9 are slower than legacy (OCRO, GaussianSA, EVO, ICA, CRO, HBO, OppoQSA, ImprovedSFO, QleSCA: sequential or object-based).
++ **Statistical equivalence** (`benchmarks/compare_engines.py`): 195 of 243 classes pass outright, 28 only trip the median guard, 11 are significantly better than legacy (quirks fixed: AFT, ACOR, BeesA, FA, FOA, GSKA, ...), 6 are slightly worse (DevEPC, MultiGA, ServalOA, DMOA, LevyTWO, DO). 39 classes (QSA, HBO, BRO, CSO, ESOA, ICA, IMODE, ... ) stay on `AgentListOptimizer`; the reasons are in `docs/vectorization.md`.
++ **Behavior notes**: WOA/SBO keep the classic "refresh only the fitness" quirk; FA now keeps all sparks (legacy kept the last firework's); AFT/ACOR/BeesA/FOA/GSKA fix legacy update quirks and converge better; SADE adapts `cr`/`p1` on the intended period.
+
+### Whole collection on the native engine (2026-09)
+
++ **All 243 optimizers now run on `LegacyNativeOptimizer`** (no more `_LegacyOptimizer` in the collection). 144 of them keep agents as rows of a `NativePopulation` (batched evaluation, block RNG draws in the classic order, whole-array NumPy transitions, `ops.accept`/`ops.commit` for the survivor selection); the other 99 (algorithms with per-agent state, archives, groups, or that re-rank the population mid-epoch: BA, BeesA, GTO/AGTO, COA, EHO, ES/CMA-ES, GA, SHADE family, IMODE, ...) run on `AgentListOptimizer`, a compatibility layer that keeps the classic list-of-agents method set on the native engine (about legacy speed).
++ **Bit-identical results**: every class matches the classic build for the golden baseline (min, sphere) and for `tests/golden/baseline_scenarios_2026a0.json` (max, `mode="swarm"`, other dimensions/budgets; `tests/test_golden_scenarios.py`). Ties, in-epoch aliasing of `g_best`, and the classic quirks are reproduced (for instance ArchOA/TWO evaluate the uncorrected position in sequential mode).
++ **New helpers**: `clypto.optimizer._native.ops` (row selection/commit, agent-list helpers) and `clypto.optimizer._native.agent_list` (`AgentListOptimizer`, `FieldAgent`).
++ **Behavior changes**: `name=`/`mode=` are keyword-only for every optimizer and unknown keyword arguments raise `TypeError`; attributes some algorithms hung on `self.problem` now live on the optimizer (`NativeProblem` has no `__dict__`); `EnhancedTWO` now subclasses `OriginalTWO`; `OriginalSOO` works in `mode="swarm"`/`"parallel"` (it raised before); `DS_GWO` keeps the classic quirk of having no `evolve`.
++ **Note**: `OriginalSSpiderA` in `mode="swarm"` raised an out-of-range index in the classic build (a crash with bounds checks off); the agent-list modules compile with `boundscheck=True` so it now raises `IndexError`.
+
+### One file per algorithm variant (2026-09)
+
++ **`collection/<category>/<Module>/<Class>.pyx`**: every catalog module became a package with one `.pyx` per optimizer class (236 files for the 146 modules, plus the 7 PSO variants), instead of all variants in one `<Module>.pyx`. The class bodies were moved verbatim; results are bit-identical to the golden baseline.
++ **Imports keep working**: each package `__init__.py` re-exports its classes, so `from clypto.native.collection.vectorize.swarm_based import PSO`, `PSO.OriginalPSO` and `from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO` are unchanged, as are `get_all_optimizers()` and `get_optimizer_by_name()`.
++ **Layout rules**: a variant that subclasses a sibling `cdef class` cimports it through a `<Class>.pxd` (e.g. `GWO/OriginalGWO.pxd`); a private agent class used by one variant lives in that variant's file, one shared by several goes to `_base.pyx` (PSO: `_PSOBase`).
++ **Docs**: the catalog generator scans the per-class `.pyx` files (native bodies are not parsed as Python) and links each class to its own source file.
+
+### Vectorized native population + OpenMP (2026-09)
+
++ **`NativePopulation`** (`clypto.optimizer._native.population`): the native engine keeps agents as rows of one C-contiguous buffer `[F | O | X | fields...]` instead of a list of agent objects. Algorithms declare extra per-agent fields with the `layout(d, m)` hook and fill them in `init_fields(pop)`; `pop[i]` returns a snapshot agent. `LegacyNativeOptimizer` gained batch evaluation (`evaluate`), row-wise greedy selection in C (`select_better`, OpenMP) and dropped the list-based helpers (still in `legacy.pyx` for unmigrated algorithms).
++ **PSO vectorized, results unchanged**: OriginalPSO/LDW_PSO use a C move kernel with OpenMP; AIW_PSO, P_PSO and C_PSO use matrix NumPy; HPSO_TVAC and CL_PSO keep the agent-by-agent order they depend on. All 7 variants stay bit-identical to the golden baseline: random numbers are drawn in blocks in the classic order, and the classic aliasing of `g_best` to the best agent is reproduced by processing the population in two chunks around that row.
++ **OpenMP is actually enabled now**: `setup.py` passes `-fopenmp` (Linux), `/openmp` (Windows) or libomp (macOS) plus `-ffp-contract=off`. Before this, `prange` compiled without OpenMP and `mode="parallel"` ran serially. `CLYPTO_OPENMP=0` builds without it. macOS wheels bundle `libomp.dylib` (delocate).
++ **`Problem(vectorized=True)`**: `obj_func` receives an `(n, n_dims)` matrix and returns `(n,)` or `(n, n_objs)`; the native engine evaluates each batch in one call, the classic engine one row at a time.
++ **Benchmark**: `benchmarks/bench_pso.py --repo NAME=PATH ...` compares checkouts and checks the fitness is identical.
+
+### Native legacy engine, PSO pilot (2026-09)
+
++ **`LegacyNativeOptimizer`** (`clypto.optimizer._native.optimizer`): no instance `__dict__`; every attribute is a typed field and subclasses declare their own (`cdef public double c1`). Lifecycle hooks (`initialize_variables`, `generate_empty_agent`, `generate_agent`, `amend_solution`, `evolve`, ...) are `cdef`. The constructor takes `parameters`, `sort_flag`, `parallelizable`, `name`, `mode` instead of `**kwargs`. `solve()` is `cpdef` with a typed epoch loop; the per-epoch best-agent update reads fitness into a typed buffer and only rebuilds the sorted population when `sort_flag` is set (same agent picked, ties included).
++ **`LegacyNativeAgent`**: no `update(**kwargs)`; assign fields directly (`agent.solution = x`). Subclasses with extra fields override `copy()`.
++ **`NativeTarget` / `NativeProblem`**: Cython versions of `Target`/`Problem`. `solve()` accepts a dict, a `Problem` (its `obj_func` override is honored) or a `NativeProblem`.
++ **`cy` helpers** (`from clypto.optimizer._native cimport utils as cy`): `cy.validator(type, value, bound, name)` and `cy.compare_target(x, y, minmax)`.
++ **PSO migrated** (all 7 variants, one shared `PSOAgent`): results are bit-identical to the golden baseline, 1.2–1.6x faster. Optimizers now take `name=`/`mode=` as keyword-only arguments; other unknown keyword arguments raise `TypeError`. The rest of the collection still runs on `_LegacyOptimizer` until migrated.
+
+### Breaking: module layout (2026-09)
+
+The package is now split into `clypto.collection` (native `.pyx` algorithms), `clypto.optimizer` (the reusable Python API) and `clypto.hints`. Old paths were removed without shims; `import clypto as cy` names are unchanged.
+
+| Old | New |
+|-----|-----|
+| `clypto.utils.{problem,target,termination,validator,transfer,population,history,space}` | `clypto.optimizer.<same>` |
+| `clypto.utils.{chaotic,fuzzy}` | `clypto.optimizer._native.<same>` |
+| `clypto.utils._nogil` | `clypto.optimizer._native.nogil` |
+| `clypto.agents._core` | `clypto.optimizer._native.agent` |
+| `clypto.optimizer._legacy` | `clypto.optimizer._native.legacy` |
+| `clypto.agents.legacy`, `clypto.agents.precompile.*` | `clypto.optimizer.agents.*` |
+| `clypto.precompile` | `clypto.optimizer.precompile` (JIT in `compiler`) |
+
+Only `.pyx` is compiled now (`collection/` and `optimizer/_native/`); the public optimizer API ships as plain Python.
+
+### Cython-native collection (2026-09)
+
++ **Native `.pyx` collection:** all 147 catalog modules / 244 optimizer classes were converted from pure-Python `.py` to native Cython `.pyx` with `cdef class` optimizers and typed `cdef` agent classes.
++ **Dedicated agents, no dynamics:** `AgentStatic`/`AgentDynamic` were removed. Algorithms needing per-agent state declare their own private `cdef class` agent (e.g. `_HGSUnit`) with explicit fields, `copy()` and `update()`. Unknown attributes now raise instead of silently returning `None`.
++ **Private engine:** the compiled `clypto.optimizer._legacy._LegacyOptimizer` and `clypto.agents._core._LegacyAgent` back the collection and are not part of the public API. User algorithms use the `@cy.legacy` / `@cy.optimizer` decorators, which inject their own independent bases.
++ **`prange` parallel mode:** `mode="parallel"` (aliases `"thread"`/`"process"`) evaluates targets through `clypto.parallel`/`prange` using a compiled nogil evaluator (`Problem(evaluator=...)`); without one it falls back to the sequential path. The default `mode=None` behavior is bit-identical to the previous release.
++ **Build:** `python setup.py build_ext --inplace` (or `make build-ext`) is required before importing a source checkout; wheels and the editable install compile automatically.
+
 ### Decorator-based optimizer API
 
 + **Classic base renamed:** `clypto.optimizer.Optimizer` is now `LegacyOptimizer`; `Optimizer` remains as a backward-compatible alias (`cy.Optimizer is cy.LegacyOptimizer`). All 147 catalog modules were migrated to inherit `LegacyOptimizer` without touching any algorithm body. `get_all_optimizers()` and the discovery helpers are unchanged.
@@ -45,7 +224,7 @@
 
 + **`cy.Population`:** a new container backing `self.population`. It exposes the `(n_pop, ndim)` `solutions` matrix (assignment re-evaluates every agent), the read-only `fitness` vector, `best`/`worst`, and `append`/`remove`/`generate`, plus iteration and indexing. Agents expose `solution`, `fitness`, `target` and `id`; `fitness` is read-only and recomputed whenever `solution` is assigned (including in-place `population[n].solution /= 2`).
 + **`@cy.agent` + `cy.Attribute`:** declare per-agent attributes for algorithms that need extra per-solution state, and pass the class with `@cy.optimizer(agent=MyAgent)`. The `generate(agent, solution)` hook can be overridden to seed attribute values from the RNG before each agent is evaluated.
-+ **`@cy.legacy(precompile=False)`:** the classic MEALPY-style API without naming a base class. The decorator injects `LegacyOptimizer`, so `super().__init__(**kwargs)`, `self.validator`, `self.pop` and `generate_empty_agent` keep working. It replaces `@cy.precompile`.
++ **`@cy.legacy(precompile=False)`:** the classic MEALPY-style API without naming a base class. The decorator injects `LegacyOptimizer`, so `super().__init__(**kwargs)`, `self.validator`, `self.population` and `generate_empty_agent` keep working. It replaces `@cy.precompile`.
 + **Compilation is opt-in:** pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or `precompile=True` to `@cy.legacy`. Classes are compiled to a native extension at import time through the existing `pyximport` builder (content-hashed `.pyx` in `CLYPTO_PRECOMPILE_DIR`, default `<tmp>/clypto-precompiled`). The public `cy.precompile` decorator was removed; the builder internals remain. Cython and `setuptools` come from the optional `compile` extra (`pip install "clypto[compile]"`) and stay optional at runtime. It fails loudly instead of silently running uncompiled: `ImportError` when Cython is unavailable, `RuntimeError` when the source cannot be read (REPL/notebook) or compilation fails.
 + **Cython-safe declarations:** compiled classes materialize `cy.Argument`/`cy.Attribute` annotations as ordinary class assignments, because Cython drops class-body annotations in `.pyx` classes.
 + **Typing-standard declarations & `precompile` modules:** declarations use Python's subscript syntax — `cy.Argument[int, (1, 100), 5]`, `cy.Attribute[float, ..., 0.0]` — and accept `[type]`, `[type, bound]` and `[type, bound, default]`, where `...` skips the bound. The decorator implementation moved out of the removed `api.py` modules into `clypto.agents.precompile` and `clypto.optimizer.precompile` (split into `declaration`, `runtime`/`base`, and `decorator` submodules), with the shared class-building and JIT helpers in `clypto.precompile.decoration`. `@cy.agent`, `@cy.optimizer` and `@cy.legacy` are now fully typed with overloads, so type checkers preserve the decorated class type instead of falling back to `Any`.

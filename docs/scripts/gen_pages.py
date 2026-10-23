@@ -16,8 +16,64 @@ from pathlib import Path
 from mkdocs_gen_files import open as gen_open
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-COLLECTION_ROOT = REPO_ROOT / "clypto" / "collection"
+COLLECTION_ROOT = REPO_ROOT / "clypto" / "native" / "collection"
 REPO_URL = "https://github.com/ltsim/clypto/blob/master"
+
+
+def _pythonize_pyx(text: str) -> str:
+    """Rewrite native Cython constructs into plain Python for ``ast`` parsing.
+
+    The collection is native ``.pyx`` (``cdef class`` / ``cimport`` / ``cpdef``),
+    which the stdlib ``ast`` cannot read. Docstrings and ``__init__`` signatures
+    are unaffected, so the rest of this script still works on the parsed tree.
+    """
+    out: list[str] = []
+    lines = iter(text.splitlines())
+    for line in lines:
+        if re.match(r"^\s*(from\s+\S+\s+cimport\s+.+|cimport\s+.+)$", line):
+            out.append("pass")
+        elif re.match(r"^\s*cdef class ", line):
+            out.append(re.sub(r"^(\s*)cdef class ", r"\1class ", line))
+        elif re.match(r"^\s*(def|cpdef|cdef)\s[^=]*\(", line):
+            while not line.rstrip().endswith(":"):  # multi-line signature
+                line = line.rstrip() + " " + next(lines).strip()
+            out.append(_pythonize_signature(line))
+        elif re.match(r"^\s*cdef\s+", line):
+            while line.count("(") > line.count(")"):  # multi-line declaration
+                line += next(lines)
+            out.append(re.sub(r"^(\s*)cdef\s+.*$", r"\1pass", line))
+        else:
+            out.append(re.sub(r"<\w+>|&(?=\w)", "", line))  # casts and address-of
+    return "\n".join(out)
+
+
+def _pythonize_signature(line: str) -> str:
+    """``cpdef object f(self, Py_ssize_t n=*, ...) noexcept nogil:`` -> ``def f(self, n=..., ...):``.
+
+    A ``cdef`` function is C-only, so it becomes private (``_f``) and stays off the API page.
+    """
+    indent, kind, name, params = re.match(r"^(\s*)(def|cpdef|cdef)\s+(?:.*?\s)?(\w+)\s*\((.*)\)[^)]*:\s*$", line).groups()
+    if kind == "cdef" and not name.startswith("_"):
+        name = "_" + name  # C-only: not part of the Python API
+    kept, depth, current = [], 0, ""
+    for ch in params + ",":
+        depth += ch in "[(" and 1 or ch in "])" and -1 or 0
+        if ch == "," and depth == 0:
+            head, eq, default = current.partition("=")
+            if head.strip():
+                kept.append(head.split()[-1] + (eq + default.strip().replace("*", "...") if eq else ""))
+            current = ""
+        else:
+            current += ch
+    return f"{indent}def {name}({', '.join(kept)}):"
+
+
+def _parse(path: Path):
+    text = path.read_text(encoding="utf-8")
+    # a .pyx written in plain Python (the authoring API) parses as is
+    if path.suffix == ".pyx" and re.search(r"^\s*(cdef|cpdef|cimport|from \S+ cimport)\b", text, re.M):
+        text = _pythonize_pyx(text)
+    return ast.parse(text)
 
 CATEGORY_LABELS = {
     "bio_based": "Bio-based",
@@ -35,33 +91,22 @@ CATEGORY_LABELS = {
 CATEGORY_ORDER = list(CATEGORY_LABELS)
 
 CORE_MODULES = [
-    "clypto/optimizer/base.py",
-    "clypto/optimizer/legacy.py",
-    "clypto/optimizer/precompile/declaration.py",
-    "clypto/optimizer/precompile/base.py",
-    "clypto/optimizer/precompile/decorator.py",
-    "clypto/agents/precompile/declaration.py",
-    "clypto/agents/precompile/runtime.py",
-    "clypto/agents/precompile/decorator.py",
-    "clypto/precompile/__init__.py",
-    "clypto/precompile/decoration.py",
-    "clypto/utils/problem.py",
-    "clypto/utils/termination.py",
-    "clypto/utils/validator.py",
-    "clypto/utils/target.py",
-    "clypto/utils/chaotic.py",
-    "clypto/utils/fuzzy.py",
-    "clypto/utils/population.py",
-    "clypto/utils/space/base.py",
-    "clypto/utils/space/floats.py",
-    "clypto/utils/space/integers.py",
-    "clypto/utils/space/strings.py",
-    "clypto/utils/space/binary.py",
-    "clypto/utils/space/boolean.py",
-    "clypto/utils/space/categorical.py",
-    "clypto/utils/space/sequence.py",
-    "clypto/utils/space/permutation.py",
-    "clypto/agents/_core.py",
+    "clypto/optimizer/native/optimizer.pyx",
+    "clypto/optimizer/native/legacy.pyx",
+    "clypto/optimizer/native/problem.pyx",
+    "clypto/optimizer/bounds.pyx",
+    "clypto/optimizer/native/population.pyx",
+    "clypto/optimizer/native/agent.pyx",
+    "clypto/optimizer/native/utils.pyx",
+    "clypto/optimizer/precompile/declaration.pyx",
+    "clypto/optimizer/precompile/base.pyx",
+    "clypto/optimizer/precompile/decorator.pyx",
+    "clypto/optimizer/agents/declaration.pyx",
+    "clypto/optimizer/agents/runtime.pyx",
+    "clypto/optimizer/agents/decorator.pyx",
+    "clypto/optimizer/precompile/compiler.pyx",
+    "clypto/optimizer/precompile/decoration.pyx",
+    "clypto/optimizer/termination.pyx",
     "clypto/hints/array.py",
     "clypto/hints/primitives.py",
     "clypto/hints/sense.py",
@@ -176,16 +221,29 @@ def _source_link(path: Path) -> str:
     return f"{REPO_URL}/{rel}"
 
 
+def _class_docstrings(path: Path) -> list[tuple[str, str | None]]:
+    """``(name, docstring)`` of each top-level class of a ``.pyx``.
+
+    Native bodies (``cdef`` methods, ``<double>`` casts) are not valid Python, so
+    they are scanned for the class header and its docstring instead of parsed.
+    """
+    text = path.read_text(encoding="utf-8")
+    heads = list(re.finditer(r"^(?:cdef )?class (\w+)[^\n]*:[ \t]*\n", text, re.M))
+    found = []
+    for k, head in enumerate(heads):
+        stop = heads[k + 1].start() if k + 1 < len(heads) else len(text)
+        doc = re.match(r'\s*(?:[rR])?("""|\'\'\')(.*?)\1', text[head.end():stop], re.S)
+        found.append((head.group(1), doc.group(2) if doc else None))
+    return found
+
+
 def _collect_classes(path: Path) -> list[dict]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
     classes: list[dict] = []
-    for node in tree.body:
-        if not isinstance(node, ast.ClassDef):
-            continue
-        lines = _clean_doc(ast.get_docstring(node, clean=False))
+    for name, doc in _class_docstrings(path):
+        lines = _clean_doc(doc)
         classes.append(
             {
-                "name": node.name,
+                "name": name,
                 "summary": _first_paragraph(lines),
                 "params": _extract_hyperparameters(lines),
                 "references": _extract_references(lines),
@@ -197,34 +255,40 @@ def _collect_classes(path: Path) -> list[dict]:
 def _generate_category(category: str) -> tuple[int, int]:
     label = CATEGORY_LABELS[category]
     directory = COLLECTION_ROOT / category
-    modules = sorted(p for p in directory.glob("*.py") if p.name != "__init__.py")
+    # One package per algorithm (``<Module>/<Class>.pyx``), one file per variant.
+    modules = sorted(p for p in directory.iterdir() if (p / "__init__.py").exists())
+
+    def module_classes(module: Path) -> list[dict]:
+        return [cls for f in sorted(module.glob("*.pyx")) for cls in _collect_classes(f) if not cls["name"].startswith("_")]
 
     catalog: list[tuple[str, dict]] = []
     for module in modules:
-        for cls in _collect_classes(module):
-            catalog.append((module.stem, cls))
+        for cls in module_classes(module):
+            catalog.append((module.name, cls))
 
     lines: list[str] = [
         f"# {label} algorithms",
         "",
-        f"`clypto.collection.{category}` ships **{len(catalog)} optimizer "
+        f"`clypto.native.collection.{category}` ships **{len(catalog)} optimizer "
         f"{'class' if len(catalog) == 1 else 'classes'}** across "
         f"**{len(modules)} {'module' if len(modules) == 1 else 'modules'}**.",
+        "",
+        "[Batch and parallel evaluation](../parallel-evaluation.md) lists which of them evaluate a whole batch at once.",
         "",
         "| Module | Class | Summary | Source |",
         "| --- | --- | --- | --- |",
     ]
     for module_name, cls in catalog:
-        link = _source_link(COLLECTION_ROOT / category / f"{module_name}.py")
+        link = _source_link(COLLECTION_ROOT / category / module_name / f"{cls['name']}.pyx")
         summary = cls["summary"].replace("|", "\\|") or "-"
         lines.append(f"| [{module_name}]({link}) | `{cls['name']}` | {summary} | [source]({link}) |")
 
     lines += ["", "## Modules", ""]
     for module in modules:
-        classes = _collect_classes(module)
+        classes = module_classes(module)
         if not classes:
             continue
-        lines.append(f"### {module.stem}")
+        lines.append(f"### {module.name}")
         lines.append("")
         for cls in classes:
             lines.append(f"#### `{cls['name']}`")
@@ -259,9 +323,9 @@ def _generate_api() -> None:
         path = REPO_ROOT / relative
         if not path.exists():
             continue
-        tree = ast.parse(path.read_text(encoding="utf-8"))
+        tree = _parse(path)
         module_doc = _first_paragraph(_clean_doc(ast.get_docstring(tree)))
-        title = relative.removesuffix(".py").removesuffix("/__init__")
+        title = relative.removesuffix(".pyx").removesuffix(".py").removesuffix("/__init__")
         sections += [f"## {title}", ""]
         if module_doc:
             sections += [module_doc, ""]

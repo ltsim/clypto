@@ -35,7 +35,7 @@ class CountingSearch:
 @cy.optimizer
 class CenteredSearch:
     def initialize(self):
-        self.population.solutions = np.zeros((len(self.population), self.bounds.ndim))
+        self.population.solutions = np.zeros((len(self.population), self.bounds.n_dims))
 
     def evolve(self, epoch):
         pass
@@ -84,8 +84,8 @@ class DefaultedSearch:
 def problem():
     return cy.Problem(
         obj_func=objective,
-        bounds=cy.FloatVar(lb=[-5.0] * N_DIMS, ub=[5.0] * N_DIMS),
-        minmax="min",
+        bounds=cy.NumberBounds(float, low=[-5.0] * N_DIMS, up=[5.0] * N_DIMS),
+        sense="min",
     )
 
 
@@ -127,11 +127,14 @@ def test_solve_returns_best_agent(problem):
     g_best = optimizer.solve(problem, seed=1)
 
     assert g_best is optimizer.g_best
-    assert g_best is optimizer.population.best
+    # g_best is an independent snapshot of the best agent ever seen, not the population's own
+    # best object; this fixture is elitist, so the two agree on the value.
+    assert g_best is not optimizer.population.best
+    assert g_best.fitness == pytest.approx(optimizer.population.best.fitness)
     assert g_best.solution.shape == (N_DIMS,)
     assert np.all(np.isfinite(g_best.solution))
     assert np.isfinite(g_best.fitness)
-    assert optimizer._nfe > optimizer.pop_size
+    assert optimizer.problem.n_evals > optimizer.pop_size
 
 
 def test_solve_is_reproducible(problem):
@@ -146,9 +149,9 @@ def test_bounds_view(problem):
     optimizer = RandomSearch(epoch=1, pop_size=5)
     optimizer._bind_problem(problem, seed=1)
 
-    assert optimizer.bounds.ndim == N_DIMS
-    assert np.allclose(optimizer.bounds.lb, [-5.0] * N_DIMS)
-    assert np.allclose(optimizer.bounds.ub, [5.0] * N_DIMS)
+    assert optimizer.bounds.n_dims == N_DIMS
+    assert np.allclose(optimizer.bounds.low, [-5.0] * N_DIMS)
+    assert np.allclose(optimizer.bounds.up, [5.0] * N_DIMS)
 
 
 def test_initialize_override_is_used(problem):
@@ -191,7 +194,7 @@ def test_ellipsis_skips_bound_and_keeps_default():
 
 
 def test_public_decorator_api_is_exported():
-    for name in ("agent", "optimizer", "legacy", "Attribute", "Argument", "Population", "LegacyOptimizer"):
+    for name in ("agent", "optimizer", "Attribute", "Argument", "Agent", "Population", "population", "validator", "LegacyOptimizer"):
         assert hasattr(cy, name)
 
     assert cy.Optimizer is cy.LegacyOptimizer
@@ -200,10 +203,12 @@ def test_public_decorator_api_is_exported():
 def test_solve_respects_maximization():
     problem = cy.Problem(
         obj_func=objective,
-        bounds=cy.FloatVar(lb=[-5.0] * N_DIMS, ub=[5.0] * N_DIMS),
-        minmax="max",
+        bounds=cy.NumberBounds(float, low=[-5.0] * N_DIMS, up=[5.0] * N_DIMS),
+        sense="max",
     )
-    optimizer = RandomSearch(epoch=20, pop_size=10)
+    # A population that never moves, so the assertion is about the engine picking the argmax
+    # and not about the optimizer's own selection rule.
+    optimizer = CountingSearch(epoch=20, pop_size=10)
     g_best = optimizer.solve(problem, seed=1)
 
     assert g_best.fitness == pytest.approx(max(optimizer.population.fitness))

@@ -3,8 +3,8 @@
 clypto ships two ways to write an optimizer. The **decorator API**
 (`@cy.optimizer`) is the recommended route for new algorithms: it is compact,
 validates its own hyper-parameters, and can compile itself with Cython. The
-**classic API** (`@cy.legacy`) is kept unchanged for the built-in catalog and
-for existing MEALPY-style code.
+**classic API** (subclassing `cy.LegacyOptimizer`) is what the built-in catalog
+uses.
 
 This series builds a complete optimizer from scratch with `@cy.optimizer`, gives
 its agents extra state with `@cy.agent`, runs it, and compiles it with Cython. It
@@ -30,7 +30,7 @@ reused throughout the series.
 3. [The population](03-population.md) — the `Population` container and derived
    fitness.
 4. [Custom agent state](04-agent-state.md) — `@cy.agent` and `cy.Attribute`.
-5. [Classic API and compilation](05-legacy-and-compilation.md) — `@cy.legacy` and
+5. [Classic API and compilation](05-legacy-and-compilation.md) — `cy.LegacyOptimizer` and
    the compile flags.
 
 ## Migrating existing code

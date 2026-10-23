@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+# Created by "Thieu" at 17:55, 21/05/2022 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
+# --------------------------------------------------%
+
+import numpy as np
+cimport clypto.core as cy
+
+
+
+cdef class OriginalHBA(cy.Optimizer):
+    """
+    The original version of: Honey Badger Algorithm (HBA)
+
+    Links:
+        1. https://www.sciencedirect.com/science/article/abs/pii/S0378475421002901
+        2. https://www.mathworks.com/matlabcentral/fileexchange/98204-honey-badger-algorithm
+
+    Examples
+    ~~~~~~~~
+    >>> from clypto.native.collection.swarm_based import HBA    >>> import numpy as np
+    >>> from clypto import NumberBounds
+    >>>
+    >>> def objective_function(solution):
+    >>>     return np.sum(solution**2)
+    >>>
+    >>> problem_dict = {
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
+    >>>     "obj_func": objective_function
+    >>> }
+    >>>
+    >>> model = HBA.OriginalHBA(epoch=1000, pop_size=50)
+    >>> g_best = model.solve(problem_dict)
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
+
+    References
+    ~~~~~~~~~~
+    [1] Hashim, F. A., Houssein, E. H., Hussain, K., Mabrouk, M. S., & Al-Atabany, W. (2022). Honey Badger Algorithm: New metaheuristic
+    algorithm for solving optimization problems. Mathematics and Computers in Simulation, 192, 84-110.
+    """
+
+    def __init__(
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
+        """
+        Args:
+            epoch (int): maximum number of iterations, default = 10000
+            pop_size (int): number of population size, default = 100
+        """
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+
+    def initialize_variables(self):
+        self.beta = 6  # the ability of HB to get the food  Eq.(4)
+        self.C = 2  # constant in Eq. (3)
+
+    def get_intensity__(self, best, pop):
+        size = len(pop)
+        di = np.zeros(size)
+        si = np.zeros(size)
+        for idx in range(0, size):
+            di[idx] = (
+                              np.linalg.norm(pop[idx].solution - best.solution) + self.EPSILON
+                      ) ** 2
+            if idx == size - 1:
+                si[idx] = (
+                                  np.linalg.norm(pop[idx].solution - self.population[0].solution)
+                                  + self.EPSILON
+                          ) ** 2
+            else:
+                si[idx] = (
+                                  np.linalg.norm(pop[idx].solution - self.population[idx + 1].solution)
+                                  + self.EPSILON
+                          ) ** 2
+        r2 = self.generator.random(size)
+        return r2 * si / (4 * np.pi * di)
+
+    cdef void evolve(self, int epoch):
+        """
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+
+        Args:
+            epoch (int): The current iteration
+        """
+        pop_size = self.population.size()
+        tt = self.epoch
+        alpha = self.C * np.exp(-tt / self.epoch)  # density factor in Eq. (3)
+        I = self.get_intensity__(self.g_best, self.population)  # intensity in Eq. (2)
+        cdef cy.Population n_population = cy.empty_snapshot(self.population)
+        for idx, agent in enumerate(self.population.toarray()):
+            r = self.generator.random()
+            F = self.generator.choice([1, -1])
+            di = self.g_best.solution - agent.solution
+            r3 = self.generator.random(self.problem.n_dims)
+            r4 = self.generator.random(self.problem.n_dims)
+            r5 = self.generator.random(self.problem.n_dims)
+            r6 = self.generator.random(self.problem.n_dims)
+            r7 = self.generator.random(self.problem.n_dims)
+            temp1 = (
+                    self.g_best.solution
+                    + F * self.beta * I[idx] * self.g_best.solution
+                    + F
+                    * r3
+                    * alpha
+                    * di
+                    * np.abs(np.cos(2 * np.pi * r4) * (1 - np.cos(2 * np.pi * r5)))
+            )
+            temp2 = self.g_best.solution + F * r7 * alpha * di
+            x = np.where(r6 < 0.5, temp1, temp2)
+            x = cy.correct_solution(self.problem, x)
+            child = self.population.create_agent(x)
+            n_population.append(child)
+        self.population = self.population.greedy(self.population.evaluate(n_population, self.mode), self.mode)

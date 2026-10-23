@@ -1,0 +1,100 @@
+cimport clypto.core as cy
+#!/usr/bin/env python
+# Created by "Thieu" at 18:29, 11/03/2023 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
+# --------------------------------------------------%
+
+
+
+cdef class OriginalNGO(cy.Optimizer):
+    """
+    The original version of: Northern Goshawk Optimization (NGO)
+
+    Links:
+        1. https://ieeexplore.ieee.org/abstract/document/9638618
+        2. https://www.mathworks.com/matlabcentral/fileexchange/106665-northern-goshawk-optimization-a-new-swarm-based-algorithm
+
+    Notes:
+        1. This is somewhat concerning, as there appears to be a high degree of similarity between the source code for this algorithm and the Pelican Optimization Algorithm (POA).
+        2. Algorithm design is similar similar to Zebra Optimization Algorithm (ZOA), Osprey Optimization Algorithm (OOA), Coati Optimization Algorithm (CoatiOA), Siberian Tiger Optimization (STO), Language Education Optimization (LEO), Serval Optimization Algorithm (SOA), Walrus Optimization Algorithm (WOA), Fennec Fox Optimization (FFO), Three-periods optimization algorithm (TPOA), Teamwork optimization algorithm (TOA), Pelican Optimization Algorithm (POA), Tasmanian devil optimization (TDO), Archery algorithm (AA), Cat and mouse based optimizer (CMBO)
+        3. It may be useful to compare the Matlab code of this algorithm with those of the similar algorithms to ensure its accuracy and completeness.
+        4. The article may share some similarities with previous work by the same authors, further investigation may be warranted to verify the benchmark results reported in the papers and ensure their reliability and accuracy.
+
+    Examples
+    ~~~~~~~~
+    >>> from clypto.native.collection.swarm_based import NGO    >>> import numpy as np
+    >>> from clypto import NumberBounds
+    >>>
+    >>> def objective_function(solution):
+    >>>     return np.sum(solution**2)
+    >>>
+    >>> problem_dict = {
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
+    >>>     "obj_func": objective_function
+    >>> }
+    >>>
+    >>> model = NGO.OriginalNGO(epoch=1000, pop_size=50)
+    >>> g_best = model.solve(problem_dict)
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
+
+    References
+    ~~~~~~~~~~
+    [1] Dehghani, M., Hubálovský, Š., & Trojovský, P. (2021). Northern goshawk optimization: a new swarm-based
+    algorithm for solving optimization problems. IEEE Access, 9, 162059-162080.
+    """
+
+    def __init__(
+            self, epoch: int = 10000, pop_size: int = 100, **kwargs: object
+    ) -> None:
+        """
+        Args:
+            epoch (int): maximum number of iterations, default = 10000
+            pop_size (int): number of population size, default = 100
+        """
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+
+    cdef void evolve(self, int epoch):
+        """
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+
+        Args:
+            epoch (int): The current iteration
+        """
+        pop_size = self.population.size()
+        ## UPDATE Northern goshawks based on PHASE1 and PHASE2
+
+        for idx, agent in enumerate(self.population.toarray()):
+            # Phase 1: Exploration
+            kk = self.generator.permutation(pop_size)[0]
+            if cy.is_better(self.population[kk], agent, "min"):  # Eq. 4
+                x = agent.solution + self.generator.random(
+                    self.problem.n_dims
+                ) * (
+                                  self.population[kk].solution
+                                  - self.generator.integers(1, 3) * agent.solution
+                          )
+            else:
+                x = agent.solution + self.generator.random(
+                    self.problem.n_dims
+                ) * (agent.solution - self.population[kk].solution)
+            x = cy.correct_solution(self.problem, x)
+            child = self.population.generate_agent(x)
+            if cy.is_better(child, agent, self.problem.sense):
+                self.population[idx] = child
+
+            # PHASE 2 Exploitation
+            R = 0.02 * (1.0 - epoch / self.epoch)  # Eq. 6
+            x = (
+                    self.population[idx].solution
+                    + (-R + 2 * R * self.generator.random(self.problem.n_dims))
+                    * self.population[idx].solution
+            )  # Eq. 7
+            x = cy.correct_solution(self.problem, x)
+            child = self.population.generate_agent(x)
+            if cy.is_better(child, self.population[idx], self.problem.sense):
+                self.population[idx] = child

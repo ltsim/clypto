@@ -7,188 +7,73 @@
 __version__ = "2026b1"
 
 import functools
+import importlib
 import inspect
-import sys
+import pkgutil
 
-from clypto.collection.bio_based import (
-    BBO,
-    BBOA,
-    BMO,
-    EOA,
-    SBO,
-    SMA,
-    SOA,
-    SOS,
-    TPO,
-    TSA,
-    VCS,
-    WHO,
-    BCO,
-    EAO,
-    SFOA,
+from clypto.optimizer import (
+    Agent,
+    Argument,
+    Attribute,
+    BaseBounds,
+    Bounds,
+    DecoratedOptimizer,
+    LegacyOptimizer,
+    NumberBounds,
+    Optimizer,
+    PermutationBounds,
+    Population,
+    Problem,
+    RuntimeAgent,
+    SequenceBounds,
+    StringBounds,
+    Termination,
+    TransferBounds,
+    agent,
+    correct_solution,
+    duplicate_agent,
+    empty_snapshot,
+    opposite_solution,
+    optimizer,
+    population,
+    reset_solution,
+    snapshot,
+    validator,
 )
-from clypto.collection.bio_based import IWO
-from clypto.collection.evolutionary_based import ES, DE, SHADE, MA, EP, GA, BWO, CRO
-from clypto.collection.evolutionary_based import FPA
-from clypto.collection.game_based import THRO
-from clypto.collection.human_based import (
-    SSDO,
-    CA,
-    ICA,
-    AFT,
-    CHIO,
-    SARO,
-    BSO,
-    HBO,
-    CDDO,
-    GSKA,
-    SPBO,
-    HCO,
-    QSA,
-    WarSO,
-    BRO,
-    TLO,
-    TOA,
-    FBIO,
-    DOA,
-    LCO,
-)
-from clypto.collection.math_based import (
-    AOA,
-    CEM,
-    CGO,
-    GBO,
-    HC,
-    INFO,
-    PSS,
-    RUN,
-    SCA,
-    SHIO,
-    TS,
-)
-from clypto.collection.math_based import CircleSA
-from clypto.collection.music_based import HS
-from clypto.collection.physics_based import (
-    ArchOA,
-    EFO,
-    EO,
-    EVO,
-    FLA,
-    HGSO,
-    MVO,
-    NRO,
-    SA,
-    TWO,
-    WDO,
-    ESO,
-    SOO,
-    MSO,
-)
-from clypto.collection.physics_based import RIME, ASO, CDO
-from clypto.collection.sota_based import LSHADEcnEpSin, IMODE
-from clypto.collection.swarm_based import (
-    ABC,
-    ACOR,
-    AVOA,
-    BES,
-    BFO,
-    COA,
-    DMOA,
-    DO,
-    FA,
-    GJO,
-    GWO,
-    HBA,
-    MPA,
-    MSA,
-    MShOA,
-    NGO,
-    OOA,
-    PFA,
-    SCSO,
-    SeaHO,
-    ServalOA,
-    SHO,
-    SRSR,
-    SSpiderO,
-    STO,
-    TDO,
-    WaOA,
-    ZOA,
-    FDO,
-)
-from clypto.collection.swarm_based import (
-    AO,
-    JA,
-    EHO,
-    NMRA,
-    PSO,
-    CoatiOA,
-    BA,
-    TSO,
-    GOA,
-    MFO,
-    SLO,
-    ARO,
-    SquirrelSA,
-    FFA,
-    POA,
-    ESOA,
-    GTO,
-    CSO,
-    SSO,
-    FOA,
-    HHO,
-    SFO,
-    WOA,
-    ALO,
-    CSA,
-    MGO,
-    FOX,
-    FFO,
-    MRFO,
-    SMO,
-    SSpiderA,
-    BSA,
-    HGS,
-    BeesA,
-    EPC,
-    AGTO,
-    SSA,
-)
-from clypto.collection.system_based import AEO, GCO
-from clypto.collection.system_based import WCA
-from clypto.agents.precompile import Attribute, RuntimeAgent, agent
-from clypto.optimizer.precompile import Argument, DecoratedOptimizer, legacy, optimizer
-from clypto.optimizer.legacy import LegacyOptimizer
-from clypto.utils import Problem
-from clypto.utils.population import Population
-from clypto.utils.problem import Problem
-from clypto.utils.space import (
-    IntegerVar,
-    FloatVar,
-    StringVar,
-    BinaryVar,
-    BoolVar,
-    CategoricalVar,
-    SequenceVar,
-    PermutationVar,
-    TransferBinaryVar,
-    TransferBoolVar,
-)
-from clypto.utils.termination import Termination
+from clypto.optimizer.native.optimizer import NativeOptimizer
 
-# Backward-compatible alias: the classic base class was renamed to
-# ``LegacyOptimizer`` so that ``Optimizer`` can stay importable for existing code.
-Optimizer = LegacyOptimizer
 
-__EXCLUDE_MODULES = ["__builtins__", "current_module", "inspect", "sys"]
+def _algorithm_modules():
+    """Yield ``(module_name, module)`` for every algorithm module of the collection."""
+    try:
+        root = importlib.import_module("clypto.native.collection")
+    except ImportError as exc:  # e.g. built with CLYPTO_COLLECTION=0
+        raise ImportError(f"the collection is not available in this build: {exc}") from exc
+    for category in pkgutil.iter_modules(root.__path__):
+        category_pkg = importlib.import_module(f"{root.__name__}.{category.name}")
+        for module in pkgutil.iter_modules(category_pkg.__path__):
+            if module.ispkg:
+                yield module.name, importlib.import_module(f"{category_pkg.__name__}.{module.name}")
+
+
+def _optimizer_classes(module):
+    for cls_name, cls_obj in inspect.getmembers(module):
+        if (
+                inspect.isclass(cls_obj)
+                and not cls_name.startswith("_")
+                and issubclass(cls_obj, NativeOptimizer)
+                and cls_obj is not LegacyOptimizer
+        ):
+            yield cls_name, cls_obj
 
 
 @functools.cache
 def get_all_optimizers(verbose=False):
     """
     Get all available optimizer classes in clypto library
+
+    The collection is native: the classes are discovered by walking
+    ``clypto/native/collection/<category>/<Module>/<Class>.pyx``.
 
     Args:
         verbose (bool): whether to print the optimizer information
@@ -198,15 +83,8 @@ def get_all_optimizers(verbose=False):
     """
     cls = {}
 
-    for name, obj in inspect.getmembers(sys.modules[__name__]):
-        if inspect.ismodule(obj) and (name not in __EXCLUDE_MODULES):
-            for cls_name, cls_obj in inspect.getmembers(obj):
-                if (
-                        inspect.isclass(cls_obj)
-                        and issubclass(cls_obj, Optimizer)
-                        and cls_obj is not Optimizer
-                ):
-                    cls[cls_name] = cls_obj
+    for _, module in _algorithm_modules():
+        cls.update(_optimizer_classes(module))
 
     if verbose:
         for name, optimizer in cls.items():
@@ -236,53 +114,35 @@ def get_optimizer_by_class(class_name: str, verbose=False):
 
 def get_optimizer_by_name(name: str, verbose=False):
     """
-    Get an optimizer class by name
+    Get the optimizer classes of one algorithm module, by module name
 
     Args:
-        name (str): the classname of the optimizer (e.g, OriginalGA, OriginalWOA), don't pass the module name (e.g, ABC, WOA, GA)
+        name (str): the module name of the algorithm (e.g, PSO, GA, WOA)
         verbose (bool): whether to print the optimizer information
 
     Returns:
-        dict_optimizers (dict): key is the string optimizer class name, value is the actual optimizer class
+        dict_optimizers (dict): key is the optimizer class name, value is the class (empty if the module is unknown)
     """
     cls = {}
-    flag = False
-
-    for module_name, obj in inspect.getmembers(sys.modules[__name__]):
-        if (
-                inspect.ismodule(obj)
-                and (name not in __EXCLUDE_MODULES)
-                and (module_name == name)
-        ):
-            flag = True
-            for cls_name, cls_obj in inspect.getmembers(obj):
-                if inspect.isclass(cls_obj) and issubclass(cls_obj, Optimizer):
-                    cls[cls_name] = cls_obj
+    for module_name, module in _algorithm_modules():
+        if module_name == name:
+            cls.update(_optimizer_classes(module))
     if verbose:
-        if not flag:
+        if not cls:
             print(f"clypto doesn't support optimizer named: {name}.\n")
-            return None
-
-        print(f"Found algorithm: {name}, the supported variants are:")
-
-        for name, optimizer in cls.items():
-            print(f"Optimizer: {name} - {optimizer} - {optimizer()}")
+        else:
+            print(f"Found algorithm: {name}, the supported variants are:")
+            for cls_name, optimizer in cls.items():
+                print(f"Optimizer: {cls_name} - {optimizer} - {optimizer()}")
 
     return cls
 
 
 __all__ = [
-    "Problem", "Optimizer", "LegacyOptimizer",
-    "agent", "optimizer", "legacy", "Attribute", "Argument", "Population",
+    "Problem", "Optimizer", "NativeOptimizer", "LegacyOptimizer",
+    "agent", "optimizer", "Attribute", "Argument", "Agent", "Population", "population", "snapshot", "empty_snapshot", "duplicate_agent",
+    "correct_solution", "reset_solution", "opposite_solution", "validator", "Termination",
     "DecoratedOptimizer", "RuntimeAgent",
-    "IntegerVar",
-    "FloatVar",
-    "StringVar",
-    "BinaryVar",
-    "BoolVar",
-    "CategoricalVar",
-    "SequenceVar",
-    "PermutationVar",
-    "TransferBinaryVar",
-    "TransferBoolVar",
+    "get_all_optimizers", "get_optimizer_by_name", "get_optimizer_by_class",
+    "Bounds", "BaseBounds", "NumberBounds", "TransferBounds", "StringBounds", "SequenceBounds", "PermutationBounds",
 ]

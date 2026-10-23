@@ -1,0 +1,154 @@
+#!/usr/bin/env python
+# Created by "Thieu" at 22:37, 03/09/2025 ----------%
+#       Email: nguyenthieu2102@gmail.com            %
+#       Github: https://github.com/thieu1995        %
+# --------------------------------------------------%
+
+import numpy as np
+cimport clypto.core as cy
+
+
+
+cdef class OriginalSFOA(cy.Optimizer):
+    """
+    The original version: Starfish Optimization Algorithm (SFOA)
+
+    Links:
+        1. https://www.mathworks.com/matlabcentral/fileexchange/173735-starfish-optimization-algorithm-sfoa
+
+    Notes:
+        This algorithm claims to outperform 95 compared algorithms in accuracy and 97 algorithms in efficiency.
+        However, it does not present any remarkable equations. Moreover, the provided MATLAB code does not
+        include the standard CEC benchmark functions, but only simplified versions of them.
+        Users should carefully consider this when validating the algorithm.
+        Many new algorithms claim to be superior to other state-of-the-art methods,
+        but it is evident that their implementations are often incorrect.
+
+    Hyper-parameters should fine-tune in approximate range to get faster convergence toward the global optimum:
+        + gp (float): [0., 1] -> better [0.5, 0.7], the probablity for exploration
+
+    Examples
+    ~~~~~~~~
+    >>> from clypto.native.collection.bio_based import SFOA    >>> import numpy as np
+    >>> from clypto import NumberBounds
+    >>>
+    >>> def objective_function(solution):
+    >>>     return np.sum(solution**2)
+    >>>
+    >>> problem_dict = {
+    >>>     "bounds": NumberBounds(float, low=(-10.,) * 30, up=(10.,) * 30, name="delta"),
+    >>>     "sense": "min",
+    >>>     "obj_func": objective_function
+    >>> }
+    >>>
+    >>> model = SFOA.OriginalSFOA(epoch=1000, pop_size=50, gp = 0.5)
+    >>> g_best = model.solve(problem_dict)
+    >>> print(f"Solution: {g_best.solution}, Fitness: {g_best.fitness}")
+    >>> print(f"Solution: {model.g_best.solution}, Fitness: {model.g_best.fitness}")
+
+    [1] Zhong, C., Li, G., Meng, Z., Li, H., Yildiz, A. R., & Mirjalili, S. (2025).
+    Starfish optimization algorithm (SFOA): a bio-inspired metaheuristic algorithm for global
+    optimization compared with 100 optimizers. Neural Computing and Applications, 37(5), 3641-3683.
+    """
+
+    cdef public double gp
+
+    def __init__(
+            self, epoch: int = 10000, pop_size: int = 100, gp: float = 0.5, **kwargs: object
+    ) -> None:
+        """
+        Args:
+            epoch (int): maximum number of iterations, default = 10000
+            pop_size (int): number of population size, default = 100
+            gp (float): the exploration of starfish, default=0.5
+        """
+        super().__init__(parameters=["epoch", "pop_size", "gp"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size)
+        self.gp = cy.validator(float, gp, [0, 1.0], "gp")
+
+    cdef void evolve(self, int epoch):
+        """
+        The main operations (equations) of algorithm. Inherit from LegacyOptimizer class
+
+        Args:
+            epoch (int): The current iteration
+        """
+        pop_size = self.population.size()
+        theta = np.pi / 2 * epoch / self.epoch
+        tEO = (self.epoch - epoch) / self.epoch * np.cos(theta)
+
+        cdef cy.Population n_population = cy.empty_snapshot(self.population)
+        if self.generator.random() < self.gp:  # exploration of starfish
+            for idx in range(pop_size):
+                x = self.population[idx].solution.copy()
+                if self.problem.n_dims > 5:
+                    # for nD is larger than 5
+                    jp1 = self.generator.choice(self.problem.n_dims, 5, replace=False)
+                    pm = (
+                                 2 * self.generator.random(size=self.problem.n_dims) - 1
+                         ) * np.pi
+                    pos1 = x + pm * (self.g_best.solution - x) * np.cos(
+                        theta
+                    )
+                    pos2 = x - pm * (self.g_best.solution - x) * np.sin(
+                        theta
+                    )
+                    pos = np.where(
+                        self.generator.random(size=self.problem.n_dims) < self.gp,
+                        pos1,
+                        pos2,
+                    )
+                    x[jp1] = pos[jp1]
+                    # Boundary check for individual dimension
+                    x[jp1] = np.where(
+                        (x[jp1] < self.problem.bounds.low[jp1])
+                        | (x[jp1] > self.problem.bounds.up[jp1]),
+                        self.population[idx].solution[jp1],
+                        x[jp1],
+                    )
+                else:
+                    # for nD is not larger than 5
+                    jp2 = self.generator.integers(0, self.problem.n_dims)
+                    im = self.generator.choice(pop_size, 2, replace=False)
+                    diff1 = self.population[im[0]].solution[jp2] - x[jp2]
+                    diff2 = self.population[im[1]].solution[jp2] - x[jp2]
+                    rand1 = 2 * self.generator.random() - 1
+                    rand2 = 2 * self.generator.random() - 1
+                    x[jp2] = tEO * x[jp2] + rand1 * diff1 + rand2 * diff2
+                    # Boundary check for individual dimension
+                    if (
+                            x[jp2] > self.problem.bounds.up[jp2]
+                            or x[jp2] < self.problem.bounds.low[jp2]
+                    ):
+                        x[jp2] = self.population[idx].solution[jp2]
+                x = cy.correct_solution(self.problem, x)
+                agent = self.population.create_agent(x)
+                n_population.append(agent)
+            n_population = self.population.evaluate(n_population, self.mode)
+        else:  # exploitation of starfish
+            df = self.generator.choice(pop_size, 5, replace=False)
+            # five arms of starfish
+            dm1 = self.g_best.solution - self.population[df[0]].solution
+            dm2 = self.g_best.solution - self.population[df[1]].solution
+            dm3 = self.g_best.solution - self.population[df[2]].solution
+            dm4 = self.g_best.solution - self.population[df[3]].solution
+            dm5 = self.g_best.solution - self.population[df[4]].solution
+            dm = [dm1, dm2, dm3, dm4, dm5]
+            for idx, agent in enumerate(self.population.toarray()):
+                r1, r2 = self.generator.random(size=2)
+                kp = self.generator.choice(5, size=2, replace=False)
+                x = (
+                        agent.solution + r1 * dm[kp[0]] + r2 * dm[kp[1]]
+                )  # exploitation
+                if idx == pop_size - 1:  # last individual
+                    x = (
+                            np.exp(-epoch * pop_size / self.epoch)
+                            * agent.solution
+                    )  # regeneration of starfish
+                x = cy.correct_solution(self.problem, x)
+                child = self.population.create_agent(x)
+                n_population.append(child)
+            n_population = self.population.evaluate(n_population, self.mode)
+        # Update population with greedy strategy
+        self.population = self.population.greedy(n_population)

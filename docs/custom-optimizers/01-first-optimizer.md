@@ -69,7 +69,7 @@ class RandomSearch(cy.DecoratedOptimizer):
 ```
 
 For the classic API the base is `cy.LegacyOptimizer` (this is how the catalog
-algorithms are written), which makes `self.pop`, `self.g_best` and
+algorithms are written), which makes `self.population`, `self.g_best` and
 `self.problem` statically known as well.
 
 ---
