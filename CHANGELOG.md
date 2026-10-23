@@ -1,3 +1,12 @@
+# Version 2026b1
+
++ **Version bump:** `2026b0` → `2026b1`.
++ **Git hooks (Husky):** `pre-commit` runs `ruff` and `mypy` over the Python files a commit stages and `pre-push` runs the full `pytest` suite, so lint, typing and test failures surface locally before CI. They check staged files only: the pre-existing lint/typing debt elsewhere in the tree no longer blocks commits, but any file you touch must be clean.
++ **Release cycle:** every version lives on its own `release/v<year><edition><version>` branch and merges into `master`, where tagging a GitHub Release publishes it (`.github/workflows/publish.yml`). The hooks keep `clypto/__init__.py` pinned to the branch it is committed on, so a version and its release branch cannot drift apart. See [Releasing](https://ltsim.github.io/clypto/releasing/).
++ **`CITATION.cff`:** the citation metadata was still the upstream MEALPY record (version 2.5.2, `thieu1995/mealpy`); it now describes clypto at the current version. The MEALPY paper stays as the preferred citation for the algorithms.
+
+---
+
 # Version 2026b
 
 + **Version bump:** released as `2026b0` (previous release `2026a0`).
