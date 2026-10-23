@@ -79,5 +79,12 @@ class RuntimeAgent:
 
         return new
 
+    def snapshot(self) -> "RuntimeAgent":
+        """A ``copy`` whose solution vector is independent of this agent's."""
+        new = self.copy()
+        if new._solution is not None:
+            object.__setattr__(new, "_solution", new._solution.copy())
+        return new
+
     def __repr__(self) -> str:
         return f"{type(self).__name__}(fitness={self.fitness}, solution={self._solution})"

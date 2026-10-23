@@ -16,9 +16,16 @@ and implements ``cdef void evolve(self, int epoch)``. ``solve()`` binds the
 population to the problem and fills it. ``self.population`` is a typed C field:
 a list of agents is assigned as ``self.population.spawn(agents)``.
 """
-from clypto.optimizer.native.agent cimport duplicate_agent
+from clypto.optimizer.native.agent cimport Agent, duplicate_agent, is_better
 from clypto.optimizer.native.population cimport Population
 from clypto.optimizer.native.problem import Problem
+
+
+cdef Agent snapshot_agent(Agent agent):
+    """An independent copy of ``agent`` — ``clone`` shares the solution vector, so it is copied here."""
+    cdef Agent copy = duplicate_agent(agent)
+    copy.solution = agent.solution.copy()
+    return copy
 
 
 cdef class LegacyOptimizer(NativeOptimizer):
@@ -65,15 +72,19 @@ cdef class LegacyOptimizer(NativeOptimizer):
 
     cdef void after_initialization(self):
         # The initial population is sorted or not depending on the algorithm;
-        # g_best/g_worst start as copies.
+        # g_best/g_worst start as independent copies.
         ranked = self.population.sort()
-        self.g_best, self.g_worst = duplicate_agent(ranked[0]), duplicate_agent(ranked[-1])
+        self.g_best, self.g_worst = snapshot_agent(ranked[0]), snapshot_agent(ranked[-1])
         if self.sort_flag:
             self.population = ranked
 
     cdef void after_evolve(self):
-        # g_best is the best agent of the population itself (an alias, not a copy).
+        # g_best is the best agent *ever* seen, not the best of the current population: an
+        # algorithm whose evolve() replaces the population without per-agent elitism must not
+        # lose (and report) a result it already found. g_worst stays the initialization's
+        # snapshot, as in mealpy-lts, which also refreshes only g_best.
         ranked = self.population.sort()
-        self.g_best = ranked[0]
+        if self.g_best is None or is_better(ranked[0], self.g_best, self.problem.sense):
+            self.g_best = snapshot_agent(ranked[0])
         if self.sort_flag:
             self.population = ranked

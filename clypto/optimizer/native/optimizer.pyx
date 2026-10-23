@@ -5,7 +5,7 @@ and the epoch loop, and tracks the run. Algorithms implement the C method
 ``cdef void evolve(self, int epoch)`` and may override ``initialize_variables``,
 ``initialization`` and ``before_main_loop``. The engine implements the C-level
 steps (``check_problem``, ``before_initialization``, ``after_initialization``,
-``after_evolve``, which refreshes ``g_best``).
+``after_evolve``, which ratchets ``g_best`` to the best ever seen).
 
 ``mode`` picks how a batch of agents is evaluated: ``"sequential"`` (default),
 ``"swarm"`` (one batch, one call per agent) or ``"parallel"`` (one batch on

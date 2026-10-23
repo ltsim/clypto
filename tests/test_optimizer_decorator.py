@@ -127,7 +127,10 @@ def test_solve_returns_best_agent(problem):
     g_best = optimizer.solve(problem, seed=1)
 
     assert g_best is optimizer.g_best
-    assert g_best is optimizer.population.best
+    # g_best is an independent snapshot of the best agent ever seen, not the population's own
+    # best object; this fixture is elitist, so the two agree on the value.
+    assert g_best is not optimizer.population.best
+    assert g_best.fitness == pytest.approx(optimizer.population.best.fitness)
     assert g_best.solution.shape == (N_DIMS,)
     assert np.all(np.isfinite(g_best.solution))
     assert np.isfinite(g_best.fitness)
@@ -203,7 +206,9 @@ def test_solve_respects_maximization():
         bounds=cy.NumberBounds(float, low=[-5.0] * N_DIMS, up=[5.0] * N_DIMS),
         sense="max",
     )
-    optimizer = RandomSearch(epoch=20, pop_size=10)
+    # A population that never moves, so the assertion is about the engine picking the argmax
+    # and not about the optimizer's own selection rule.
+    optimizer = CountingSearch(epoch=20, pop_size=10)
     g_best = optimizer.solve(problem, seed=1)
 
     assert g_best.fitness == pytest.approx(max(optimizer.population.fitness))

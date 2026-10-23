@@ -10,7 +10,7 @@ import numpy as np
 from clypto.optimizer.agents.runtime import RuntimeAgent
 from clypto.hints.array import NDArrayType
 from clypto.optimizer.bounds import Bounds
-from clypto.optimizer.native.agent import Agent
+from clypto.optimizer.native.agent import Agent, better_fitness
 from clypto.optimizer.native.population import Population
 from clypto.optimizer.native.problem import Problem
 from clypto.optimizer.native.utils import validator
@@ -99,7 +99,7 @@ class DecoratedOptimizer:
         termination: typing.Optional[Termination | dict] = None,
         seed: typing.Optional[int] = None,
     ) -> RuntimeAgent:
-        """Run the optimizer and return the best agent found."""
+        """Run the optimizer and return the best agent found so far (never worse than an earlier epoch)."""
         self._bind_problem(problem, seed)
         assert self.problem is not None and self.bounds is not None
 
@@ -113,20 +113,39 @@ class DecoratedOptimizer:
         self.population.extend([self.generate_agent() for _ in range(pop_size)])
 
         self.initialize()
-        self.g_best = self.population.best
+        self.g_best = None
+        self._ratchet_best()
 
+        last_fitness, repeated_times = None, 0
         for epoch in range(1, epochs + 1):
             self.evolve(epoch)
-            self.g_best = self.population.best
+            self._ratchet_best()
 
-            if self.termination is not None and self.termination.should_terminate(
-                epoch, self.problem.n_evals, time.perf_counter(), 0
-            ):
-                break
+            if self.termination is not None:
+                fit = self.g_best.fitness
+                if last_fitness is not None and abs(fit - last_fitness) <= self.termination.epsilon:
+                    repeated_times += 1
+                else:
+                    repeated_times = 0
+                last_fitness = fit
+                if self.termination.should_terminate(
+                    epoch, self.problem.n_evals, time.perf_counter(), repeated_times
+                ):
+                    break
 
         return self.g_best
 
     # -- helpers -----------------------------------------------------------
+    def _ratchet_best(self) -> None:
+        """Keep the best agent *ever* seen, not the best of the current population.
+
+        An algorithm that replaces its whole population each epoch, with no per-agent
+        elitism, would otherwise lose (and report) a result it already found.
+        """
+        best = self.population.best
+        if self.g_best is None or better_fitness(best.fitness, self.g_best.fitness, self.problem.sense):
+            self.g_best = best.snapshot()
+
     def evaluate_agent(self, solution: NDArrayType) -> Agent:
         """Evaluate one solution (counted by the problem)."""
         assert self.problem is not None
