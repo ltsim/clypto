@@ -54,6 +54,38 @@ uv sync --extra dev
 uv run pytest tests/          # or: make uv-test
 ```
 
+## Git hooks
+
+[Husky](https://typicode.github.io/husky/) runs the checks CI runs anyway, before
+your code reaches a pull request. Hooks live in `.husky/` and need one setup per
+clone (Node.js 18 or newer):
+
+```bash
+uv sync --extra dev           # the hooks call into this environment
+npm install                   # activates .husky/pre-commit and .husky/pre-push
+```
+
+| Hook | Runs |
+| --- | --- |
+| `pre-commit` | the release version check, then `ruff` and `mypy` over the Python files the commit stages |
+| `pre-push` | the release version check, then the full `pytest tests/` suite |
+
+Both hooks scope to what you changed, not to the whole repository: the tree still
+carries pre-existing lint and typing debt, so `pre-commit` checks only staged
+files (`mypy` runs with `--follow-imports=silent` so it reports the files you
+touched, not the modules they import). A file is expected to be clean from the
+moment you edit it. `make lint` and `make typecheck` run the tools over the
+repository when you want the full picture, and `make check-version` runs the
+version check against `HEAD`.
+
+Skip a hook when you need to (`HUSKY=0 git commit`, or `git commit --no-verify`).
+`pre-push` needs the compiled package *and* the `dev` extra — a plain `uv run`
+syncs only the runtime dependencies, so `pytest` will be missing. Build the
+environment with `uv sync --extra dev` before pushing. Once it is built the suite
+itself takes about a minute; the slow part is the first build, which compiles every
+Cython extension. See [Releasing](releasing.md) for the version check the hooks
+enforce.
+
 ## Just-in-time compilation (`compile` extra)
 
 The `@cy.optimizer` and `@cy.agent` decorators can compile a

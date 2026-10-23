@@ -106,6 +106,7 @@ nav:
       - SOTA-based: categories/sota_based.md
   - Known Issues: issues.md
   - Audit (2026): audit.md
+  - Releasing: releasing.md
   - API Reference:
       - Core API: api/core.md
   - Reference:

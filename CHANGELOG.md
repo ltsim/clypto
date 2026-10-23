@@ -1,3 +1,23 @@
+# Version 2026b1
+
++ **Version bump:** `2026b0` → `2026b1`.
++ **Git hooks (Husky):** `pre-commit` runs `ruff` and `mypy` over the Python files a commit stages and `pre-push` runs the full `pytest` suite, so lint, typing and test failures surface locally before CI. They check staged files only: the pre-existing lint/typing debt elsewhere in the tree no longer blocks commits, but any file you touch must be clean.
++ **Release cycle:** every version lives on its own `release/v<year><edition><version>` branch and merges into `master`, where tagging a GitHub Release publishes it (`.github/workflows/publish.yml`). The hooks keep `clypto/__init__.py` pinned to the branch it is committed on, so a version and its release branch cannot drift apart. See [Releasing](https://ltsim.github.io/clypto/releasing/).
++ **`CITATION.cff`:** the citation metadata was still the upstream MEALPY record (version 2.5.2, `thieu1995/mealpy`); it now describes clypto at the current version. The MEALPY paper stays as the preferred citation for the algorithms.
+
+---
+
+# Version 2026b
+
++ **Version bump:** released as `2026b0` (previous release `2026a0`).
++ **Decorator-based optimizer API:** write a custom optimizer as a plain class with `@cy.optimizer` / `@cy.agent` / `@cy.legacy`, declaring hyper-parameters via `cy.Argument[type, bound, default]` and per-agent state via `cy.Attribute[...]`; the classic `Optimizer` base was renamed to `LegacyOptimizer` (kept as a backward-compatible alias) and all 147 catalog modules migrated without algorithm-body changes.
++ **`cy.Population`:** new container backing `self.population` (`solutions` matrix, read-only `fitness`, `best`/`worst`, `append`/`remove`/`generate`).
++ **Opt-in Cython compilation:** `compile=True` / `precompile=True` compiles decorated classes into native extensions at import time, behind the optional `compile` extra
++ **Zarr-backed `Tracker`:** `solve(debug=True)` records per-epoch metrics with optional population snapshots and per-iteration `before`/`after` hooks; raises `requires-python` to `>=3.11`.
++ **Docs:** new custom-optimizer tutorials and a migration guide.
+
+---
+
 # Version 2026
 
 + **`Optimizer` & `History`:** Core classes completely overhauled to be clean, decoupled, and highly reusable by external frameworks.

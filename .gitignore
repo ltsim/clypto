@@ -369,3 +369,7 @@ graphify-out/
 AGENT.md
 AGENTS.md
 CLAUDE.md
+
+# Node (husky git hooks)
+node_modules/
+
