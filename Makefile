@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync uv-test docs-serve docs-build
+.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync uv-test lint typecheck check-version docs-serve docs-build
 
 clean: clean-build clean-cython clean-pyc
 
@@ -31,6 +31,15 @@ uv-sync:
 
 uv-test:
 	uv run pytest tests/
+
+lint:
+	uv run --no-sync ruff check .
+
+typecheck:
+	uv run --no-sync mypy clypto/ --config-file pyproject.toml
+
+check-version:
+	sh .husky/check-version.sh head
 
 docs-serve:
 	uv sync --extra docs --no-install-project

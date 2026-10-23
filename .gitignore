@@ -361,3 +361,6 @@ pyrightconfig.json
 
 # Sphinx documentation
 docs/build/
+
+# Node (husky git hooks)
+node_modules/
