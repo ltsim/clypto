@@ -30,7 +30,7 @@ import numpy as np
 warnings.filterwarnings("ignore")
 import importlib, inspect, pkgutil
 import mealpy
-from mealpy import NumberBounds, Problem
+from mealpy import FloatVar, Problem
 from mealpy.optimizer import Optimizer
 cfg = json.loads(sys.argv[1])
 def sphere(x):
@@ -56,7 +56,7 @@ for name in cfg["names"]:
     best = None
     try:
         for _ in range(cfg["repeats"]):
-            prob = Problem(obj_func=sphere, bounds=NumberBounds(float, low=[-5.0] * cfg["dim"], up=[5.0] * cfg["dim"]), sense="min", log_to=None)
+            prob = Problem(bounds=FloatVar(lb=[-5.0] * cfg["dim"], ub=[5.0] * cfg["dim"]), minmax="min", obj_func=sphere, log_to=None)
             t = time.perf_counter()
             cls(epoch=cfg["epoch"], pop_size=cfg["pop"]).solve(prob, seed=cfg["seed"])
             dt = time.perf_counter() - t
@@ -152,9 +152,12 @@ def main():
     slower = sorted((s, n) for n, s in speed.items() if s < 1)
     if slower:
         print("slower batched:", ", ".join(f"{n} x{s:.2f}" for s, n in slower))
-    if any("mealpy" in r for r in good.values()):
+    if args.mealpy_python:
         ms = [r["mealpy"] / r["sequential"] for r in good.values() if "mealpy" in r]
-        print(f"vs mealpy-lts ({len(ms)} classes): median x{statistics.median(ms):.2f}")
+        if ms:
+            print(f"vs mealpy-lts ({len(ms)} classes): median x{statistics.median(ms):.2f}")
+        else:
+            print(f"WARNING: --mealpy-python returned timings for 0 of {len(names)} classes; the comparison ran against nothing", file=sys.stderr)
     errors = {n: r["error"] for n, r in rows.items() if "error" in r}
     if errors:
         print("errors:", errors)

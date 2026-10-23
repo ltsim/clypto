@@ -178,7 +178,16 @@ No known issues.
 
 ## SOTA-based
 
-No known issues.
+### Quality annotations
+
+- **`OriginalIMODE` compares as if minimizing.** Its selection step (and the
+  archive and operator-probability updates that follow it) uses a fixed
+  `is_better(..., "min")` rather than the problem's sense, so on a
+  **maximization** problem it keeps the *worse* trial vector. The behaviour is
+  inherited, not clypto's: `mealpy-lts` calls `compare_target(agent.target,
+  self.pop[idx].target)` and lets `minmax` fall back to its `"min"` default
+  (`IMODE.py:277`, `optimizer.py:444`). See **Min-only comparisons** under
+  Core framework. Use `OriginalLSHADEcnEpSin`, which passes the sense correctly.
 
 ---
 
@@ -188,17 +197,71 @@ These affect every optimizer rather than a single taxonomy group.
 
 ### Open issues
 
+- **Min-only comparisons.** Six sites compare agents with a fixed `"min"` sense
+  instead of `self.problem.sense`, so they select the worse agent on a
+  maximization problem: `OriginalIMODE` (selection, archive and operator
+  probabilities), `OriginalNGO` (Eq. 4 neighbour test), `OriginalESO` (survivor
+  selection), `C_PSO` (chaotic local-search acceptance) and `OriginalBCO`
+  (both neighbour and global-best exchange). Every one of them transcribes the
+  same call in `mealpy-lts`, where `compare_target(...)` is invoked *without*
+  its `minmax` argument and therefore defaults to `"min"`
+  (`optimizer.py:444`; `IMODE.py:277`, `NGO.py:74`, `ESO.py:159`, `PSO.py:600`,
+  `BCO.py:150,154`). The behaviour is kept for fidelity — "fixing" it would
+  move clypto away from the pinned reference, as with the dead personal-best
+  comparisons in `ABFO`/`ModifiedSLO`. Avoid these five on maximization
+  problems.
+- **`g_worst` is the agent that was worst at initialization.** It is set once in
+  `after_initialization` and never refreshed, which is deliberately what
+  `mealpy-lts` does: its loop assigns only `self.g_best`
+  (`optimizer.py:266`), leaving `self.g_worst` on the initialization object. The
+  classes that read it (`OriginalBBOA`, `OriginalEVO`) are bit-identical for
+  that reason, and `OriginalDO`, `OriginalHGS`, `OriginalSSA`, the `JA` family
+  and `OriginalGBO` set their own current worst inside `evolve()` and are
+  unaffected either way.
 - **Evaluation of a vector other than the agent's solution.** A few MEALPY
   algorithms give an agent the fitness of a vector it does not hold:
   `OriginalWOA` and `OriginalSBO` evaluate the new position into the *current*
   agent, `OriginalArchOA`, `OppoTWO`, `LevyTWO` and `EnhancedTWO` evaluate the
   position before its last correction, and the FOA variants evaluate the
   position rather than the smell vector the fly stores. The behaviour is kept
-  (results are unchanged) and each site is marked in the source
-  (`agent.update_solution(candidate, agent.solution)`).
+  and each site is marked in the source
+  (`agent.update_solution(candidate, agent.solution)`). It was earlier
+  documented here as leaving *results* unchanged versus MEALPY — true only for
+  the variants that give themselves per-agent elitism (`OriginalFOA` and
+  `WhaleFOA` call `cy.get_better_agent` right after and stay bit-identical). For
+  `OriginalWOA`, `OriginalSBO` and `OriginalArchOA` the reported result differed
+  until the `g_best` ratchet below landed; the quirk itself is byte-for-byte
+  identical on both sides.
 
 ### Fixed in 2026
 
+- **`g_best` was the best of the current population, not the best ever found.**
+  `LegacyOptimizer.after_evolve()` overwrote `self.g_best` with
+  `population.sort()[0]` every epoch, with no comparison against the previously
+  stored value, and `DecoratedOptimizer.solve()` (`@cy.optimizer`) did the same
+  with `self.population.best`. An algorithm whose `evolve()` replaces the
+  population without per-agent elitism — which is how most "Original",
+  paper-faithful variants are published — therefore lost results it had already
+  found and *reported* the worse one: `OriginalESO` returned `0.0404` for a run
+  that had reached `5e-34`. Both engines now ratchet: `g_best` is replaced only
+  when the candidate is better, and is stored as an independent snapshot (a
+  clone whose solution vector is copied, so a later in-place mutation of the
+  population cannot corrupt it retroactively — `OriginalHBO` and `OriginalBCO`
+  mutate solution vectors in place). This also restores `mealpy-lts`'s own
+  semantics, where `g_best` is the `get_better_agent(current, historical)`
+  clone taken *after* `evolve()`: the pre-fix aliasing meant the PSO family read
+  a global best that other agents in the *same* epoch had already improved,
+  which `mealpy-lts` does not do. The change is catalog-wide, not limited to the
+  non-elitist classes (the reported-value bug was, but the trajectory effect was
+  not): 98 of 243 classes changed their result across the two golden captures, and paired
+  against `mealpy-lts` at 20 seeds the same set went from 17 `distribution_mismatch` flags to
+  none (re-measure with `benchmarks/bench_correctness.py`). There is no automated guard: the
+  golden captures and the per-epoch ratchet test were removed, so assert monotonicity by hand
+  with `debug=True, after_iteration=...` over `epoch=1..N` at a fixed seed.
+- **`max_early_stop` was ignored by `@cy.optimizer`.** The decorated engine
+  passed a literal `0` as the no-improvement counter to `Termination.should_terminate`,
+  so early stopping could never fire there; it now counts epochs in which
+  `g_best` did not improve, as the legacy engine does.
 - **Memory corruption from `wraparound: False`.** The codebase uses negative
   list indexing (`pop[-1]`) across 55+ files; disabling wraparound corrupted
   memory once compiled. Set back to `True`.

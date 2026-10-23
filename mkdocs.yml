@@ -105,6 +105,7 @@ nav:
       - Game-based: categories/game_based.md
       - SOTA-based: categories/sota_based.md
   - Known Issues: issues.md
+  - Audit (2026): audit.md
   - API Reference:
       - Core API: api/core.md
   - Reference:

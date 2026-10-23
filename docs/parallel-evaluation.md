@@ -35,8 +35,8 @@ An algorithm can use the pipeline only when every candidate of a phase depends o
 at the start of the phase. When agent *i* reads agents already replaced in the same epoch (a random other
 agent, a teacher, the global best moved in place...) evaluating the batch at once is a different algorithm.
 The split below was measured, not assumed: every class ran in sequential and in batch mode with the same
-seed, and a class moved to the pipeline only when both gave the same bits (`tests/test_golden_*.py` hold
-that line).
+seed, and a class moved to the pipeline only when both gave the same bits (the golden captures
+that held that line were removed in 2026-10).
 
 **Batch pipeline in every mode (73).** Parallel-capable whatever the mode:
 `AAO`, `BaseGA`, `CMA_ES`, `ChaoticGWO`, `DevALO`, `DevBA`, `DevCHIO`, `DevGCO`, `DevHS`, `DevQSA`, `DevSARO`, `DevSCA`, `DevSOA`, `ER_GWO`, `EliteMultiGA`, `EliteSingleGA`, `ExGWO`, `FuzzyGWO`, `GWO_WOA`, `HI_WOA`, `IGWO`, `ImprovedQSA`, `IncrementalGWO`, `JADE`, `L_SHADE`, `LevyEP`, `LevyES`, `LevyQSA`, `Matlab101GTO`, `MultiGA`, `OGWO`, `OppoQSA`, `OriginalACOR`, `OriginalALO`, `OriginalAOA`, `OriginalBeesA`, `OriginalCDO`, `OriginalCEM`, `OriginalCHIO`, `OriginalCOA`, `OriginalCSA`, `OriginalEHO`, `OriginalEO`, `OriginalEP`, `OriginalES`, `OriginalFA`, `OriginalGCO`, `OriginalGTO`, `OriginalGWO`, `OriginalHBA`, `OriginalHCO`, `OriginalHGSO`, `OriginalHS`, `OriginalIWO`, `OriginalMShOA`, `OriginalPFA`, `OriginalQSA`, `OriginalRIME`, `OriginalSARO`, `OriginalSCA`, `OriginalSFOA`, `OriginalSHADE`, `OriginalSHIO`, `OriginalSeaHO`, `OriginalTS`, `OriginalWCA`, `OriginalWDO`, `ProbBeesA`, `QleSCA`, `SADE`, `Simple_CMA_ES`, `SingleGA`, `SwarmSA`.

@@ -6,6 +6,19 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
+### The global best is now the best ever found (2026-10)
+
+Found by the full-catalog audit (`docs/audit.md`): `g_best` was the best agent of the *current* population, not the best the run had found.
+
++ **`LegacyOptimizer.after_evolve()` ratchets.** It overwrote `self.g_best` with `population.sort()[0]` every epoch, with no comparison against the stored value. An algorithm whose `evolve()` replaces the population without per-agent elitism -- how most "Original", paper-faithful variants are published -- silently lost results it had already found and reported the worse one (`OriginalESO` returned `0.0404` for a run that had reached `5e-34`). It is now replaced only when the candidate is better.
++ **Both engines.** `DecoratedOptimizer.solve()` (`@cy.optimizer`) had the same defect twice, at initialization and per epoch; it now shares the ratchet. The audit named only the legacy engine.
++ **`g_best` is an independent snapshot.** `cy.duplicate_agent` is `Agent.clone`, which *shares* the solution vector, so cloning alone leaves the stored best mutable through the population. The snapshot copies the vector too (`OriginalHBO` and `OriginalBCO` mutate solution vectors in place). This supersedes the 2026-09 note "the PSO family: `g_best` moves in place" -- that in-epoch visibility was itself the deviation from `mealpy-lts`, which reads the previous epoch's best during `evolve()`.
++ **`g_worst` deliberately unchanged.** It stays the initialization's agent, as in `mealpy-lts`, whose loop assigns only `self.g_best` (`optimizer.py:266`). Ratcheting it was measured to diverge `OriginalBBOA` and `OriginalEVO`, which are bit-identical today.
++ **Breaking: reported results change for 98 of 243 classes.** Paired against `mealpy-lts` at 20 seeds, the affected classes went from 17 `distribution_mismatch` flags to none; 33 now find a *better* optimum on the golden problem than they reported before. Reproduce the measurement with `benchmarks/bench_correctness.py` (see Reproducing in `docs/audit.md`).
++ **Termination.** `debug`/`track_population` history and the convergence check now see a monotonic `g_best` instead of one that wanders; `@cy.optimizer` passed a literal `0` as its no-improvement counter, so `max_early_stop` could never fire there.
++ **Not fixed (inherited).** The six hard-coded `"min"` comparisons (`OriginalIMODE`, `OriginalNGO`, `OriginalESO`, `C_PSO`, `OriginalBCO`) are faithful transcriptions of `mealpy-lts` calling `compare_target` without its `minmax` argument; see `docs/issues.md`. `benchmarks/bench_collection.py --mealpy-python`, which had silently compared against nothing since the `NumberBounds` → `FloatVar` rename, is fixed.
++ **No automated guard.** The catalog-wide behavior pins (`tests/test_golden_baseline.py`, `tests/test_golden_scenarios.py`, their `tests/golden/` captures) and the per-epoch ratchet test were removed, so nothing in `tests/` asserts that `g_best` stays monotonic. To check it by hand: run a non-elitist class (`SAP_DE`, `OriginalWOA`) with `debug=True, after_iteration=...` over `epoch=1..N` at one seed and confirm the recorded fitness never rises.
+
 ### One collection: static agents, snapshots and the batch pipeline (2026-09)
 
 + **One collection.** The vectorize tree and its engine (`VectorizeOptimizer`, `NativePopulation`, `ops`, `AgentListOptimizer`) are removed; the classic collection is the only one and moved from `clypto/native/collection/legacy/<category>` to `clypto/native/collection/<category>`. Recoverable from `0d839435`.
