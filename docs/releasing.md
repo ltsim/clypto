@@ -27,8 +27,10 @@ own branch, its own tag, and its own PyPI release.
    [Keeping the metadata in step](#keeping-the-metadata-in-step).
 
 5. **Push and open a pull request into `master`**. `pre-push` runs the version
-   check and then the full `uv run pytest tests/` suite in your `dev` environment;
-   CI runs the same suite across Python 3.11–3.14 on Linux, Windows and macOS.
+   check and then the full `pytest tests/` suite through `uv run --no-sync` — the
+   same command CI runs, against the environment you built with `uv sync --extra
+   dev`. About a minute once built. CI then runs it across Python 3.11–3.14 on
+   Linux, Windows and macOS.
 
 6. **Merge into `master`**. Two things fire on the merge: `test.yml` and
    `type.yml` have already validated the pull request, and `docs.yml` rebuilds and

@@ -81,9 +81,10 @@ version check against `HEAD`.
 Skip a hook when you need to (`HUSKY=0 git commit`, or `git commit --no-verify`).
 `pre-push` needs the compiled package *and* the `dev` extra — a plain `uv run`
 syncs only the runtime dependencies, so `pytest` will be missing. Build the
-environment with `uv sync --extra dev` before pushing; the first run in a fresh
-clone also pays for compiling the Cython extensions, which is the slow part. See
-[Releasing](releasing.md) for the version check the hooks enforce.
+environment with `uv sync --extra dev` before pushing. Once it is built the suite
+itself takes about a minute; the slow part is the first build, which compiles every
+Cython extension. See [Releasing](releasing.md) for the version check the hooks
+enforce.
 
 ## Just-in-time compilation (`compile` extra)
 
