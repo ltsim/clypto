@@ -146,38 +146,37 @@ assert (g_best_a.solution == g_best_b.solution).all()
 
 ## Tracking
 
-Pass `debug=True` to record a per-epoch history into `model.tracker`, a
-Zarr-backed store. Metrics include global/current best and worst fitness,
-mean/std, diversity, exploration/exploitation, runtime, and function
-evaluations. Add `track_population=True` to also stream a full population
-snapshot per epoch. By default the store lives in memory; pass
-`history_path="run.zarr"` to persist it on disk.
+Pass `debug=True` to record a per-epoch history into `model.tracker`, an
+in-memory numpy history. Metrics include global/current best and worst
+fitness, mean/std, diversity, exploration/exploitation, runtime, and function
+evaluations. Add `track_population=True` to also record a full population
+snapshot per epoch. The history lives in RAM and always describes the most
+recent `solve()` call.
 
 ```python
 model = PSO.OriginalPSO(epoch=100, pop_size=50)
 model.solve(problem, seed=1, debug=True)
 
 model.tracker["global_best_fit"]   # (epoch,) numpy array
-model.tracker.group["solution"]    # raw Zarr array (present when track_population=True)
+model.tracker["solution"]          # (epoch, pop, n_dims); needs track_population=True
+model.tracker.meta["n_epochs"]     # run metadata: optimizer, problem, seed, ...
 ```
 
-Attach per-iteration hooks to inspect each population as it evolves. The
-current epoch is available as `model.tracker.epoch` while a hook runs:
+Population snapshots are NaN-padded to the largest epoch, so optimizers that
+grow and shrink their population (SAP_DE, ...) are recorded without guessing
+a capacity in advance.
+
+Pass `before_iteration=` / `after_iteration=` callbacks to `solve()` to inspect
+each population as it evolves. Every callback receives `(population, epoch)`
+and runs around each epoch whether or not tracking is enabled:
 
 ```python
-model.tracker.before = lambda population: ...
+def log_epoch(population, epoch):
+    print(epoch, min(agent.target.fitness for agent in population))
 
 
-@model.tracker.on_after
-def after_iteration(population):
-    ...
-
-
-model.solve(problem, seed=1, debug=True)
+model.solve(problem, seed=1, after_iteration=log_epoch)
 ```
-
-Hooks can also be passed to `solve()` as `before_iteration=` /
-`after_iteration=` and only run while tracking is enabled.
 
 ## Parallel execution
 

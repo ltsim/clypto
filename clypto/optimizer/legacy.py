@@ -40,7 +40,7 @@ class LegacyOptimizer(BaseOptimizer):
     AVAILABLE_MODES: typing.Final[
         tuple[typing.Literal["swarm", "process", "thread"]]
     ] = ("swarm",)
-    SUPPORTED_ARRAYS: typing.Final[tuple[type]] = list, tuple, np.ndarray
+    SUPPORTED_ARRAYS: typing.Final[tuple[type, ...]] = list, tuple, np.ndarray
 
     def __init__(self, **kwargs):
         self.tracker = Tracker()
@@ -165,12 +165,18 @@ class LegacyOptimizer(BaseOptimizer):
             type(starting_solutions) in self.SUPPORTED_ARRAYS
             and len(starting_solutions) == self.pop_size
         ):
+            # The ``type() in`` checks above prove the shape the cast asserts:
+            # a non-empty sequence of per-agent position arrays. Cast is a
+            # no-op at runtime; it only tells the type checker.
+            positions = typing.cast(
+                "list | tuple | NDArrayType", starting_solutions
+            )
             if (
-                type(starting_solutions[0]) in self.SUPPORTED_ARRAYS
-                and len(starting_solutions[0]) == self.problem.n_dims
+                type(positions[0]) in self.SUPPORTED_ARRAYS
+                and len(positions[0]) == self.problem.n_dims
             ):
                 self.pop = [
-                    self.generate_agent(solution) for solution in starting_solutions
+                    self.generate_agent(solution) for solution in positions
                 ]
             else:
                 raise ValueError(
@@ -191,6 +197,9 @@ class LegacyOptimizer(BaseOptimizer):
             self.pop, n_best=1, n_worst=1, minmax=self.problem.minmax
         )
 
+        # ``get_special_agents`` returns ``None`` only when ``n_best``/``n_worst``
+        # are ``None``; with both set above, both agent lists are always present.
+        assert best is not None and worst is not None
         self.g_best, self.g_worst = best[0], worst[0]
 
         if self.sort_flag:
@@ -206,7 +215,7 @@ class LegacyOptimizer(BaseOptimizer):
         if isinstance(problem, Problem):
             problem.seed = seed
             self.problem = problem
-        elif type(problem) == dict:
+        elif type(problem) is dict:
             problem["seed"] = seed
             self.problem = Problem(**problem)
         else:
@@ -244,7 +253,7 @@ class LegacyOptimizer(BaseOptimizer):
             if termination is not None:
                 if isinstance(termination, Termination):
                     self.__termination = termination
-                elif type(termination) == dict:
+                elif type(termination) is dict:
                     self.__termination = Termination(**termination)
                 else:
                     raise ValueError(
@@ -280,10 +289,16 @@ class LegacyOptimizer(BaseOptimizer):
         seed: int | None = None,
         debug: bool = False,
         track_population: bool = False,
-        history_path: str | None = None,
-        before_iteration: typing.Optional[typing.Callable] = None,
-        after_iteration: typing.Optional[typing.Callable] = None,
+        before_iteration: typing.Optional[
+            typing.Callable[[list[LegacyAgent], int], None]
+        ] = None,
+        after_iteration: typing.Optional[
+            typing.Callable[[list[LegacyAgent], int], None]
+        ] = None,
     ) -> LegacyAgent:
+        # The tracker always describes the most recent run; drop the previous one.
+        self.tracker.reset()
+
         self.check_problem(problem, seed)
         self.check_termination("start", termination, None)
         self.initialize_variables()
@@ -294,55 +309,51 @@ class LegacyOptimizer(BaseOptimizer):
 
         self.before_main_loop()
 
-        tracking = debug or track_population or history_path is not None
+        tracking = debug or track_population
         if tracking:
-            if before_iteration is not None:
-                self.tracker.before = before_iteration
-            if after_iteration is not None:
-                self.tracker.after = after_iteration
             self.tracker.start(
                 optimizer=self,
                 problem=self.problem,
                 seed=seed,
                 capture_population=track_population,
-                history_path=history_path,
             )
 
         loop = range(1, self.epoch + 1)
 
-        for epoch in loop:
+        try:
+            for epoch in loop:
+                time_epoch = time.perf_counter()
+
+                if before_iteration is not None:
+                    before_iteration(self.pop, epoch)
+
+                ## Evolve method will be called in child class
+                self.evolve(epoch)
+
+                # Update global best solution, the population is sorted or not depended on algorithm's strategy
+                pop_temp = self.get_sorted_population(self.pop, self.problem.minmax)
+                self.g_best = pop_temp[0]
+
+                if self.sort_flag:
+                    self.pop = pop_temp
+
+                self.__update_repeated_times()
+
+                if after_iteration is not None:
+                    after_iteration(self.pop, epoch)
+
+                time_epoch = time.perf_counter() - time_epoch
+
+                if tracking:
+                    self.track_optimize_step(self.pop, time_epoch)
+
+                if self.check_termination("end", None, epoch):
+                    break
+        finally:
+            # Close the recording even when a hook or evolve() raises, so the
+            # tracker never stays mid-run.
             if tracking:
-                self.tracker.epoch = epoch
-                if self.tracker.before is not None:
-                    self.tracker.before(self.pop)
-
-            time_epoch = time.perf_counter()
-
-            ## Evolve method will be called in child class
-            self.evolve(epoch)
-
-            # Update global best solution, the population is sorted or not depended on algorithm's strategy
-            pop_temp = self.get_sorted_population(self.pop, self.problem.minmax)
-            self.g_best = pop_temp[0]
-
-            if self.sort_flag:
-                self.pop = pop_temp
-
-            self.__update_repeated_times()
-
-            if tracking and self.tracker.after is not None:
-                self.tracker.after(self.pop)
-
-            time_epoch = time.perf_counter() - time_epoch
-
-            if tracking:
-                self.track_optimize_step(self.pop, epoch, time_epoch)
-
-            if self.check_termination("end", None, epoch):
-                break
-
-        if tracking:
-            self.track_optimize_process()
+                self.track_optimize_process()
 
         if self.g_best is None:
             raise ValueError("Best solution was not found.")
@@ -352,10 +363,9 @@ class LegacyOptimizer(BaseOptimizer):
     def track_optimize_step(
         self,
         pop: list[LegacyAgent] | None = None,
-        epoch: int | None = None,
         runtime: float | None = None,
     ) -> None:
-        self.tracker.record(epoch, pop, runtime, self.nf_counter, self.g_best.target.fitness)
+        self.tracker.record(pop, runtime, self.nf_counter, self.g_best.target.fitness)
 
     def track_optimize_process(self) -> None:
         self.tracker.finalize()
@@ -607,8 +617,8 @@ class LegacyOptimizer(BaseOptimizer):
     ### Survivor Selection
     @staticmethod
     def greedy_selection_population(
-        pop_old: list[LegacyAgent] | None = None,
-        pop_new: list[LegacyAgent] | None = None,
+        pop_old: list[LegacyAgent],
+        pop_new: list[LegacyAgent],
         minmax: str = "min",
     ) -> list[LegacyAgent]:
         """
@@ -647,7 +657,7 @@ class LegacyOptimizer(BaseOptimizer):
 
     @staticmethod
     def get_sorted_and_trimmed_population(
-        pop: list[LegacyAgent] | None = None,
+        pop: list[LegacyAgent],
         pop_size: int | None = None,
         minmax: str = "min",
     ) -> list[LegacyAgent]:
@@ -680,7 +690,7 @@ class LegacyOptimizer(BaseOptimizer):
         """
         sorted_pop = self.get_sorted_population(pop, self.problem.minmax)
 
-        c_best, c_worst = sorted_pop[0], sorted_pop[-1]
+        c_best = sorted_pop[0]
 
         return sorted_pop, c_best
 
@@ -714,7 +724,7 @@ class LegacyOptimizer(BaseOptimizer):
 
     def get_index_kway_tournament_selection(
         self,
-        pop: list | None = None,
+        pop: list,
         k_way: float = 0.2,
         output: int = 2,
         reverse: bool = False,
@@ -754,7 +764,7 @@ class LegacyOptimizer(BaseOptimizer):
         self,
         beta: float = 1.0,
         multiplier: float = 0.001,
-        size: list | tuple | np.ndarray | None = None,
+        size: int | list | tuple | np.ndarray | None = None,
         case: int = 0,
     ) -> float | list | np.ndarray:
         """
@@ -804,7 +814,7 @@ class LegacyOptimizer(BaseOptimizer):
         return step[0] if size == 1 else step
 
     def generate_opposition_solution(
-        self, agent: LegacyAgent | None = None, g_best: LegacyAgent | None = None
+        self, agent: LegacyAgent, g_best: LegacyAgent
     ) -> np.ndarray:
         """
         Args:

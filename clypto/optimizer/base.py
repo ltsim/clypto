@@ -31,7 +31,7 @@ class BaseOptimizer(abc.ABC):
         6. ``before_main_loop``        — pre-loop hook (e.g., reset counters).
         7. ``evolve(epoch)``           — run one generation; repeat until
                                          ``check_termination`` signals stop.
-        8. ``track_optimize_process``  — finalize and persist history.
+        8. ``track_optimize_process``  — finalize the in-memory history.
 
     Notes:
         - Subclasses should override ``amend_solution`` to apply algorithm-specific
@@ -167,9 +167,12 @@ class BaseOptimizer(abc.ABC):
         seed: typing.Optional[int] = None,
         debug: bool = False,
         track_population: bool = False,
-        history_path: typing.Optional[str] = None,
-        before_iteration: typing.Optional[typing.Callable] = None,
-        after_iteration: typing.Optional[typing.Callable] = None,
+        before_iteration: typing.Optional[
+            typing.Callable[[list["LegacyAgent"], int], None]
+        ] = None,
+        after_iteration: typing.Optional[
+            typing.Callable[[list["LegacyAgent"], int], None]
+        ] = None,
     ) -> "LegacyAgent":
         """
         Run the full optimization process end to end.
@@ -193,14 +196,14 @@ class BaseOptimizer(abc.ABC):
             debug: If ``True``, record per-epoch metrics (best/worst/mean
                 fitness, diversity, exploration/exploitation, runtime, nfe)
                 into ``self.tracker``.
-            track_population: If ``True``, additionally stream a full
-                population snapshot per epoch into the tracker's Zarr store.
-            history_path: Optional directory to persist the tracker's Zarr
-                store on disk. When omitted, tracking stays in memory.
+            track_population: If ``True``, additionally buffer a full
+                population snapshot per epoch in the tracker.
             before_iteration: Optional callback invoked as
-                ``before_iteration(population)`` immediately before each epoch.
+                ``before_iteration(population, epoch)`` immediately before
+                each epoch. Runs whether or not tracking is enabled.
             after_iteration: Optional callback invoked as
-                ``after_iteration(population)`` immediately after each epoch.
+                ``after_iteration(population, epoch)`` immediately after
+                each epoch. Runs whether or not tracking is enabled.
 
         Returns:
             The best agent found during the run. The solution and its
@@ -213,20 +216,17 @@ class BaseOptimizer(abc.ABC):
     def track_optimize_step(
         self,
         pop: typing.Optional[list["LegacyAgent"]] = None,
-        epoch: typing.Optional[int] = None,
         runtime: typing.Optional[float] = None,
     ) -> None:
         """
         Record per-epoch history and optionally print training details.
 
         Called once at the end of each evolutionary epoch whenever tracking is
-        active (``debug``, ``track_population``, or ``history_path`` was passed
-        to ``solve``). The default implementation delegates to
-        ``self.tracker.record(...)``.
+        active (``debug`` or ``track_population`` was passed to ``solve``).
+        The default implementation delegates to ``self.tracker.record(...)``.
 
         Args:
             pop: The current population at the end of the epoch.
-            epoch: The 1-based index of the epoch just completed.
             runtime: Wall-clock runtime for the epoch, in seconds.
         """
         ...

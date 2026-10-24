@@ -99,7 +99,7 @@ def test_precompiled_optimizer_tracking(problem):
     model.solve(problem, seed=1, debug=True, track_population=True)
 
     tracker = model.tracker
-    assert tracker.group.attrs["n_epochs"] == 10
+    assert tracker.meta["n_epochs"] == 10
     assert tracker["global_best_fit"].shape == (10,)
     assert tracker["solution"].shape == (10, 15, N_DIMS)
     assert np.isfinite(tracker["solution"]).all()
