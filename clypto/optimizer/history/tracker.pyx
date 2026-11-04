@@ -3,38 +3,21 @@
 # --------------------------------------------------%
 """``Tracker``: the per-run history held in ``optimizer.tracker``.
 
-Metrics are plain numpy arrays built from per-epoch lists; population snapshots
-are buffered one frame per epoch and stacked, NaN-padded to the widest epoch,
-when :meth:`Tracker.finalize` runs. Everything lives in RAM and describes the
-most recent ``solve()`` run. Read arrays by name (``tracker["global_best_fit"]``)
-and run metadata through ``tracker.meta``.
+The tracker is the facade the engine talks to. It owns the run metadata and
+delegates the numeric work: :class:`~clypto.optimizer.history.metrics.MetricStore`
+buffers the per-epoch metrics (and derives exploration/exploitation), while
+:class:`~clypto.optimizer.history.snapshots.SnapshotBuffer` buffers the optional
+population snapshots, stacked NaN-padded to the widest epoch when the run closes.
+Everything lives in RAM and describes the most recent ``solve()`` run. Read
+arrays by name (``tracker["global_best_fit"]``) and run metadata through
+``tracker.meta``.
 """
 import typing
 
 import numpy as np
 
-_METRIC_NAMES = (
-    "global_best_fit",
-    "current_best_fit",
-    "current_worst_fit",
-    "mean_fit",
-    "std_fit",
-    "diversity",
-    "exploration",
-    "exploitation",
-    "epoch_time",
-    "nfe",
-    "epoch_pop_size",
-)
-
-
-def _pad_stack(frames: list) -> np.ndarray:
-    """Stack per-epoch ``(rows, ...)`` frames into ``(epochs, max_rows, ...)`` with NaN padding."""
-    max_rows = max(frame.shape[0] for frame in frames)
-    out = np.full((len(frames), max_rows) + frames[0].shape[1:], np.nan, dtype=np.float64)
-    for idx, frame in enumerate(frames):
-        out[idx, : frame.shape[0]] = frame
-    return out
+from clypto.optimizer.history.metrics import MetricStore
+from clypto.optimizer.history.snapshots import SnapshotBuffer
 
 
 class Tracker:
@@ -58,32 +41,22 @@ class Tracker:
 
     def __init__(self) -> None:
         self.meta: dict = {}
-        self._data: dict = {}
-        self._metrics: dict = {name: [] for name in _METRIC_NAMES}
-        self._solution_frames: list = []
-        self._fitness_frames: list = []
-        self._objective_frames: list = []
-        self._recording = False
-        self._capture_population = False
-        self._n_objs: typing.Optional[int] = None
-        self._sense = "min"
+        self.__data: dict = {}
+        self.__metrics = MetricStore()
+        self.__snapshots = SnapshotBuffer()
+        self.__recording = False
 
     def reset(self) -> None:
         """Discard everything from the previous run and return to the empty state."""
         self.meta = {}
-        self._data = {}
-        self._metrics = {name: [] for name in _METRIC_NAMES}
-        self._solution_frames = []
-        self._fitness_frames = []
-        self._objective_frames = []
-        self._recording = False
-        self._capture_population = False
-        self._n_objs = None
-        self._sense = "min"
+        self.__data = {}
+        self.__metrics.reset()
+        self.__snapshots.reset()
+        self.__recording = False
 
     @property
     def recording(self) -> bool:
-        return self._recording
+        return self.__recording
 
     def start(
         self,
@@ -94,8 +67,7 @@ class Tracker:
     ) -> None:
         """Begin a new recording and describe the run through ``meta``."""
         self.reset()
-        self._capture_population = bool(capture_population)
-        self._sense = problem.sense
+        self.__snapshots.capture = bool(capture_population)
 
         self.meta = {
             "optimizer": str(optimizer.name),
@@ -103,10 +75,10 @@ class Tracker:
             "seed": seed,
             "pop_size": int(optimizer.pop_size),
             "n_dims": int(problem.n_dims),
-            "sense": str(self._sense),
-            "capture_population": self._capture_population,
+            "sense": str(problem.sense),
+            "capture_population": self.__snapshots.capture,
         }
-        self._recording = True
+        self.__recording = True
 
     def record(
         self,
@@ -116,75 +88,38 @@ class Tracker:
         global_best_fit: float,
     ) -> None:
         """Buffer the current epoch's population snapshot (if enabled) and metrics."""
-        if not self._recording:
+        if not self.__recording:
             return
 
         positions = self._solutions(pop)
         fits = self._fitnesses(pop)
+        # Objectives are only needed for a captured population; avoid the conversion otherwise.
+        objectives = self._objectives(pop) if self.__snapshots.capture else None
 
-        if self._capture_population:
-            self._solution_frames.append(positions)
-            self._fitness_frames.append(fits)
-            if self._n_objs is None:
-                self._n_objs = int(self._objectives(pop).shape[1])
-            if self._n_objs > 1:
-                self._objective_frames.append(self._objectives(pop))
-
-        if self._sense == "min":
-            c_best, c_worst = float(np.min(fits)), float(np.max(fits))
-        else:
-            c_best, c_worst = float(np.max(fits)), float(np.min(fits))
-        diversity = float(np.mean(np.abs(np.median(positions, axis=0) - positions)))
-
-        metrics = self._metrics
-        metrics["global_best_fit"].append(float(global_best_fit))
-        metrics["current_best_fit"].append(c_best)
-        metrics["current_worst_fit"].append(c_worst)
-        metrics["mean_fit"].append(float(np.mean(fits)))
-        metrics["std_fit"].append(float(np.std(fits)))
-        metrics["diversity"].append(diversity)
-        metrics["epoch_time"].append(float(runtime))
-        metrics["nfe"].append(int(nfe))
-        metrics["epoch_pop_size"].append(int(len(pop)))
+        self.__snapshots.record(positions, fits, objectives)
+        self.__metrics.record(
+            positions, fits, runtime, nfe, global_best_fit, self.meta["sense"]
+        )
 
     def finalize(self) -> None:
         """Compute derived metrics, assemble the numpy arrays, and close the run."""
-        if not self._recording:
+        if not self.__recording:
             return
 
-        n_epochs = len(self._metrics["nfe"])
-        self.meta["n_epochs"] = int(n_epochs)
+        self.meta["n_epochs"] = int(self.__metrics.n_epochs)
+        self.__data = self.__metrics.finalize()
 
-        diversity = np.asarray(self._metrics["diversity"], dtype=np.float64)
-        if diversity.size and np.max(diversity) > 0:
-            exploration = 100.0 * diversity / np.max(diversity)
-        else:
-            exploration = np.zeros_like(diversity)
-        self._metrics["exploration"] = exploration.tolist()
-        self._metrics["exploitation"] = (100.0 - exploration).tolist()
+        if self.__snapshots.capture:
+            self.__data.update(self.__snapshots.finalize())
+            if self.__snapshots.n_objs is not None:
+                self.meta["n_objs"] = int(self.__snapshots.n_objs)
 
-        self._data = {
-            name: np.asarray(values, dtype=np.float64) for name, values in self._metrics.items()
-        }
-
-        if self._capture_population:
-            if self._solution_frames:
-                self._data["solution"] = _pad_stack(self._solution_frames)
-                self._data["fitness"] = _pad_stack(self._fitness_frames)
-            if self._objective_frames:
-                self._data["objectives"] = _pad_stack(self._objective_frames)
-            if self._n_objs is not None:
-                self.meta["n_objs"] = int(self._n_objs)
-
-        self._solution_frames = []
-        self._fitness_frames = []
-        self._objective_frames = []
-        self._recording = False
+        self.__recording = False
 
     def __getitem__(self, key: str) -> np.ndarray:
         """Read a finished array by name (metrics and population snapshots alike)."""
-        if key in self._data:
-            return self._data[key]
+        if key in self.__data:
+            return self.__data[key]
         raise KeyError(key)
 
     # A Population iterates its agents; plain lists of agents are accepted too.
