@@ -83,6 +83,7 @@ nav:
       - Installation: installation.md
       - Quickstart: quickstart.md
       - Tutorial: tutorial.md
+      - Batch and parallel evaluation: parallel-evaluation.md
   - Custom Optimizers:
       - Overview: custom-optimizers/index.md
       - Your first optimizer: custom-optimizers/01-first-optimizer.md
@@ -104,6 +105,7 @@ nav:
       - Game-based: categories/game_based.md
       - SOTA-based: categories/sota_based.md
   - Known Issues: issues.md
+  - Audit (2026): audit.md
   - Releasing: releasing.md
   - API Reference:
       - Core API: api/core.md

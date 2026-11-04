@@ -1,7 +1,7 @@
 from opfunu.name_based.a_func import Ackley01
 
-from clypto.collection.bio_based import IWO
-from clypto import FloatVar
+from clypto.native.collection.bio_based import IWO
+from clypto import NumberBounds
 
 # 1. Define the benchmark function from Opfunu
 # We'll use F3 from the CEC 2017 competition with 30 dimensions
@@ -12,8 +12,8 @@ ackley_f = Ackley01(ndim=30)
 # 'bounds' uses the lb (lower bound) and ub (upper bound) from the Opfunu object
 problem_dict = {
     "obj_func": ackley_f.evaluate,
-    "bounds": FloatVar(lb=ackley_f.lb, ub=ackley_f.ub),
-    "minmax": "min",
+    "bounds": NumberBounds(float, low=ackley_f.lb, up=ackley_f.ub),
+    "sense": "min",
 }
 
 # 3. Initialize and run the IWO algorithm
@@ -31,4 +31,4 @@ g_best = model.solve(problem_dict, debug=False)
 
 # 4. Access the results
 print(f"Best solution: {g_best.solution}")
-print(f"Best fitness: {g_best.target.fitness}")
+print(f"Best fitness: {g_best.fitness}")
