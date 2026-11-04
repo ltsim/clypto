@@ -12,9 +12,9 @@ class NewStyleSearch(cy.DecoratedOptimizer):
     scale = cy.Argument(float, (0.0, 1.0), 0.5)
 
     def initialize(self) -> None:
-        shape = (len(self.population), self.bounds.ndim)
-        width = self.bounds.ub - self.bounds.lb
-        self.population.solutions = self.bounds.lb + width * self.rng.random(shape)
+        shape = (len(self.population), self.bounds.n_dims)
+        width = self.bounds.up - self.bounds.low
+        self.population.solutions = self.bounds.low + width * self.rng.random(shape)
 
     def evolve(self, epoch: int) -> None:
         for idx in range(len(self.population)):
@@ -31,20 +31,16 @@ class DecoratedSearch(cy.DecoratedOptimizer):
 
 
 class ClassicSearch(cy.LegacyOptimizer):
-    """The classic base already types ``self.pop``, ``self.problem``, etc."""
+    """The classic base already types ``self.population``, ``self.problem``, etc.
+
+    A classic algorithm implements ``cdef void evolve`` in Cython; this Python class only checks the types.
+    """
 
     def __init__(self, epoch: int = 100, pop_size: int = 30, **kwargs: object) -> None:
-        super().__init__(**kwargs)
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000])
 
-    def evolve(self, epoch: int) -> None:
-        self.g_best = self.get_best_agent(self.pop, self.problem.minmax)
-
-
-@cy.legacy
-class DecoratedClassic(ClassicSearch):
-    """The legacy decorator on an explicit base keeps the base members typed."""
-
-    def evolve(self, epoch: int) -> None:
-        _ = len(self.pop)
+    def before_main_loop(self) -> None:
+        # Python may override the lifecycle hooks; evolve itself is a C method (cdef void evolve)
+        self.g_best = self.population.sort()[0]

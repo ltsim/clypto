@@ -125,10 +125,8 @@ ignore = ["E203", "E266"]
 max-complexity = 18
 
 [tool.ruff.lint.per-file-ignores]
-# The package __init__ modules re-export the optimizer catalog for the public
-# API; the imports are the point, so F401/F811 are noise there. Without this,
-# registering a new optimizer in clypto/__init__.py trips ~150 false positives.
-"__init__.py" = ["F401", "F811"]
+# package __init__ files re-export the collection (one file per algorithm variant)
+"__init__.py" = ["F401"]
 
 [tool.mypy]
 ignore_missing_imports = true
