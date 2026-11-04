@@ -147,24 +147,59 @@ assert (g_best_a.solution == g_best_b.solution).all()
 ## Tracking
 
 Pass `debug=True` to record a per-epoch history into `model.tracker`, an
-in-memory numpy history. Metrics include global/current best and worst
-fitness, mean/std, diversity, exploration/exploitation, runtime, and function
-evaluations. Add `track_population=True` to also record a full population
-snapshot per epoch. The history lives in RAM and always describes the most
-recent `solve()` call.
+in-memory numpy history. Add `track_population=True` to also record a full
+population snapshot per epoch. The history lives in RAM and always describes
+the most recent `solve()` call: a run that does not track leaves the tracker
+empty.
 
 ```python
 model = PSO.OriginalPSO(epoch=100, pop_size=50)
 model.solve(problem, seed=1, debug=True)
 
 model.tracker["global_best_fit"]   # (epoch,) numpy array
-model.tracker["solution"]          # (epoch, pop, n_dims); needs track_population=True
 model.tracker.meta["n_epochs"]     # run metadata: optimizer, problem, seed, ...
 ```
 
-Population snapshots are NaN-padded to the largest epoch, so optimizers that
-grow and shrink their population (SAP_DE, ...) are recorded without guessing
-a capacity in advance.
+!!! note "Which optimizers track"
+
+    `debug` and `track_population` belong to the engine the catalog runs on
+    (`cy.Optimizer`, the classic `.pyx` API). Optimizers written with the
+    `@cy.optimizer` decorator keep their own loop and record no history: read
+    the result from the returned best agent, or collect what you need yourself
+    inside `evolve()`.
+
+### What is recorded
+
+With `debug=True`, `tracker[key]` returns one `(epoch,)` array per metric:
+
+| Key | Contents |
+| --- | --- |
+| `global_best_fit` | best fitness found so far |
+| `current_best_fit` / `current_worst_fit` | best and worst fitness of the epoch's population |
+| `mean_fit` / `std_fit` | mean and standard deviation of that population's fitness |
+| `diversity` | mean absolute distance from the per-dimension median of the population |
+| `exploration` / `exploitation` | `diversity` rescaled to 0–100, and its complement |
+| `epoch_time` | wall-clock time of the epoch, in seconds |
+| `nfe` | function evaluations used so far |
+| `epoch_pop_size` | number of agents in the population that epoch |
+
+`track_population=True` adds three snapshot arrays, NaN-padded to the widest
+epoch, so optimizers that grow and shrink their population (SAP_DE, ...) are
+recorded without guessing a capacity in advance:
+
+| Key | Shape |
+| --- | --- |
+| `solution` | `(epoch, pop, n_dims)` |
+| `fitness` | `(epoch, pop)` |
+| `objectives` | `(epoch, pop, n_objs)`; only when the problem has more than one objective |
+
+`tracker.meta` describes the run: `optimizer`, `problem`, `seed`, `pop_size`,
+`n_dims`, `sense`, `capture_population` and `n_epochs`, plus `n_objs` whenever
+a population was captured. Reading a name that was not recorded raises
+`KeyError`, so check `tracker.meta["capture_population"]` before the snapshot
+arrays.
+
+### Per-epoch callbacks
 
 Pass `before_iteration=` / `after_iteration=` callbacks to `solve()` to inspect
 each population as it evolves. Every callback receives `(population, epoch)`
@@ -172,14 +207,22 @@ and runs around each epoch whether or not tracking is enabled:
 
 ```python
 def log_epoch(population, epoch):
-    print(epoch, min(agent.target.fitness for agent in population))
+    print(epoch, min(agent.fitness for agent in population))
 
 
 model.solve(problem, seed=1, after_iteration=log_epoch)
 ```
 
+The callbacks belong to the call, not to the tracker: they never leak into a
+later `solve()` that does not pass them, and the tracker is finalized even when
+a callback or `evolve()` raises.
+
 ## Parallel execution
 
-The previous parallel agent-update model was removed during the 2026 refactor
-because it was inefficient and broke data locality. Optimizers now run a flat,
-sequential population. See the [Changelog](reference/changelog.md).
+The `mode` argument picks how a batch of candidate agents is evaluated:
+`mode="sequential"` (the default) evaluates agent by agent, `mode="swarm"`
+evaluates the whole batch in one call, and `mode="parallel"` does the same on
+OpenMP threads when the problem exposes a nogil evaluator. Algorithms that
+never batch (the PSO family, among others) ignore the mode. See
+[Batch and parallel evaluation](parallel-evaluation.md) for which algorithms
+batch and what each mode costs.

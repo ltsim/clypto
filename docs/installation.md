@@ -113,8 +113,8 @@ uv sync --extra docs --no-install-project
 uv run --no-sync mkdocs serve
 ```
 
-!!! note "Compile before benchmarking"
+!!! note "Compile before running anything"
 
-    A fresh clone ships only its `.py` sources. Compile first
-    (`uv sync --extra dev` or `pip install .`), otherwise clypto runs as
-    un-compiled Python and its compiled-by-design performance is lost.
+    A fresh clone ships `.pyx`/`.pxd` sources, not compiled extensions. Build
+    first (`uv sync --extra dev`, `make build-ext`, or `pip install .`); without
+    a build, `import clypto` fails because the compiled modules do not exist.

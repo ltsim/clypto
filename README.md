@@ -83,7 +83,7 @@ The sole purpose of this repository is to preserve a clean, decoupled collection
 
 ### Precompiled wheels (no compiler needed)
 
-Wheels are precompiled per platform and Python version — Linux, macOS (Intel + Apple Silicon), and Windows, for CPython 3.10–3.14 — so a plain `pip install` is all you need:
+Wheels are precompiled per platform and Python version — Linux, macOS (Intel + Apple Silicon), and Windows, for CPython 3.11–3.14 — so a plain `pip install` is all you need:
 
 ```bash
 $ pip install clypto --upgrade
@@ -189,6 +189,12 @@ static (`cy.duplicate_agent`), bounds repair is a function (`cy.correct_solution
 and `mode="sequential" | "swarm" | "parallel"` picks how a batch is evaluated
 ([batch and parallel evaluation](https://ltsim.github.io/clypto/parallel-evaluation/)).
 See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
+
+Tracking is opt-in: `solve(debug=True)` fills `model.tracker` with per-epoch
+numpy arrays (best/worst fitness, diversity, runtime, nfe), and
+`track_population=True` adds the full `(epoch, pop, n_dims)` population
+snapshots. The history is plain memory, always describes the most recent run,
+and adds no dependency ([tracking](https://ltsim.github.io/clypto/tutorial/#tracking)).
 
 Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent` and
 install the `compile` extra:

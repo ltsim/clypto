@@ -82,7 +82,14 @@ print(f"Best fitness:  {g_best.fitness}")
 - Set `seed=` on every call for reproducible results; the optimizer must be
   seeded explicitly.
 - Pass `debug=True` to `solve()` to record a per-epoch history you can inspect
-  afterwards.
+  afterwards; the metrics, the population snapshots and the per-epoch callbacks
+  are covered in [Tracking](tutorial.md#tracking):
+
+```python
+model.solve(problem, seed=42, debug=True)
+model.tracker["global_best_fit"]     # (epoch,) numpy array
+model.tracker.meta["n_epochs"]       # how many epochs actually ran
+```
 - Not sure which algorithm to use? Browse the
   [algorithm categories](categories/index.md) or discover them programmatically:
 
