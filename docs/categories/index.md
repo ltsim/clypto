@@ -45,8 +45,24 @@ useful when you are learning:
 
 Newcomers are encouraged to start with the easy and medium algorithms.
 
-!!! warning "Before benchmarking"
+:::{warning} Before benchmarking
+Several algorithms have known concerns — weaknesses, latent bugs, or
+suspected plagiarism. Always review [Known Issues](../issues.md) before
+using an algorithm in a comparative study.
+:::
 
-    Several algorithms have known concerns — weaknesses, latent bugs, or
-    suspected plagiarism. Always review [Known Issues](../issues.md) before
-    using an algorithm in a comparative study.
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+evolutionary_based
+swarm_based
+physics_based
+human_based
+bio_based
+system_based
+math_based
+music_based
+game_based
+sota_based
+```

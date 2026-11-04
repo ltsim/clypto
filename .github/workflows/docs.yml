@@ -30,13 +30,13 @@ jobs:
         run: uv sync --extra docs --no-install-project
 
       - name: Build documentation
-        run: uv run --no-sync mkdocs build --strict
+        run: uv run --no-sync sphinx-build -W -b html docs docs/build/html
 
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: docs/build/html
 
   deploy:
     name: Deploy to GitHub Pages

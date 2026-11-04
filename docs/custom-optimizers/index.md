@@ -18,8 +18,8 @@ Every optimizer solves a `Problem`: an objective function, a search space, and a
 direction. We minimize the sphere function in 30 dimensions. This same setup is
 reused throughout the series.
 
-```python
---8<-- "docs/custom-optimizers/_snippets/problem.py"
+```{literalinclude} _snippets/problem.py
+:language: python
 ```
 
 ## The episodes
@@ -37,3 +37,15 @@ reused throughout the series.
 
 Porting an existing MEALPY-style or `Optimizer`-based algorithm onto the new API
 is covered in the [migration guide](migration.md).
+
+```{toctree}
+:maxdepth: 1
+:hidden:
+
+01-first-optimizer
+02-parameters
+03-population
+04-agent-state
+05-legacy-and-compilation
+migration
+```

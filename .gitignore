@@ -325,8 +325,12 @@ venv.bak/
 # Rope project settings
 .ropeproject
 
-# mkdocs documentation
+# Sphinx documentation
 /site
+docs/build/
+docs/api/
+docs/categories/*.md
+!docs/categories/index.md
 
 # mypy
 .mypy_cache/
@@ -359,14 +363,10 @@ poetry.toml
 # LSP config files
 pyrightconfig.json
 
-# Sphinx documentation
-docs/build/
-
 # Agent harness
 graphify-out/
 .claude/
 .opencode/
-AGENT.md
 AGENTS.md
 CLAUDE.md
 

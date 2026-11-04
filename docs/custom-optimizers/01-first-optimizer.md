@@ -3,8 +3,8 @@
 Every optimizer solves a `Problem`: an objective function, a search space, and a
 direction. We minimize the sphere function in 30 dimensions.
 
-```python
---8<-- "docs/custom-optimizers/_snippets/problem.py"
+```{literalinclude} _snippets/problem.py
+:language: python
 ```
 
 ## A first optimizer

@@ -13,9 +13,8 @@ import re
 import textwrap
 from pathlib import Path
 
-from mkdocs_gen_files import open as gen_open
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
+DOCS_ROOT = REPO_ROOT / "docs"
 COLLECTION_ROOT = REPO_ROOT / "clypto" / "native" / "collection"
 REPO_URL = "https://github.com/ltsim/clypto/blob/master"
 
@@ -307,8 +306,9 @@ def _generate_category(category: str) -> tuple[int, int]:
                 lines.append(f"**Reference:** {cls['references']}")
                 lines.append("")
 
-    with gen_open(f"categories/{category}.md", "w") as fd:
-        fd.write("\n".join(lines) + "\n")
+    out_path = DOCS_ROOT / "categories" / f"{category}.md"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return len(catalog), len(modules)
 
 
@@ -350,8 +350,9 @@ def _generate_api() -> None:
                 sections += [f"### `{_format_signature(node.name, node)}`", ""]
                 sections += _doc_markdown(doc)
 
-    with gen_open("api/core.md", "w") as fd:
-        fd.write("\n".join(sections) + "\n")
+    out_path = DOCS_ROOT / "api" / "core.md"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(sections) + "\n", encoding="utf-8")
 
 
 def main() -> None:
@@ -361,4 +362,5 @@ def main() -> None:
     _generate_api()
 
 
-main()
+if __name__ == "__main__":
+    main()

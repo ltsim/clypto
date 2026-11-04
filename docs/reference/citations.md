@@ -31,4 +31,5 @@ the repository's `REFERENCES.md`, reproduced below.
 
 ---
 
---8<-- "REFERENCES.md"
+```{include} ../../REFERENCES.md
+```

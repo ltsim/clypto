@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync build-ext test uv-test lint typecheck check-version docs-serve docs-build
+.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync build-ext test uv-test lint typecheck check-version docs-serve docs-build docs-clean docs-open
 
 clean: clean-build clean-cython clean-pyc
 
@@ -50,9 +50,13 @@ check-version:
 	sh .husky/check-version.sh head
 
 docs-serve:
-	uv sync --extra docs --no-install-project
-	uv run --no-sync mkdocs serve
+	$(MAKE) -C docs serve
 
 docs-build:
-	uv sync --extra docs --no-install-project
-	uv run --no-sync mkdocs build --strict
+	$(MAKE) -C docs html
+
+docs-clean:
+	$(MAKE) -C docs clean
+
+docs-open:
+	$(MAKE) -C docs open

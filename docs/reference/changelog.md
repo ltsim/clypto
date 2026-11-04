@@ -6,4 +6,5 @@ it preserve the upstream MEALPY release history.
 
 ---
 
---8<-- "CHANGELOG.md"
+```{include} ../../CHANGELOG.md
+```

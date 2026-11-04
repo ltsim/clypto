@@ -160,13 +160,13 @@ model.tracker["global_best_fit"]   # (epoch,) numpy array
 model.tracker.meta["n_epochs"]     # run metadata: optimizer, problem, seed, ...
 ```
 
-!!! note "Which optimizers track"
-
-    `debug` and `track_population` belong to the engine the catalog runs on
-    (`cy.Optimizer`, the classic `.pyx` API). Optimizers written with the
-    `@cy.optimizer` decorator keep their own loop and record no history: read
-    the result from the returned best agent, or collect what you need yourself
-    inside `evolve()`.
+:::{note} Which optimizers track
+`debug` and `track_population` belong to the engine the catalog runs on
+(`cy.Optimizer`, the classic `.pyx` API). Optimizers written with the
+`@cy.optimizer` decorator keep their own loop and record no history: read
+the result from the returned best agent, or collect what you need yourself
+inside `evolve()`.
+:::
 
 ### What is recorded
 

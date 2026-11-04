@@ -4,8 +4,8 @@ Results so far only carry a `solution`. When an algorithm needs per-agent state
 (velocity, memory, a tag, ...), declare an agent with `cy.Attribute` and pass it
 to the optimizer.
 
-```python
---8<-- "docs/custom-optimizers/_snippets/problem.py"
+```{literalinclude} _snippets/problem.py
+:language: python
 ```
 
 ```python

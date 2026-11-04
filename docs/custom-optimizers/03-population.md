@@ -3,8 +3,8 @@
 The optimizer's solutions live in `self.population`, a `cy.Population`. The same
 `problem` from the previous parts is used here.
 
-```python
---8<-- "docs/custom-optimizers/_snippets/problem.py"
+```{literalinclude} _snippets/problem.py
+:language: python
 ```
 
 ## The container
