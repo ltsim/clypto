@@ -1,4 +1,8 @@
-# Version 2026b1
+# Changelog
+
+## Clypto
+
+### Version 2026b1
 
 + **Version bump:** `2026b0` → `2026b1`.
 + **History without Zarr:** `Tracker` now keeps the run history in memory as plain numpy arrays and `zarr>=3` is gone from the dependencies. `history_path`, `tracker.group`, `tracker.path` and the on-disk store are removed; run metadata lives in `tracker.meta` and arrays are read by name (`tracker["global_best_fit"]`) after the run. Population snapshots are buffered per epoch and NaN-padded to the widest epoch once at finalize, replacing the grow-epoch/grow-pop capacity machinery. *Breaking:* consumers of the Zarr store must copy arrays out of the tracker themselves.
@@ -10,7 +14,7 @@
 
 ---
 
-# Version 2026b
+### Version 2026b
 
 + **Version bump:** released as `2026b0` (previous release `2026a0`).
 + **Decorator-based optimizer API:** write a custom optimizer as a plain class with `@cy.optimizer` / `@cy.agent` / `@cy.legacy`, declaring hyper-parameters via `cy.Argument[type, bound, default]` and per-agent state via `cy.Attribute[...]`; the classic `Optimizer` base was renamed to `LegacyOptimizer` (kept as a backward-compatible alias) and all 147 catalog modules migrated without algorithm-body changes.
@@ -21,7 +25,7 @@
 
 ---
 
-# Version 2026
+### Version 2026
 
 + **`Optimizer` & `History`:** Core classes completely overhauled to be clean, decoupled, and highly reusable by external frameworks.
 + **Flat Population Structure:** Deleted the broken and inefficient parallel agents model to maximize data locality.
@@ -29,7 +33,7 @@
 + **Zero Bloat:** Permanently removed all UI, plotting, logging, and file-writing modules.
 + Reimplementation in Cython, compile in C
 
-### The global best is now the best ever found (2026-10)
+#### The global best is now the best ever found (2026-10)
 
 Found by the full-catalog audit (`docs/audit.md`): `g_best` was the best agent of the *current* population, not the best the run had found.
 
@@ -42,7 +46,7 @@ Found by the full-catalog audit (`docs/audit.md`): `g_best` was the best agent o
 + **Not fixed (inherited).** The six hard-coded `"min"` comparisons (`OriginalIMODE`, `OriginalNGO`, `OriginalESO`, `C_PSO`, `OriginalBCO`) are faithful transcriptions of `mealpy-lts` calling `compare_target` without its `minmax` argument; see `docs/issues.md`. `benchmarks/bench_collection.py --mealpy-python`, which had silently compared against nothing since the `NumberBounds` → `FloatVar` rename, is fixed.
 + **No automated guard.** The catalog-wide behavior pins (`tests/test_golden_baseline.py`, `tests/test_golden_scenarios.py`, their `tests/golden/` captures) and the per-epoch ratchet test were removed, so nothing in `tests/` asserts that `g_best` stays monotonic. To check it by hand: run a non-elitist class (`SAP_DE`, `OriginalWOA`) with `debug=True, after_iteration=...` over `epoch=1..N` at one seed and confirm the recorded fitness never rises.
 
-### One collection: static agents, snapshots and the batch pipeline (2026-09)
+#### One collection: static agents, snapshots and the batch pipeline (2026-09)
 
 + **One collection.** The vectorize tree and its engine (`VectorizeOptimizer`, `NativePopulation`, `ops`, `AgentListOptimizer`) are removed; the classic collection is the only one and moved from `clypto/native/collection/legacy/<category>` to `clypto/native/collection/<category>`. Recoverable from `0d839435`.
 + **`cdef void evolve(self, int epoch)`.** The engine calls `evolve` through the C vtable. `solve()` rejects a Python `def evolve` on a `cy.Optimizer` subclass (Python optimizers use `@cy.optimizer`). The 8 Python-class optimizers (GA family, `ImprovedQSA`, `EnhancedTWO`) became `cdef class`es; `ImprovedQSA`/`EnhancedTWO` lost their second base (the opposition step is a shared function / `OppoTWO` base).
@@ -66,7 +70,7 @@ Found by the full-catalog audit (`docs/audit.md`): `g_best` was the best agent o
 | `def evolve(self, epoch)` on a `cy.Optimizer` subclass | `cdef void evolve(self, int epoch)` |
 | `mode=None`, `"thread"`, `"process"`, `self.AVAILABLE_MODES` | `"sequential"`, `"parallel"`, `self.mode == "sequential"` |
 
-### Core migration: the `cy` API (2026-09)
+#### Core migration: the `cy` API (2026-09)
 
 + **`cimport clypto.core as cy`** (`clypto/core.pxd`) is the one namespace of the collection: `cy.Optimizer`, `cy.Agent`, `cy.Population`, `cy.ResetPopulation`, `cy.population`, `cy.validator`, `cy.check_is_int_and_float`, `cy.is_better`, `cy.better_fitness`, `cy.get_better_agent`, `cy.sort_agents`, `cy.argsort_agents`, `cy.greedy_agents`, `cy.levy_flight`, `cy.roulette_wheel`, `cy.kway_tournament`, `cy.split_groups`, plus `cy.VectorizeOptimizer` / `cy.NativePopulation`.
 + **Constructors**: `super().__init__(parameters=[...], sort_flag=..., **kwargs)`, then `cy.validator(type, value, bound, name)`; `self.population = cy.population(pop_size, range=[5, 10000], cls=...)` declares the population (and validates `pop_size`). Validated hyper-parameters are typed `cdef public double|int|str|bint` fields (362 fields in 125 legacy classes).
@@ -98,7 +102,7 @@ Found by the full-catalog audit (`docs/audit.md`): `g_best` was the best agent o
 | `_OriginalPSOAgent` ..., `local_solution` / `local_target` (legacy PSO) | `PSOAgent`, `pbest_solution` / `pbest_fitness` |
 | `@cy.legacy`, `Validator`, `Target`, `LegacyAgent` | subclass `cy.LegacyOptimizer`, `cy.validator`, `cy.Agent` |
 
-### Optimizer core refactor (2026-09)
+#### Optimizer core refactor (2026-09)
 
 + **One engine hierarchy.** `NativeOptimizer` (`clypto.optimizer.native.optimizer`) owns `solve()`, the RNGs, termination, tracking and the list-of-agents helpers. `LegacyOptimizer` (the classic per-agent engine, `native/legacy.pyx`) and `VectorizeOptimizer` (the former `LegacyNativeOptimizer`, `native/vectorize.pyx`) derive from it; each refreshes `g_best` in `_after_evolve()`. The pure-Python duplicate engine (`clypto/optimizer/{base,legacy}.py`) is deleted: `cy.LegacyOptimizer` / `@cy.legacy` now run on the compiled class. `AgentListOptimizer` keeps only its list lifecycle (the helpers come from `NativeOptimizer`).
 + **Private hooks and helpers.** `solve()` is the only public method. Lifecycle hooks and helpers gained a `_` prefix (`_evolve`, `_initialization`, `_get_target`, `_correct_solution`, `_amend_solution`, `_generate_agent`, `_get_better_agent`, `_set_parameters`, ...) in both collections. Vectorize hooks moved from `cdef void` to `def _...`: a compiled `def` override of a `cdef`/`cpdef` base method is skipped when the base calls it from C, and one Python call per epoch is noise next to the NumPy work.
@@ -126,7 +130,7 @@ Found by the full-catalog audit (`docs/audit.md`): `g_best` was the best agent o
 | decorator API `self.bounds.lb` / `ub` / `ndim` | `self.bounds.low` / `up` / `n_dims` |
 | history metadata `"minmax"` | `"sense"` |
 
-### Public collection paths, lookup-only top level (2026-09)
+#### Public collection paths, lookup-only top level (2026-09)
 
 + **`clypto/collection/` is gone.** The shim layer that re-exported the vectorized tree has been deleted; the Cython sources are now the public API: `from clypto.native.collection.vectorize.swarm_based import PSO` (or `...legacy...` for the classic classes). Every class docstring, example, benchmark and doc page uses the direct native path.
 + **`clypto.optimizer._native` -> `clypto.optimizer.native`** (public): custom optimizers legitimately cimport `agent`, `utils as cy`, `ops`, `nogil`, so the engine is not private. The `setup.py` sources glob and every cimport/import were updated.
@@ -142,7 +146,7 @@ Found by the full-catalog audit (`docs/audit.md`): `g_best` was the best agent o
 
 The 2026 entries below describe the intermediate `clypto.collection` shim layer and the `clypto.optimizer._native` path; both no longer exist.
 
-### Legacy and vectorize collections (2026-09)
+#### Legacy and vectorize collections (2026-09)
 
 + **`clypto/native/collection/{legacy,vectorize}`**: the Cythonized collection now lives in two trees with the same classes and module layout (`<category>/<Module>/<Class>.pyx`). `legacy` is the frozen classic per-agent implementation (on `_LegacyOptimizer`, regenerated from the pre-native sources and checked against the golden baselines); `vectorize` is the vectorized collection. `clypto.native.collection.vectorize.<category>.<Module>` is the vectorized tree and `get_all_optimizers()` resolves to `vectorize`; `get_all_optimizers(engine="legacy")` / `get_optimizer_by_name(name, engine="legacy")` return the classic classes (`engine` is keyword-only).
 + **Free vectorization**: `vectorize` no longer has to be bit-identical to `legacy`. Algorithms that updated agents one at a time now draw block random numbers, update the whole population per phase and evaluate each phase in one batch (`ops.step`, `ops.scatter`, `ops.replace`, `ops.roulette`, ...). Classes that are not bit-identical are listed in `tests/golden/vectorize_exactness.json` and checked by `benchmarks/compare_engines.py` (30 seeds, four functions, Mann-Whitney U with Holm correction, median guard, NFE budget) instead of golden hashes.
@@ -153,7 +157,7 @@ The 2026 entries below describe the intermediate `clypto.collection` shim layer 
 + **Statistical equivalence** (`benchmarks/compare_engines.py`): 195 of 243 classes pass outright, 28 only trip the median guard, 11 are significantly better than legacy (quirks fixed: AFT, ACOR, BeesA, FA, FOA, GSKA, ...), 6 are slightly worse (DevEPC, MultiGA, ServalOA, DMOA, LevyTWO, DO). 39 classes (QSA, HBO, BRO, CSO, ESOA, ICA, IMODE, ... ) stay on `AgentListOptimizer`; the reasons are in `docs/vectorization.md`.
 + **Behavior notes**: WOA/SBO keep the classic "refresh only the fitness" quirk; FA now keeps all sparks (legacy kept the last firework's); AFT/ACOR/BeesA/FOA/GSKA fix legacy update quirks and converge better; SADE adapts `cr`/`p1` on the intended period.
 
-### Whole collection on the native engine (2026-09)
+#### Whole collection on the native engine (2026-09)
 
 + **All 243 optimizers now run on `LegacyNativeOptimizer`** (no more `_LegacyOptimizer` in the collection). 144 of them keep agents as rows of a `NativePopulation` (batched evaluation, block RNG draws in the classic order, whole-array NumPy transitions, `ops.accept`/`ops.commit` for the survivor selection); the other 99 (algorithms with per-agent state, archives, groups, or that re-rank the population mid-epoch: BA, BeesA, GTO/AGTO, COA, EHO, ES/CMA-ES, GA, SHADE family, IMODE, ...) run on `AgentListOptimizer`, a compatibility layer that keeps the classic list-of-agents method set on the native engine (about legacy speed).
 + **Bit-identical results**: every class matches the classic build for the golden baseline (min, sphere) and for `tests/golden/baseline_scenarios_2026a0.json` (max, `mode="swarm"`, other dimensions/budgets; `tests/test_golden_scenarios.py`). Ties, in-epoch aliasing of `g_best`, and the classic quirks are reproduced (for instance ArchOA/TWO evaluate the uncorrected position in sequential mode).
@@ -161,14 +165,14 @@ The 2026 entries below describe the intermediate `clypto.collection` shim layer 
 + **Behavior changes**: `name=`/`mode=` are keyword-only for every optimizer and unknown keyword arguments raise `TypeError`; attributes some algorithms hung on `self.problem` now live on the optimizer (`NativeProblem` has no `__dict__`); `EnhancedTWO` now subclasses `OriginalTWO`; `OriginalSOO` works in `mode="swarm"`/`"parallel"` (it raised before); `DS_GWO` keeps the classic quirk of having no `evolve`.
 + **Note**: `OriginalSSpiderA` in `mode="swarm"` raised an out-of-range index in the classic build (a crash with bounds checks off); the agent-list modules compile with `boundscheck=True` so it now raises `IndexError`.
 
-### One file per algorithm variant (2026-09)
+#### One file per algorithm variant (2026-09)
 
 + **`collection/<category>/<Module>/<Class>.pyx`**: every catalog module became a package with one `.pyx` per optimizer class (236 files for the 146 modules, plus the 7 PSO variants), instead of all variants in one `<Module>.pyx`. The class bodies were moved verbatim; results are bit-identical to the golden baseline.
 + **Imports keep working**: each package `__init__.py` re-exports its classes, so `from clypto.native.collection.vectorize.swarm_based import PSO`, `PSO.OriginalPSO` and `from clypto.native.collection.vectorize.swarm_based.ARO import OriginalARO` are unchanged, as are `get_all_optimizers()` and `get_optimizer_by_name()`.
 + **Layout rules**: a variant that subclasses a sibling `cdef class` cimports it through a `<Class>.pxd` (e.g. `GWO/OriginalGWO.pxd`); a private agent class used by one variant lives in that variant's file, one shared by several goes to `_base.pyx` (PSO: `_PSOBase`).
 + **Docs**: the catalog generator scans the per-class `.pyx` files (native bodies are not parsed as Python) and links each class to its own source file.
 
-### Vectorized native population + OpenMP (2026-09)
+#### Vectorized native population + OpenMP (2026-09)
 
 + **`NativePopulation`** (`clypto.optimizer._native.population`): the native engine keeps agents as rows of one C-contiguous buffer `[F | O | X | fields...]` instead of a list of agent objects. Algorithms declare extra per-agent fields with the `layout(d, m)` hook and fill them in `init_fields(pop)`; `pop[i]` returns a snapshot agent. `LegacyNativeOptimizer` gained batch evaluation (`evaluate`), row-wise greedy selection in C (`select_better`, OpenMP) and dropped the list-based helpers (still in `legacy.pyx` for unmigrated algorithms).
 + **PSO vectorized, results unchanged**: OriginalPSO/LDW_PSO use a C move kernel with OpenMP; AIW_PSO, P_PSO and C_PSO use matrix NumPy; HPSO_TVAC and CL_PSO keep the agent-by-agent order they depend on. All 7 variants stay bit-identical to the golden baseline: random numbers are drawn in blocks in the classic order, and the classic aliasing of `g_best` to the best agent is reproduced by processing the population in two chunks around that row.
@@ -176,7 +180,7 @@ The 2026 entries below describe the intermediate `clypto.collection` shim layer 
 + **`Problem(vectorized=True)`**: `obj_func` receives an `(n, n_dims)` matrix and returns `(n,)` or `(n, n_objs)`; the native engine evaluates each batch in one call, the classic engine one row at a time.
 + **Benchmark**: `benchmarks/bench_pso.py --repo NAME=PATH ...` compares checkouts and checks the fitness is identical.
 
-### Native legacy engine, PSO pilot (2026-09)
+#### Native legacy engine, PSO pilot (2026-09)
 
 + **`LegacyNativeOptimizer`** (`clypto.optimizer._native.optimizer`): no instance `__dict__`; every attribute is a typed field and subclasses declare their own (`cdef public double c1`). Lifecycle hooks (`initialize_variables`, `generate_empty_agent`, `generate_agent`, `amend_solution`, `evolve`, ...) are `cdef`. The constructor takes `parameters`, `sort_flag`, `parallelizable`, `name`, `mode` instead of `**kwargs`. `solve()` is `cpdef` with a typed epoch loop; the per-epoch best-agent update reads fitness into a typed buffer and only rebuilds the sorted population when `sort_flag` is set (same agent picked, ties included).
 + **`LegacyNativeAgent`**: no `update(**kwargs)`; assign fields directly (`agent.solution = x`). Subclasses with extra fields override `copy()`.
@@ -184,7 +188,7 @@ The 2026 entries below describe the intermediate `clypto.collection` shim layer 
 + **`cy` helpers** (`from clypto.optimizer._native cimport utils as cy`): `cy.validator(type, value, bound, name)` and `cy.compare_target(x, y, minmax)`.
 + **PSO migrated** (all 7 variants, one shared `PSOAgent`): results are bit-identical to the golden baseline, 1.2–1.6x faster. Optimizers now take `name=`/`mode=` as keyword-only arguments; other unknown keyword arguments raise `TypeError`. The rest of the collection still runs on `_LegacyOptimizer` until migrated.
 
-### Breaking: module layout (2026-09)
+#### Breaking: module layout (2026-09)
 
 The package is now split into `clypto.collection` (native `.pyx` algorithms), `clypto.optimizer` (the reusable Python API) and `clypto.hints`. Old paths were removed without shims; `import clypto as cy` names are unchanged.
 
@@ -200,7 +204,7 @@ The package is now split into `clypto.collection` (native `.pyx` algorithms), `c
 
 Only `.pyx` is compiled now (`collection/` and `optimizer/_native/`); the public optimizer API ships as plain Python.
 
-### Cython-native collection (2026-09)
+#### Cython-native collection (2026-09)
 
 + **Native `.pyx` collection:** all 147 catalog modules / 244 optimizer classes were converted from pure-Python `.py` to native Cython `.pyx` with `cdef class` optimizers and typed `cdef` agent classes.
 + **Dedicated agents, no dynamics:** `AgentStatic`/`AgentDynamic` were removed. Algorithms needing per-agent state declare their own private `cdef class` agent (e.g. `_HGSUnit`) with explicit fields, `copy()` and `update()`. Unknown attributes now raise instead of silently returning `None`.
@@ -208,7 +212,7 @@ Only `.pyx` is compiled now (`collection/` and `optimizer/_native/`); the public
 + **`prange` parallel mode:** `mode="parallel"` (aliases `"thread"`/`"process"`) evaluates targets through `clypto.parallel`/`prange` using a compiled nogil evaluator (`Problem(evaluator=...)`); without one it falls back to the sequential path. The default `mode=None` behavior is bit-identical to the previous release.
 + **Build:** `python setup.py build_ext --inplace` (or `make build-ext`) is required before importing a source checkout; wheels and the editable install compile automatically.
 
-### Decorator-based optimizer API
+#### Decorator-based optimizer API
 
 + **Classic base renamed:** `clypto.optimizer.Optimizer` is now `LegacyOptimizer`; `Optimizer` remains as a backward-compatible alias (`cy.Optimizer is cy.LegacyOptimizer`). All 147 catalog modules were migrated to inherit `LegacyOptimizer` without touching any algorithm body. `get_all_optimizers()` and the discovery helpers are unchanged.
 + **`@cy.optimizer`:** write a new algorithm as a plain class. Hyper-parameters are declared with `cy.Argument[type, bound, default]` instead of constructor/validator boilerplate; the class implements `initialize` (optional) and `evolve`, and the injected base supplies `solve`, `self.population`, `self.rng` (a seeded `numpy.random.Generator`), `self.problem`, `self.bounds` and `self.g_best`.
@@ -233,7 +237,7 @@ Only `.pyx` is compiled now (`collection/` and `optimizer/_native/`); the public
 + **Typing-standard declarations & `precompile` modules:** declarations use Python's subscript syntax — `cy.Argument[int, (1, 100), 5]`, `cy.Attribute[float, ..., 0.0]` — and accept `[type]`, `[type, bound]` and `[type, bound, default]`, where `...` skips the bound. The decorator implementation moved out of the removed `api.py` modules into `clypto.agents.precompile` and `clypto.optimizer.precompile` (split into `declaration`, `runtime`/`base`, and `decorator` submodules), with the shared class-building and JIT helpers in `clypto.precompile.decoration`. `@cy.agent`, `@cy.optimizer` and `@cy.legacy` are now fully typed with overloads, so type checkers preserve the decorated class type instead of falling back to `Any`.
 + **Docs & tests:** new tutorial sections, a dedicated [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/), and unit tests for the population, agent decorator, optimizer decorator, legacy decorator, and the compiled decorator path.
 
-### Packaging & build system
+#### Packaging & build system
 
 + **One toolchain:** `uv` is now the single build/test workflow (`uv lock`, `uv sync --extra dev`, `uv run pytest tests/`). The Makefile was reduced to the `clean*` and `uv-lock`/`uv-sync`/`uv-test` targets; the pip-side `compile`/`install`/`all`/`dist` targets and the `python setup.py build_ext --inplace` flow they drove were removed.
 + **Precompiled wheels per system:** the release workflow (`publish.yml`) now builds wheel matrices for Linux, macOS (x86_64 + arm64), and Windows against CPython 3.10–3.14 via `cibuildwheel`, plus an sdist for user-side source builds; every wheel is import-tested in a clean environment before upload.
@@ -242,7 +246,7 @@ Only `.pyx` is compiled now (`collection/` and `optimizer/_native/`); the public
 + **Linters consolidated:** deleted `.flake8` — `[tool.ruff]` (same rule selection) is now the single lint config, and `flake8`/`black`/`twine` were removed from the dev extras.
 + **Test matrix:** `test.yml` runs pytest through `uv` on the compiled package across Python 3.10–3.14 × 3 OS, and adds a `wheel-smoke` job that installs a freshly built wheel into a clean venv and solves a real optimization problem end-to-end.
 
-### Zarr-backed history tracking
+#### Zarr-backed history tracking
 
 + **`Tracker`:** replaced the unused `TrackHistory` dataclass with `clypto.utils.history.Tracker`, a Zarr-backed recorder. `solve(debug=True)` records per-epoch metrics (global/current best and worst fitness, mean/std, diversity, exploration/exploitation, runtime, nfe, population size); `track_population=True` additionally streams full `(epoch, pop_size, n_dims)` solution snapshots plus fitness and objectives. Data lives in an in-memory Zarr store by default, or on disk via `history_path="run.zarr"`. Variable population sizes are supported (NaN-padded to the observed maximum).
 + **Per-iteration hooks:** `optimizer.tracker.before` / `.after` (or the `on_before` / `on_after` decorators, or `solve(before_iteration=..., after_iteration=...)`) run `hook(population)` around each epoch while tracking is enabled.
@@ -250,7 +254,7 @@ Only `.pyx` is compiled now (`collection/` and `optimizer/_native/`); the public
 + **Dependency:** added `zarr>=3`. This raises `requires-python` to `>=3.11` (test matrix now 3.11–3.14), because no non-yanked zarr v3 release supports Python 3.10.
 + **Removed:** the dead `Problem.save_population` flag.
 
-### Cython-optimize the `Agent`/`Target` classes
+#### Cython-optimize the `Agent`/`Target` classes
 
 The library already Cython-compiled every `.py` file as-is (`setup.py`), but no file used any real Cython typing, so the hottest attribute chain in the whole library — `agent.solution` / `agent.target.fitness`, read every generation by every one of the ~150 optimizers — still paid for plain dict-based Python attribute lookup on every access.
 
@@ -260,7 +264,7 @@ The library already Cython-compiled every `.py` file as-is (`setup.py`), but no 
 + Added `AgentDynamic` to `clypto/agents/__init__.py`'s exports — it was previously reachable only via its submodule path even though it's used across the codebase, while only `AgentStatic` was exported at the package level.
 + `setup.py`: the newly-typed files do `import cython` unconditionally, so `Cython` must be present at build time — it comes from `[build-system].requires` via PEP 517 isolation (and `uv sync`), not from the runtime dependencies, since installed wheels ship compiled `.so` files that no longer need it.
 
-### Fix bugs found by actually compiling and running the full test suite
+#### Fix bugs found by actually compiling and running the full test suite
 
 Nobody had built this project with Cython and run its tests before this pass (no `Cython`/`scipy`/`pytest` were even installed). Doing so surfaced a mix of Cython-compilation-specific issues and long-latent algorithmic bugs, most only reachable once the test suite could actually run to completion instead of crashing early:
 
@@ -281,14 +285,18 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 
 ---
 
-# Version 3.0.4.1
+## MEALPY (Upstream Archive)
+
+Historical release record of original MEALPY releases (v1.0.0 through v3.0.4.1) prior to the 2026 Cython rewrite and fork as `clypto`.
+
+### Version 3.0.4.1
 
 + Maintenance version, with dependency updates
 
 
 ---
 
-# Version 3.0.4
+### Version 3.0.4
 
 + Add `tqdm` to mealpy when `log_to` != `console`.
 + Fix bug division by 0 in `levy` function.
@@ -307,7 +315,7 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 
 ---
 
-# Version 3.0.3
+### Version 3.0.3
 
 ## General Updates
 - Updated project configuration files: `setup.py`, `requirements.txt`, and `MANIFEST.in`.
@@ -322,16 +330,16 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 
 ## New Features
 
-### 1. New Algorithm Categories
+#### 1. New Algorithm Categories
 - **`sota_based` group**: A new category for state-of-the-art algorithms from CEC competitions.
   - Added **`LSHADEcnEpSin`** (`OriginalLSHADEcnEpSin` class).
   - Added **`IMOTE`** (`OriginalIMOTE` class).
 
-### 2. New Modules
+#### 2. New Modules
 - Added **`chaotic`** module.
 - Added **`fuzzy`** module.
 
-### 3. Swarm-Based Algorithms
+#### 3. Swarm-Based Algorithms
 - **Grey Wolf Optimizer (GWO) module**: Added multiple variants:
   - `GWO_WOA`, `IGWO`, `ChaoticGWO`, `FuzzyGWO`, `IncrementalGWO`, `ExGWO`,
     `DS_GWO`, `IOBL_GWO`, `OGWO`, `ER_GWO`, `CG_GWO`.
@@ -343,7 +351,7 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
   - **Squirrel Search Algorithm (SquirrelSA)**.
   - **Fitness Dependent Optimizer (FDO)** (`FDO` module).
 
-### 4. Physics-Based Algorithms
+#### 4. Physics-Based Algorithms
 - Added **Electrical Storm Optimization (ESO)** module with `OriginalESO` class.
 
 #### 5. Human-Based Algorithms
@@ -361,7 +369,7 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 ---
 
 
-# Version 3.0.2
+### Version 3.0.2
 
 + Fix bug infinite loop in `JADE`, `OriginalSHADE`, and `L_SHADE` optimizers.
 + Fig bug check input conditions in `Validator` class.
@@ -384,7 +392,7 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 
 
 
-# Version 3.0.1
+### Version 3.0.1
 
 + Add transfer function module (please read [this paper](https://www.sciencedirect.com/science/article/abs/pii/S2210650212000648) )
 + Add two new datatypes: `TransferBinaryVar` and `TransferBoolVar`.
@@ -395,11 +403,11 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 + Fix bug higher probability of 0 value in `IntegerVar` data type.
 
 
-# Version 3.0.0
+### Version 3.0.0
 
 **Based on our new proposed classes, solving continuous and discrete problems is never that easy.**
 
-### Add
+#### Add
 + `space` module with: FloatVar, IntegerVar, StringVar, BoolVar, PermutationVar, BinaryVar, and MixedSetVar classes
   * **FloatVar**: handle problem with solution's format as float value
   * **IntegerVar**: handle problem with solution's format as integer value
@@ -413,7 +421,7 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 + `agent` module with: **Agent**te class that is a placeholder for a search agent, it contains at least two attributes: 
   * `solution` (position - np.ndarray), and a `target` object
 
-### Update
+#### Update
 + Convert all optimizers to use new classes
 + Convert Tuner and MultiTask classes
 + Rename all un-official (developed by our team) optimizers to `DevOptimizerName`
@@ -421,9 +429,9 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 + Update some examples, not all examples have converted yet (utils and applications folders)
 
 
-# Version 2.5.4
+### Version 2.5.4
 
-### Update
+#### Update
 + Remove deepcopy() to improve the computational speed
 + Update the parameter's order in Tuner class  
 + Update the saving's bug when using Termination in Multitask
@@ -447,9 +455,9 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 + Fix several bugs in docs folders. 
 
 
-# Version 2.5.3
+### Version 2.5.3
 
-### Update 
+#### Update 
 + Fix bug in roulette-wheel-selection in Optimizer
 + Update multitask with input modes and terminations
 + Update Tuner with more input parameters
@@ -465,9 +473,9 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 
 
 
-# Version 2.5.2
+### Version 2.5.2
 
-### Update
+#### Update
 
 + Fixed bug all fitness values are equals in function "get index roulette wheel selection" in Optimizer class
 + Rename AdaptiveAEO by AugmentedAEO (Add reference)
@@ -553,9 +561,9 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 ---------------------------------------------------------------------
 
 
-# Version 2.5.1
+### Version 2.5.1
 
-### Update
+#### Update
 
 + Add validator when variable can be both int/float value
 + Add algorithms to evolutionary-based group:
@@ -594,9 +602,9 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 ---------------------------------------------------------------------
 
 
-# Version 2.5.0
+### Version 2.5.0
 
-### Update
+#### Update
 
 + Add save and load model functionalities in mealpy.utils.io module.
 + Add object that hold global/current worst solution in history object
@@ -621,9 +629,9 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 
 ---------------------------------------------------------------------
 
-# Version 2.4.2
+### Version 2.4.2
 
-### Update
+#### Update
 
 + Add n_workers variable to solve() function in Optimizer class
   + n_workers only effect by parallel mode such as "process" and "thread"
@@ -638,9 +646,9 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 
 ---------------------------------------------------------------------
 
-# Version 2.4.1
+### Version 2.4.1
 
-### Update
+#### Update
 
 + Add after_initialization(), termination_end() to Optimizer class 
 + Update create_solution(), initialization() in Optimizer class
@@ -648,7 +656,7 @@ Full `pytest tests/` against the compiled package: 270/270 passing.
 + Fix missing amend_position function in GA
 + Fix bug fitness value in history object
 + Update 4 training modes in all algorithms
-```code 
+```text
 Type: Parallel (no effect on updating process of agents) has 2 training modes:
 
 1. Process: Using multi-cores to update fitness for whole population
@@ -665,9 +673,9 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 2.4.0
+### Version 2.4.0
 
-### Update
+#### Update
 
 + Add mealpy's support functions in terminal: help(mealpy), dir(mealpy)
 + Add logger module (Logger class)
@@ -696,9 +704,9 @@ Type: Sequential has 2 training modes
 
 ---------------------------------------------------------------------
 
-# Version 2.3.0
+### Version 2.3.0
 
-### Update
+#### Update
 
 + All algorithms have been updated with the amend_position function for solving the discrete problem.
 + Required packages are version reduction to fit python 3.6
@@ -708,9 +716,9 @@ Type: Sequential has 2 training modes
 
 ---------------------------------------------------------------------
 
-# Version 2.2.0
+### Version 2.2.0
 
-### Update models
+#### Update models
 
 * You can pass the Problem dictionary or Problem object to the model.
 * You can pass the Termination dictionary or Termination object to the model.
@@ -732,16 +740,16 @@ Type: Sequential has 2 training modes
   * Update more strategy for GA algorithm
   * Update child selection process in MA algorithm
 
-### Update others
+#### Update others
 
 + examples: Update several scenarios for mealpy with other frameworks
 + document: Add document website (https://mealpy.readthedocs.io/)
 
 ---------------------------------------------------------------------
 
-# Version 2.1.2
+### Version 2.1.2
 
-### Update
+#### Update
 
 + Some algorithms have been updated in the GitHub release but not on PyPI such as Sparrow Search Algorithm.
 + I try to synchronize the version on GitHub and PyPI by trying to delete the vers
@@ -752,9 +760,9 @@ Type: Sequential has 2 training modes
 
 ---------------------------------------------------------------------
 
-# Version 2.1.1
+### Version 2.1.1
 
-### Update
+#### Update
 
 + Replace all .copy() operator by deepcopy() operator in module copy. Because shallow copy causing the problem with 
   nested list inside list. Especially when copying population with nested of list position inside agent.
@@ -764,16 +772,16 @@ Type: Sequential has 2 training modes
 
 ---------------------------------------------------------------------
 
-# Version 2.1.0
+### Version 2.1.0
 
-### Change models
+#### Change models
 
 + Move all parallel function to Optimizer class
 + Remove unused methods in Optimizer class
 + Update all algorithm models with the same code-style as previous version
 + Restructure some hard algorithms include BFO, CRO.
 
-### Change others
+#### Change others
 
 + examples: Update examples for all new algorithms
 + history: Update history of MHAs
@@ -783,9 +791,9 @@ Type: Sequential has 2 training modes
 
 ---------------------------------------------------------------------
 
-# Version 2.0.0
+### Version 2.0.0
 
-### Change models
+#### Change models
 + Update entire the library based on Optimizer class:
     + Add class Problem and class Termination
     + Add 3 training modes (sequential, thread and process)
@@ -806,16 +814,16 @@ Type: Sequential has 2 training modes
     + Time-bound (The running time for a single algorithm for a single task)
 
 
-### Change others
+#### Change others
 
 + examples: Update examples for all new algorithms
 + history: Update history of MHAs
 
 ---------------------------------------------------------------------
 
-# Version 1.2.2
+### Version 1.2.2
 
-### Change models
+#### Change models
 
 + Add Raven Roosting Optimization (RRO) and its variants to Dummy group
     + OriginalRRO: The original version of RRO
@@ -830,16 +838,16 @@ Type: Sequential has 2 training modes
     + Archimedes Optimization Algorithm (ArchOA) to Physics-based group
         + OriginalArchOA: The original version of ArchOA
 
-### Change others
+#### Change others
 
 + examples: Update examples for all new algorithms
 + history: Update history of MHAs
 
 ---------------------------------------------------------------------
 
-# Version 1.2.1
+### Version 1.2.1
 
-### Change models
+#### Change models
 
 + Add Coyote Optimization Algorithm (COA) to Swarm-based group
 + Update code LCBO and MLCO
@@ -852,15 +860,15 @@ Type: Sequential has 2 training modes
         + LSHADE: Linear Population Size Reduction for SHADE
     + PSO: Comprehensive Learning PSO (CL-PSO)
     
-### Change others
+#### Change others
 
 + examples: Update examples for all new algorithms
 
 ---------------------------------------------------------------------
 
-# Version 1.2.0
+### Version 1.2.0
 
-### Change models
+#### Change models
 
 + Fix bug reduction dimension in FOA
 + Update Firefly Algorithm for better timing performance
@@ -870,7 +878,7 @@ Type: Sequential has 2 training modes
 
 + Replace Root.\_\_init\_\_() function by super().\_\_init()\_\_ function in all algorithms.
 
-### Change others
+#### Change others
 
 + history: Update new algorithms
 + examples: Update all the examples based on algorithm's input
@@ -878,9 +886,9 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 1.1.0
+### Version 1.1.0
 
-### Change models
+#### Change models
 
 + Update the way to passing hyper-parameters to root.py file (Big change)
 
@@ -888,16 +896,16 @@ Type: Sequential has 2 training modes
   
 + Fix all the division by 0 in some algorithms.
 
-### Change others
+#### Change others
 
 + examples: Update all the examples of all algorithms
 
 ---------------------------------------------------------------------
 
 
-# Version 1.0.5
+### Version 1.0.5
 
-### Change models
+#### Change models
 + System-based group added: 
     + Water Cycle Algorithm (WCA)
 
@@ -918,7 +926,7 @@ Type: Sequential has 2 training modes
 + Physics-based group:
     + Add Simulated Annealling (SA) 
     
-### Change others
+#### Change others
 
 + models_history.csv: Update history of meta-heuristic algorithms
 + examples: Add examples for all of above added algorithms.
@@ -926,9 +934,9 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 1.0.4
+### Version 1.0.4
 
-### Change models
+#### Change models
 
 + Changed category of Sparrow Search Algorithm (SpaSA) from Fake to Swarm-based group:
     + Added the: OriginalSpaSA
@@ -991,16 +999,16 @@ Type: Sequential has 2 training modes
 
   
 
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: 
     + Add FBIO examples with large-scale benchmark functions
     
 ---------------------------------------------------------------------
 
-# Version 1.0.3
+### Version 1.0.3
 
-### Change models
+#### Change models
 + Update AEO and its variants
     + Replace LevyAEO by AdaptiveAEO by using levy-flight in both Consumption and Decomposition process.
     + Added Improved version by paper "Artificial ecosystem optimizer for parameters identification of proton exchange
@@ -1034,16 +1042,16 @@ Type: Sequential has 2 training modes
 
   
 
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: 
     + Add FBIO examples with large-scale benchmark functions
     
 ---------------------------------------------------------------------
 
-# Version 1.0.2
+### Version 1.0.2
 
-### Change models
+#### Change models
 + Update : CEM
 + Fix bug division by 0 in: IWO, SMA
 
@@ -1055,7 +1063,7 @@ Type: Sequential has 2 training modes
         + Change the flow of algorithm
   
 
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: 
     + Add FBIO examples with large-scale benchmark functions
@@ -1063,9 +1071,9 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 1.0.1
+### Version 1.0.1
 
-### Change models
+#### Change models
 + Added Slime Mould Algorithm (SMA) to bio_based group:
     + OriginalSMA: the original version of SMA
     + BaseSMA: my modified version:
@@ -1108,7 +1116,7 @@ Type: Sequential has 2 training modes
         + BaseBMO: my modified version which used my knowledge about meta-heuristics to do it. 
 
 
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: 
     + Update and Add examples for all algorithms
@@ -1117,9 +1125,9 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 1.0.0
+### Version 1.0.0
 
-### Change models
+#### Change models
 + Change root model, then all of the algorithms are now change
     + domain_range -> lower bound and upper bound
     + log -> verbose
@@ -1380,7 +1388,7 @@ Type: Sequential has 2 training modes
         + OriginalSSO: is the original version
     
 
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: 
     + Update and Add examples for all algorithms
@@ -1390,9 +1398,9 @@ Type: Sequential has 2 training modes
 
 
 
-# Version 0.8.6
+### Version 0.8.6
 
-### Change models
+#### Change models
 + Fix bug return position instead of fitness value in:
     + TLO 
     + SARO
@@ -1409,7 +1417,7 @@ Type: Sequential has 2 training modes
 + Added more algorithm in Swarm-based algorithm
     + SpaSA: Sparrow Search Algorithm (Same name SSA as Social Spider Algorithm --> I changed it to SpaSA)
 
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: Added new examples of: 
     + PSO and variant of PSO
@@ -1417,16 +1425,16 @@ Type: Sequential has 2 training modes
     
 ---------------------------------------------------------------------
 
-# Version 0.8.5
+### Version 0.8.5
 
-### Change models
+#### Change models
 + Fix bugs in several algorithm related to Division by 0, sqrt(0), 
 + Added more algorithm in Probabilistic-based algorithm
     + CEBaseSBO
 + Added selection by roulette wheel in root (This method now can handle negative fitness values)
 + Changed GA using roulette wheel selection instead of k-tournament method
 
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: Added new examples of: 
     + CE_SSDO, CE_SBO
@@ -1434,9 +1442,9 @@ Type: Sequential has 2 training modes
     
 ---------------------------------------------------------------------
 
-# Version 0.8.4
+### Version 0.8.4
 
-### Change models
+#### Change models
 + Fix bugs in Probabilistic-based algorithm
     + OriginalCEM
     + CEBaseLCBO
@@ -1456,9 +1464,9 @@ Type: Sequential has 2 training modes
     
 ---------------------------------------------------------------------
 
-# Version 0.8.3
+### Version 0.8.3
 
-### Change models
+#### Change models
 + Probabilistic-based algorithm
     + Added Cross-Entropy Method (CEM)
     + Added CEM + LCBO
@@ -1466,9 +1474,9 @@ Type: Sequential has 2 training modes
     
 ---------------------------------------------------------------------
 
-# Version 0.8.2
+### Version 0.8.2
 
-### Change models
+#### Change models
 + Bio-based group 
     + Added Virus Colony Search (VCS)
         + BaseVCS: This is the very simple version of VCS. Not the original one in the paper 
@@ -1482,7 +1490,7 @@ Type: Sequential has 2 training modes
 + Added new group: Probabilistic-based algorithm
     + Added Cross-Entropy Method (CEM)
     
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: Added new examples of: 
     + BaseVCS
@@ -1491,9 +1499,9 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 0.8.1
+### Version 0.8.1
 
-### Change models
+#### Change models
 + Evolutionary-based group 
     + Added Evolution Strategies (ES)
         + OriginalES
@@ -1506,7 +1514,7 @@ Type: Sequential has 2 training modes
     + Added Memetic Algorithm (MA)
         + OriginalMA
     
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: Added new examples of: 
     + OriginalES and LevyES
@@ -1516,9 +1524,9 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 0.8.0
+### Version 0.8.0
 
-### Change models
+#### Change models
 + Swarm-based group
     + Added Elephant Herding Optimization (EHO) in Swarm-based group
         + OriginalEHO
@@ -1545,7 +1553,7 @@ Type: Sequential has 2 training modes
     + Added Artificial Algae Algorithm (Not working yet)
  
  
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: Added new examples of: 
     + OriginalFA 
@@ -1560,14 +1568,14 @@ Type: Sequential has 2 training modes
 
 ---------------------------------------------------------------------
 
-# Version 0.7.5
+### Version 0.7.5
 
-### Change models
+#### Change models
 + Added Sea Lion Optimization in Swarm-based group
     + OriginalSLO
     + ImprovedSLO (Shrinking Encircling + Levy + SLO)
  
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: Added new examples of: OriginalSLO and ImprovedSLO 
 
@@ -1575,14 +1583,14 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 0.7.4
+### Version 0.7.4
 
-### Change models
+#### Change models
 + Added Coral Reefs Optimization in Evolutionary-based group
     + OriginalCRO
     + OCRO (Opposition-based CRO)
  
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: Added new examples of: OriginalCRO and CRO   
 
@@ -1590,9 +1598,9 @@ Type: Sequential has 2 training modes
 ---------------------------------------------------------------------
 
 
-# Version 0.7.3
+### Version 0.7.3
 
-### Change models
+#### Change models
 + Added Levy-flight and Opposition-based techniques in Root.py
 + Fixed codes include levy-flight and opposition-based of:
     + QSA
@@ -1610,31 +1618,31 @@ Type: Sequential has 2 training modes
     + MRFO (LevyMRFO)
     + NMRA (LevyNMRA)
  
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
 + examples: Added new examples tested base-version and levy-version of: LCBO, SSDO, EO, AEO, MRFO, NMRA   
 
 ---------------------------------------------------------------------
 
-# Version 0.7.2
+### Version 0.7.2
 
-### Change 
+#### Change 
 + Fix GA and WOA errors
 
 ---------------------------------------------------------------------
 
-# Version 0.7.1
+### Version 0.7.1
 
-### Change 
+#### Change 
 + Change input parameters of the root.py file 
 + Update the changed of input parameters of all algorithms
 + Update examples folders
 
 ---------------------------------------------------------------------
 
-# Version 0.7.0
+### Version 0.7.0
 
-### Change models
+#### Change models
 + Added new kind of meta-heuristics: math-based and music-based
 + Math_based:
     * SCA - Sine Cosine Algorithm
@@ -1647,27 +1655,27 @@ Type: Sequential has 2 training modes
             * First I changed the random usaged of harmony memory by best harmoney memory
             * The fw_rate = 0.0001, fw_damp = 0.9995, number of new harmonies = population size (n_new = pop_size)
             
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
         
 ---------------------------------------------------------------------
 
-# Version 0.6.0
+### Version 0.6.0
 
-### Change models
+#### Change models
 + Added new kind of meta-heuristics: system-based 
 + System_based: Added the latest system-inspired meta-heuristic algorithms
     * GCO - Germinal Center Optimization
     * AEO - Artificial Ecosystem-based Optimization
      
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
         
 ---------------------------------------------------------------------
 
-# Version 0.5.1
+### Version 0.5.1
 
-### Change models
+#### Change models
 + Bio_based: Added the latest bio-inspired meta-heuristic algorithms
     * SBO - Satin Bowerbird Optimizer
     * WHO - Wildebeest Herd Optimization
@@ -1675,29 +1683,29 @@ Type: Sequential has 2 training modes
         + OriginalWHO: I changed the flow of algorithm
     * BWO - Black Widow Optimization
     
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
         
 ---------------------------------------------------------------------
 
 
-# Version 0.5.0
+### Version 0.5.0
 
-### Change models
+#### Change models
 + Added new kind of meta-heuristics: bio-based (biology-inspired) 
 + Bio_based: Added some classical bio-inspired meta-heuristic algorithms
     * IWO - Invasive Weed Optimization
     * BBO - Biogeography-Based Optimization
         
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
         
 ---------------------------------------------------------------------
 
 
-# Version 0.4.1
+### Version 0.4.1
 
-### Change models
+#### Change models
 + Human_based: Added the newest human-based meta-heuristic algorithms
     * SARO - Search And Rescue Optimization
     * LCBO: Life Choice-Based Optimization
@@ -1705,14 +1713,14 @@ Type: Sequential has 2 training modes
         + OriginalSSDO: The original version
         + OriginalSSDO: The flow changed + SSDO
         
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms        
         
 ---------------------------------------------------------------------
 
-# Version 0.4.0
+### Version 0.4.0
 
-### Change models
+#### Change models
 + Human_based: Added some recent human-based meta-heuristic algorithms
     * TLO - Teaching Learning Optimization
         + OriginalTLO: The original version
@@ -1723,14 +1731,14 @@ Type: Sequential has 2 training modes
         + LevyQSA: Levy + QSA
         + ImprovedQSA: Levy + Opposition-based + QSA
     
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms
     
 ---------------------------------------------------------------------
 
-# Version 0.3.1
+### Version 0.3.1
 
-### Change models
+#### Change models
 + Physics_based: Added the cutting-edge physics-based meta-heuristic algorithms
     * NRO - Nuclear Reaction Optimization  
     * HGSO - Henry Gas Solubility Optimization
@@ -1740,15 +1748,15 @@ Type: Sequential has 2 training modes
     * ASO - Atom Search Optimization
     * EO - Equilibrium Optimizer
     
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms
     
 ---------------------------------------------------------------------
 
 
-# Version 0.3.0
+### Version 0.3.0
 
-### Change models
+#### Change models
 + Physics_based: Added some recent physics-based meta-heuristic algorithms
     * WDO - Wind Driven Optimization 
     * MVO - Multi-Verse Optimizer 
@@ -1761,15 +1769,15 @@ Type: Sequential has 2 training modes
         + OriginalEFO: The original version
         + BaseEFO: My version (changed the flow of the algorithm)
     
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms
     
 ---------------------------------------------------------------------
 
 
-# Version 0.2.2
+### Version 0.2.2
 
-### Change models
+#### Change models
 + Swarm_based: Added the state-of-the-art swarm-based meta-heuristic algorithms
     * SRSR - Swarm Robotics Search And Rescue 
     * GOA - Grasshopper Optimisation Algorithm
@@ -1802,14 +1810,14 @@ Type: Sequential has 2 training modes
         + MyMRFO: The version I changed the flow of the original one
     
     
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms
     
 ---------------------------------------------------------------------
 
-# Version 0.2.1
+### Version 0.2.1
 
-### Change models
+#### Change models
 + Swarm_based: Added more recently algorithm (since 2010 to 2016)
     * OriginalALO, BaseALO - Ant Lion Optimizer
     * OriginalBA, AdaptiveBA, AdaptiveBA - Bat Algorithm
@@ -1819,14 +1827,14 @@ Type: Sequential has 2 training modes
     * SSA - Social Spider Algorithm 
     * SSO - Social Spider Optimization
     
-### Change others
+#### Change others
 + models_history.csv: Update history of meta-heuristic algorithms
     
 ---------------------------------------------------------------------
 
-# Version 0.2.0 
+### Version 0.2.0 
 
-### Change models
+#### Change models
 + root.py : Add 1 more helper functions
 + Swarm_based: Added
     * PSO - Particle Swarm Optimization
@@ -1835,25 +1843,25 @@ Type: Sequential has 2 training modes
     * ABC - Artificial Bee Colony
     * WOA - Whale Optimization Algorithm
 
-### Change others
+#### Change others
 + models_history.csv: Adding history of meta-heuristic algorithms
     
 ---------------------------------------------------------------------
-# Version 0.1.1 
+### Version 0.1.1 
 
-### Change models
+#### Change models
 + root.py : Add more helper functions
 + Evolutionary_based
     * GA : Change the format of input parameters
     * DE : Change the format of input parameters
-### Change others
+#### Change others
 + Examples: Adding more complex examples
 + Library: "Opfunu" update the latest version 0.4.3
     
 ---------------------------------------------------------------------
-# Version 0.1.0 (First version)
+### Version 0.1.0 (First version)
 
-### Changed models
+#### Changed models
 + root.py (Very first file, the root of all algorithms)
 + Evolutionary_based
     * GA - Genetic Algorithm

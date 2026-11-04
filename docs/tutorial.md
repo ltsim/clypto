@@ -1,55 +1,80 @@
 # Tutorial
 
-This tutorial covers the full optimizer API: defining problems, choosing
-decision variables, discovering optimizers, and controlling a run.
+This tutorial covers the complete workflow of using Clypto: constructing problems, configuring search space bounds, selecting algorithms, setting stopping criteria, analyzing tracking metrics, and executing evaluations in parallel.
 
 ## Defining a problem
 
-The quickest way is the dictionary form, which is valid for float decision
-variables:
+You can define optimization problems in three ways:
+
+### 1. Direct instantiation with `Problem` (Recommended)
+
+Pass the objective function, the bounds, and the direction directly:
 
 ```python
 import numpy as np
-from clypto import NumberBounds
-from clypto.native.collection.bio_based import BBO
+import clypto as cy
+from clypto.native.collection.swarm_based import PSO
 
-def objective(solution):
+def sphere(solution):
     return np.sum(solution ** 2)
 
-problem = {
-    "obj_func": objective,
-    "bounds": [NumberBounds(float, low=(-10.0,) * 30, up=(10.0,) * 30)],
-    "sense": "min",
-    "name": "Sphere",
-}
+problem = cy.Problem(
+    obj_func=sphere,
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",  # "min" to minimize, "max" to maximize
+    name="Sphere",
+)
 
-model = BBO.OriginalBBO(epoch=100, pop_size=50)
-g_best = model.solve(problem, seed=1)
+model = PSO.OriginalPSO(epoch=100, pop_size=50)
+g_best = model.solve(problem, seed=42)
+print("Best fitness:", g_best.fitness)
 ```
 
-For anything more complex — custom data, non-float variables, extra logic —
-subclass `Problem`. The only requirement is that `__init__` passes `bounds` and
-`sense` on and that `obj_func` is defined:
+### 2. Subclassing `Problem` (For custom data or state)
+
+For problems requiring training datasets, external evaluators, or stateful parameters, subclass `Problem` and implement `obj_func`:
 
 ```python
 import numpy as np
 from clypto import Problem, NumberBounds
 from clypto.native.collection.system_based import AEO
 
-class Squared(Problem):
-    def __init__(self, bounds=None, sense="min", data=None, **kwargs):
+class CurveFitting(Problem):
+    def __init__(self, x_data, y_data, bounds, sense="min", **kwargs):
         super().__init__(bounds, sense, **kwargs)
-        self.data = data
+        self.x_data = x_data
+        self.y_data = y_data
 
     def obj_func(self, solution):
-        return np.sum(solution ** 2)
+        # Example: fit y = a * x^2 + b * x + c
+        a, b, c = solution
+        predicted = a * (self.x_data ** 2) + b * self.x_data + c
+        return np.mean((self.y_data - predicted) ** 2)
 
-problem = Squared(
-    bounds=NumberBounds(float, low=[-10.0] * 20, up=[10.0] * 20, name="my_var"),
+# Generate synthetic data
+x = np.linspace(-5, 5, 50)
+y = 2.5 * (x ** 2) - 1.2 * x + 0.5 + np.random.normal(0, 0.1, 50)
+
+problem = CurveFitting(
+    x_data=x,
+    y_data=y,
+    bounds=NumberBounds(float, low=[-10.0] * 3, up=[10.0] * 3),
     sense="min",
-    name="Squared",
-    data="anything you need",
+    name="CurveFitting",
 )
+```
+
+### 3. Dictionary shorthand
+
+For quick scripts, passing a dictionary is also supported:
+
+```python
+problem = {
+    "obj_func": lambda x: np.sum(x ** 2),
+    "bounds": [NumberBounds(float, low=(-10.0,) * 30, up=(10.0,) * 30)],
+    "sense": "min",
+    "name": "SphereDict",
+}
 ```
 
 ## Decision variables
@@ -198,6 +223,45 @@ recorded without guessing a capacity in advance:
 a population was captured. Reading a name that was not recorded raises
 `KeyError`, so check `tracker.meta["capture_population"]` before the snapshot
 arrays.
+
+### Exporting metrics and plotting
+
+Because tracking data is stored in memory as plain NumPy arrays, you can easily load metrics into a pandas DataFrame or plot convergence curves:
+
+```python
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# Export tracked metrics to a DataFrame
+metrics_df = pd.DataFrame({
+    "epoch": range(len(model.tracker["global_best_fit"])),
+    "best_fitness": model.tracker["global_best_fit"],
+    "mean_fitness": model.tracker["mean_fit"],
+    "diversity": model.tracker["diversity"],
+    "epoch_time": model.tracker["epoch_time"],
+})
+
+# Plot fitness convergence and population diversity
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+ax1.plot(metrics_df["best_fitness"], label="Best Fitness", color="#2e7d32", lw=2)
+ax1.plot(metrics_df["mean_fitness"], label="Mean Fitness", color="#81c784", linestyle="--")
+ax1.set_xlabel("Epoch")
+ax1.set_ylabel("Fitness")
+ax1.set_title("Fitness Convergence")
+ax1.grid(True, linestyle="--", alpha=0.5)
+ax1.legend()
+
+ax2.plot(metrics_df["diversity"], label="Diversity", color="#1976d2", lw=2)
+ax2.set_xlabel("Epoch")
+ax2.set_ylabel("Diversity Index")
+ax2.set_title("Population Diversity")
+ax2.grid(True, linestyle="--", alpha=0.5)
+ax2.legend()
+
+plt.tight_layout()
+plt.show()
+```
 
 ### Per-epoch callbacks
 
