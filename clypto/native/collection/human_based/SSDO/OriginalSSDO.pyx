@@ -5,7 +5,30 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalSSDOAgents(AgentFactory):
+    """The agent factory of ``OriginalSSDO`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        pos_local = solution.copy()
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.local_solution = pos_local
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalSSDO(cy.Optimizer):
@@ -52,6 +75,7 @@ cdef class OriginalSSDO(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalSSDOAgents()
 
     cdef void evolve(self, int epoch):
         """
@@ -87,7 +111,7 @@ cdef class OriginalSSDO(cy.Optimizer):
                 + self.generator.random() * pop_new[idx].velocity
             )
             x = cy.correct_solution(self.problem, x)
-            child = self.create_agent(x)
+            child = self.population.create_agent(x)
             child.local_solution = agent.solution.copy()
             if self.mode == "sequential":
                 child.evaluate(self.problem)
@@ -96,23 +120,4 @@ cdef class OriginalSSDO(cy.Optimizer):
             pop_new = self.population.evaluate(pop_new, self.mode)
             self.population = self.population.greedy(pop_new)
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        pos_local = solution.copy()
-
-        agent = cy.Agent(solution)
-        agent.velocity = velocity
-        agent.local_solution = pos_local
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

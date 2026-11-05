@@ -5,7 +5,36 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalArchOAAgents(AgentFactory):
+    """The agent factory of ``OriginalArchOA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        den = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)  # Density
+        vol = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)  # Volume
+        acc = self.problem.bounds.low + self.generator.uniform(
+            self.problem.bounds.low, self.problem.bounds.up
+        ) * (
+            self.problem.bounds.up - self.problem.bounds.low
+        )  # Acceleration
+
+        agent = cy.Agent(solution)
+        agent.den = den
+        agent.vol = vol
+        agent.acc = acc
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalArchOA(cy.Optimizer):
@@ -81,6 +110,7 @@ cdef class OriginalArchOA(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size", "c1", "c2", "c3", "c4", "acc_max", "acc_min"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalArchOAAgents()
         self.c1 = cy.validator(float, c1, [1, 3], "c1")
         self.c2 = cy.validator(float, c2, [2, 6], "c2")
         self.c3 = cy.validator(float, c3, [1, 3], "c3")
@@ -174,29 +204,4 @@ cdef class OriginalArchOA(cy.Optimizer):
             n_population = self.population.evaluate(n_population, self.mode)
             self.population = self.population.greedy(n_population)
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        den = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)  # Density
-        vol = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)  # Volume
-        acc = self.problem.bounds.low + self.generator.uniform(
-            self.problem.bounds.low, self.problem.bounds.up
-        ) * (
-            self.problem.bounds.up - self.problem.bounds.low
-        )  # Acceleration
-
-        agent = cy.Agent(solution)
-        agent.den = den
-        agent.vol = vol
-        agent.acc = acc
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

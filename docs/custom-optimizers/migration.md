@@ -32,9 +32,9 @@ Moving an algorithm of the previous classic API onto it:
 | Before | After |
 | --- | --- |
 | `def evolve(self, epoch)` (Python subclass of `cy.LegacyOptimizer`) | `cdef void evolve(self, int epoch)` in a `.pyx`; `solve()` rejects a Python `evolve` |
-| `agent.copy()` | `cy.duplicate_agent(agent)` (the agent's static `cdef clone`) |
+| `agent.copy()` | `agent.copy()` / `cy.duplicate_agent(agent)` (the copy protocol) |
 | `agent.update(field=value, ...)` | `agent.field = value` (typed `cdef public` fields) |
-| `XAgent(solution, field=value)` (`**fields`) | an explicit `__init__(self, solution=None, ..., field=None)` on the agent class |
+| agent subclasses with `**fields` / `clone` | a `.pxd` subclass of `cy.Agent` with the copy protocol (`_new_instance` + `_copy_state_to`); see [Agent subclasses](06-agent-subclasses.md) |
 | `self.population.correct_solution(x)` | `cy.correct_solution(self.problem, x)` |
 | `cy.ResetPopulation` / an `amend_solution` override | `cy.reset_solution(self.problem, self.generator, x)` / a module-level repair function |
 | `self.population.opposite_solution(a, g)` | `cy.opposite_solution(self.problem, self.generator, a, g)` |
@@ -43,7 +43,7 @@ Moving an algorithm of the previous classic API onto it:
 | `self.population = [agents]` | `self.population = self.population.spawn([agents])` (a typed C field) |
 | `self.mode not in self.AVAILABLE_MODES` | `self.mode == "sequential"` |
 | `mode=None` / `"thread"` / `"process"` | `mode="sequential"` (default) / `"parallel"` |
-| a Population subclass with Python attributes | typed `cdef public` fields and a `cdef void copy_state(self, cy.Population new)` override |
+| a Population subclass with Python attributes | the single `cy.Population`: parameters live on the optimizer and a list of agents is assigned as `self.population.spawn([agents])` |
 | `cy.get_all_optimizers(engine=...)`, `clypto.native.collection.{legacy,vectorize}.*` | `cy.get_all_optimizers()`, `clypto.native.collection.<category>.*` |
 
 ## 2. From the MEALPY-style API

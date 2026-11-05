@@ -5,7 +5,35 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalEPAgents(AgentFactory):
+    """The agent factory of ``OriginalEP`` (moved off the optimizer)."""
+    cdef public object distance
+
+    def __init__(self, distance=None):
+        self.distance = distance
+
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        strategy = self.generator.uniform(0, self.distance, self.problem.n_dims)
+        times_win = 0
+
+        agent = cy.Agent(solution)
+        agent.strategy = strategy
+        agent.win = times_win
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalEP(cy.Optimizer):
@@ -66,6 +94,7 @@ cdef class OriginalEP(cy.Optimizer):
         pop_size = self.population.size()
         self.n_bout_size = int(self.bout_size * pop_size)
         self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
+        self.population.factory = OriginalEPAgents(self.distance)
 
     cdef void evolve(self, int epoch):
         """
@@ -81,7 +110,7 @@ cdef class OriginalEP(cy.Optimizer):
                 idx
             ].strategy * self.generator.normal(0, 1.0, self.problem.n_dims)
             x = cy.correct_solution(self.problem, x)
-            agent = self.create_agent(x)
+            agent = self.population.create_agent(x)
             s_old = (
                 self.population[idx].strategy
                 + self.generator.normal(0, 1.0, self.problem.n_dims)
@@ -106,23 +135,4 @@ cdef class OriginalEP(cy.Optimizer):
         pop = sorted(pop, key=lambda agent: agent.win, reverse=True)
         self.population = self.population.spawn(pop[: pop_size])
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        strategy = self.generator.uniform(0, self.distance, self.problem.n_dims)
-        times_win = 0
-
-        agent = cy.Agent(solution)
-        agent.strategy = strategy
-        agent.win = times_win
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

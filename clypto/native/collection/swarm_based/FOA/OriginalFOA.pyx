@@ -5,6 +5,8 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
@@ -14,6 +16,21 @@ def norm_consecutive_adjacent(position):
         [np.linalg.norm([position[x], position[x + 1]]) for x in range(0, len(position) - 1)]
         + [np.linalg.norm([position[-1], position[0]])]
     )
+
+
+
+
+cdef class OriginalFOAAgents(AgentFactory):
+    """The agent factory of ``OriginalFOA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        return cy.Agent(solution=norm_consecutive_adjacent(solution))
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalFOA(cy.Optimizer):
@@ -59,6 +76,7 @@ cdef class OriginalFOA(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalFOAAgents()
 
     def norm_consecutive_adjacent__(self, position=None):
         return norm_consecutive_adjacent(position)
@@ -80,7 +98,7 @@ cdef class OriginalFOA(cy.Optimizer):
             )
             x = self.norm_consecutive_adjacent__(x)
             x = cy.correct_solution(self.problem, x)
-            child = self.create_agent(x)
+            child = self.population.create_agent(x)
             pop_new.append(child)
             if self.mode == "sequential":
                 # the classic code evaluates x, not the child's smell vector
@@ -90,17 +108,4 @@ cdef class OriginalFOA(cy.Optimizer):
             pop_new = self.population.evaluate(pop_new, self.mode)
             self.population = self.population.spawn(cy.greedy_agents(pop_new, self.population, self.problem.sense))
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        return cy.Agent(solution=norm_consecutive_adjacent(solution))
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

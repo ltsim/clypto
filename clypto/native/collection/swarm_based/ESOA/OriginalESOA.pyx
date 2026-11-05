@@ -5,7 +5,35 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalESOAAgents(AgentFactory):
+    """The agent factory of ``OriginalESOA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        model_weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
+        m = np.zeros(self.problem.n_dims)
+        v = np.zeros(self.problem.n_dims)
+
+        agent = cy.Agent(solution)
+        agent.model_weights = model_weights
+        agent.local_solution = solution.copy()
+        agent.m = m
+        agent.v = v
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        agent.local_best = cy.duplicate_agent(agent)
+        agent.g = (np.sum(agent.model_weights * agent.solution) - agent.fitness) * agent.solution
+        return agent
 
 
 cdef class OriginalESOA(cy.Optimizer):
@@ -45,6 +73,7 @@ cdef class OriginalESOA(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalESOAAgents()
 
     def initialize_variables(self):
         self.beta1 = 0.9
@@ -135,27 +164,3 @@ cdef class OriginalESOA(cy.Optimizer):
                 if self.generator.random() < 0.3:
                     agent.update_solution(y_best, x_best)
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        model_weights = self.generator.uniform(-1.0, 1.0, self.problem.n_dims)
-        m = np.zeros(self.problem.n_dims)
-        v = np.zeros(self.problem.n_dims)
-
-        agent = cy.Agent(solution)
-        agent.model_weights = model_weights
-        agent.local_solution = solution.copy()
-        agent.m = m
-        agent.v = v
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        agent.local_best = cy.duplicate_agent(agent)
-        agent.g = (np.sum(agent.model_weights * agent.solution) - agent.fitness) * agent.solution
-        return agent

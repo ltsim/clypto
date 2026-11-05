@@ -5,7 +5,37 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalSRSRAgents(AgentFactory):
+    """The agent factory of ``OriginalSRSR`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+
+        mu = 0
+        sigma = 0
+        x_new = solution.copy()
+        target_move = 0
+
+
+        agent = cy.Agent(solution)
+        agent.mu = mu
+        agent.sigma = sigma
+        agent.solution_new = x_new
+        agent.target_move = target_move
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        agent.target_new = cy.duplicate_agent(agent)
+        return agent
 
 
 cdef class OriginalSRSR(cy.Optimizer):
@@ -51,6 +81,7 @@ cdef class OriginalSRSR(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalSRSRAgents()
 
     def initialize_variables(self):
         pop_size = self.population.size()
@@ -271,7 +302,7 @@ cdef class OriginalSRSR(cy.Optimizer):
             pop_workers = []
             for idx in range(0, 5):
                 x = cy.correct_solution(self.problem, workers[idx])
-                agent = self.create_agent(x)
+                agent = self.population.create_agent(x)
                 pop_workers.append(agent)
                 if self.mode == "sequential":
                     pop_workers[-1].evaluate(self.problem)
@@ -281,29 +312,3 @@ cdef class OriginalSRSR(cy.Optimizer):
                 if cy.is_better(pop_workers[idx], self.population[1], self.problem.sense):
                     self.population[-(idx + 1)].update_solution(pop_workers[idx], pop_workers[idx].solution.copy())
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-
-        mu = 0
-        sigma = 0
-        x_new = solution.copy()
-        target_move = 0
-
-
-        agent = cy.Agent(solution)
-        agent.mu = mu
-        agent.sigma = sigma
-        agent.solution_new = x_new
-        agent.target_move = target_move
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        agent.target_new = cy.duplicate_agent(agent)
-        return agent

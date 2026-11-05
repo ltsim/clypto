@@ -5,7 +5,10 @@ cimport numpy as cnp
 from clypto.optimizer.native.problem cimport Problem
 
 
-@cython.final
+# Agent is the single base structure for agent state. It is not final: catalog
+# algorithms and user code may subclass it to carry extra state, but a subclass
+# MUST implement ``_new_instance`` and ``_copy_state_to`` (see the scaffold in
+# tools/scaffold_agent.py) or ``cy.duplicate_agent`` reports it.
 cdef class Agent:
     cdef public cnp.ndarray solution
     cdef readonly cnp.ndarray objectives
@@ -59,6 +62,12 @@ cdef class Agent:
     cdef void copy_evaluation(self, Agent other)
     cpdef Agent evaluate(self, Problem problem)
     cpdef void update_solution(self, Agent other, object solution=*)
+
+    # -- the copy protocol (cy.duplicate_agent dispatches on these) -------------
+    cdef Agent _new_instance(self)
+    cdef void _copy_state_to(self, Agent other)
+    cpdef Agent copy(self)
+    cpdef Agent snapshot(self)
 
 
 cpdef Agent duplicate_agent(Agent agent)

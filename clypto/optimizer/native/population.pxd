@@ -3,6 +3,7 @@ import cython
 cimport numpy as cnp
 
 from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 from clypto.optimizer.native.problem cimport Problem
 
 
@@ -11,6 +12,7 @@ cdef class Population:
     cdef public list agents
     cdef public Problem problem
     cdef public object generator
+    cdef AgentFactory _factory
     cdef public int threads
     cdef Py_ssize_t _size
     cdef bint _minimize
@@ -19,6 +21,9 @@ cdef class Population:
     cpdef Population empty(self)
     cpdef Population snapshot(self)
     cpdef Population copy(self)
+    cpdef Population fill(self, object starting=*)
+    cpdef Agent add(self, object solution=*)
+    cpdef Agent remove_at(self, Py_ssize_t index)
     cpdef Py_ssize_t size(self)
     cpdef list toarray(self)
     cpdef object evaluate(self, object agents, str mode)
@@ -32,6 +37,7 @@ cdef class Population:
 
 
 cpdef Population population(object size, object range=*, type cls=*)
+cpdef Population population_with_factory(object size, AgentFactory factory, object range=*)
 cpdef Population empty_snapshot(Population population)
 cpdef Population snapshot(Population population)
 cpdef object correct_solution(object problem, object solution)

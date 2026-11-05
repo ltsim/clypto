@@ -15,7 +15,8 @@ from clypto.optimizer.native.agent cimport (
 )
 from clypto.optimizer.native.legacy cimport LegacyOptimizer as Optimizer
 from clypto.optimizer.native.population cimport (
-    Population, correct_solution, empty_snapshot, opposite_solution, population, reset_solution, snapshot,
+    Population, correct_solution, empty_snapshot, opposite_solution, population, population_with_factory,
+    reset_solution, snapshot,
 )
 from clypto.optimizer.native.problem cimport Problem
 from clypto.optimizer.native.utils cimport (

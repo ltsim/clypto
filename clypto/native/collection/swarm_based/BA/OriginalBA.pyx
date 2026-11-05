@@ -5,7 +5,39 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalBAAgents(AgentFactory):
+    """The agent factory of ``OriginalBA`` (moved off the optimizer)."""
+    cdef public object pf_max
+    cdef public object pf_min
+
+    def __init__(self, pf_max=None, pf_min=None):
+        self.pf_max = pf_max
+        self.pf_min = pf_min
+
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        pulse_frequency = (
+            self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
+        )
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.pulse_frequency = pulse_frequency
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalBA(cy.Optimizer):
@@ -77,6 +109,7 @@ cdef class OriginalBA(cy.Optimizer):
         self.pulse_rate = cy.validator(float, pulse_rate, (0, 1.0), "pulse_rate")
         self.pf_min = cy.validator(float, pf_min, [0.0, 3.0], "pf_min")
         self.pf_max = cy.validator(float, pf_max, [5.0, 20.0], "pf_max")
+        self.population.factory = OriginalBAAgents(self.pf_max, self.pf_min)
         self.alpha = self.gamma = 0.9
 
     cdef void evolve(self, int epoch):
@@ -115,25 +148,4 @@ cdef class OriginalBA(cy.Optimizer):
             ):
                 agent.update_solution(n_population[idx], n_population[idx].solution)
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        pulse_frequency = (
-            self.pf_min + (self.pf_max - self.pf_min) * self.generator.uniform()
-        )
-
-        agent = cy.Agent(solution)
-        agent.velocity = velocity
-        agent.pulse_frequency = pulse_frequency
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

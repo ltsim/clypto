@@ -191,8 +191,10 @@ def test_duplicate_agent_shares_fields_and_the_evaluation():
         assert copy.solution is agent.solution and copy.fitness == 1.0 and copy.objectives is agent.objectives
     copy = cy.duplicate_agent(particle)
     assert copy.velocity is particle.velocity and copy.pbest_fitness == 0.5
-    # no dynamic reflection left: fields are typed, the evaluation is read-only
-    assert not hasattr(plain, "copy") and not hasattr(plain, "update") and not hasattr(plain, "__dict__")
+    # no dynamic reflection left: fields are typed, the evaluation is read-only;
+    # the copy protocol is the only sanctioned copy route
+    assert not hasattr(plain, "clone") and not hasattr(plain, "update") and not hasattr(plain, "__dict__")
+    assert plain.copy().solution is plain.solution and plain.snapshot().solution is not plain.solution
     with pytest.raises(TypeError):
         cy.Agent(np.zeros(2), tag=1)
     with pytest.raises(AttributeError):

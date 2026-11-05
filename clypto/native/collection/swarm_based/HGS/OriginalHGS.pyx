@@ -5,7 +5,28 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalHGSAgents(AgentFactory):
+    """The agent factory of ``OriginalHGS`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        hunger = 1.0
+
+        agent = cy.Agent(solution)
+        agent.hunger = hunger
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalHGS(cy.Optimizer):
@@ -65,6 +86,7 @@ cdef class OriginalHGS(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size", "PUP", "LH"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalHGSAgents()
         self.PUP = cy.validator(float, PUP, (0, 1.0), "PUP")
         self.LH = cy.validator(float, LH, [1, 20000], "LH")
 
@@ -164,21 +186,4 @@ cdef class OriginalHGS(cy.Optimizer):
             n_population = self.population.evaluate(n_population, self.mode)
             self.population = self.population.greedy(n_population)
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        hunger = 1.0
-
-        agent = cy.Agent(solution)
-        agent.hunger = hunger
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

@@ -5,7 +5,43 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class AdaptiveBAAgents(AgentFactory):
+    """The agent factory of ``AdaptiveBA`` (moved off the optimizer)."""
+    cdef public object loudness_max
+    cdef public object loudness_min
+    cdef public object pr_max
+    cdef public object pr_min
+
+    def __init__(self, loudness_max=None, loudness_min=None, pr_max=None, pr_min=None):
+        self.loudness_max = loudness_max
+        self.loudness_min = loudness_min
+        self.pr_max = pr_max
+        self.pr_min = pr_min
+
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
+        pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.loudness = loudness
+        agent.pulse_rate = pulse_rate
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class AdaptiveBA(cy.Optimizer):
@@ -88,6 +124,7 @@ cdef class AdaptiveBA(cy.Optimizer):
         self.pr_max = cy.validator(float, pr_max, [-10.0, 10.0], "pr_max")
         self.pf_min = cy.validator(float, pf_min, [-10.0, 10.0], "pf_min")
         self.pf_max = cy.validator(float, pf_max, [0.0, 10.0], "pf_max")
+        self.population.factory = AdaptiveBAAgents(self.loudness_max, self.loudness_min, self.pr_max, self.pr_min)
         self.alpha = self.gamma = 0.9
 
     cdef void evolve(self, int epoch):
@@ -129,25 +166,4 @@ cdef class AdaptiveBA(cy.Optimizer):
                 agent.loudness = loudness
                 agent.pulse_rate = pulse_rate
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
-        pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
-
-        agent = cy.Agent(solution)
-        agent.velocity = velocity
-        agent.loudness = loudness
-        agent.pulse_rate = pulse_rate
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

@@ -1,5 +1,6 @@
 ### Cython ###
 clypto/**/*.c
+tests/**/*.c
 
 ### C ###
 # Prerequisites

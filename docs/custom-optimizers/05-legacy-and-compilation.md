@@ -38,18 +38,20 @@ cdef class RandomSearch(cy.Optimizer):
   `self.population.spawn(agents)`.
 - An agent holds `solution`, `objectives`, `weights` and `fitness`; the last
   three are read-only and change only through `agent.evaluate(problem)` or
-  `agent.update_solution(other)`. There is no dynamic `copy()`/`update()`:
-  `cy.duplicate_agent(agent)` calls the agent's static `cdef clone`.
+  `agent.update_solution(other)`. `cy.duplicate_agent(agent)` (or
+  `agent.copy()`) builds a copy of the same dynamic type by the copy protocol;
+  `agent.snapshot()` also copies the solution vector.
 - The pipeline `empty_snapshot` -> `evaluate(..., self.mode)` ->
   `greedy(..., self.mode)` evaluates a whole batch at once in every mode. Use it
   only when each candidate depends on the population at the start of the phase;
   an order-dependent step keeps `if self.mode == "sequential":` (see
   [Batch and parallel evaluation](../parallel-evaluation.md)).
-- An algorithm with its own agents subclasses `cy.Agent` with typed
-  `cdef public` fields and overrides `cdef cy.Agent clone(self)`; its
-  `cy.Population` subclass builds them (`create_agent`, `generate_agent`),
-  holds problem-dependent state (`bind`) and overrides `cdef void copy_state`.
-  `clypto/native/collection/swarm_based/PSO/` is the reference.
+- An algorithm that needs more per-agent state than the engine's slots offer
+  subclasses `cy.Agent` and implements the copy protocol (`_new_instance` +
+  `_copy_state_to`, with the base call first); its agents are built by an
+  `AgentFactory` assigned to the population (see
+  [Agent subclasses](06-agent-subclasses.md) and the reference
+  `tests/optimizer/_agent_subclass.pyx`).
 - `evolve` must be a `cdef` method: a Python subclass of `cy.Optimizer` that
   defines `def evolve` is rejected by `solve()`. Write Python optimizers with
   the decorator API.

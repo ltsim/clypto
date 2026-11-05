@@ -32,6 +32,8 @@ reused throughout the series.
 4. [Custom agent state](04-agent-state.md) — `@cy.agent` and `cy.Attribute`.
 5. [Classic API and compilation](05-legacy-and-compilation.md) — `cy.LegacyOptimizer` and
    the compile flags.
+6. [Agent subclasses](06-agent-subclasses.md) — extra per-agent state with
+   `duplicate_agent`'s copy protocol.
 
 ## Migrating existing code
 
@@ -47,5 +49,6 @@ is covered in the [migration guide](migration.md).
 03-population
 04-agent-state
 05-legacy-and-compilation
+06-agent-subclasses
 migration
 ```

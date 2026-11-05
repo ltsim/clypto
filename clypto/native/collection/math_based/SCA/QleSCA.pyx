@@ -7,6 +7,8 @@ import numpy as np
 cimport clypto.core as cy
 
 from clypto.native.collection.math_based.SCA.DevSCA cimport DevSCA
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 class QTable:
@@ -51,6 +53,25 @@ class QTable:
         self.table[state][action] += alpha * (
             reward + gama * np.max(self.table[state]) - self.table[state][action]
         )
+
+
+
+
+cdef class QleSCAAgents(AgentFactory):
+    """The agent factory of ``QleSCA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
+
+        agent = cy.Agent(solution)
+        agent.q_table = q_table
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class QleSCA(DevSCA):
@@ -109,6 +130,7 @@ cdef class QleSCA(DevSCA):
         """
         super().__init__(epoch, pop_size, **kwargs)
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = QleSCAAgents()
         self.alpha = cy.validator(float, alpha, [0.0, 1.0], "alpha")
         self.gama = cy.validator(float, gama, [0.0, 1.0], "gama")
         self.parameters = ["epoch", "pop_size", "alpha", "gama"]
@@ -180,21 +202,4 @@ cdef class QleSCA(DevSCA):
                     state, action, reward=-1, alpha=self.alpha, gama=self.gama
                 )
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
-
-        agent = cy.Agent(solution)
-        agent.q_table = q_table
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

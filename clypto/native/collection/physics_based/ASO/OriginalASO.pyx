@@ -5,7 +5,30 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalASOAgents(AgentFactory):
+    """The agent factory of ``OriginalASO`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        mass = 0.0
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.mass = mass
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalASO(cy.Optimizer):
@@ -66,6 +89,7 @@ cdef class OriginalASO(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size", "alpha", "beta"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalASOAgents()
         self.alpha = cy.validator(int, alpha, [1, 100], "alpha")
         self.beta = cy.validator(float, beta, (0, 1.0), "beta")
 
@@ -164,23 +188,4 @@ cdef class OriginalASO(cy.Optimizer):
         if cy.is_better(self.g_best, current_best, self.problem.sense):
             self.population[self.generator.integers(0, pop_size)] = cy.duplicate_agent(self.g_best)
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        mass = 0.0
-
-        agent = cy.Agent(solution)
-        agent.velocity = velocity
-        agent.mass = mass
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

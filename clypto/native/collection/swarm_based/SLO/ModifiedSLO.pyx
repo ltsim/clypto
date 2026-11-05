@@ -6,6 +6,9 @@
 from math import gamma
 import numpy as np
 cimport clypto.core as cy
+from clypto.native.collection.swarm_based.SLO._factory cimport ModifiedSLOAgents
+
+
 
 
 
@@ -49,6 +52,7 @@ cdef class ModifiedSLO(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = ModifiedSLOAgents()
 
     def shrink_encircling_levy__(self, current_pos, epoch, dist, c, beta=1):
         up = gamma(1 + beta) * np.sin(np.pi * beta / 2)
@@ -117,34 +121,3 @@ cdef class ModifiedSLO(cy.Optimizer):
                     self.population[idx].local_solution = n_population[idx].solution.copy()
                     self.population[idx].local_best = cy.duplicate_agent(n_population[idx])
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        local_pos = self.problem.bounds.low + self.problem.bounds.up - solution
-        local_pos = cy.correct_solution(self.problem, local_pos)
-
-        agent = cy.Agent(solution)
-        agent.local_solution = local_pos
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        target = self.population.evaluate_solution(agent.solution)
-        local_best = self.population.evaluate_solution(agent.local_solution)
-        if cy.is_better(target, local_best, self.problem.sense):
-            t1 = agent.local_solution.copy()
-            t2 = agent.solution.copy()
-            agent.update_solution(local_best, t1)
-            agent.local_solution = t2
-            agent.local_best = target
-        else:
-            t1 = agent.solution.copy()
-            t2 = agent.local_solution.copy()
-            agent.update_solution(target, t1)
-            agent.local_solution = t2
-            agent.local_best = local_best
-        return agent

@@ -58,6 +58,8 @@ def openmp_flags():
 
 def get_ext_modules():
     sources = ["clypto/optimizer/**/*.pyx"]
+    # the agent-subclass fixture of tests/optimizer (compiled via the copy protocol)
+    sources.append("tests/optimizer/_agent_subclass.pyx")
     if os.environ.get("CLYPTO_COLLECTION", "1") != "0":
         sources.append("clypto/native/collection/**/*.pyx")
     extensions = cythonize(sources, compiler_directives=COMPILER_DIRECTIVES, quiet=True)

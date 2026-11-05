@@ -8,6 +8,7 @@ cimport clypto.core as cy
 
 from clypto.native.collection.swarm_based.PSO.P_PSO cimport P_PSO
 from clypto.native.collection.swarm_based.PSO._base cimport update_pbest
+from clypto.native.collection.swarm_based.PSO._factory cimport PSOAgents
 
 
 cdef class C_PSO(P_PSO):
@@ -74,6 +75,7 @@ cdef class C_PSO(P_PSO):
         super().__init__(epoch, pop_size, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = PSOAgents(self)
         self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
         self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
         self.w_min = cy.validator(float, w_min, (0, 0.5), "w_min")
@@ -158,25 +160,7 @@ cdef class C_PSO(P_PSO):
         )
         self.dyn_ub = np.min(bound_max, axis=0)
 
-        pop_new_child = self.population.spawn([self.generate_agent() for _ in range(pop_size - self.N_CLS)])
+        pop_new_child = self.population.spawn([self.population.generate_agent() for _ in range(pop_size - self.N_CLS)])
         self.population = self.population.spawn(cy.sort_agents(self.population + pop_new_child, self.problem.sense)[:pop_size])
 
-    def create_agent(self, object solution=None):
-        """A particle with a random initial velocity in ``[v_min, v_max]`` = ± half the search range."""
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        agent = cy.Agent(solution)
-        agent.velocity = self.generator.uniform(self.v_min, self.v_max)
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        update_pbest(agent, agent, self.problem.sense)
-        return agent
-
-    def initialization(self):
-        """Genarate the run's particles (velocity + pbest per agent)."""
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

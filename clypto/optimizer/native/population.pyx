@@ -21,6 +21,7 @@ import numpy as np
 cimport numpy as cnp
 
 from clypto.optimizer.native.agent cimport Agent, duplicate_agent, greedy_agents, sort_agents, better_fitness
+from clypto.optimizer.native.factory cimport AgentFactory
 from clypto.optimizer.native.problem cimport Problem
 from clypto.optimizer.native.utils cimport validator
 
@@ -35,12 +36,26 @@ cdef class Population:
     built from the agents; assigning ``solutions`` writes each row back to its agent.
     """
 
-    def __init__(self, size=0, agents=()):
+    def __init__(self, size=0, agents=(), factory=None):
         self._size = size
         self.threads = 0
         self._minimize = True
         # A list is wrapped, not copied, so code holding the list sees the same agents.
         self.agents = agents if type(agents) is list else list(agents)
+        # The factory owns the per-agent lifecycle (create/generate); algorithms
+        # with extra per-agent state pass their own (cy.population_with_factory(...)).
+        self._factory = factory if factory is not None else AgentFactory()
+
+    @property
+    def factory(self):
+        """The agent factory of this population; assigning one re-binds the problem."""
+        return self._factory
+
+    @factory.setter
+    def factory(self, AgentFactory factory):
+        self._factory = factory
+        if self.problem is not None:
+            self._factory.bind(self.problem, self.generator)
 
     def bind(self, problem, generator):
         """Attach the problem and the seeded generator, and drop the agents of a previous run."""
@@ -48,6 +63,7 @@ cdef class Population:
         self.generator = generator
         self.agents = []
         self._minimize = problem.sense == "min"
+        self._factory.bind(problem, generator)
 
     cpdef Population spawn(self, object agents):
         """A population bound to the same problem holding ``agents`` (a list is wrapped, not copied)."""
@@ -62,6 +78,7 @@ cdef class Population:
         new.generator = self.generator
         new.threads = self.threads
         new._minimize = self._minimize
+        new.factory = self.factory
         return new
 
     cpdef Population snapshot(self):
@@ -89,16 +106,30 @@ cdef class Population:
 
     # -- agents ------------------------------------------------------------------
     def create_agent(self, solution=None):
-        """A new, not yet evaluated agent at ``solution`` (random when ``None``)."""
-        if solution is None:
-            solution = self.problem.generate_solution(True)
-        return Agent(solution)
+        """A new, not yet evaluated agent at ``solution`` (random when ``None``); the factory owns it."""
+        return self._factory.create(solution)
 
     def generate_agent(self, solution=None):
-        """``create_agent`` then evaluate it."""
-        agent = self.create_agent(solution)
-        (<Agent>agent).evaluate(self.problem)
+        """``create_agent`` then evaluate it; the factory owns the per-agent state."""
+        return self._factory.generate(solution)
+
+    cpdef Population fill(self, object starting=None):
+        """Generate (through the factory) the ``size()`` agents, or one per ``starting`` solution."""
+        if starting is not None:
+            self.agents = [self.generate_agent(x) for x in starting]
+        elif len(self.agents) == 0:
+            self.agents = [self.generate_agent() for _ in range(self._size)]
+        return self
+
+    cpdef Agent add(self, object solution=None):
+        """Generate an agent (through the factory), append it and return it."""
+        cdef Agent agent = self.generate_agent(solution)
+        self.agents.append(agent)
         return agent
+
+    cpdef Agent remove_at(self, Py_ssize_t index):
+        """Remove and return ``agents[index]`` (negative indices follow the list rules)."""
+        return self.agents.pop(index)
 
     def generate(self, n=None, starting=None):
         """A population of ``n`` (default ``size()``) generated agents, or one per ``starting`` solution."""
@@ -316,12 +347,23 @@ cdef Py_ssize_t MIN_PARALLEL_BATCH = 32
 
 
 cpdef Population population(object size, object range=[5, 10000], type cls=None):
-    """An unbound population of ``size`` agents (``cla`` is ignored: the population is a single class)."""
+    """An unbound population of ``size`` agents (``cls`` is ignored: the population is a single class)."""
     if cls is not None and cls is not Population:
         raise ValueError(
             "Population is a single concrete class: population(size, cls=...) no longer accepts custom classes."
         )
     return Population(validator(int, size, range, "pop_size"))
+
+
+cpdef Population population_with_factory(object size, AgentFactory factory, object range=[5, 10000]):
+    """``cy.population(size, factory)`` with the agent factory attached.
+
+    Pass both positionally (``cy.population_with_factory(pop_size, MyAgents(self))``) — a
+    ``factory=`` keyword would make Cython fall back to a Python-space call.
+    """
+    cdef Population new = population(size, range)
+    new.factory = factory
+    return new
 
 
 cpdef Population empty_snapshot(Population population):

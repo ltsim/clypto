@@ -6,7 +6,44 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalSSpiderAAgents(AgentFactory):
+    """The agent factory of ``OriginalSSpiderA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        """
+        Overriding method in LegacyOptimizer class
+            + x: The position of s on the web.
+            + train: The fitness of the current position of s
+            + target_vibration: The target vibration of s in the previous iteration.
+            + intensity_vibration: intensity of vibration
+            + movement_vector: The movement that s performed in the previous iteration
+            + dimension_mask: The dimension mask 1 that s employed to guide movement in the previous iteration
+            + The dimension mask is a 0-1 binary vector of length problem size
+            + n_changed: The number of iterations since s has last changed its target vibration. (No need)
+        """
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        target_solution = solution.copy()
+        local_vector = np.zeros(self.problem.n_dims)
+        mask = np.zeros(self.problem.n_dims)
+
+        agent = cy.Agent(solution)
+        agent.target_solution = target_solution
+        agent.local_vector = local_vector
+        agent.mask = mask
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        agent.intensity = np.log(1.0 / (np.abs(agent.fitness) + 10e-10) + 1)
+        return agent
 
 
 cdef class OriginalSSpiderA(cy.Optimizer):
@@ -72,6 +109,7 @@ cdef class OriginalSSpiderA(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size", "r_a", "p_c", "p_m"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalSSpiderAAgents()
         self.r_a = cy.validator(float, r_a, (0, 5.0), "r_a")
         self.p_c = cy.validator(float, p_c, (0, 1.0), "p_c")
         self.p_m = cy.validator(float, p_m, (0, 1.0), "p_m")
@@ -137,36 +175,3 @@ cdef class OriginalSSpiderA(cy.Optimizer):
                 )
                 agent.update_solution(n_population[idx], n_population[idx].solution)
 
-    def create_agent(self, object solution=None):
-        """
-        Overriding method in LegacyOptimizer class
-            + x: The position of s on the web.
-            + train: The fitness of the current position of s
-            + target_vibration: The target vibration of s in the previous iteration.
-            + intensity_vibration: intensity of vibration
-            + movement_vector: The movement that s performed in the previous iteration
-            + dimension_mask: The dimension mask 1 that s employed to guide movement in the previous iteration
-            + The dimension mask is a 0-1 binary vector of length problem size
-            + n_changed: The number of iterations since s has last changed its target vibration. (No need)
-        """
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        target_solution = solution.copy()
-        local_vector = np.zeros(self.problem.n_dims)
-        mask = np.zeros(self.problem.n_dims)
-
-        agent = cy.Agent(solution)
-        agent.target_solution = target_solution
-        agent.local_vector = local_vector
-        agent.mask = mask
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        agent.intensity = np.log(1.0 / (np.abs(agent.fitness) + 10e-10) + 1)
-        return agent

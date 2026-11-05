@@ -5,7 +5,32 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalBFOAgents(AgentFactory):
+    """The agent factory of ``OriginalBFO`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        cost = 0.0
+        interaction = 0.0
+        nutrients = 0.0
+
+        agent = cy.Agent(solution)
+        agent.cost = cost
+        agent.interaction = interaction
+        agent.nutrients = nutrients
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalBFO(cy.Optimizer):
@@ -96,6 +121,7 @@ cdef class OriginalBFO(cy.Optimizer):
         super().__init__(parameters=[ "epoch", "pop_size", "Ci", "Ped", "Nc", "Ns", "d_attract", "w_attract", "h_repels", "w_repels", ], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalBFOAgents()
         self.step_size = self.Ci = cy.validator(int, Ci, (0, 5.0), "Ci")
         self.p_eliminate = self.Ped = cy.validator(float, Ped, (0, 1.0), "Ped")
         self.chem_steps = self.Nc = cy.validator(int, Nc, [2, 100], "Nc")
@@ -154,7 +180,7 @@ cdef class OriginalBFO(cy.Optimizer):
                     unit_vector = delta_i / np.sqrt(np.abs(np.dot(delta_i, delta_i.T)))
                     x = self.population[idx].solution + self.step_size * unit_vector
                     x = cy.correct_solution(self.problem, x)
-                    agent = self.generate_agent(x)
+                    agent = self.population.generate_agent(x)
                     if cy.is_better(agent, self.population[idx], self.problem.sense):
                         self.population[idx] = agent
                         break
@@ -167,27 +193,6 @@ cdef class OriginalBFO(cy.Optimizer):
             ))
             for idc in range(pop_size):
                 if self.generator.random() < self.p_eliminate:
-                    self.population[idc] = self.generate_agent()
+                    self.population[idc] = self.population.generate_agent()
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        cost = 0.0
-        interaction = 0.0
-        nutrients = 0.0
-
-        agent = cy.Agent(solution)
-        agent.cost = cost
-        agent.interaction = interaction
-        agent.nutrients = nutrients
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

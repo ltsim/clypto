@@ -5,7 +5,28 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalCOAAgents(AgentFactory):
+    """The agent factory of ``OriginalCOA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        age = 1
+
+        agent = cy.Agent(solution)
+        agent.age = age
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalCOA(cy.Optimizer):
@@ -62,13 +83,14 @@ cdef class OriginalCOA(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size", "n_coyotes"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalCOAAgents()
         self.n_coyotes = cy.validator(int, n_coyotes, [2, int(self.population.size() / 2)], "n_coyotes")
         self.n_packs = int(pop_size / self.n_coyotes)
 
     def initialization(self):
         pop_size = self.population.size()
         if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(pop_size)])
+            self.population = self.population.spawn([self.population.generate_agent() for _ in range(pop_size)])
         self.pop_group = cy.split_groups(self.population, self.n_packs, self.n_coyotes)
         self.ps = 1.0 / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
@@ -104,7 +126,7 @@ cdef class OriginalCOA(cy.Optimizer):
                 )
                 # Keep the coyotes in the search space (optimization problem constraint)
                 x = cy.correct_solution(self.problem, x)
-                agent = self.create_agent(x)
+                agent = self.population.create_agent(x)
                 agent.age = self.pop_group[p][i].age
                 pop_new.append(agent)
             # Evaluate the new social condition (Eq. 13)
@@ -126,7 +148,7 @@ cdef class OriginalCOA(cy.Optimizer):
             # Eventual noise
             x = self.generator.normal(0, 1) * pup
             x = cy.correct_solution(self.problem, x)
-            agent = self.generate_agent(x)
+            agent = self.population.generate_agent(x)
 
             # Verify if the pup will survive
             packs = cy.sort_agents(self.pop_group[p], self.problem.sense)
@@ -160,17 +182,4 @@ cdef class OriginalCOA(cy.Optimizer):
                 self.pop_group[id_pack][id_coy].age += 1
         self.population = self.population.spawn([agent for pack in self.pop_group for agent in pack])
 
-    def create_agent(self, object solution=None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        age = 1
-
-        agent = cy.Agent(solution)
-        agent.age = age
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
 

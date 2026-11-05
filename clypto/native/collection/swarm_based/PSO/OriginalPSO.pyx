@@ -7,6 +7,7 @@ import numpy as np
 cimport clypto.core as cy
 
 from clypto.native.collection.swarm_based.PSO._base cimport move, update_pbest, update_velocity
+from clypto.native.collection.swarm_based.PSO._factory cimport PSOAgents
 
 
 cdef class OriginalPSO(cy.Optimizer):
@@ -69,6 +70,7 @@ cdef class OriginalPSO(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size", "c1", "c2", "w"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = PSOAgents(self)
         self.c1 = cy.validator(float, c1, (0.0, 5.0), "c1")
         self.c2 = cy.validator(float, c2, (0.0, 5.0), "c2")
         self.w = cy.validator(float, w, (0.0, 1.0), "w")
@@ -98,22 +100,4 @@ cdef class OriginalPSO(cy.Optimizer):
                 agent.update_solution(candidate)
             update_pbest(agent, candidate, self.problem.sense)
 
-    def create_agent(self, object solution=None):
-        """A particle with a random initial velocity in ``[v_min, v_max]`` = ± half the search range."""
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        agent = cy.Agent(solution)
-        agent.velocity = self.generator.uniform(self.v_min, self.v_max)
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        update_pbest(agent, agent, self.problem.sense)
-        return agent
-
-    def initialization(self):
-        """Genarate the run's particles (velocity + pbest per agent)."""
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 

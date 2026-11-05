@@ -5,7 +5,40 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
+
+
+
+
+cdef class OriginalCSOAgents(AgentFactory):
+    """The agent factory of ``OriginalCSO`` (moved off the optimizer)."""
+    cdef public object mixture_ratio
+
+    def __init__(self, mixture_ratio=None):
+        self.mixture_ratio = mixture_ratio
+
+    cdef Agent create(self, object solution=None):
+        """
+        + x: current position of cat
+        + v: vector v of cat (same amount of dimension as x)
+        + flag: the stage of cat, seeking (looking/finding around) or tracing (chasing/catching) => False: seeking mode , True: tracing mode
+        """
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        flag = True if self.generator.uniform() < self.mixture_ratio else False
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.flag = flag
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalCSO(cy.Optimizer):
@@ -103,10 +136,11 @@ cdef class OriginalCSO(cy.Optimizer):
         self.w_min = cy.validator(float, w_min, [0.1, 0.5], "w_min")
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
         self.selected_strategy = cy.validator(int, selected_strategy, [0, 4], "selected_strategy")
+        self.population.factory = OriginalCSOAgents(self.mixture_ratio)
 
     def seeking_mode__(self, cat):
         candidate_cats = []
-        clone_cats = self.population.spawn([self.generate_agent() for _ in range(self.smp)])
+        clone_cats = self.population.spawn([self.population.generate_agent() for _ in range(self.smp)])
         if self.spc:
             candidate_cats.append(cy.duplicate_agent(cat))
             clone_cats = [cy.duplicate_agent(cat) for _ in range(self.smp - 1)]
@@ -123,7 +157,7 @@ cdef class OriginalCSO(cy.Optimizer):
             )
             x[idx] = clone.solution[idx]
             x = cy.correct_solution(self.problem, x)
-            agent = self.create_agent(x)
+            agent = self.population.create_agent(x)
             agent.velocity = clone.velocity
             agent.flag = clone.flag
             candidate_cats.append(agent)
@@ -180,28 +214,4 @@ cdef class OriginalCSO(cy.Optimizer):
                 n_population[-1].evaluate(self.problem)
         self.population = self.population.spawn(self.population.evaluate(n_population, self.mode))
 
-    def create_agent(self, object solution=None):
-        """
-        + x: current position of cat
-        + v: vector v of cat (same amount of dimension as x)
-        + flag: the stage of cat, seeking (looking/finding around) or tracing (chasing/catching) => False: seeking mode , True: tracing mode
-        """
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        flag = True if self.generator.uniform() < self.mixture_ratio else False
-
-        agent = cy.Agent(solution)
-        agent.velocity = velocity
-        agent.flag = flag
-        return agent
-
-    def generate_agent(self, object solution=None):
-        agent = self.create_agent(solution)
-        (<cy.Agent>agent).evaluate(self.problem)
-        return agent
-
-    def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 
