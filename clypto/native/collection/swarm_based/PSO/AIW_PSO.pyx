@@ -88,7 +88,7 @@ cdef class AIW_PSO(cy.Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        current_best = cy.duplicate_agent(self.population.sort()[0])
+        current_best = cy.duplicate_agent(self.population.best)
         cdef cy.Agent agent
         # sequential on purpose: g_best is one of the particles, and update_solution moves it in place,
         # so the particles after it already follow the new g_best (a batch step would change results)

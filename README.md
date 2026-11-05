@@ -209,7 +209,7 @@ cdef class MyClassicOptimizer(cy.Optimizer):
 
 An agent holds its `solution` and a read-only `fitness`/`objectives`; copies are
 static (`cy.duplicate_agent`), bounds repair is a function (`cy.correct_solution`)
-and `mode="sequential" | "swarm" | "parallel"` picks how a batch is evaluated
+and `mode="sequential" | "batch" | "parallel"` picks how a batch is evaluated
 ([batch and parallel evaluation](https://ltsim.github.io/clypto/parallel-evaluation.html)).
 See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration.html).
 

@@ -107,7 +107,7 @@ cdef class HI_WOA(cy.Optimizer):
         self.population = self.population.greedy(self.population.evaluate(n_population, self.mode), self.mode)
 
         ## Feedback Mechanism
-        current_best = cy.duplicate_agent(self.population.sort()[0])
+        current_best = cy.duplicate_agent(self.population.best)
         if current_best.fitness == self.g_best.fitness:
             self.dyn_feedback_count += 1
         else:

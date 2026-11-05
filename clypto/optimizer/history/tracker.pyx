@@ -29,11 +29,6 @@ Per-epoch callbacks are not part of the tracker — pass them to
 import typing
 
 import numpy as np
-cimport numpy as cnp
-
-from clypto.optimizer.native.population cimport Population
-
-cnp.import_array()
 
 METRIC_NAMES = (
     "global_best_fit",
@@ -286,7 +281,7 @@ class Tracker:
         """Take the population's agents, buffer the metrics, and (when capturing) the frames."""
         if not self.__recording:
             return
-        agents = pop.agents if isinstance(pop, Population) else list(pop)
+        agents = list(pop.agents) if hasattr(pop, "agents") else list(pop)
         n_agents = len(agents)
         if n_agents == 0:
             return

@@ -115,7 +115,7 @@ cdef class AugmentedAEO(cy.Optimizer):
             pop_new = self.population.evaluate(pop_new, self.mode)
             self.population[:-1] = cy.greedy_agents(self.population[:-1], pop_new, self.problem.sense)
         ## find current best used in decomposition
-        best = cy.duplicate_agent(self.population.sort()[0])
+        best = cy.duplicate_agent(self.population.best)
         ## Decomposition
         ### Eq. 10, 11, 12, 9   idx, pop, g_best, local_best
         pop_child = []
