@@ -82,7 +82,7 @@ cdef class OriginalBRO(DevBRO):
                     - np.minimum(self.population[dam].solution, self.g_best.solution)
                 ) + np.maximum(self.population[dam].solution, self.g_best.solution)
                 x = cy.correct_solution(self.problem, x)
-                child = self.population.generate_agent(x)
+                child = self.generate_agent(x)
                 child.damage = self.population[dam].damage + 1
                 self.population[dam] = child
                 self.population[vic].damage = 0
@@ -90,7 +90,7 @@ cdef class OriginalBRO(DevBRO):
                 x = self.generator.uniform(
                     self.lb_updated, self.ub_updated
                 )
-                child = self.population.generate_agent(x)
+                child = self.generate_agent(x)
                 self.population[dam] = child
         if epoch >= self.dyn_delta:
             pos_list = np.array(

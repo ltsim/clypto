@@ -8,18 +8,24 @@ steps (``check_problem``, ``before_initialization``, ``after_initialization``,
 ``after_evolve``, which ratchets ``g_best`` to the best ever seen).
 
 ``mode`` picks how a batch of agents is evaluated: ``"sequential"`` (default),
-``"swarm"`` (one batch, one call per agent) or ``"parallel"`` (one batch on
-OpenMP threads when the problem has a nogil evaluator).
+``"batch"`` (the whole batch in one call, one line of the classic loop kept) or
+``"parallel"`` (the batch on OpenMP threads when the problem has a nogil
+evaluator; the team is fixed once per ``solve`` via ``threads``). ``"swarm"``
+remains an alias of ``"batch"``.
 """
 import random
 import time
 
 import numpy as np
 
+from cython.parallel cimport prange
+
 from clypto.optimizer.history import Tracker
 from clypto.optimizer.termination import Termination
 
-cdef tuple MODES = ("sequential", "swarm", "parallel")
+cdef tuple MODES = ("sequential", "batch", "parallel")
+
+from openmp cimport omp_set_num_threads, omp_get_max_threads
 
 
 cdef class NativeOptimizer:
@@ -34,8 +40,10 @@ cdef class NativeOptimizer:
         self.rng = None
         if mode is None:
             mode = "sequential"
+        if mode == "swarm":
+            mode = "batch"
         if mode not in MODES:
-            raise ValueError(f"mode must be one of {MODES}, got {mode!r}.")
+            raise ValueError(f"mode must be one of {MODES} (alias: 'swarm'), got {mode!r}.")
         self.mode = mode
         self.epoch = 0
         self.sort_flag = sort_flag
@@ -109,10 +117,11 @@ cdef class NativeOptimizer:
         seed=None,
         debug=False,
         track_population=False,
+        threads=0,
         before_iteration=None,
         after_iteration=None,
     ):
-        cdef int epoch, repeated_times = 0
+        cdef int epoch, repeated_times = 0, n_threads, previous_threads
         cdef double time_epoch = 0.0
         cdef bint tracking = debug or track_population
         last_gbest_fit = None
@@ -129,6 +138,9 @@ cdef class NativeOptimizer:
                     "`cdef void evolve(self, int epoch)` (write a Python optimizer with @cy.optimizer)."
                 )
         self.check_problem(problem, seed)
+        if type(threads) is not int or threads < 0:
+            raise ValueError("threads must be a non-negative int (0 lets OpenMP decide).")
+        self.population.threads = threads
         self.problem.n_evals = 0
 
         if termination is not None:
@@ -153,7 +165,15 @@ cdef class NativeOptimizer:
                 capture_population=track_population,
             )
 
+        # OpenMP: the team is fixed once for this run; every parallel region reuses it.
+        previous_threads = omp_get_max_threads()
+        n_threads = threads if threads > 0 else previous_threads
+        omp_set_num_threads(n_threads)
         try:
+            if self.mode == "parallel" and n_threads > 1:
+                with nogil:
+                    for i in prange(n_threads, schedule="static"):
+                        pass  # warm-up: the team exists after this region
             for epoch in range(1, self.epoch + 1):
                 time_epoch = time.perf_counter()
 
@@ -187,6 +207,7 @@ cdef class NativeOptimizer:
         finally:
             # Close the recording even when a hook or evolve() raises, so the
             # tracker never stays mid-run.
+            omp_set_num_threads(previous_threads)
             if tracking:
                 self.tracker.finalize()
 

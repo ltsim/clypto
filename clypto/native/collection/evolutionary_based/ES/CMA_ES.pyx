@@ -8,31 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class CMA_ESAgent(cy.Agent):
-    cdef public object step
-
-    def __init__(self, solution=None, objectives=None, weights=None, step=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.step = step
-
-    cdef cy.Agent clone(self):
-        cdef CMA_ESAgent new = <CMA_ESAgent>cy.Agent.clone(self)
-        new.step = self.step
-        return new
-
-
-cdef class CMA_ESPopulation(cy.Population):
-    """Agents of :class:`CMA_ES`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        step = self.generator.multivariate_normal(
-            np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
-        )
-        return CMA_ESAgent(solution=solution, step=step)
-
-
 cdef class CMA_ES(cy.Optimizer):
     """
     The original version of: Covariance Matrix Adaptation Evolution Strategy (CMA-ES)
@@ -74,7 +49,7 @@ cdef class CMA_ES(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=CMA_ESPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
 
     def before_main_loop(self):
         pop_size = self.population.size()
@@ -133,7 +108,7 @@ cdef class CMA_ES(cy.Optimizer):
         for idx, agent in enumerate(self.population.toarray()):
             x = self.x_mean + self.sigma * agent.step
             x = cy.correct_solution(self.problem, x)
-            child = self.population.create_agent(x)
+            child = self.create_agent(x)
             n_population.append(child)
         n_population = self.population.evaluate(n_population, self.mode)
         self.population = self.population.spawn(cy.sort_agents(n_population, self.problem.sense))
@@ -180,3 +155,24 @@ cdef class CMA_ES(cy.Optimizer):
         if np.any(np.diag(E) < 0):
             E[E < 0] = 0
             self.C = V * E / V
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        step = self.generator.multivariate_normal(
+            np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
+        )
+
+        agent = cy.Agent(solution)
+        agent.step = step
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

@@ -8,34 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalESAgent(cy.Agent):
-    cdef public object strategy
-
-    def __init__(self, solution=None, objectives=None, weights=None, strategy=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.strategy = strategy
-
-    cdef cy.Agent clone(self):
-        cdef OriginalESAgent new = <OriginalESAgent>cy.Agent.clone(self)
-        new.strategy = self.strategy
-        return new
-
-
-cdef class OriginalESPopulation(cy.Population):
-    """Agents of :class:`OriginalES`."""
-    cdef public object distance
-
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<OriginalESPopulation>new).distance = self.distance
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        strategy = self.generator.uniform(0, self.distance)
-        return OriginalESAgent(solution=solution, strategy=strategy)
-
-
 cdef class OriginalES(cy.Optimizer):
     """
     The original version of: Evolution Strategies (ES)
@@ -85,13 +57,12 @@ cdef class OriginalES(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "lamda"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalESPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.lamda = cy.validator(float, lamda, (0, 1.0), "lamda")
         self.n_child = int(self.lamda * self.population.size())
 
     def initialize_variables(self):
         self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
-        self.population.distance = self.distance
 
     cdef void evolve(self, int epoch):
         """
@@ -113,9 +84,28 @@ cdef class OriginalES(cy.Optimizer):
                 tau_p * self.generator.normal(0, 1.0, self.problem.n_dims)
                 + tau * self.generator.normal(0, 1.0, self.problem.n_dims)
             )
-            agent = self.population.create_agent(x)
+            agent = self.create_agent(x)
             agent.solution = x
             agent.strategy = strategy
             child.append(agent)
         child = self.population.evaluate(child, self.mode)
         self.population = self.population.spawn(cy.sort_agents(child + self.population, self.problem.sense)[:pop_size])
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        strategy = self.generator.uniform(0, self.distance)
+
+        agent = cy.Agent(solution)
+        agent.strategy = strategy
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

@@ -8,43 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalCSOAgent(cy.Agent):
-    cdef public object velocity
-    cdef public object flag
-
-    def __init__(self, solution=None, objectives=None, weights=None, velocity=None, flag=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.velocity = velocity
-        self.flag = flag
-
-    cdef cy.Agent clone(self):
-        cdef OriginalCSOAgent new = <OriginalCSOAgent>cy.Agent.clone(self)
-        new.velocity = self.velocity
-        new.flag = self.flag
-        return new
-
-
-cdef class OriginalCSOPopulation(cy.Population):
-    """Agents of :class:`OriginalCSO`."""
-    cdef public object mixture_ratio
-
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<OriginalCSOPopulation>new).mixture_ratio = self.mixture_ratio
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        """
-        + x: current position of cat
-        + v: vector v of cat (same amount of dimension as x)
-        + flag: the stage of cat, seeking (looking/finding around) or tracing (chasing/catching) => False: seeking mode , True: tracing mode
-        """
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        flag = True if self.generator.uniform() < self.mixture_ratio else False
-        return OriginalCSOAgent(solution=solution, velocity=velocity, flag=flag)
-
-
 cdef class OriginalCSO(cy.Optimizer):
     """
     The original version of: Cat Swarm Optimization (CSO)
@@ -130,10 +93,9 @@ cdef class OriginalCSO(cy.Optimizer):
         """
         super().__init__(parameters=[ "epoch", "pop_size", "mixture_ratio", "smp", "spc", "cdc", "srd", "c1", "w_min", "w_max", "selected_strategy", ], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalCSOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.mixture_ratio = cy.validator(float, mixture_ratio, (0, 1.0), "mixture_ratio")
         self.smp = cy.validator(int, smp, [2, 10000], "smp")
-        self.population.mixture_ratio = self.mixture_ratio
         self.spc = cy.validator(bool, spc, (True, False), "spc")
         self.cdc = cy.validator(float, cdc, (0, 1.0), "cdc")
         self.srd = cy.validator(float, srd, (0, 1.0), "srd")
@@ -144,7 +106,7 @@ cdef class OriginalCSO(cy.Optimizer):
 
     def seeking_mode__(self, cat):
         candidate_cats = []
-        clone_cats = self.population.generate(self.smp)
+        clone_cats = self.population.spawn([self.generate_agent() for _ in range(self.smp)])
         if self.spc:
             candidate_cats.append(cy.duplicate_agent(cat))
             clone_cats = [cy.duplicate_agent(cat) for _ in range(self.smp - 1)]
@@ -161,7 +123,7 @@ cdef class OriginalCSO(cy.Optimizer):
             )
             x[idx] = clone.solution[idx]
             x = cy.correct_solution(self.problem, x)
-            agent = self.population.create_agent(x)
+            agent = self.create_agent(x)
             agent.velocity = clone.velocity
             agent.flag = clone.flag
             candidate_cats.append(agent)
@@ -217,3 +179,29 @@ cdef class OriginalCSO(cy.Optimizer):
             if self.mode == "sequential":
                 n_population[-1].evaluate(self.problem)
         self.population = self.population.spawn(self.population.evaluate(n_population, self.mode))
+
+    def create_agent(self, object solution=None):
+        """
+        + x: current position of cat
+        + v: vector v of cat (same amount of dimension as x)
+        + flag: the stage of cat, seeking (looking/finding around) or tracing (chasing/catching) => False: seeking mode , True: tracing mode
+        """
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        flag = True if self.generator.uniform() < self.mixture_ratio else False
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.flag = flag
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

@@ -8,34 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalTWOAgent(cy.Agent):
-    cdef public object weight
-
-    def __init__(self, solution=None, objectives=None, weights=None, weight=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.weight = weight
-
-    cdef cy.Agent clone(self):
-        cdef OriginalTWOAgent new = <OriginalTWOAgent>cy.Agent.clone(self)
-        new.weight = self.weight
-        return new
-
-
-cdef class OriginalTWOPopulation(cy.Population):
-    """Agents of :class:`OriginalTWO`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        """
-        Generate new agent with solution
-
-        Args:
-            solution (np.ndarray): The solution
-        """
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        return OriginalTWOAgent(solution=solution, weight=0.0)
-
-
 cdef class OriginalTWO(cy.Optimizer):
     """
     The original version of: Tug of War Optimization (TWO)
@@ -78,7 +50,7 @@ cdef class OriginalTWO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalTWOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.muy_s = 1
         self.muy_k = 1
         self.delta_t = 1
@@ -88,7 +60,7 @@ cdef class OriginalTWO(cy.Optimizer):
     def initialization(self):
         pop_size = self.population.size()
         if len(self.population) == 0:
-            self.population = self.population.generate(pop_size)
+            self.population = self.population.spawn([self.generate_agent() for _ in range(pop_size)])
         self.population = self.population.spawn(self.update_weight__(self.population))
 
     def update_weight__(self, teams):
@@ -166,3 +138,23 @@ cdef class OriginalTWO(cy.Optimizer):
             pop_new = self.population.evaluate(pop_new, self.mode)
             self.population = self.population.greedy(pop_new)
         self.population = self.population.spawn(self.update_weight__(self.population))
+
+    def create_agent(self, object solution=None):
+        """
+        Generate new agent with solution
+
+        Args:
+            solution (np.ndarray): The solution
+        """
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+
+        agent = cy.Agent(solution)
+        agent.weight = 0.0
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+

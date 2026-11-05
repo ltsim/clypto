@@ -7,51 +7,6 @@ import numpy as np
 cimport clypto.core as cy
 
 
-cdef class SAP_DEAgent(cy.Agent):
-    cdef public object crossover
-    cdef public object mutation
-    cdef public object pop_size
-
-    def __init__(self, solution=None, objectives=None, weights=None, crossover=None, mutation=None, pop_size=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.crossover = crossover
-        self.mutation = mutation
-        self.pop_size = pop_size
-
-    cdef cy.Agent clone(self):
-        cdef SAP_DEAgent new = <SAP_DEAgent>cy.Agent.clone(self)
-        new.crossover = self.crossover
-        new.mutation = self.mutation
-        new.pop_size = self.pop_size
-        return new
-
-
-cdef class SAP_DEPopulation(cy.Population):
-    """Agents of :class:`SAP_DE`: each carries its own crossover/mutation rates and population size."""
-    cdef public object branch
-
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<SAP_DEPopulation>new).branch = self.branch
-
-    def create_agent(self, solution: np.ndarray | None = None):
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        crossover_rate = self.generator.uniform(0, 1)
-        mutation_rate = self.generator.uniform(0, 1)
-        if self.branch == "ABS":
-            pop_size = int(10 * self.problem.n_dims + self.generator.normal(0, 1))
-        else:  # elif self.branch == "REL":
-            pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
-
-        return SAP_DEAgent(
-            solution=solution,
-            crossover=crossover_rate,
-            mutation=mutation_rate,
-            pop_size=pop_size,
-        )
-
-
 cdef class SAP_DE(cy.Optimizer):
     """
     The original version of: Differential Evolution with Self-Adaptive Populations (SAP_DE)
@@ -103,9 +58,8 @@ cdef class SAP_DE(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "branch"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=SAP_DEPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.branch = cy.validator(str, branch, ["ABS", "REL"], "branch")
-        self.population.branch = self.branch
         self.fixed_pop_size = self.population.size()
 
     def edit_to_range__(self, var=None, lower=0, upper=1, func_value=None):
@@ -154,7 +108,7 @@ cdef class SAP_DE(cy.Optimizer):
                 x = cy.correct_solution(self.problem, x)
                 cr_new = self.edit_to_range__(cr_new, 0, 1, self.generator.random)
                 mr_new = self.edit_to_range__(mr_new, 0, 1, self.generator.random)
-                agent = self.population.create_agent(x)
+                agent = self.create_agent(x)
                 pop.append(agent)
                 if self.mode == "sequential":
                     agent.evaluate(self.problem)
@@ -177,7 +131,7 @@ cdef class SAP_DE(cy.Optimizer):
                         0, self.population[idxs[0]].mutation
                     )
                 x = cy.correct_solution(self.problem, x)
-                agent = self.population.create_agent(x)
+                agent = self.create_agent(x)
                 pop.append(agent)
                 if self.mode == "sequential":
                     agent.evaluate(self.problem)
@@ -202,3 +156,30 @@ cdef class SAP_DE(cy.Optimizer):
             pop_sorted = cy.sort_agents(pop, self.problem.sense)
             self.population = self.population.spawn(pop + pop_sorted[: m_new - self.population.size()])
         self.population.resize(len(self.population))
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        crossover_rate = self.generator.uniform(0, 1)
+        mutation_rate = self.generator.uniform(0, 1)
+        if self.branch == "ABS":
+            pop_size = int(10 * self.problem.n_dims + self.generator.normal(0, 1))
+        else:  # elif self.branch == "REL":
+            pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
+
+
+        agent = cy.Agent(solution)
+        agent.crossover = crossover_rate
+        agent.mutation = mutation_rate
+        agent.pop_size = pop_size
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

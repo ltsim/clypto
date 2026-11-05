@@ -64,11 +64,16 @@ cdef class LegacyOptimizer(NativeOptimizer):
             raise ValueError(
                 "Invalid starting_solutions. It should be a list of positions or 2D matrix of positions only."
             )
-        self.population = self.population.generate(starting=starting_solutions)
+        self.population = self.population.spawn([self.generate_agent(x) for x in starting_solutions])
+
+    def generate_agent(self, object solution=None):
+        """One initial agent, evaluated. Stateful algorithms override it to lay the per-agent
+        state that used to live on their agent subclasses."""
+        return self.population.generate_agent(solution)
 
     def initialization(self):
         if len(self.population) == 0:
-            self.population = self.population.generate()
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
 
     cdef void after_initialization(self):
         # The initial population is sorted or not depending on the algorithm;

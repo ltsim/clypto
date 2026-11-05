@@ -8,38 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalBSAAgent(cy.Agent):
-    cdef public object local_solution
-    cdef public object local_best
-
-    def __init__(self, solution=None, objectives=None, weights=None, local_solution=None, local_best=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.local_solution = local_solution
-        self.local_best = local_best
-
-    cdef cy.Agent clone(self):
-        cdef OriginalBSAAgent new = <OriginalBSAAgent>cy.Agent.clone(self)
-        new.local_solution = self.local_solution
-        new.local_best = self.local_best
-        return new
-
-
-cdef class OriginalBSAPopulation(cy.Population):
-    """Agents of :class:`OriginalBSA`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        local_position = solution.copy()
-        return OriginalBSAAgent(solution=solution, local_solution=local_position)
-
-    def generate_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        agent = self.create_agent(solution)
-        agent.evaluate(self.problem)
-        agent.local_best = cy.duplicate_agent(agent)
-        return agent
-
-
 cdef class OriginalBSA(cy.Optimizer):
     """
     The original version of: Bird Swarm Algorithm (BSA)
@@ -115,7 +83,7 @@ cdef class OriginalBSA(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "ff", "pff", "c1", "c2", "a1", "a2", "fc"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalBSAPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.ff = cy.validator(int, ff, [2, int(self.population.size() / 2)], "ff")
         self.pff = cy.validator(float, pff, (0, 1.0), "pff")
         self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
@@ -268,3 +236,22 @@ cdef class OriginalBSA(cy.Optimizer):
                 for idx in range(0, pop_size):
                     pop_new[idx].evaluate(self.problem)
             self.population = self.population.greedy(pop_new)
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        local_position = solution.copy()
+
+        agent = cy.Agent(solution)
+        agent.local_solution = local_position
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        agent.local_best = cy.duplicate_agent(agent)
+        return agent

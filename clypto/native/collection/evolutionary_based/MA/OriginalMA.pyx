@@ -8,39 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalMAAgent(cy.Agent):
-    cdef public object bitstring
-
-    def __init__(self, solution=None, objectives=None, weights=None, bitstring=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.bitstring = bitstring
-
-    cdef cy.Agent clone(self):
-        cdef OriginalMAAgent new = <OriginalMAAgent>cy.Agent.clone(self)
-        new.bitstring = self.bitstring
-        return new
-
-
-cdef class OriginalMAPopulation(cy.Population):
-    """Agents of :class:`OriginalMA`."""
-    cdef public object bits_total
-
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<OriginalMAPopulation>new).bits_total = self.bits_total
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        bitstring = "".join(
-            [
-                "1" if self.generator.uniform() < 0.5 else "0"
-                for _ in range(0, self.bits_total)
-            ]
-        )
-        return OriginalMAAgent(solution=solution, bitstring=bitstring)
-
-
 cdef class OriginalMA(cy.Optimizer):
     """
     The original version of: Memetic Algorithm (MA)
@@ -110,7 +77,7 @@ cdef class OriginalMA(cy.Optimizer):
         """
         super().__init__(parameters=[ "epoch", "pop_size", "pc", "pm", "p_local", "max_local_gens", "bits_per_param", ], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalMAPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.pc = cy.validator(float, pc, (0, 1.0), "pc")
         self.pm = cy.validator(float, pm, (0, 1.0), "pm")
         self.p_local = cy.validator(float, p_local, (0, 1.0), "p_local")
@@ -119,7 +86,6 @@ cdef class OriginalMA(cy.Optimizer):
 
     def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
-        self.population.bits_total = self.bits_total
 
     def decode__(self, bitstring: str | None = None) -> np.ndarray:
         """
@@ -171,7 +137,7 @@ cdef class OriginalMA(cy.Optimizer):
             bitstring_new = self.point_mutation__(child.bitstring)
             x = self.decode__(bitstring_new)
             x = cy.correct_solution(self.problem, x)
-            agent = self.population.create_agent(x)
+            agent = self.create_agent(x)
             agent.solution = x
             agent.bitstring = bitstring_new
             list_local.append(agent)
@@ -189,7 +155,7 @@ cdef class OriginalMA(cy.Optimizer):
         bitstring_new = self.point_mutation__(bitstring_new)
         x = self.decode__(bitstring_new)
         x = cy.correct_solution(self.problem, x)
-        agent = self.population.generate_agent(x)
+        agent = self.generate_agent(x)
         agent.bitstring = bitstring_new
         return agent
 
@@ -216,7 +182,7 @@ cdef class OriginalMA(cy.Optimizer):
             bitstring_new = self.point_mutation__(bitstring_new)
             x = self.decode__(bitstring_new)
             x = cy.correct_solution(self.problem, x)
-            agent = self.population.create_agent(x)
+            agent = self.create_agent(x)
             agent.bitstring = bitstring_new
             pop.append(agent)
             if self.mode == "sequential":
@@ -226,3 +192,27 @@ cdef class OriginalMA(cy.Optimizer):
         for idx, agent in enumerate(self.population.toarray()):
             if self.generator.random() < self.p_local:
                 self.population[idx] = self.bits_climber__(pop[idx])
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        bitstring = "".join(
+            [
+                "1" if self.generator.uniform() < 0.5 else "0"
+                for _ in range(0, self.bits_total)
+            ]
+        )
+
+        agent = cy.Agent(solution)
+        agent.bitstring = bitstring
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

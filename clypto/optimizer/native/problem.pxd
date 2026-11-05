@@ -15,4 +15,4 @@ cdef class Problem:
     cpdef object correct_solution(self, object x)
     cpdef object evaluate_solution(self, object solution)
     cpdef object fitness(self, object objectives)
-    cpdef tuple evaluate(self, object X, bint parallel=*)
+    cpdef tuple evaluate(self, object X, bint parallel=*, int threads=*)

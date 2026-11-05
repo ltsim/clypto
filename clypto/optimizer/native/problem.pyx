@@ -124,21 +124,28 @@ cdef class Problem:
             return objectives[:, 0] * fw[0]
         return np.array([np.dot(fw, objectives[i]) for i in range(k)])
 
-    cpdef tuple evaluate(self, object X, bint parallel=False):
+    cpdef tuple evaluate(self, object X, bint parallel=False, int threads=0):
         """``(fitness, objectives)`` of every row of ``X``: ``(k,)`` and ``(k, n_objs)``.
 
-        ``parallel=True`` with a nogil ``evaluator`` (single objective) runs the rows
-        on OpenMP threads; otherwise ``obj_func`` is called once per row, or once
-        for the whole matrix when the problem is ``vectorized``.
+        ``parallel=True`` with a nogil ``evaluator`` runs the rows on the OpenMP team
+        fixed by the engine's ``solve`` (``threads`` 0 lets OpenMP decide); otherwise
+        ``obj_func`` is called once per row, or once for the whole matrix when the
+        problem is ``vectorized``.
         """
         cdef _NogilEvaluator evaluator
         cdef double[:, ::1] Xv
         cdef double[:, ::1] Ov
-        cdef Py_ssize_t i, k = X.shape[0], d
-        if parallel and self.evaluator is not None and self.n_objs == 1:
+        cdef Py_ssize_t i, k = X.shape[0], d, m = self.n_objs
+        if threads < 0:
+            raise ValueError("threads must be >= 0.")
+        if parallel and self.evaluator is not None:
             evaluator = <_NogilEvaluator>self.evaluator
+            if evaluator._n_objs != m:
+                raise ValueError(
+                    f"`evaluator` produces {evaluator._n_objs} objectives, but the problem has {m}."
+                )
             Xv = np.ascontiguousarray(X, dtype=np.float64)
-            O = np.empty((k, 1))
+            O = np.empty((k, m))
             Ov = O
             d = Xv.shape[1]
             with nogil:

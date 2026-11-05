@@ -6,7 +6,7 @@
 import numpy as np
 cimport clypto.core as cy
 
-from clypto.native.collection.swarm_based.PSO._base cimport PSOPopulation
+from clypto.native.collection.swarm_based.PSO._base cimport update_pbest
 
 
 cdef class CL_PSO(cy.Optimizer):
@@ -43,6 +43,8 @@ cdef class CL_PSO(cy.Optimizer):
     [1] Liang, J.J., Qin, A.K., Suganthan, P.N. and Baskar, S., 2006. Comprehensive learning particle swarm optimizer
     for global optimization of multimodal functions. IEEE transactions on evolutionary computation, 10(3), pp.281-295.
     """
+    cdef public object v_max
+    cdef public object v_min
 
     cdef public double c_local
     cdef public int max_flag
@@ -70,7 +72,7 @@ cdef class CL_PSO(cy.Optimizer):
         """
         super().__init__(**kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=PSOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.c_local = cy.validator(float, c_local, (0, 5.0), "c_local")
         self.w_min = cy.validator(float, w_min, (0, 0.5), "w_min")
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
@@ -128,13 +130,13 @@ cdef class CL_PSO(cy.Optimizer):
             vec_new = np.clip(vec_new, self.v_min, self.v_max)
             x = self.population[idx].solution + vec_new
             x = cy.correct_solution(self.problem, x)
-            agent = self.population.create_agent(x)
+            agent = self.create_agent(x)
             n_population.append(agent)
             if self.mode == "sequential":
                 agent.evaluate(self.problem)
-                agent.update_pbest(agent, self.problem.sense)
+                update_pbest(agent, agent, self.problem.sense)
                 self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
-                if self.population[idx].update_pbest(agent, self.problem.sense):
+                if update_pbest(self.population[idx], agent, self.problem.sense):
                     self.flags[idx] = 0
                 else:
                     self.flags[idx] += 1
@@ -153,3 +155,23 @@ cdef class CL_PSO(cy.Optimizer):
                     if self.flags[idx] >= self.max_flag:
                         self.flags[idx] = 0
             self.population = self.population.spawn(pop_child)
+
+    def create_agent(self, object solution=None):
+        """A particle with a random initial velocity in ``[v_min, v_max]`` = ± half the search range."""
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        agent = cy.Agent(solution)
+        agent.velocity = self.generator.uniform(self.v_min, self.v_max)
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        update_pbest(agent, agent, self.problem.sense)
+        return agent
+
+    def initialization(self):
+        """Genarate the run's particles (velocity + pbest per agent)."""
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

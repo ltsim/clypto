@@ -9,29 +9,6 @@ cimport clypto.core as cy
 
 
 
-cdef class DevBROAgent(cy.Agent):
-    cdef public object damage
-
-    def __init__(self, solution=None, objectives=None, weights=None, damage=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.damage = damage
-
-    cdef cy.Agent clone(self):
-        cdef DevBROAgent new = <DevBROAgent>cy.Agent.clone(self)
-        new.damage = self.damage
-        return new
-
-
-cdef class DevBROPopulation(cy.Population):
-    """Agents of :class:`DevBRO`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        damage = 0
-        return DevBROAgent(solution=solution, damage=damage)
-
-
 cdef class DevBRO(cy.Optimizer):
     """
     The developed version: Battle Royale Optimization (BRO)
@@ -77,7 +54,7 @@ cdef class DevBRO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "threshold"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=DevBROPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.threshold = cy.validator(float, threshold, [1, 10], "threshold")
 
     def initialize_variables(self):
@@ -122,7 +99,7 @@ cdef class DevBRO(cy.Optimizer):
                     np.array([agent.solution, self.g_best.solution]), axis=0
                 )
                 x = cy.correct_solution(self.problem, x)
-                child = self.population.generate_agent(x)
+                child = self.generate_agent(x)
                 dam_new = (
                     agent.damage - 1
                 )  ## Substract damaged hurt -1 to go next battle
@@ -144,7 +121,7 @@ cdef class DevBRO(cy.Optimizer):
                     )
                     dam_new = 0
                 x = cy.correct_solution(self.problem, x)
-                child = self.population.generate_agent(x)
+                child = self.generate_agent(x)
                 child.damage = dam_new
                 self.population[jdx] = child
             else:
@@ -155,7 +132,7 @@ cdef class DevBRO(cy.Optimizer):
                     self.g_best.solution - self.population[jdx].solution
                 )
                 x = cy.correct_solution(self.problem, x)
-                child = self.population.generate_agent(x)
+                child = self.generate_agent(x)
                 child.damage = 0
                 self.population[jdx] = child
         if epoch >= self.dyn_delta:  # max_epoch = 1000 -> delta = 300, 450, >500,....
@@ -172,3 +149,22 @@ cdef class DevBRO(cy.Optimizer):
                 ub, self.lb_updated, self.ub_updated
             )
             self.dyn_delta += np.round(self.dyn_delta / 2)
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        damage = 0
+
+        agent = cy.Agent(solution)
+        agent.damage = damage
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

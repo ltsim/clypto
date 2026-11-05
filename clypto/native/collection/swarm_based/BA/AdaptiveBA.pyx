@@ -8,53 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class AdaptiveBAAgent(cy.Agent):
-    cdef public object velocity
-    cdef public object loudness
-    cdef public object pulse_rate
-
-    def __init__(self, solution=None, objectives=None, weights=None, velocity=None, loudness=None, pulse_rate=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.velocity = velocity
-        self.loudness = loudness
-        self.pulse_rate = pulse_rate
-
-    cdef cy.Agent clone(self):
-        cdef AdaptiveBAAgent new = <AdaptiveBAAgent>cy.Agent.clone(self)
-        new.velocity = self.velocity
-        new.loudness = self.loudness
-        new.pulse_rate = self.pulse_rate
-        return new
-
-
-cdef class AdaptiveBAPopulation(cy.Population):
-    """Agents of :class:`AdaptiveBA`."""
-    cdef public object loudness_max
-    cdef public object loudness_min
-    cdef public object pr_max
-    cdef public object pr_min
-
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<AdaptiveBAPopulation>new).loudness_max = self.loudness_max
-        (<AdaptiveBAPopulation>new).loudness_min = self.loudness_min
-        (<AdaptiveBAPopulation>new).pr_max = self.pr_max
-        (<AdaptiveBAPopulation>new).pr_min = self.pr_min
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
-        pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
-        return AdaptiveBAAgent(
-            solution=solution,
-            velocity=velocity,
-            loudness=loudness,
-            pulse_rate=pulse_rate,
-        )
-
-
 cdef class AdaptiveBA(cy.Optimizer):
     """
     The original version of: Adaptive Bat-inspired Algorithm (ABA)
@@ -128,16 +81,12 @@ cdef class AdaptiveBA(cy.Optimizer):
         """
         super().__init__(parameters=[ "epoch", "pop_size", "loudness_min", "loudness_max", "pr_min", "pr_max", "pf_min", "pf_max", ], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=AdaptiveBAPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.loudness_min = cy.validator(float, loudness_min, [0.5, 1.5], "loudness_min")
         self.loudness_max = cy.validator(float, loudness_max, [1.5, 3.0], "loudness_max")
-        self.population.loudness_min = self.loudness_min
         self.pr_min = cy.validator(float, pr_min, [-10.0, 10.0], "pr_min")
-        self.population.pr_min = self.pr_min
-        self.population.loudness_max = self.loudness_max
         self.pr_max = cy.validator(float, pr_max, [-10.0, 10.0], "pr_max")
         self.pf_min = cy.validator(float, pf_min, [-10.0, 10.0], "pf_min")
-        self.population.pr_max = self.pr_max
         self.pf_max = cy.validator(float, pf_max, [0.0, 10.0], "pf_max")
         self.alpha = self.gamma = 0.9
 
@@ -179,3 +128,26 @@ cdef class AdaptiveBA(cy.Optimizer):
                 agent.update_solution(n_population[idx], n_population[idx].solution)
                 agent.loudness = loudness
                 agent.pulse_rate = pulse_rate
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        loudness = self.generator.uniform(self.loudness_min, self.loudness_max)
+        pulse_rate = self.generator.uniform(self.pr_min, self.pr_max)
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.loudness = loudness
+        agent.pulse_rate = pulse_rate
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

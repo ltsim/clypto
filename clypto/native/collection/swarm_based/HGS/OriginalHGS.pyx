@@ -8,29 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalHGSAgent(cy.Agent):
-    cdef public object hunger
-
-    def __init__(self, solution=None, objectives=None, weights=None, hunger=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.hunger = hunger
-
-    cdef cy.Agent clone(self):
-        cdef OriginalHGSAgent new = <OriginalHGSAgent>cy.Agent.clone(self)
-        new.hunger = self.hunger
-        return new
-
-
-cdef class OriginalHGSPopulation(cy.Population):
-    """Agents of :class:`OriginalHGS`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        hunger = 1.0
-        return OriginalHGSAgent(solution=solution, hunger=hunger)
-
-
 cdef class OriginalHGS(cy.Optimizer):
     """
     The original version of: Hunger Games Search (HGS)
@@ -87,7 +64,7 @@ cdef class OriginalHGS(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "PUP", "LH"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalHGSPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.PUP = cy.validator(float, PUP, (0, 1.0), "PUP")
         self.LH = cy.validator(float, LH, [1, 20000], "LH")
 
@@ -186,3 +163,22 @@ cdef class OriginalHGS(cy.Optimizer):
         if self.mode != "sequential":
             n_population = self.population.evaluate(n_population, self.mode)
             self.population = self.population.greedy(n_population)
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        hunger = 1.0
+
+        agent = cy.Agent(solution)
+        agent.hunger = hunger
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

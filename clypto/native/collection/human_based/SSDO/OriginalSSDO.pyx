@@ -8,35 +8,6 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalSSDOAgent(cy.Agent):
-    cdef public object velocity
-    cdef public object local_solution
-
-    def __init__(self, solution=None, objectives=None, weights=None, velocity=None, local_solution=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.velocity = velocity
-        self.local_solution = local_solution
-
-    cdef cy.Agent clone(self):
-        cdef OriginalSSDOAgent new = <OriginalSSDOAgent>cy.Agent.clone(self)
-        new.velocity = self.velocity
-        new.local_solution = self.local_solution
-        return new
-
-
-cdef class OriginalSSDOPopulation(cy.Population):
-    """Agents of :class:`OriginalSSDO`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
-        pos_local = solution.copy()
-        return OriginalSSDOAgent(
-            solution=solution, velocity=velocity, local_solution=pos_local
-        )
-
-
 cdef class OriginalSSDO(cy.Optimizer):
     """
     The original version of: Social Ski-Driver Optimization (SSDO)
@@ -80,7 +51,7 @@ cdef class OriginalSSDO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalSSDOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
 
     cdef void evolve(self, int epoch):
         """
@@ -116,7 +87,7 @@ cdef class OriginalSSDO(cy.Optimizer):
                 + self.generator.random() * pop_new[idx].velocity
             )
             x = cy.correct_solution(self.problem, x)
-            child = self.population.create_agent(x)
+            child = self.create_agent(x)
             child.local_solution = agent.solution.copy()
             if self.mode == "sequential":
                 child.evaluate(self.problem)
@@ -124,3 +95,24 @@ cdef class OriginalSSDO(cy.Optimizer):
         if self.mode != "sequential":
             pop_new = self.population.evaluate(pop_new, self.mode)
             self.population = self.population.greedy(pop_new)
+
+    def create_agent(self, object solution=None):
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
+        pos_local = solution.copy()
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.local_solution = pos_local
+        return agent
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+

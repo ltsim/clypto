@@ -59,12 +59,14 @@ def runtime_population(problem, pop_size=6):
     return optimizer, bound([optimizer.generate_agent() for _ in range(pop_size)])
 
 
-def test_generic_alias_builds_a_population():
-    population = cy.Population[cy.Agent](10, agents(3.0, 1.0))
+def test_population_builds_from_agents():
+    population = cy.Population(10, agents(3.0, 1.0))
 
     assert isinstance(population, cy.Population)
     assert population.sense == "min"  # unbound
     assert len(population) == 2 and population.size() == 10
+    with pytest.raises(ValueError):
+        cy.population(4, cls=list)  # the single Population class does not take custom types
 
 
 def test_population_validates_its_size_and_binds_later():
@@ -78,15 +80,12 @@ def test_population_validates_its_size_and_binds_later():
     assert len(generated) == 30 and generated.size() == 30 and population.problem.n_evals == 30
 
 
-def test_subclass_state_survives_slices_sort_and_snapshots():
-    from clypto.native.collection.swarm_based.PSO._base import PSOPopulation
-
-    population = PSOPopulation(4, agents(3.0, 1.0))
-    population.v_max = np.ones(N_DIMS)
+def test_state_survives_slices_sort_and_snapshots():
+    population = cy.Population(4, agents(3.0, 1.0))
     derived = (population[:1], population.sort(), population + agents(2.0), population.copy(),
                cy.snapshot(population), cy.empty_snapshot(population))
     for pop in derived:
-        assert type(pop) is PSOPopulation and pop.v_max is population.v_max and pop.size() == 4
+        assert type(pop) is cy.Population and pop.problem is population.problem and pop.size() == 4
 
 
 def test_indexing_and_slices():
@@ -128,8 +127,7 @@ def test_best_worst_and_sort_follow_sense(sense, best, worst):
     assert population.worst.fitness == worst
     ranked = population.sort()
     assert ranked[0].fitness == best
-    assert [population[i] for i in ranked.idx] == list(ranked)
-    assert ranked.idx == population.argsort()
+    assert list(ranked) == [population[i] for i in population.argsort()]
 
 
 def test_argsort_matches_numpy():

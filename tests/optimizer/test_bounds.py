@@ -181,13 +181,13 @@ def test_agent_functions():
 
 
 def test_duplicate_agent_shares_fields_and_the_evaluation():
-    from clypto.native.collection.swarm_based.PSO._base import PSOAgent
-
     plain = cy.Agent(np.zeros(2), 1.0)
-    particle = PSOAgent(np.zeros(2), 1.0, velocity=np.ones(2), pbest_fitness=0.5)
+    particle = cy.Agent(np.zeros(2), 1.0)
+    particle.velocity = np.ones(2)
+    particle.pbest_fitness = 0.5
     for agent in (plain, particle):
         copy = cy.duplicate_agent(agent)
-        assert type(copy) is type(agent) and copy is not agent
+        assert type(copy) is cy.Agent and copy is not agent
         assert copy.solution is agent.solution and copy.fitness == 1.0 and copy.objectives is agent.objectives
     copy = cy.duplicate_agent(particle)
     assert copy.velocity is particle.velocity and copy.pbest_fitness == 0.5

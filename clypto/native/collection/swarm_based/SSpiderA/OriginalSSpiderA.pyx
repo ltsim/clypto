@@ -9,70 +9,6 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalSSpiderAAgent(cy.Agent):
-    cdef public object target_solution
-    cdef public object local_vector
-    cdef public object mask
-    cdef public object intensity
-
-    def __init__(self, solution=None, objectives=None, weights=None, target_solution=None, local_vector=None, mask=None, intensity=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.target_solution = target_solution
-        self.local_vector = local_vector
-        self.mask = mask
-        self.intensity = intensity
-
-    cdef cy.Agent clone(self):
-        cdef OriginalSSpiderAAgent new = <OriginalSSpiderAAgent>cy.Agent.clone(self)
-        new.target_solution = self.target_solution
-        new.local_vector = self.local_vector
-        new.mask = self.mask
-        new.intensity = self.intensity
-        return new
-
-
-cdef class OriginalSSpiderAPopulation(cy.Population):
-    """Agents of :class:`OriginalSSpiderA`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        """
-        Overriding method in LegacyOptimizer class
-            + x: The position of s on the web.
-            + train: The fitness of the current position of s
-            + target_vibration: The target vibration of s in the previous iteration.
-            + intensity_vibration: intensity of vibration
-            + movement_vector: The movement that s performed in the previous iteration
-            + dimension_mask: The dimension mask 1 that s employed to guide movement in the previous iteration
-            + The dimension mask is a 0-1 binary vector of length problem size
-            + n_changed: The number of iterations since s has last changed its target vibration. (No need)
-        """
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        target_solution = solution.copy()
-        local_vector = np.zeros(self.problem.n_dims)
-        mask = np.zeros(self.problem.n_dims)
-        return OriginalSSpiderAAgent(
-            solution=solution,
-            target_solution=target_solution,
-            local_vector=local_vector,
-            mask=mask,
-        )
-
-    def generate_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        """
-        Generate new agent with full information
-
-        Args:
-            solution (np.ndarray): The solution
-        """
-        agent = self.create_agent(solution)
-        agent.evaluate(self.problem)
-        agent.intensity = np.log(
-            1.0 / (np.abs(agent.fitness) + 10e-10) + 1
-        )
-        return agent
-
-
 cdef class OriginalSSpiderA(cy.Optimizer):
     """
     The developed version of: Social Spider Algorithm (OriginalSSpiderA)
@@ -135,7 +71,7 @@ cdef class OriginalSSpiderA(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "r_a", "p_c", "p_m"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalSSpiderAPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.r_a = cy.validator(float, r_a, (0, 5.0), "r_a")
         self.p_c = cy.validator(float, p_c, (0, 1.0), "p_c")
         self.p_m = cy.validator(float, p_m, (0, 1.0), "p_m")
@@ -200,3 +136,37 @@ cdef class OriginalSSpiderA(cy.Optimizer):
                     1.0 / (np.abs(n_population[idx].fitness) + self.EPSILON) + 1
                 )
                 agent.update_solution(n_population[idx], n_population[idx].solution)
+
+    def create_agent(self, object solution=None):
+        """
+        Overriding method in LegacyOptimizer class
+            + x: The position of s on the web.
+            + train: The fitness of the current position of s
+            + target_vibration: The target vibration of s in the previous iteration.
+            + intensity_vibration: intensity of vibration
+            + movement_vector: The movement that s performed in the previous iteration
+            + dimension_mask: The dimension mask 1 that s employed to guide movement in the previous iteration
+            + The dimension mask is a 0-1 binary vector of length problem size
+            + n_changed: The number of iterations since s has last changed its target vibration. (No need)
+        """
+        if solution is None:
+            solution = self.problem.generate_solution(encoded=True)
+        target_solution = solution.copy()
+        local_vector = np.zeros(self.problem.n_dims)
+        mask = np.zeros(self.problem.n_dims)
+
+        agent = cy.Agent(solution)
+        agent.target_solution = target_solution
+        agent.local_vector = local_vector
+        agent.mask = mask
+        return agent
+
+    def initialization(self):
+        if len(self.population) == 0:
+            self.population = self.population.spawn([self.generate_agent() for _ in range(self.population.size())])
+
+    def generate_agent(self, object solution=None):
+        agent = self.create_agent(solution)
+        (<cy.Agent>agent).evaluate(self.problem)
+        agent.intensity = np.log(1.0 / (np.abs(agent.fitness) + 10e-10) + 1)
+        return agent

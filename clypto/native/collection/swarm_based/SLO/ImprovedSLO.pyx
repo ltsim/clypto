@@ -7,7 +7,6 @@ import numpy as np
 cimport clypto.core as cy
 
 from clypto.native.collection.swarm_based.SLO.ModifiedSLO cimport ModifiedSLO
-from clypto.native.collection.swarm_based.SLO.ModifiedSLO import ModifiedSLOPopulation
 
 
 cdef class ImprovedSLO(ModifiedSLO):
@@ -63,7 +62,7 @@ cdef class ImprovedSLO(ModifiedSLO):
         """
         super().__init__(epoch, pop_size, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=ModifiedSLOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000], )
         self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
         self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
         self.parameters = ["epoch", "pop_size", "c1", "c2"]
