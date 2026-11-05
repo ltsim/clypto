@@ -182,7 +182,7 @@ model = PSO.OriginalPSO(epoch=100, pop_size=50)
 model.solve(problem, seed=1, debug=True)
 
 model.tracker["global_best_fit"]   # (epoch,) numpy array
-model.tracker.meta["n_epochs"]     # run metadata: optimizer, problem, seed, ...
+model.tracker.n_epochs             # run metadata as typed: optimizer_name, problem_name, seed ...
 ```
 
 :::{note} Which optimizers track
@@ -218,11 +218,11 @@ recorded without guessing a capacity in advance:
 | `fitness` | `(epoch, pop)` |
 | `objectives` | `(epoch, pop, n_objs)`; only when the problem has more than one objective |
 
-`tracker.meta` describes the run: `optimizer`, `problem`, `seed`, `pop_size`,
-`n_dims`, `sense`, `capture_population` and `n_epochs`, plus `n_objs` whenever
-a population was captured. Reading a name that was not recorded raises
-`KeyError`, so check `tracker.meta["capture_population"]` before the snapshot
-arrays.
+The run's metadata lives on typed fields of the tracker: `optimizer_name`,
+`problem_name`, `seed`, `pop_size`, `n_dims`, `sense`, `capture_population`,
+`n_epochs`, and `n_objs` (`-1` unless a population was captured).
+Reading a name that was not recorded raises `KeyError`, so check
+`tracker.capture_population` before the snapshot arrays.
 
 ### Exporting metrics and plotting
 

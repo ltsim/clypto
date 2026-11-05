@@ -91,7 +91,7 @@ print(f"Best fitness:  {g_best.fitness:.6e}")
 print(f"Best solution: {g_best.solution[:5]}... (dim={len(g_best.solution)})")
 
 # 3. Inspect tracker
-print(f"Total epochs:  {model.tracker.meta['n_epochs']}")
+print(f"Total epochs:  {model.tracker.n_epochs}")
 ```
 
 ## Key takeaways & next steps

@@ -3,6 +3,6 @@
 #       Email: nguyenthieu2102@gmail.com            %
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
-from clypto.optimizer.history.tracker import Tracker
+from clypto.optimizer.history.tracker import MetricBuffer, SnapshotBuffer, Tracker
 
-__all__ = ["Tracker"]
+__all__ = ["MetricBuffer", "SnapshotBuffer", "Tracker"]

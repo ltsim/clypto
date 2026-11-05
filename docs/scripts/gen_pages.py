@@ -98,8 +98,6 @@ CORE_MODULES = [
     "clypto/optimizer/native/agent.pyx",
     "clypto/optimizer/native/utils.pyx",
     "clypto/optimizer/history/tracker.pyx",
-    "clypto/optimizer/history/metrics.pyx",
-    "clypto/optimizer/history/snapshots.pyx",
     "clypto/optimizer/precompile/declaration.pyx",
     "clypto/optimizer/precompile/base.pyx",
     "clypto/optimizer/precompile/decorator.pyx",

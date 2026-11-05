@@ -1,35 +1,71 @@
-import numpy as np
 import typing
 
+import numpy as np
+
+METRIC_NAMES: tuple[str, ...]
+
+class MetricBuffer:
+    """Per-epoch metrics in one fixed ``(epoch, metrics)`` matrix."""
+
+    def __init__(self) -> None: ...
+    def allocate(self, max_epochs: int) -> None:
+        """One ``(max_epochs, n_metrics)`` matrix, ready for ``record``."""
+    def reset(self) -> None:
+        """Drop the matrix; ``allocate`` will recreate it on the next start."""
+    @property
+    def n_epochs(self) -> int: ...
+    @property
+    def buffer(self) -> np.ndarray | None: ...
+    def record(self, positions: np.ndarray, fits: np.ndarray, runtime: float, nfe: int,
+               global_best_fit: float, minimize: bool = ...) -> None:
+        """Append one epoch's statistics computed from the population arrays."""
+    def finalize(self) -> np.ndarray:
+        """Derive exploration/exploitation and trim to ``n_epochs`` fresh columns."""
+
+
+class SnapshotBuffer:
+    """Population frames per epoch, one NaN-padded array per capture field."""
+
+    def __init__(self) -> None: ...
+    def reset(self) -> None: ...
+    @property
+    def n_objs(self) -> int | None: ...
+    def record(self, positions: np.ndarray, fits: np.ndarray, objectives: np.ndarray | None = ...) -> None:
+        """Append one epoch's frames (positions, fitness, objectives when multi-objective)."""
+    def finalize(self) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+        """``(solution, fitness, objectives)`` arrays with exact shapes."""
+
+
 class Tracker:
-    """
-    Record per-epoch metrics and (optionally) full population snapshots in memory.
+    """The run history of the engine: per-epoch metrics and optional population frames.
 
-    Notes
-    ~~~~~
-    + Metrics are small ``(epoch,)`` numpy arrays; population snapshots are buffered
-      one ``(pop_size, n_dims)`` frame per epoch and stacked, NaN-padded to the
-      widest epoch, when :meth:`finalize` runs.
-    + Everything lives in RAM and belongs to the most recent ``solve`` run; a
-      ``solve`` that does not track leaves an empty tracker behind.
-    + Read arrays by name: ``tracker["global_best_fit"]``, ``tracker["solution"]``;
-      run metadata (optimizer, problem, seed, ``n_epochs``, ...) lives in
-      ``tracker.meta``.
-
-    Per-iteration callbacks are not part of the tracker — pass them to
-    ``solve(before_iteration=..., after_iteration=...)`` instead.
+    ``array["global_best_fit"]`` and friends are read by name; the run's metadata
+    lives on typed fields (``optimizer_name``, ``problem_name``, ``seed``,
+    ``pop_size``, ``n_dims``, ``sense``, ``capture_population``, ``n_epochs``,
+    ``n_objs``). ``tracker.meta`` is gone.
     """
-    meta: dict[str, typing.Any]
+
+    optimizer_name: str
+    problem_name: str
+    seed: int | None
+    pop_size: int
+    n_dims: int
+    sense: str
+    capture_population: bool
+    n_epochs: int
+    n_objs: int
+
     def __init__(self) -> None: ...
     def reset(self) -> None:
-        """Discard everything from the previous run and return to the empty state."""
+        """Discard everything from the previous run and return to the initial state."""
     @property
     def recording(self) -> bool: ...
-    def start(self, optimizer: typing.Any, problem: typing.Any, seed: int | None = ..., capture_population: bool = ...) -> None:
-        """Begin a new recording and describe the run through ``meta``."""
+    def start(self, optimizer: typing.Any, problem: typing.Any, seed: int | None = ...,
+              capture_population: bool = ...) -> None:
+        """Begin a new recording; run metadata sets the typed fields."""
     def record(self, pop: typing.Any, runtime: float, nfe: int, global_best_fit: float) -> None:
-        """Buffer the current epoch's population snapshot (if enabled) and metrics."""
+        """Take the population's agents, buffer the metrics, and the frames when capturing."""
     def finalize(self) -> None:
-        """Compute derived metrics, assemble the numpy arrays, and close the run."""
+        """Compute the derived metrics and assemble the finished arrays."""
     def __getitem__(self, key: str) -> np.ndarray:
-        """Read a finished array by name (metrics and population snapshots alike)."""
+        """Read a finished array by name: metrics first, then the population frames."""

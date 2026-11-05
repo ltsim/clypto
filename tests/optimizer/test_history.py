@@ -44,9 +44,9 @@ def test_metrics_recorded(problem):
     model.solve(problem, seed=1, debug=True)
 
     tracker = model.tracker
-    assert tracker.meta["n_epochs"] == 10
-    assert tracker.meta["optimizer"] == "OriginalPSO"
-    assert tracker.meta["n_dims"] == N_DIMS
+    assert tracker.n_epochs == 10
+    assert tracker.optimizer_name == "OriginalPSO"
+    assert tracker.n_dims == N_DIMS
 
     for key in METRIC_KEYS:
         assert tracker[key].shape == (10,)
@@ -68,7 +68,7 @@ def test_no_tracking_by_default(problem):
     model.solve(problem, seed=1)
 
     assert model.tracker.recording is False
-    assert model.tracker.meta == {}
+    assert model.tracker.n_epochs == 0 and model.tracker.optimizer_name == ""
     with pytest.raises(KeyError):
         model.tracker["global_best_fit"]
 
@@ -106,7 +106,7 @@ def test_multi_objective_population():
     objectives = tracker["objectives"]
     assert objectives.shape == (4, 6, 2)
     assert np.isfinite(objectives).all()
-    assert tracker.meta["n_objs"] == 2
+    assert tracker.n_objs == 2
 
 
 def test_hooks_solve_arguments(problem):
@@ -159,34 +159,34 @@ def test_hook_exception_propagates_and_closes_run(problem):
     # The tracker is finalized by the ``finally``, so the run is not left open.
     # The after hook raises before ``record``, so zero epochs were recorded.
     assert model.tracker.recording is False
-    assert model.tracker.meta["n_epochs"] == 0
+    assert model.tracker.n_epochs == 0
 
 
 def test_tracker_reflects_latest_run(problem):
     model = PSO.OriginalPSO(epoch=4, pop_size=6)
     model.solve(problem, seed=1, debug=True)
-    assert model.tracker.meta["n_epochs"] == 4
+    assert model.tracker.n_epochs == 4
 
     model.solve(problem, seed=1, debug=True)
-    assert model.tracker.meta["n_epochs"] == 4
+    assert model.tracker.n_epochs == 4
     assert model.tracker["nfe"].shape == (4,)
 
     model.solve(problem, seed=1)  # untracked run clears the tracker
-    assert model.tracker.meta == {}
+    assert model.tracker.n_epochs == 0 and model.tracker.optimizer_name == ""
 
 
 def test_termination_dict_records_history(problem):
     model = PSO.OriginalPSO(epoch=1000, pop_size=8)
     model.solve(problem, seed=1, termination={"max_epoch": 20}, debug=True)
 
-    assert model.tracker.meta["n_epochs"] <= 20
+    assert model.tracker.n_epochs <= 20
 
 
 def test_termination_max_fe(problem):
     model = PSO.OriginalPSO(epoch=1000, pop_size=8)
     model.solve(problem, seed=1, termination={"max_fe": 500}, debug=True)
 
-    assert model.tracker.meta["n_epochs"] < 1000
+    assert model.tracker.n_epochs < 1000
 
 
 def test_termination_early_stop_does_not_crash(problem):
