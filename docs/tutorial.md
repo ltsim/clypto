@@ -224,6 +224,56 @@ The run's metadata lives on typed fields of the tracker: `optimizer_name`,
 Reading a name that was not recorded raises `KeyError`, so check
 `tracker.capture_population` before the snapshot arrays.
 
+### Custom metrics with `@cy.metrics`
+
+By default (`debug=True` without `metrics`), Clypto uses `cy.DefaultMetrics` matching `mealpy-lts` (canonical continuous diversity and exploration/exploitation).
+
+For classical problems (permutations, discrete variables, binary transfer) or custom research metrics, define a class with `@cy.metrics`. Methods accept `positions: np.ndarray`, `fits: np.ndarray`, or both, and must return a `float`. Type annotations are validated at definition time (Pydantic-style):
+
+```python
+import numpy as np
+import clypto as cy
+
+@cy.metrics
+class PermutationMetrics:
+    def diversity(self, positions: np.ndarray) -> float:
+        """Discrepancy for permutation vectors."""
+        return float(np.mean(np.var(positions, axis=0)))
+
+    def entropy(self, positions: np.ndarray) -> float:
+        """Distribution entropy across solutions."""
+        hist = np.histogram(positions, bins=10)[0]
+        p = hist / (hist.sum() + 1e-12)
+        p = p[p > 0]
+        return float(-np.sum(p * np.log2(p)))
+
+    def fit_spread(self, fits: np.ndarray) -> float:
+        """Difference between best and worst fitness of the epoch."""
+        return float(np.max(fits) - np.min(fits))
+```
+
+Pass the class or instance directly to `solve(problem, metrics=...)`:
+
+```python
+# Passing metrics automatically enables tracking
+model.solve(problem, metrics=PermutationMetrics)
+
+entropy_curve = model.tracker["entropy"]
+diversity_curve = model.tracker["diversity"]
+best_fit_curve = model.tracker["global_best_fit"]
+```
+
+To extend the canonical `mealpy-lts` metrics with additional statistics, subclass `cy.DefaultMetrics`:
+
+```python
+@cy.metrics
+class ExtendedContinuous(cy.DefaultMetrics):
+    def spatial_std(self, positions: np.ndarray) -> float:
+        return float(np.std(positions))
+```
+
+Metrics are resolved once at `start()` into pre-allocated memory columns with zero dictionary allocations in the per-epoch loop.
+
 ### Exporting metrics and plotting
 
 Because tracking data is stored in memory as plain NumPy arrays, you can easily load metrics into a pandas DataFrame or plot convergence curves:
