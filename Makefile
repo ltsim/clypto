@@ -27,12 +27,12 @@ uv-lock:
 	uv lock
 
 uv-sync:
-	uv sync --extra dev
+	uv sync --extra dev --no-install-project
 
 # The collection is native .pyx; build the extensions in place before running
 # anything that imports clypto from the source tree.
 build-ext:
-	uv run --no-sync python setup.py build_ext --inplace
+	uv run --no-sync python setup.py build_ext --inplace -j $$(nproc 2>/dev/null || echo 4)
 
 test: build-ext
 	uv run --no-sync pytest tests/

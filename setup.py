@@ -62,7 +62,13 @@ def get_ext_modules():
     sources.append("tests/optimizer/_agent_subclass.pyx")
     if os.environ.get("CLYPTO_COLLECTION", "1") != "0":
         sources.append("clypto/native/collection/**/*.pyx")
-    extensions = cythonize(sources, compiler_directives=COMPILER_DIRECTIVES, quiet=True)
+    nthreads = int(os.environ.get("CYTHON_NTHREADS", os.cpu_count() or 1))
+    extensions = cythonize(
+        sources,
+        compiler_directives=COMPILER_DIRECTIVES,
+        quiet=True,
+        nthreads=nthreads,
+    )
     compile_args, link_args = openmp_flags()
     for ext in extensions:
         # agents and populations type their arrays as numpy.ndarray (cimport numpy)
@@ -77,4 +83,5 @@ def get_ext_modules():
     return extensions
 
 
-setup(ext_modules=get_ext_modules())
+if __name__ == "__main__":
+    setup(ext_modules=get_ext_modules())
