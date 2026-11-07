@@ -7,7 +7,7 @@ a batch of candidate agents is evaluated:
 | --- | --- |
 | `"sequential"` (default) | agent by agent, in the order of the classic algorithm |
 | `"batch"` (alias of the old `"swarm"`) | the whole batch at once, in one thread |
-| `"parallel"` | the batch at once on the OpenMP team (the problem needs a nogil `evaluator`, single or multi objective; `solve` fixes the team once with `threads`, and batches below `Population.min_parallel_batch` behave as `"batch"`) |
+| `"parallel"` | the batch at once on the OpenMP team (the problem needs a nogil `evaluator`, single or multi objective; `solve` fixes the team once with `threads`; without an evaluator it warns and falls back to sequential) |
 
 Whenever an algorithm evaluates a batch, a problem built with `vectorized=True` receives it as one `(n, n_dims)` matrix: one
 objective call per batch instead of one per agent.
