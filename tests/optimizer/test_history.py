@@ -198,3 +198,87 @@ def test_termination_early_stop_does_not_crash(problem):
     )
 
     assert model.g_best is not None
+
+
+def test_custom_metrics_decorator(problem):
+    @cy.metrics
+    class CustomMetrics:
+        def entropy(self, positions: np.ndarray) -> float:
+            hist = np.histogram(positions, bins=5)[0]
+            p = hist / (hist.sum() + 1e-12)
+            p = p[p > 0]
+            return float(-np.sum(p * np.log2(p)))
+
+        def spread(self, fits: np.ndarray) -> float:
+            return float(np.max(fits) - np.min(fits))
+
+    model = PSO.OriginalPSO(epoch=6, pop_size=8)
+    model.solve(problem, seed=1, metrics=CustomMetrics)
+
+    tracker = model.tracker
+    assert tracker.n_epochs == 6
+    assert "entropy" in tracker
+    assert "spread" in tracker
+    assert tracker["entropy"].shape == (6,)
+    assert tracker["spread"].shape == (6,)
+    assert "global_best_fit" in tracker
+    assert "epoch_time" in tracker
+
+
+def test_custom_metrics_inheriting_default(problem):
+    @cy.metrics
+    class ExtendedMetrics(cy.DefaultMetrics):
+        def custom_stat(self, positions: np.ndarray) -> float:
+            return float(np.std(positions))
+
+    model = PSO.OriginalPSO(epoch=5, pop_size=6)
+    model.solve(problem, seed=42, metrics=ExtendedMetrics())
+
+    tracker = model.tracker
+    assert tracker.n_epochs == 5
+    assert "diversity" in tracker
+    assert "exploration" in tracker
+    assert "exploitation" in tracker
+    assert "custom_stat" in tracker
+    assert tracker["custom_stat"].shape == (5,)
+
+
+def test_custom_metrics_validation():
+    with pytest.raises(TypeError, match="return type must be float"):
+        @cy.metrics
+        class BadReturnType:
+            def invalid_ret(self, positions: np.ndarray) -> list:
+                return [1.0]
+
+    with pytest.raises(ValueError, match="must accept 1 or 2 arguments"):
+        @cy.metrics
+        class BadArgs:
+            def invalid_args(self, a, b, c, d):
+                return 0.0
+
+
+def test_custom_metrics_classical_problem():
+    def tsp_objective(solution):
+        # simple permutation discrepancy
+        return float(np.sum(np.abs(np.diff(solution))))
+
+    n_cities = 8
+    bounds = cy.PermutationBounds(list(range(n_cities)))
+    tsp_prob = cy.Problem(obj_func=tsp_objective, bounds=bounds, sense="min")
+
+    @cy.metrics
+    class PermutationMetrics:
+        def diversity(self, positions: np.ndarray) -> float:
+            return float(np.mean(np.var(positions, axis=0)))
+
+        def first_city_freq(self, positions: np.ndarray) -> float:
+            return float(np.count_nonzero(positions[:, 0] == 0))
+
+    model = PSO.OriginalPSO(epoch=4, pop_size=6)
+    model.solve(tsp_prob, seed=1, metrics=PermutationMetrics)
+
+    tracker = model.tracker
+    assert tracker.n_epochs == 4
+    assert tracker["diversity"].shape == (4,)
+    assert tracker["first_city_freq"].shape == (4,)
+    assert np.all(np.isfinite(tracker["diversity"]))
