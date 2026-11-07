@@ -3,32 +3,31 @@
 # --------------------------------------------------%
 """``Tracker``: the per-run history held in ``optimizer.tracker``.
 
-Three classes share the module:
+This module provides:
++ :func:`metrics` — Pydantic-style class decorator for custom per-epoch metrics.
++ :class:`DefaultMetrics` — canonical continuous metrics matching ``mealpy-lts``.
++ :class:`MetricBuffer` — the per-epoch metric values in one contiguous matrix.
++ :class:`SnapshotBuffer` — the optional population frames (solutions, fitness, objectives).
++ :class:`Tracker` — the facade holding run metadata and finished metric arrays.
 
-+ :class:`MetricBuffer` — the per-epoch metric values in one ``(epoch, metrics)``
-  ``float64`` matrix, allocated for ``optimizer.epoch`` rows when the run starts
-  and trimmed to the epochs actually recorded. ``exploration``/``exploitation``
-  are derived from ``diversity`` once, when the run closes.
-+ :class:`SnapshotBuffer` — the optional population frames (positions, fitness
-  and objectives), one ``(pop, ...)`` frame per epoch, grown by doubling and
-  NaN-padded on assembly. Frames are sized from the widest epoch, so optimizers
-  that grow and shrink their population (SAP_DE, ...) are recorded without
-  guessing a capacity in advance.
-+ :class:`Tracker` — the facade the engine talks to. It reads ``agent.solution``
-  and ``agent.fitness``, decides whether a population is captured, and resolves
-  ``tracker["global_best_fit"]`` / ``tracker["solution"]`` by name.
-
-Everything lives in RAM and describes the most recent ``solve()`` run. Run
-metadata lives on the tracker's typed fields (``tracker.n_epochs``,
-``tracker.optimizer_name``, ...) — ``tracker.meta`` is gone, and no dictionary is
-involved: buffers are typed numpy arrays and names resolve to fixed indices.
-
-Per-epoch callbacks are not part of the tracker — pass them to
-``solve(before_iteration=..., after_iteration=...)`` instead.
+Everything lives in RAM and describes the most recent ``solve()`` run. No dictionaries
+are allocated in the per-epoch loop: metrics are pre-mapped to fixed column indices.
 """
+import inspect
 import typing
 
 import numpy as np
+
+CORE_METRIC_NAMES = (
+    "global_best_fit",
+    "current_best_fit",
+    "current_worst_fit",
+    "mean_fit",
+    "std_fit",
+    "epoch_time",
+    "nfe",
+    "epoch_pop_size",
+)
 
 METRIC_NAMES = (
     "global_best_fit",
@@ -46,30 +45,233 @@ METRIC_NAMES = (
 N_METRICS = len(METRIC_NAMES)
 
 
-class MetricBuffer:
-    """Per-epoch metrics in one fixed ``(epoch, metrics)`` matrix.
+class MetricDef:
+    __slots__ = ("name", "func", "takes_positions", "takes_fits")
 
-    ``allocate(epoch)`` only happens once per run (``start``); ``record`` fills a
-    row from the population arrays; ``finalize`` derives exploration/exploitation
-    and trims the buffer to ``(n_epochs, metrics)`` copies, allocating fresh
-    arrays so the buffer can be reused for the next run.
+    def __init__(self, name: str, func: typing.Callable, takes_positions: bool, takes_fits: bool) -> None:
+        self.name = name
+        self.func = func
+        self.takes_positions = takes_positions
+        self.takes_fits = takes_fits
+
+
+class MetricSchema:
+    __slots__ = (
+        "cls",
+        "names",
+        "col_map",
+        "idx_gbest",
+        "idx_cbest",
+        "idx_cworst",
+        "idx_mean",
+        "idx_std",
+        "idx_time",
+        "idx_nfe",
+        "idx_pop",
+        "idx_diversity",
+        "idx_exploration",
+        "idx_exploitation",
+        "custom_callers",
+        "has_finalize",
+    )
+
+    def __init__(
+        self,
+        cls: type,
+        names: tuple[str, ...],
+        col_map: dict[str, int],
+        idx_gbest: int,
+        idx_cbest: int,
+        idx_cworst: int,
+        idx_mean: int,
+        idx_std: int,
+        idx_time: int,
+        idx_nfe: int,
+        idx_pop: int,
+        idx_diversity: int | None,
+        idx_exploration: int | None,
+        idx_exploitation: int | None,
+        custom_callers: tuple[tuple[int, typing.Callable, bool, bool], ...],
+        has_finalize: bool,
+    ) -> None:
+        self.cls = cls
+        self.names = names
+        self.col_map = col_map
+        self.idx_gbest = idx_gbest
+        self.idx_cbest = idx_cbest
+        self.idx_cworst = idx_cworst
+        self.idx_mean = idx_mean
+        self.idx_std = idx_std
+        self.idx_time = idx_time
+        self.idx_nfe = idx_nfe
+        self.idx_pop = idx_pop
+        self.idx_diversity = idx_diversity
+        self.idx_exploration = idx_exploration
+        self.idx_exploitation = idx_exploitation
+        self.custom_callers = custom_callers
+        self.has_finalize = has_finalize
+
+
+def _build_metric_schema(cls: type) -> MetricSchema:
+    methods: list[tuple[str, typing.Callable, bool, bool]] = []
+    has_finalize = hasattr(cls, "finalize") and callable(getattr(cls, "finalize"))
+
+    for name, method in inspect.getmembers(cls, predicate=inspect.isroutine):
+        if name.startswith("_") or name == "finalize":
+            continue
+        sig = inspect.signature(method)
+        ret = sig.return_annotation
+        if ret is not inspect.Signature.empty and ret is not typing.Any:
+            valid_names = ("float", "int", "np.floating", "np.integer")
+            valid_types = (float, int, np.floating, np.integer)
+            is_valid = ret in valid_names or ret in valid_types
+            if not is_valid:
+                try:
+                    is_valid = isinstance(ret, type) and issubclass(ret, valid_types)
+                except TypeError:
+                    is_valid = False
+            if not is_valid:
+                raise TypeError(f"Metric method {name!r} return type must be float, got {ret!r}")
+
+        params = [p for p in sig.parameters.values() if p.name not in ("self", "cls")]
+        if len(params) == 1:
+            pname = params[0].name.lower()
+            if "fit" in pname:
+                takes_pos, takes_fit = False, True
+            else:
+                takes_pos, takes_fit = True, False
+        elif len(params) == 2:
+            takes_pos, takes_fit = True, True
+        else:
+            raise ValueError(f"Metric method {name!r} must accept 1 or 2 arguments ('positions', 'fits'), got {len(params)}")
+        methods.append((name, method, takes_pos, takes_fit))
+
+    # If cls is DefaultMetrics, maintain canonical METRIC_NAMES order:
+    if cls is DefaultMetrics or (issubclass(cls, DefaultMetrics) and [m[0] for m in methods] == ["diversity"]):
+        names = METRIC_NAMES
+        col_map = {name: idx for idx, name in enumerate(names)}
+        custom_callers = tuple((col_map[m[0]], m[1], m[2], m[3]) for m in methods)
+        return MetricSchema(
+            cls=cls,
+            names=names,
+            col_map=col_map,
+            idx_gbest=col_map["global_best_fit"],
+            idx_cbest=col_map["current_best_fit"],
+            idx_cworst=col_map["current_worst_fit"],
+            idx_mean=col_map["mean_fit"],
+            idx_std=col_map["std_fit"],
+            idx_time=col_map["epoch_time"],
+            idx_nfe=col_map["nfe"],
+            idx_pop=col_map["epoch_pop_size"],
+            idx_diversity=col_map["diversity"],
+            idx_exploration=col_map["exploration"],
+            idx_exploitation=col_map["exploitation"],
+            custom_callers=custom_callers,
+            has_finalize=has_finalize,
+        )
+
+    # For custom classes:
+    core_first = ("global_best_fit", "current_best_fit", "current_worst_fit", "mean_fit", "std_fit")
+    core_last = ("epoch_time", "nfe", "epoch_pop_size")
+
+    custom_names = [m[0] for m in methods if m[0] not in core_first and m[0] not in core_last]
+    derived = []
+    if issubclass(cls, DefaultMetrics) or "diversity" in custom_names:
+        if "exploration" not in custom_names:
+            derived.append("exploration")
+        if "exploitation" not in custom_names:
+            derived.append("exploitation")
+
+    names = tuple(core_first) + tuple(custom_names) + tuple(derived) + tuple(core_last)
+    col_map = {name: idx for idx, name in enumerate(names)}
+    custom_callers = tuple((col_map[m[0]], m[1], m[2], m[3]) for m in methods)
+
+    return MetricSchema(
+        cls=cls,
+        names=names,
+        col_map=col_map,
+        idx_gbest=col_map["global_best_fit"],
+        idx_cbest=col_map["current_best_fit"],
+        idx_cworst=col_map["current_worst_fit"],
+        idx_mean=col_map["mean_fit"],
+        idx_std=col_map["std_fit"],
+        idx_time=col_map["epoch_time"],
+        idx_nfe=col_map["nfe"],
+        idx_pop=col_map["epoch_pop_size"],
+        idx_diversity=col_map.get("diversity"),
+        idx_exploration=col_map.get("exploration"),
+        idx_exploitation=col_map.get("exploitation"),
+        custom_callers=custom_callers,
+        has_finalize=has_finalize,
+    )
+
+
+def metrics(cls=None):
+    """Pydantic-style class decorator defining per-epoch metrics.
+
+    Methods can accept ``positions: np.ndarray``, ``fits: np.ndarray``, or both,
+    and must return a ``float``.
     """
+    def decorate(target_cls):
+        target_cls.__metric_schema__ = _build_metric_schema(target_cls)
+        return target_cls
+
+    if cls is not None:
+        return decorate(cls)
+    return decorate
+
+
+class DefaultMetrics:
+    """Canonical continuous per-epoch metrics matching mealpy-lts."""
+
+    def diversity(self, positions: np.ndarray) -> float:
+        median = np.median(positions, axis=0)
+        return float(np.mean(np.abs(median - positions)))
+
+
+DefaultMetrics = metrics(DefaultMetrics)
+
+
+def resolve_schema(metric_spec: typing.Any = None) -> tuple[MetricSchema, typing.Any]:
+    """Resolve metric class/instance/None into ``(MetricSchema, instance)``."""
+    if metric_spec is None:
+        return DefaultMetrics.__metric_schema__, DefaultMetrics()
+    if isinstance(metric_spec, type):
+        cls = metric_spec
+        if not hasattr(cls, "__metric_schema__"):
+            cls = metrics(cls)
+        return cls.__metric_schema__, cls()
+    cls = type(metric_spec)
+    if not hasattr(cls, "__metric_schema__"):
+        metrics(cls)
+    return cls.__metric_schema__, metric_spec
+
+
+class MetricBuffer:
+    """Per-epoch metrics in one fixed ``(epoch, metrics)`` matrix."""
 
     def __init__(self) -> None:
         self.__buffer: np.ndarray | None = None
         self.__n_epochs = 0
         self.__capacity = 0
+        self.__schema: MetricSchema | None = None
+        self.__instance: typing.Any = None
 
-    def allocate(self, max_epochs: int) -> None:
+    def allocate(self, max_epochs: int, schema: MetricSchema, instance: typing.Any = None) -> None:
         """One ``(max_epochs, n_metrics)`` matrix, ready for ``record``."""
-        self.__buffer = np.empty((max(1, int(max_epochs)), N_METRICS), dtype=np.float64)
+        self.__schema = schema
+        self.__instance = instance
+        self.__buffer = np.empty((max(1, int(max_epochs)), len(schema.names)), dtype=np.float64)
         self.__capacity = max(1, int(max_epochs))
+        self.__n_epochs = 0
 
     def reset(self) -> None:
         """Drop the matrix; ``allocate`` will recreate it on the next start."""
         self.__buffer = None
         self.__n_epochs = 0
         self.__capacity = 0
+        self.__schema = None
+        self.__instance = None
 
     @property
     def n_epochs(self) -> int:
@@ -85,35 +287,51 @@ class MetricBuffer:
                runtime: float, nfe: int, global_best_fit: float,
                minimize: bool = True) -> None:
         """Append one epoch's statistics computed from the population arrays."""
+        if self.__schema is None or self.__buffer is None:
+            return
         n = positions.shape[0]
-        # per-epoch aggregates (C loops in numpy over the ``(pop,)`` arrays)
         c_best, c_worst = (float(np.min(fits)), float(np.max(fits))) if minimize \
             else (float(np.max(fits)), float(np.min(fits)))
-        median = np.median(positions, axis=0)
-        diversity = float(np.mean(np.abs(median - positions)))
 
+        schema = self.__schema
         row = self.__buffer[self.__n_epochs]
-        row[METRIC_NAMES.index("global_best_fit")] = float(global_best_fit)
-        row[METRIC_NAMES.index("current_best_fit")] = c_best
-        row[METRIC_NAMES.index("current_worst_fit")] = c_worst
-        row[METRIC_NAMES.index("mean_fit")] = float(np.mean(fits))
-        row[METRIC_NAMES.index("std_fit")] = float(np.std(fits))
-        row[METRIC_NAMES.index("diversity")] = diversity
-        row[METRIC_NAMES.index("epoch_time")] = float(runtime)
-        row[METRIC_NAMES.index("nfe")] = int(nfe)
-        row[METRIC_NAMES.index("epoch_pop_size")] = int(n)
+        row[schema.idx_gbest] = float(global_best_fit)
+        row[schema.idx_cbest] = c_best
+        row[schema.idx_cworst] = c_worst
+        row[schema.idx_mean] = float(np.mean(fits))
+        row[schema.idx_std] = float(np.std(fits))
+        row[schema.idx_time] = float(runtime)
+        row[schema.idx_nfe] = int(nfe)
+        row[schema.idx_pop] = int(n)
+
+        inst = self.__instance
+        for col_idx, func, takes_pos, takes_fit in schema.custom_callers:
+            if takes_pos and takes_fit:
+                row[col_idx] = float(func(inst, positions, fits))
+            elif takes_pos:
+                row[col_idx] = float(func(inst, positions))
+            else:
+                row[col_idx] = float(func(inst, fits))
+
         self.__n_epochs += 1
 
     def finalize(self) -> np.ndarray:
         """Derive exploration/exploitation and trim to ``n_epochs`` fresh columns."""
-        diversity = self.__buffer[: self.__n_epochs, METRIC_NAMES.index("diversity")].copy()
-        if diversity.size and np.max(diversity) > 0:
-            exploration = 100.0 * diversity / np.max(diversity)
-        else:
-            exploration = np.zeros_like(diversity)
+        if self.__schema is None or self.__buffer is None:
+            return np.empty((0, 0), dtype=np.float64)
+        schema = self.__schema
+        if schema.idx_diversity is not None and schema.idx_exploration is not None and schema.idx_exploitation is not None:
+            diversity = self.__buffer[: self.__n_epochs, schema.idx_diversity].copy()
+            if diversity.size and np.max(diversity) > 0:
+                exploration = 100.0 * diversity / np.max(diversity)
+            else:
+                exploration = np.zeros_like(diversity)
+            self.__buffer[: self.__n_epochs, schema.idx_exploration] = exploration
+            self.__buffer[: self.__n_epochs, schema.idx_exploitation] = 100.0 - exploration
+
         data = self.__buffer[: self.__n_epochs].copy()
-        data[:, METRIC_NAMES.index("exploration")] = exploration
-        data[:, METRIC_NAMES.index("exploitation")] = 100.0 - exploration
+        if schema.has_finalize and self.__instance is not None:
+            self.__instance.finalize(data, schema.col_map)
         return data
 
 
@@ -206,24 +424,7 @@ class SnapshotBuffer:
 
 
 class Tracker:
-    """The run history of the engine: per-epoch metrics and optional population frames.
-
-    Notes
-    ~~~~~
-    + Metrics are ``(epoch,)`` arrays read by name (``tracker["global_best_fit"]``);
-      population snapshots are ``(epoch, pop, ...)`` arrays, NaN-padded to the widest
-      epoch, when ``finalize`` runs.
-    + Everything lives in RAM and belongs to the most recent ``solve()``; an
-      untracked ``solve`` leaves the tracker in its initial state (``recording``
-      false, no arrays, default run metadata).
-    + Run metadata lives on the types (``tracker.optimizer_name``,
-      ``tracker.problem_name``, ``tracker.seed``, ``tracker.pop_size``,
-      ``tracker.n_dims``, ``tracker.sense``, ``tracker.capture_population``,
-      ``tracker.n_epochs``, ``tracker.n_objs``) — no dictionary.
-
-    Per-iteration callbacks are not part of the tracker — pass them to
-    ``solve(before_iteration=..., after_iteration=...)`` instead.
-    """
+    """The run history of the engine: per-epoch metrics and optional population frames."""
 
     def __init__(self) -> None:
         self.optimizer_name: str = ""
@@ -240,6 +441,8 @@ class Tracker:
         self.__metrics = MetricBuffer()
         self.__snapshots = SnapshotBuffer()
         self.__metric_matrix: np.ndarray | None = None
+        self.__schema: MetricSchema | None = None
+        self.__col_map: dict[str, int] | None = None
         self.__solution: np.ndarray | None = None
         self.__fitness: np.ndarray | None = None
         self.__objective: np.ndarray | None = None
@@ -257,15 +460,24 @@ class Tracker:
         self.__metrics.reset()
         self.__snapshots.reset()
         self.__metric_matrix = None
+        self.__schema = None
+        self.__col_map = None
         self.__solution = self.__fitness = self.__objective = None
 
     @property
     def recording(self) -> bool:
         return self.__recording
 
-    def start(self, optimizer, problem, seed=None, capture_population: bool = False) -> None:
-        """Begin a new recording; ``meta`` became typed fields on the tracker."""
+    @property
+    def metric_names(self) -> tuple[str, ...]:
+        return self.__schema.names if self.__schema is not None else ()
+
+    def start(self, optimizer, problem, seed=None, capture_population: bool = False, metrics: typing.Any = None) -> None:
+        """Begin a new recording with the specified metric schema."""
         self.reset()
+        schema, instance = resolve_schema(metrics)
+        self.__schema = schema
+        self.__col_map = schema.col_map
         self.__minimize = str(problem.sense) == "min"
         self.capture_population = bool(capture_population)
         self.optimizer_name = str(optimizer.name)
@@ -274,7 +486,7 @@ class Tracker:
         self.pop_size = int(optimizer.pop_size)
         self.n_dims = int(problem.n_dims)
         self.sense = str(problem.sense)
-        self.__metrics.allocate(optimizer.epoch)
+        self.__metrics.allocate(optimizer.epoch, schema, instance)
         self.__recording = True
 
     def record(self, pop, runtime: float, nfe: int, global_best_fit: float) -> None:
@@ -314,11 +526,8 @@ class Tracker:
 
     def __getitem__(self, key: str) -> np.ndarray:
         """Read a finished array by name: metrics first, then the population frames."""
-        if self.__metric_matrix is not None:
-            try:
-                return self.__metric_matrix[:, METRIC_NAMES.index(key)].copy()
-            except ValueError:
-                pass
+        if self.__metric_matrix is not None and self.__col_map is not None and key in self.__col_map:
+            return self.__metric_matrix[:, self.__col_map[key]].copy()
         if key == "solution":
             if self.__solution is not None:
                 return self.__solution
@@ -331,8 +540,12 @@ class Tracker:
         raise KeyError(key)
 
     def __contains__(self, key: str) -> bool:
-        try:
-            self[key]
-        except KeyError:
-            return False
-        return True
+        if self.__metric_matrix is not None and self.__col_map is not None and key in self.__col_map:
+            return True
+        if key in ("solution", "fitness", "objectives"):
+            try:
+                self[key]
+                return True
+            except KeyError:
+                return False
+        return False
