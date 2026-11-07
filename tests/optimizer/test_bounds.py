@@ -199,3 +199,58 @@ def test_duplicate_agent_shares_fields_and_the_evaluation():
         cy.Agent(np.zeros(2), tag=1)
     with pytest.raises(AttributeError):
         particle.fitness = 3.0
+
+
+def test_decode_2d_batch_and_combinatorial_vectorized():
+    # Combinatorial / Graph space: Permutation of 4 nodes
+    nodes = ["A", "B", "C", "D"]
+    bounds = cy.Bounds(cy.PermutationBounds(nodes, name="tour"))
+
+    # Verify 1D decode
+    x1 = np.array([2.0, 0.0, 3.0, 1.0])
+    d1 = bounds.decode(x1)
+    assert d1["tour"] == ["B", "D", "A", "C"]
+
+    # Verify 2D batch decode
+    x2 = np.array([0.0, 1.0, 2.0, 3.0])
+    X = np.stack([x1, x2])
+    batch_d = bounds.decode(X)
+    assert len(batch_d) == 2
+    assert batch_d[0]["tour"] == ["B", "D", "A", "C"]
+    assert batch_d[1]["tour"] == ["A", "B", "C", "D"]
+
+    # Distance matrix between 4 nodes
+    D = np.array([
+        [0.0, 1.0, 5.0, 2.0],
+        [1.0, 0.0, 2.0, 4.0],
+        [5.0, 2.0, 0.0, 1.0],
+        [2.0, 4.0, 1.0, 0.0],
+    ])
+
+    def tsp_vectorized(keys):
+        tours = np.argsort(keys, axis=1)
+        edge_costs = D[tours[:, :-1], tours[:, 1:]]
+        closing = D[tours[:, -1], tours[:, 0]]
+        return np.sum(edge_costs, axis=1) + closing
+
+    problem = cy.Problem(
+        bounds=bounds,
+        obj_func=tsp_vectorized,
+        sense="min",
+        vectorized=True,
+    )
+
+    fitness, objectives = problem.evaluate(X)
+    assert fitness.shape == (2,)
+    # Tour 1: B-D-A-C-B: D[1,3]=4 + D[3,0]=2 + D[0,2]=5 + D[2,1]=2 = 13.0
+    # Tour 2: A-B-C-D-A: D[0,1]=1 + D[1,2]=2 + D[2,3]=1 + D[3,0]=2 = 6.0
+    assert fitness[0] == pytest.approx(13.0)
+    assert fitness[1] == pytest.approx(6.0)
+
+    # Solve with an optimizer in batch mode
+    opt = cy.get_optimizer_by_class("OriginalGWO")(epoch=10, pop_size=20, mode="batch")
+    best = opt.solve(problem, seed=42)
+    assert best.fitness <= 13.0
+    decoded_best = problem.decode_solution(best.solution)
+    assert len(decoded_best["tour"]) == 4
+
