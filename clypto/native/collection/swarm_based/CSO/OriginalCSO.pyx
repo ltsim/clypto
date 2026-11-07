@@ -5,34 +5,21 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class OriginalCSOAgent(cy.Agent):
-    cdef public object velocity
-    cdef public object flag
-
-    def __init__(self, solution=None, objectives=None, weights=None, velocity=None, flag=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.velocity = velocity
-        self.flag = flag
-
-    cdef cy.Agent clone(self):
-        cdef OriginalCSOAgent new = <OriginalCSOAgent>cy.Agent.clone(self)
-        new.velocity = self.velocity
-        new.flag = self.flag
-        return new
 
 
-cdef class OriginalCSOPopulation(cy.Population):
-    """Agents of :class:`OriginalCSO`."""
+cdef class OriginalCSOAgents(AgentFactory):
+    """The agent factory of ``OriginalCSO`` (moved off the optimizer)."""
     cdef public object mixture_ratio
 
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<OriginalCSOPopulation>new).mixture_ratio = self.mixture_ratio
+    def __init__(self, mixture_ratio=None):
+        self.mixture_ratio = mixture_ratio
 
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+    cdef Agent create(self, object solution=None):
         """
         + x: current position of cat
         + v: vector v of cat (same amount of dimension as x)
@@ -42,7 +29,16 @@ cdef class OriginalCSOPopulation(cy.Population):
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         flag = True if self.generator.uniform() < self.mixture_ratio else False
-        return OriginalCSOAgent(solution=solution, velocity=velocity, flag=flag)
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.flag = flag
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalCSO(cy.Optimizer):
@@ -130,10 +126,9 @@ cdef class OriginalCSO(cy.Optimizer):
         """
         super().__init__(parameters=[ "epoch", "pop_size", "mixture_ratio", "smp", "spc", "cdc", "srd", "c1", "w_min", "w_max", "selected_strategy", ], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalCSOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.mixture_ratio = cy.validator(float, mixture_ratio, (0, 1.0), "mixture_ratio")
         self.smp = cy.validator(int, smp, [2, 10000], "smp")
-        self.population.mixture_ratio = self.mixture_ratio
         self.spc = cy.validator(bool, spc, (True, False), "spc")
         self.cdc = cy.validator(float, cdc, (0, 1.0), "cdc")
         self.srd = cy.validator(float, srd, (0, 1.0), "srd")
@@ -141,10 +136,11 @@ cdef class OriginalCSO(cy.Optimizer):
         self.w_min = cy.validator(float, w_min, [0.1, 0.5], "w_min")
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
         self.selected_strategy = cy.validator(int, selected_strategy, [0, 4], "selected_strategy")
+        self.population.factory = OriginalCSOAgents(self.mixture_ratio)
 
     def seeking_mode__(self, cat):
         candidate_cats = []
-        clone_cats = self.population.generate(self.smp)
+        clone_cats = self.population.spawn([self.population.generate_agent() for _ in range(self.smp)])
         if self.spc:
             candidate_cats.append(cy.duplicate_agent(cat))
             clone_cats = [cy.duplicate_agent(cat) for _ in range(self.smp - 1)]
@@ -217,3 +213,5 @@ cdef class OriginalCSO(cy.Optimizer):
             if self.mode == "sequential":
                 n_population[-1].evaluate(self.problem)
         self.population = self.population.spawn(self.population.evaluate(n_population, self.mode))
+
+

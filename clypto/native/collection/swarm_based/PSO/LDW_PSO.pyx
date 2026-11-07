@@ -6,7 +6,8 @@
 import numpy as np
 cimport clypto.core as cy
 
-from clypto.native.collection.swarm_based.PSO._base cimport PSOAgent, PSOPopulation
+from clypto.native.collection.swarm_based.PSO._base cimport move, update_pbest, update_velocity
+from clypto.native.collection.swarm_based.PSO._factory cimport PSOAgents
 
 
 cdef class LDW_PSO(cy.Optimizer):
@@ -43,6 +44,8 @@ cdef class LDW_PSO(cy.Optimizer):
     [1] Shi, Yuhui, and Russell Eberhart. "A modified particle swarm optimizer." In 1998 IEEE international conference on
     evolutionary computation proceedings. IEEE world congress on computational intelligence (Cat. No. 98TH8360), pp. 69-73. IEEE, 1998.
     """
+    cdef public object v_max
+    cdef public object v_min
 
     cdef public double c1
     cdef public double c2
@@ -70,13 +73,19 @@ cdef class LDW_PSO(cy.Optimizer):
         """
         super().__init__(**kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=PSOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = PSOAgents(self)
         self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
         self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
         self.w_min = cy.validator(float, w_min, (0, 0.5), "w_min")
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
         self.parameters = ["epoch", "pop_size", "c1", "c2", "w_min", "w_max"]
         self.sort_flag = False
+
+    def initialize_variables(self):
+        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
+        self.v_min = -self.v_max
+
 
     cdef void evolve(self, int epoch):
         """
@@ -87,13 +96,15 @@ cdef class LDW_PSO(cy.Optimizer):
         """
         # Update weight after each move count  (weight down)
         w = (self.epoch - epoch) / self.epoch * (self.w_max - self.w_min) + self.w_min
-        cdef PSOAgent agent
+        cdef cy.Agent agent
         # sequential on purpose: g_best is one of the particles, and update_solution moves it in place,
         # so the particles after it already follow the new g_best (a batch step would change results)
         for agent in self.population.toarray():
-            agent.update_velocity(self.g_best.solution, w, self.c1, self.c2, self.generator,
-                                  self.population.v_min, self.population.v_max)
-            candidate = self.population.evaluate_solution(cy.reset_solution(self.problem, self.generator, agent.move()))
+            update_velocity(agent, self.g_best.solution, w, self.c1, self.c2, self.generator,
+                                  self.v_min, self.v_max)
+            candidate = self.population.evaluate_solution(cy.reset_solution(self.problem, self.generator, move(agent)))
             if cy.is_better(candidate, agent, self.problem.sense):
                 agent.update_solution(candidate)
-            agent.update_pbest(candidate, self.problem.sense)
+            update_pbest(agent, candidate, self.problem.sense)
+
+

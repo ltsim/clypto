@@ -272,7 +272,9 @@ class Bounds:
         return np.concatenate([b.correct(part) for b, part in self._parts(np.asarray(x, dtype=np.float64))])
 
     def decode(self, x):
-        """Search vector -> ``{name: value}``; a one-variable block gives a scalar."""
+        """Search vector (or 2D matrix of them) -> ``{name: value}`` (or list of them)."""
+        if np.ndim(x) == 2:
+            return [self.decode(row) for row in x]
         out = {}
         for b, part in self._parts(np.asarray(x, dtype=np.float64)):
             value = b.decode(part)

@@ -1,13 +1,7 @@
-cimport numpy as cnp
-cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
 
 
-cdef class PSOAgent(cy.Agent):
-    cdef public cnp.ndarray velocity
-    cdef public cnp.ndarray pbest_solution
-    cdef public double pbest_fitness
-
-
-cdef class PSOPopulation(cy.Population):
-    cdef public cnp.ndarray v_max
-    cdef public cnp.ndarray v_min
+cpdef void update_velocity(Agent agent, object gbest_solution, object w, double c1, double c2,
+                           object generator, object v_min=*, object v_max=*)
+cpdef object move(Agent agent)
+cpdef bint update_pbest(Agent agent, Agent candidate, str sense)

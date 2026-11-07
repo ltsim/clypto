@@ -5,32 +5,16 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class OriginalArchOAAgent(cy.Agent):
-    cdef public object den
-    cdef public object vol
-    cdef public object acc
-
-    def __init__(self, solution=None, objectives=None, weights=None, den=None, vol=None, acc=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.den = den
-        self.vol = vol
-        self.acc = acc
-
-    cdef cy.Agent clone(self):
-        cdef OriginalArchOAAgent new = <OriginalArchOAAgent>cy.Agent.clone(self)
-        new.den = self.den
-        new.vol = self.vol
-        new.acc = self.acc
-        return new
 
 
-cdef class OriginalArchOAPopulation(cy.Population):
-    """Agents of :class:`OriginalArchOA`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+cdef class OriginalArchOAAgents(AgentFactory):
+    """The agent factory of ``OriginalArchOA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         den = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)  # Density
@@ -40,7 +24,17 @@ cdef class OriginalArchOAPopulation(cy.Population):
         ) * (
             self.problem.bounds.up - self.problem.bounds.low
         )  # Acceleration
-        return OriginalArchOAAgent(solution=solution, den=den, vol=vol, acc=acc)
+
+        agent = cy.Agent(solution)
+        agent.den = den
+        agent.vol = vol
+        agent.acc = acc
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalArchOA(cy.Optimizer):
@@ -115,7 +109,8 @@ cdef class OriginalArchOA(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "c1", "c2", "c3", "c4", "acc_max", "acc_min"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalArchOAPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalArchOAAgents()
         self.c1 = cy.validator(float, c1, [1, 3], "c1")
         self.c2 = cy.validator(float, c2, [2, 6], "c2")
         self.c3 = cy.validator(float, c3, [1, 3], "c3")
@@ -208,3 +203,5 @@ cdef class OriginalArchOA(cy.Optimizer):
         if self.mode != "sequential":
             n_population = self.population.evaluate(n_population, self.mode)
             self.population = self.population.greedy(n_population)
+
+

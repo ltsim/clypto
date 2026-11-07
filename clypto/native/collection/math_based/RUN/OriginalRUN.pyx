@@ -131,7 +131,7 @@ cdef class OriginalRUN(cy.Optimizer):
                 xb, xw = self.population[id_min_x].solution, agent.solution
             ## Search Mechanism (SM) of RUN based on Runge Kutta Method
             SM = self.runge_kutta__(xb, xw, delta_x)
-            local_best = cy.duplicate_agent(self.population.sort()[0])
+            local_best = cy.duplicate_agent(self.population.best)
             L = self.generator.choice(range(0, 2), self.problem.n_dims)
             xc = L * agent.solution + (1 - L) * self.population[a].solution  # Eq. 17.3
             xm = L * self.g_best.solution + (1 - L) * local_best.solution  # Eq. 17.4

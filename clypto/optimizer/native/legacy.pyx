@@ -16,16 +16,14 @@ and implements ``cdef void evolve(self, int epoch)``. ``solve()`` binds the
 population to the problem and fills it. ``self.population`` is a typed C field:
 a list of agents is assigned as ``self.population.spawn(agents)``.
 """
-from clypto.optimizer.native.agent cimport Agent, duplicate_agent, is_better
+from clypto.optimizer.native.agent cimport Agent, is_better
 from clypto.optimizer.native.population cimport Population
 from clypto.optimizer.native.problem import Problem
 
 
 cdef Agent snapshot_agent(Agent agent):
-    """An independent copy of ``agent`` — ``clone`` shares the solution vector, so it is copied here."""
-    cdef Agent copy = duplicate_agent(agent)
-    copy.solution = agent.solution.copy()
-    return copy
+    """An independent copy of ``agent`` (``snapshot``): the solution vector is copied, the rest shared."""
+    return agent.snapshot()
 
 
 cdef class LegacyOptimizer(NativeOptimizer):
@@ -64,11 +62,16 @@ cdef class LegacyOptimizer(NativeOptimizer):
             raise ValueError(
                 "Invalid starting_solutions. It should be a list of positions or 2D matrix of positions only."
             )
-        self.population = self.population.generate(starting=starting_solutions)
+        self.population = self.population.spawn([self.generate_agent(x) for x in starting_solutions])
+
+    def generate_agent(self, object solution=None):
+        """One initial agent, evaluated. Stateful algorithms override it to lay the per-agent
+        state that used to live on their agent subclasses."""
+        return self.population.generate_agent(solution)
 
     def initialization(self):
-        if len(self.population) == 0:
-            self.population = self.population.generate()
+        """Create the initial population: ``Population.fill`` generates through the factory."""
+        self.population.fill()
 
     cdef void after_initialization(self):
         # The initial population is sorted or not depending on the algorithm;

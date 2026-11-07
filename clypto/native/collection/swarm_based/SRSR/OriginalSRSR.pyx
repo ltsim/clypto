@@ -5,38 +5,16 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class OriginalSRSRAgent(cy.Agent):
-    cdef public object mu
-    cdef public object sigma
-    cdef public object solution_new
-    cdef public object target_move
-    cdef public object target_new
-
-    def __init__(self, solution=None, objectives=None, weights=None, mu=None, sigma=None, solution_new=None, target_move=None, target_new=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.mu = mu
-        self.sigma = sigma
-        self.solution_new = solution_new
-        self.target_move = target_move
-        self.target_new = target_new
-
-    cdef cy.Agent clone(self):
-        cdef OriginalSRSRAgent new = <OriginalSRSRAgent>cy.Agent.clone(self)
-        new.mu = self.mu
-        new.sigma = self.sigma
-        new.solution_new = self.solution_new
-        new.target_move = self.target_move
-        new.target_new = self.target_new
-        return new
 
 
-cdef class OriginalSRSRPopulation(cy.Population):
-    """Agents of :class:`OriginalSRSR`."""
-
-    def create_agent(self, solution: np.ndarray | None = None):
+cdef class OriginalSRSRAgents(AgentFactory):
+    """The agent factory of ``OriginalSRSR`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
 
@@ -45,16 +23,16 @@ cdef class OriginalSRSRPopulation(cy.Population):
         x_new = solution.copy()
         target_move = 0
 
-        return OriginalSRSRAgent(
-            solution=solution,
-            mu=mu,
-            sigma=sigma,
-            solution_new=x_new,
-            target_move=target_move,
-        )
 
-    def generate_agent(self, solution: np.ndarray | None = None):
-        agent = self.create_agent(solution)
+        agent = cy.Agent(solution)
+        agent.mu = mu
+        agent.sigma = sigma
+        agent.solution_new = x_new
+        agent.target_move = target_move
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
         agent.evaluate(self.problem)
         agent.target_new = cy.duplicate_agent(agent)
         return agent
@@ -102,7 +80,8 @@ cdef class OriginalSRSR(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalSRSRPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalSRSRAgents()
 
     def initialize_variables(self):
         pop_size = self.population.size()
@@ -332,3 +311,4 @@ cdef class OriginalSRSR(cy.Optimizer):
             for idx in range(0, 5):
                 if cy.is_better(pop_workers[idx], self.population[1], self.problem.sense):
                     self.population[-(idx + 1)].update_solution(pop_workers[idx], pop_workers[idx].solution.copy())
+

@@ -5,32 +5,30 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class CMA_ESAgent(cy.Agent):
-    cdef public object step
-
-    def __init__(self, solution=None, objectives=None, weights=None, step=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.step = step
-
-    cdef cy.Agent clone(self):
-        cdef CMA_ESAgent new = <CMA_ESAgent>cy.Agent.clone(self)
-        new.step = self.step
-        return new
 
 
-cdef class CMA_ESPopulation(cy.Population):
-    """Agents of :class:`CMA_ES`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+cdef class CMA_ESAgents(AgentFactory):
+    """The agent factory of ``CMA_ES`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         step = self.generator.multivariate_normal(
             np.zeros(self.problem.n_dims), np.eye(self.problem.n_dims)
         )
-        return CMA_ESAgent(solution=solution, step=step)
+
+        agent = cy.Agent(solution)
+        agent.step = step
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class CMA_ES(cy.Optimizer):
@@ -74,7 +72,8 @@ cdef class CMA_ES(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=CMA_ESPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = CMA_ESAgents()
 
     def before_main_loop(self):
         pop_size = self.population.size()
@@ -180,3 +179,5 @@ cdef class CMA_ES(cy.Optimizer):
         if np.any(np.diag(E) < 0):
             E[E < 0] = 0
             self.C = V * E / V
+
+

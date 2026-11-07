@@ -254,7 +254,7 @@ cdef class DevSMO(cy.Optimizer):
     def update_leaders(self):
         self.population = self.population.spawn(self.merge_groups(self.groups))
         # Update global leader
-        g_best_current = cy.duplicate_agent(self.population.sort()[0])
+        g_best_current = cy.duplicate_agent(self.population.best)
         if cy.is_better(g_best_current, self.g_best, self.problem.sense):
             self.g_best = g_best_current
             # Update global limit count

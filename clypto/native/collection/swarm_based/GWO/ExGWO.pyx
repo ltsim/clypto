@@ -14,7 +14,7 @@ cdef class ExGWO(cy.Optimizer):
     The original version of: Expanded Grey Wolf Optimizer (Ex-GWO)
 
     Notes:
-        + When calling the solve() function, you need to set the mode to "swarm" to use this algorithm as original version.
+        + When calling the solve() function, you need to set the mode to "batch" to use this algorithm as original version.
         + They update the position of whole population before calculating the fitness of each agent.
 
     Links:

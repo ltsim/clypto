@@ -1,24 +1,43 @@
+import cython
+
+cimport numpy as cnp
+
 from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
+from clypto.optimizer.native.problem cimport Problem
 
 
+@cython.final
 cdef class Population:
     cdef public list agents
-    cdef public object problem
+    cdef public Problem problem
     cdef public object generator
-    cdef public object idx
+    cdef AgentFactory _factory
+    cdef public int threads
     cdef Py_ssize_t _size
+    cdef bint _minimize
 
-    cdef void copy_state(self, Population new)
     cpdef Population spawn(self, object agents)
+    cpdef Population empty(self)
+    cpdef Population snapshot(self)
+    cpdef Population copy(self)
+    cpdef Population fill(self, object starting=*)
+    cpdef Agent add(self, object solution=*)
+    cpdef Agent remove_at(self, Py_ssize_t index)
     cpdef Py_ssize_t size(self)
     cpdef list toarray(self)
-    cpdef object evaluate(self, object agents, object mode)
+    cpdef object evaluate(self, object agents, str mode)
     cpdef void append(self, object agent)
     cpdef Population sort(self)
     cpdef Population greedy(self, object candidates, str mode=*)
+    cpdef list top(self, Py_ssize_t k)
+    cpdef list bottom(self, Py_ssize_t k)
+    cdef str sense_str(self)
+    cdef object _batch_matrix(self, Py_ssize_t k)
 
 
 cpdef Population population(object size, object range=*, type cls=*)
+cpdef Population population_with_factory(object size, AgentFactory factory, object range=*)
 cpdef Population empty_snapshot(Population population)
 cpdef Population snapshot(Population population)
 cpdef object correct_solution(object problem, object solution)

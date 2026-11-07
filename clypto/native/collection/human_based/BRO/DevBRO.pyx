@@ -6,30 +6,28 @@
 import numpy as np
 from scipy.spatial.distance import cdist
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class DevBROAgent(cy.Agent):
-    cdef public object damage
-
-    def __init__(self, solution=None, objectives=None, weights=None, damage=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.damage = damage
-
-    cdef cy.Agent clone(self):
-        cdef DevBROAgent new = <DevBROAgent>cy.Agent.clone(self)
-        new.damage = self.damage
-        return new
 
 
-cdef class DevBROPopulation(cy.Population):
-    """Agents of :class:`DevBRO`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+cdef class DevBROAgents(AgentFactory):
+    """The agent factory of ``DevBRO`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         damage = 0
-        return DevBROAgent(solution=solution, damage=damage)
+
+        agent = cy.Agent(solution)
+        agent.damage = damage
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class DevBRO(cy.Optimizer):
@@ -77,7 +75,8 @@ cdef class DevBRO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "threshold"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=DevBROPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = DevBROAgents()
         self.threshold = cy.validator(float, threshold, [1, 10], "threshold")
 
     def initialize_variables(self):
@@ -172,3 +171,5 @@ cdef class DevBRO(cy.Optimizer):
                 ub, self.lb_updated, self.ub_updated
             )
             self.dyn_delta += np.round(self.dyn_delta / 2)
+
+

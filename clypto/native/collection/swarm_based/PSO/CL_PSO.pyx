@@ -6,7 +6,8 @@
 import numpy as np
 cimport clypto.core as cy
 
-from clypto.native.collection.swarm_based.PSO._base cimport PSOPopulation
+from clypto.native.collection.swarm_based.PSO._base cimport update_pbest
+from clypto.native.collection.swarm_based.PSO._factory cimport PSOAgents
 
 
 cdef class CL_PSO(cy.Optimizer):
@@ -43,6 +44,8 @@ cdef class CL_PSO(cy.Optimizer):
     [1] Liang, J.J., Qin, A.K., Suganthan, P.N. and Baskar, S., 2006. Comprehensive learning particle swarm optimizer
     for global optimization of multimodal functions. IEEE transactions on evolutionary computation, 10(3), pp.281-295.
     """
+    cdef public object v_max
+    cdef public object v_min
 
     cdef public double c_local
     cdef public int max_flag
@@ -70,7 +73,8 @@ cdef class CL_PSO(cy.Optimizer):
         """
         super().__init__(**kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=PSOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = PSOAgents(self)
         self.c_local = cy.validator(float, c_local, (0, 5.0), "c_local")
         self.w_min = cy.validator(float, w_min, (0, 0.5), "w_min")
         self.w_max = cy.validator(float, w_max, [0.5, 2.0], "w_max")
@@ -132,9 +136,9 @@ cdef class CL_PSO(cy.Optimizer):
             n_population.append(agent)
             if self.mode == "sequential":
                 agent.evaluate(self.problem)
-                agent.update_pbest(agent, self.problem.sense)
+                update_pbest(agent, agent, self.problem.sense)
                 self.population[idx] = cy.get_better_agent(self.population[idx], agent, self.problem.sense)
-                if self.population[idx].update_pbest(agent, self.problem.sense):
+                if update_pbest(self.population[idx], agent, self.problem.sense):
                     self.flags[idx] = 0
                 else:
                     self.flags[idx] += 1
@@ -153,3 +157,5 @@ cdef class CL_PSO(cy.Optimizer):
                     if self.flags[idx] >= self.max_flag:
                         self.flags[idx] = 0
             self.population = self.population.spawn(pop_child)
+
+

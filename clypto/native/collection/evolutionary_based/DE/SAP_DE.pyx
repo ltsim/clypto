@@ -5,36 +5,20 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
-cdef class SAP_DEAgent(cy.Agent):
-    cdef public object crossover
-    cdef public object mutation
-    cdef public object pop_size
-
-    def __init__(self, solution=None, objectives=None, weights=None, crossover=None, mutation=None, pop_size=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.crossover = crossover
-        self.mutation = mutation
-        self.pop_size = pop_size
-
-    cdef cy.Agent clone(self):
-        cdef SAP_DEAgent new = <SAP_DEAgent>cy.Agent.clone(self)
-        new.crossover = self.crossover
-        new.mutation = self.mutation
-        new.pop_size = self.pop_size
-        return new
 
 
-cdef class SAP_DEPopulation(cy.Population):
-    """Agents of :class:`SAP_DE`: each carries its own crossover/mutation rates and population size."""
+cdef class SAP_DEAgents(AgentFactory):
+    """The agent factory of ``SAP_DE`` (moved off the optimizer)."""
     cdef public object branch
 
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<SAP_DEPopulation>new).branch = self.branch
+    def __init__(self, branch=None):
+        self.branch = branch
 
-    def create_agent(self, solution: np.ndarray | None = None):
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         crossover_rate = self.generator.uniform(0, 1)
@@ -44,12 +28,17 @@ cdef class SAP_DEPopulation(cy.Population):
         else:  # elif self.branch == "REL":
             pop_size = int(10 * self.problem.n_dims + self.generator.uniform(-0.5, 0.5))
 
-        return SAP_DEAgent(
-            solution=solution,
-            crossover=crossover_rate,
-            mutation=mutation_rate,
-            pop_size=pop_size,
-        )
+
+        agent = cy.Agent(solution)
+        agent.crossover = crossover_rate
+        agent.mutation = mutation_rate
+        agent.pop_size = pop_size
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class SAP_DE(cy.Optimizer):
@@ -103,9 +92,9 @@ cdef class SAP_DE(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "branch"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=SAP_DEPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.branch = cy.validator(str, branch, ["ABS", "REL"], "branch")
-        self.population.branch = self.branch
+        self.population.factory = SAP_DEAgents(self.branch)
         self.fixed_pop_size = self.population.size()
 
     def edit_to_range__(self, var=None, lower=0, upper=1, func_value=None):
@@ -202,3 +191,5 @@ cdef class SAP_DE(cy.Optimizer):
             pop_sorted = cy.sort_agents(pop, self.problem.sense)
             self.population = self.population.spawn(pop + pop_sorted[: m_new - self.population.size()])
         self.population.resize(len(self.population))
+
+

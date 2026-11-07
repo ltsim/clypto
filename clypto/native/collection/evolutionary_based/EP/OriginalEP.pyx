@@ -5,39 +5,35 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class OriginalEPAgent(cy.Agent):
-    cdef public object strategy
-    cdef public object win
-
-    def __init__(self, solution=None, objectives=None, weights=None, strategy=None, win=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.strategy = strategy
-        self.win = win
-
-    cdef cy.Agent clone(self):
-        cdef OriginalEPAgent new = <OriginalEPAgent>cy.Agent.clone(self)
-        new.strategy = self.strategy
-        new.win = self.win
-        return new
 
 
-cdef class OriginalEPPopulation(cy.Population):
-    """Agents of :class:`OriginalEP`."""
+cdef class OriginalEPAgents(AgentFactory):
+    """The agent factory of ``OriginalEP`` (moved off the optimizer)."""
     cdef public object distance
 
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<OriginalEPPopulation>new).distance = self.distance
+    def __init__(self, distance=None):
+        self.distance = distance
 
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         strategy = self.generator.uniform(0, self.distance, self.problem.n_dims)
         times_win = 0
-        return OriginalEPAgent(solution=solution, strategy=strategy, win=times_win)
+
+        agent = cy.Agent(solution)
+        agent.strategy = strategy
+        agent.win = times_win
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalEP(cy.Optimizer):
@@ -91,14 +87,14 @@ cdef class OriginalEP(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "bout_size"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalEPPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.bout_size = cy.validator(float, bout_size, (0, 1.0), "bout_size")
 
     def initialize_variables(self):
         pop_size = self.population.size()
         self.n_bout_size = int(self.bout_size * pop_size)
         self.distance = 0.05 * (self.problem.bounds.up - self.problem.bounds.low)
-        self.population.distance = self.distance
+        self.population.factory = OriginalEPAgents(self.distance)
 
     cdef void evolve(self, int epoch):
         """
@@ -138,3 +134,5 @@ cdef class OriginalEP(cy.Optimizer):
                     pop[rand_idx].win += 1
         pop = sorted(pop, key=lambda agent: agent.win, reverse=True)
         self.population = self.population.spawn(pop[: pop_size])
+
+

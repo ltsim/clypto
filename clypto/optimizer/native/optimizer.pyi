@@ -1,5 +1,7 @@
 import typing
 
+from clypto.optimizer.history import Tracker
+
 class NativeOptimizer:
     epoch: int
     mode: str
@@ -8,7 +10,7 @@ class NativeOptimizer:
     name: str
     generator: typing.Any
     rng: typing.Any
-    tracker: typing.Any
+    tracker: Tracker
     parameters: dict
 
     @property
@@ -19,6 +21,8 @@ class NativeOptimizer:
     def initialization(self) -> None: ...
     def before_main_loop(self) -> None: ...
     def solve(self, problem: object, termination: object = ..., starting_solutions: object = ..., seed: int | None = ...,
-              debug: bool = ..., track_population: bool = ..., history_path: str | None = ...,
-              before_iteration: object = ..., after_iteration: object = ...) -> typing.Any: ...
+              debug: bool = ..., track_population: bool = ..., threads: int = ...,
+              before_iteration: typing.Callable[[object, int], None] | None = ...,
+              after_iteration: typing.Callable[[object, int], None] | None = ...,
+              metrics: typing.Any = ...) -> typing.Any: ...
     def __getattr__(self, name: str) -> typing.Any: ...

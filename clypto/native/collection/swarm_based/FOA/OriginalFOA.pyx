@@ -5,6 +5,8 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
@@ -16,13 +18,19 @@ def norm_consecutive_adjacent(position):
     )
 
 
-cdef class OriginalFOAPopulation(cy.Population):
-    """Agents of :class:`OriginalFOA`: a fly starts at the smell of a random position."""
 
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+
+cdef class OriginalFOAAgents(AgentFactory):
+    """The agent factory of ``OriginalFOA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         return cy.Agent(solution=norm_consecutive_adjacent(solution))
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalFOA(cy.Optimizer):
@@ -67,7 +75,8 @@ cdef class OriginalFOA(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalFOAPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalFOAAgents()
 
     def norm_consecutive_adjacent__(self, position=None):
         return norm_consecutive_adjacent(position)
@@ -98,3 +107,5 @@ cdef class OriginalFOA(cy.Optimizer):
         if self.mode != "sequential":
             pop_new = self.population.evaluate(pop_new, self.mode)
             self.population = self.population.spawn(cy.greedy_agents(pop_new, self.population, self.problem.sense))
+
+

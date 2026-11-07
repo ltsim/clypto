@@ -5,42 +5,28 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class ABFOAgent(cy.Agent):
-    cdef public object nutrients
-    cdef public object local_solution
-    cdef public object local_best
-
-    def __init__(self, solution=None, objectives=None, weights=None, nutrients=None, local_solution=None, local_best=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.nutrients = nutrients
-        self.local_solution = local_solution
-        self.local_best = local_best
-
-    cdef cy.Agent clone(self):
-        cdef ABFOAgent new = <ABFOAgent>cy.Agent.clone(self)
-        new.nutrients = self.nutrients
-        new.local_solution = self.local_solution
-        new.local_best = self.local_best
-        return new
 
 
-cdef class ABFOPopulation(cy.Population):
-    """Agents of :class:`ABFO`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+cdef class ABFOAgents(AgentFactory):
+    """The agent factory of ``ABFO`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         nutrients = 0  # total nutrient gained by the bacterium in its whole searching process.(int number)
         local_solution = solution.copy()
-        return ABFOAgent(
-            solution=solution, nutrients=nutrients, local_solution=local_solution
-        )
 
-    def generate_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        agent = self.create_agent(solution)
+        agent = cy.Agent(solution)
+        agent.nutrients = nutrients
+        agent.local_solution = local_solution
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
         agent.evaluate(self.problem)
         agent.local_best = cy.duplicate_agent(agent)
         return agent
@@ -115,7 +101,8 @@ cdef class ABFO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "C_s", "C_e", "Ped", "Ns", "N_adapt", "N_split"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=ABFOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = ABFOAgents()
         self.C_s = self.Ped = cy.validator(float, C_s, (0, 2.0), "C_s")
         self.C_e = self.Ped = cy.validator(float, C_e, (0, 1.0), "C_e")
         self.p_eliminate = self.Ped = cy.validator(float, Ped, (0, 1.0), "Ped")
@@ -214,3 +201,4 @@ cdef class ABFO(cy.Optimizer):
                 if idx not in list_idx_removed:
                     n_population.append(self.population[idx])
             self.population = self.population.spawn(n_population)
+

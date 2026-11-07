@@ -5,30 +5,28 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class OriginalSSpiderOAgent(cy.Agent):
-    cdef public object weight
-
-    def __init__(self, solution=None, objectives=None, weights=None, weight=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.weight = weight
-
-    cdef cy.Agent clone(self):
-        cdef OriginalSSpiderOAgent new = <OriginalSSpiderOAgent>cy.Agent.clone(self)
-        new.weight = self.weight
-        return new
 
 
-cdef class OriginalSSpiderOPopulation(cy.Population):
-    """Agents of :class:`OriginalSSpiderO`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+cdef class OriginalSSpiderOAgents(AgentFactory):
+    """The agent factory of ``OriginalSSpiderO`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         weight = 0.0
-        return OriginalSSpiderOAgent(solution=solution, weight=weight)
+
+        agent = cy.Agent(solution)
+        agent.weight = weight
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalSSpiderO(cy.Optimizer):
@@ -84,7 +82,8 @@ cdef class OriginalSSpiderO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "fp_min", "fp_max"], **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalSSpiderOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalSSpiderOAgents()
         fp_min = cy.validator(float, fp_min, (0.0, 1.0), "fp_min")
         fp_max = cy.validator(float, fp_max, (0.0, 1.0), "fp_max")
         self.fp_min, self.fp_max = min((fp_min, fp_max)), max((fp_min, fp_max))
@@ -106,7 +105,7 @@ cdef class OriginalSSpiderO(cy.Optimizer):
         )
         idx_females = set(range(0, pop_size)) - set(idx_males)
         if len(self.population) == 0:
-            self.population = self.population.generate(pop_size)
+            self.population = self.population.spawn([self.population.generate_agent() for _ in range(pop_size)])
         self.pop_males = [self.population[idx] for idx in idx_males]
         self.pop_females = [self.population[idx] for idx in idx_females]
         self.population = self.population.spawn(self.recalculate_weights__(self.population))
@@ -310,7 +309,7 @@ cdef class OriginalSSpiderO(cy.Optimizer):
                 agent2 = self.population.generate_agent(pos2)
                 list_child.append(agent1)
                 list_child.append(agent2)
-        list_child += self.population.generate(pop_size - len(list_child))
+        list_child += self.population.spawn([self.population.generate_agent() for _ in range(pop_size - len(list_child))])
         return list_child
 
     def survive__(self, pop=None, pop_child=None):
@@ -354,3 +353,5 @@ cdef class OriginalSSpiderO(cy.Optimizer):
         pop_child = self.mating__()
         pop = self.survive__(pop, pop_child)
         self.population = self.population.spawn(self.recalculate_weights__(pop))
+
+

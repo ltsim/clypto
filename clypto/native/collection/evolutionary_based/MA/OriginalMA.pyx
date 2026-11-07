@@ -5,31 +5,21 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class OriginalMAAgent(cy.Agent):
-    cdef public object bitstring
-
-    def __init__(self, solution=None, objectives=None, weights=None, bitstring=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.bitstring = bitstring
-
-    cdef cy.Agent clone(self):
-        cdef OriginalMAAgent new = <OriginalMAAgent>cy.Agent.clone(self)
-        new.bitstring = self.bitstring
-        return new
 
 
-cdef class OriginalMAPopulation(cy.Population):
-    """Agents of :class:`OriginalMA`."""
+cdef class OriginalMAAgents(AgentFactory):
+    """The agent factory of ``OriginalMA`` (moved off the optimizer)."""
     cdef public object bits_total
 
-    cdef void copy_state(self, cy.Population new):
-        cy.Population.copy_state(self, new)
-        (<OriginalMAPopulation>new).bits_total = self.bits_total
+    def __init__(self, bits_total=None):
+        self.bits_total = bits_total
 
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         bitstring = "".join(
@@ -38,7 +28,15 @@ cdef class OriginalMAPopulation(cy.Population):
                 for _ in range(0, self.bits_total)
             ]
         )
-        return OriginalMAAgent(solution=solution, bitstring=bitstring)
+
+        agent = cy.Agent(solution)
+        agent.bitstring = bitstring
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalMA(cy.Optimizer):
@@ -110,7 +108,7 @@ cdef class OriginalMA(cy.Optimizer):
         """
         super().__init__(parameters=[ "epoch", "pop_size", "pc", "pm", "p_local", "max_local_gens", "bits_per_param", ], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalMAPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.pc = cy.validator(float, pc, (0, 1.0), "pc")
         self.pm = cy.validator(float, pm, (0, 1.0), "pm")
         self.p_local = cy.validator(float, p_local, (0, 1.0), "p_local")
@@ -119,7 +117,7 @@ cdef class OriginalMA(cy.Optimizer):
 
     def initialize_variables(self):
         self.bits_total = self.problem.n_dims * self.bits_per_param
-        self.population.bits_total = self.bits_total
+        self.population.factory = OriginalMAAgents(self.bits_total)
 
     def decode__(self, bitstring: str | None = None) -> np.ndarray:
         """
@@ -226,3 +224,5 @@ cdef class OriginalMA(cy.Optimizer):
         for idx, agent in enumerate(self.population.toarray()):
             if self.generator.random() < self.p_local:
                 self.population[idx] = self.bits_climber__(pop[idx])
+
+

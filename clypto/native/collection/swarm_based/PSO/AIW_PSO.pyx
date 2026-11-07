@@ -6,7 +6,8 @@
 import numpy as np
 cimport clypto.core as cy
 
-from clypto.native.collection.swarm_based.PSO._base cimport PSOAgent, PSOPopulation
+from clypto.native.collection.swarm_based.PSO._base cimport move, update_pbest, update_velocity
+from clypto.native.collection.swarm_based.PSO._factory cimport PSOAgents
 
 
 cdef class AIW_PSO(cy.Optimizer):
@@ -43,6 +44,8 @@ cdef class AIW_PSO(cy.Optimizer):
     Tadeusiewicz, R., Zadeh, L.A., Żurada, J.M. (eds) Artificial Intelligence and Soft Computing – ICAISC 2006. ICAISC 2006.
     Lecture Notes in Computer Science(), vol 4029. Springer, Berlin, Heidelberg. https://doi.org/10.1007/11785231_48
     """
+    cdef public object v_max
+    cdef public object v_min
 
     cdef public double alpha
     cdef public double c1
@@ -67,12 +70,18 @@ cdef class AIW_PSO(cy.Optimizer):
         """
         super().__init__(**kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=PSOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = PSOAgents(self)
         self.c1 = cy.validator(float, c1, (0, 5.0), "c1")
         self.c2 = cy.validator(float, c2, (0, 5.0), "c2")
         self.alpha = cy.validator(float, alpha, [0.0, 1.0], "alpha")
         self.parameters = ["epoch", "pop_size", "c1", "c2", "alpha"]
         self.sort_flag = False
+
+    def initialize_variables(self):
+        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
+        self.v_min = -self.v_max
+
 
     cdef void evolve(self, int epoch):
         """
@@ -81,8 +90,8 @@ cdef class AIW_PSO(cy.Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        current_best = cy.duplicate_agent(self.population.sort()[0])
-        cdef PSOAgent agent
+        current_best = cy.duplicate_agent(self.population.best)
+        cdef cy.Agent agent
         # sequential on purpose: g_best is one of the particles, and update_solution moves it in place,
         # so the particles after it already follow the new g_best (a batch step would change results)
         for agent in self.population.toarray():
@@ -90,9 +99,11 @@ cdef class AIW_PSO(cy.Optimizer):
             denom = np.where(denom == 0, 1e-6, denom)
             isa = np.abs(agent.solution - agent.pbest_solution) / denom  # individual search ability
             w = 1 - self.alpha * (1.0 / (1.0 + np.exp(-isa)))
-            agent.update_velocity(self.g_best.solution, w, self.c1, self.c2, self.generator,
-                                  self.population.v_min, self.population.v_max)
-            candidate = self.population.evaluate_solution(cy.reset_solution(self.problem, self.generator, agent.move()))
+            update_velocity(agent, self.g_best.solution, w, self.c1, self.c2, self.generator,
+                                  self.v_min, self.v_max)
+            candidate = self.population.evaluate_solution(cy.reset_solution(self.problem, self.generator, move(agent)))
             if cy.is_better(candidate, agent, self.problem.sense):
                 agent.update_solution(candidate)
-            agent.update_pbest(candidate, self.problem.sense)
+            update_pbest(agent, candidate, self.problem.sense)
+
+

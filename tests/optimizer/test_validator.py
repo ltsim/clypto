@@ -34,4 +34,4 @@ def test_check_bound(value, bound, output):
 def test_check_float(value, bound, output):
     with pytest.raises(TypeError) as e:
         cy.validator(float, value, bound, "value")
-    assert e.type == TypeError
+    assert e.type is TypeError

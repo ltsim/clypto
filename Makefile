@@ -1,4 +1,4 @@
-.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync build-ext test uv-test lint typecheck check-version docs-serve docs-build
+.PHONY: clean clean-build clean-cython clean-pyc uv-lock uv-sync build-ext test uv-test lint typecheck check-version docs-serve docs-build docs-clean docs-open
 
 clean: clean-build clean-cython clean-pyc
 
@@ -27,12 +27,12 @@ uv-lock:
 	uv lock
 
 uv-sync:
-	uv sync --extra dev
+	uv sync --extra dev --no-install-project
 
 # The collection is native .pyx; build the extensions in place before running
 # anything that imports clypto from the source tree.
 build-ext:
-	uv run --no-sync python setup.py build_ext --inplace
+	uv run --no-sync python setup.py build_ext --inplace -j $$(nproc 2>/dev/null || echo 4)
 
 test: build-ext
 	uv run --no-sync pytest tests/
@@ -50,9 +50,13 @@ check-version:
 	sh .husky/check-version.sh head
 
 docs-serve:
-	uv sync --extra docs --no-install-project
-	uv run --no-sync mkdocs serve
+	$(MAKE) -C docs serve
 
 docs-build:
-	uv sync --extra docs --no-install-project
-	uv run --no-sync mkdocs build --strict
+	$(MAKE) -C docs html
+
+docs-clean:
+	$(MAKE) -C docs clean
+
+docs-open:
+	$(MAKE) -C docs open

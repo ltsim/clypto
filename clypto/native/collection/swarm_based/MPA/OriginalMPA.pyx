@@ -18,7 +18,7 @@ cdef class OriginalMPA(cy.Optimizer):
         2. https://www.mathworks.com/matlabcentral/fileexchange/74578-marine-predators-algorithm-mpa
 
     Notes:
-        1. To use the original paper, set the training mode = "swarm"
+        1. To use the original paper, set the training mode = "batch"
         2. They update the whole population at the same time before update the fitness
         3. Two variables that they consider it as constants which are FADS = 0.2 and P = 0.5
 

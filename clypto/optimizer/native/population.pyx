@@ -1,115 +1,104 @@
-"""``Population`` (a sequence of agents), its snapshots and the bounds-repair functions.
+"""``Population`` (the single, final container of agents) and the bounds-repair functions.
 
-``Population`` is ``self.population`` in the engine and the decorator API. It is
-declared in the optimizer's ``__init__`` with ``cy.population(pop_size)``, bound
-to the problem by ``solve()`` (``bind``), and builds and evaluates the agents
-(``create_agent``/``generate_agent``, ``evaluate_solution``/``evaluate``). An
-algorithm with its own agents subclasses it, overrides those methods and, when
-it declares fields, ``copy_state`` (copies are static C code, never ``setattr``).
+``Population`` holds the agents of the run (``agents``), the bound problem and the
+seeded generator, and evaluates/ranks them. ``size()`` is the configured number of
+agents (``pop_size``); ``len()`` is how many it holds right now. Slices, ``+``,
+``sort()`` and ``greedy()`` give new populations bound to the same problem.
 
-``evaluate(agents, mode)`` is the batch step of the pipeline
-``empty_snapshot`` -> ``evaluate`` -> ``greedy``: one ``problem.evaluate(X)`` call
-when the problem is vectorized or, in ``"parallel"`` mode, has a nogil evaluator.
+Evaluation follows ``mode``: ``"sequential"`` evaluates only the agents that are
+not evaluated yet (agent by agent), ``"batch"`` and ``"parallel"`` evaluate the
+whole batch at once (``"parallel"`` on OpenMP threads when the problem has a nogil
+``evaluator``). ``threads`` is set once by the engine's ``solve``.
 
-Bounds repair is a set of plain functions (``correct_solution``,
-``reset_solution``, ``opposite_solution``), not population methods.
+Bounds repair is a set of plain functions (``correct_solution``, ``reset_solution``,
+``opposite_solution``), not population methods.
 """
+import cython
+
 from collections.abc import MutableSequence
 
 import numpy as np
+cimport numpy as cnp
 
-from clypto.optimizer.native.agent cimport Agent, argsort_agents, duplicate_agent, greedy_agents
+from clypto.optimizer.native.agent cimport Agent, duplicate_agent, greedy_agents, sort_agents, better_fitness
+from clypto.optimizer.native.factory cimport AgentFactory
+from clypto.optimizer.native.problem cimport Problem
 from clypto.optimizer.native.utils cimport validator
 
 
-cpdef Population population(object size, object range=[5, 10000], type cls=None):
-    """An unbound population of ``size`` agents (``cls``, default :class:`Population`).
-
-    ``size`` is validated like ``cy.validator(int, size, range, "pop_size")``.
-    """
-    return (Population if cls is None else cls)(validator(int, size, range, "pop_size"))
-
-
-cpdef Population empty_snapshot(Population population):
-    """An empty population of the same class and state (problem, generator, size, fields)."""
-    return population.spawn([])
-
-
-cpdef Population snapshot(Population population):
-    """A population of the same class and state holding a copy (``duplicate_agent``) of every agent."""
-    return population.spawn([duplicate_agent(agent) for agent in population.agents])
-
-
-cpdef object correct_solution(object problem, object solution):
-    """Clip ``solution`` to the bounds, then apply the problem's own correction."""
-    return problem.correct_solution(np.clip(solution, problem.bounds.low, problem.bounds.up))
-
-
-cpdef object reset_solution(object problem, object generator, object solution):
-    """Redraw the out-of-bounds values of ``solution`` uniformly, then apply the problem's own correction.
-
-    The draw covers every dimension (one ``generator.uniform(low, up)`` call), as the clip-free MEALPY repair did.
-    """
-    low, up = problem.bounds.low, problem.bounds.up
-    return problem.correct_solution(np.where((low <= solution) & (solution <= up), solution, generator.uniform(low, up)))
-
-
-cpdef object opposite_solution(object problem, object generator, Agent agent, Agent g_best):
-    """Opposition-based candidate of ``agent`` around ``g_best``, corrected."""
-    pos_new = (
-        problem.bounds.low + problem.bounds.up - g_best.solution
-        + generator.uniform() * (g_best.solution - agent.solution)
-    )
-    return correct_solution(problem, pos_new)
-
-
+@cython.final
 cdef class Population:
     """Ordered, mutable sequence of agents, ranked by the bound problem's ``sense``.
 
     ``size()`` is the configured number of agents (``pop_size``); ``len()`` is
     how many it holds right now. Slices, ``+``, ``sort()`` and ``greedy()`` give
-    new populations of the same class, sharing its problem, generator and state.
-    ``fitness``/``solutions`` are arrays built from the agents; assigning
-    ``solutions`` writes each row back to its agent.
+    new populations of the same problem. ``fitness``/``solutions`` are arrays
+    built from the agents; assigning ``solutions`` writes each row back to its agent.
     """
 
-    def __init__(self, size=0, agents=()):
+    def __init__(self, size=0, agents=(), factory=None):
         self._size = size
+        self.threads = 0
+        self._minimize = True
         # A list is wrapped, not copied, so code holding the list sees the same agents.
         self.agents = agents if type(agents) is list else list(agents)
+        # The factory owns the per-agent lifecycle (create/generate); algorithms
+        # with extra per-agent state pass their own (cy.population_with_factory(...)).
+        self._factory = factory if factory is not None else AgentFactory()
 
-    @classmethod
-    def __class_getitem__(cls, item):
-        return cls
+    @property
+    def factory(self):
+        """The agent factory of this population; assigning one re-binds the problem."""
+        return self._factory
+
+    @factory.setter
+    def factory(self, AgentFactory factory):
+        self._factory = factory
+        if self.problem is not None:
+            self._factory.bind(self.problem, self.generator)
 
     def bind(self, problem, generator):
         """Attach the problem and the seeded generator, and drop the agents of a previous run."""
         self.problem = problem
         self.generator = generator
         self.agents = []
-        self.idx = None
-
-    cdef void copy_state(self, Population new):
-        """Give ``new`` this population's state; subclasses with fields call it and copy theirs."""
-        new.problem, new.generator, new._size = self.problem, self.generator, self._size
+        self._minimize = problem.sense == "min"
+        self._factory.bind(problem, generator)
 
     cpdef Population spawn(self, object agents):
-        """A population of the same class and state holding ``agents`` (a list is wrapped, not copied)."""
-        cdef Population new = <Population>type(self).__new__(type(self))
-        self.copy_state(new)
+        """A population bound to the same problem holding ``agents`` (a list is wrapped, not copied)."""
+        cdef Population new = self.empty()
         new.agents = agents if type(agents) is list else list(agents)
         return new
+
+    cpdef Population empty(self):
+        """An empty population bound to the same problem, generator and settings."""
+        cdef Population new = Population(self._size)
+        new.problem = self.problem
+        new.generator = self.generator
+        new.threads = self.threads
+        new._minimize = self._minimize
+        new.factory = self.factory
+        return new
+
+    cpdef Population snapshot(self):
+        """A population of copies (``duplicate_agent``) of every agent."""
+        return self.spawn([duplicate_agent(<Agent>a) for a in self.agents])
+
+    cpdef Population copy(self):
+        """Shallow copy: the same agent objects, bound to the same problem."""
+        return self.spawn(list(self.agents))
 
     cpdef Py_ssize_t size(self):
         """The configured number of agents (``pop_size``)."""
         return self._size
 
+    def resize(self, n):
+        self._size = n
+
     cpdef list toarray(self):
         """The agents, as the live list (a typed ``for`` over it is a C loop)."""
         return self.agents
-
-    def resize(self, n):
-        self._size = n
 
     @property
     def sense(self):
@@ -117,16 +106,30 @@ cdef class Population:
 
     # -- agents ------------------------------------------------------------------
     def create_agent(self, solution=None):
-        """A new, not yet evaluated agent at ``solution`` (random when ``None``)."""
-        if solution is None:
-            solution = self.problem.generate_solution(True)
-        return Agent(solution)
+        """A new, not yet evaluated agent at ``solution`` (random when ``None``); the factory owns it."""
+        return self._factory.create(solution)
 
     def generate_agent(self, solution=None):
-        """``create_agent`` then evaluate it."""
-        agent = self.create_agent(solution)
-        agent.evaluate(self.problem)
+        """``create_agent`` then evaluate it; the factory owns the per-agent state."""
+        return self._factory.generate(solution)
+
+    cpdef Population fill(self, object starting=None):
+        """Generate (through the factory) the ``size()`` agents, or one per ``starting`` solution."""
+        if starting is not None:
+            self.agents = [self.generate_agent(x) for x in starting]
+        elif len(self.agents) == 0:
+            self.agents = [self.generate_agent() for _ in range(self._size)]
+        return self
+
+    cpdef Agent add(self, object solution=None):
+        """Generate an agent (through the factory), append it and return it."""
+        cdef Agent agent = self.generate_agent(solution)
+        self.agents.append(agent)
         return agent
+
+    cpdef Agent remove_at(self, Py_ssize_t index):
+        """Remove and return ``agents[index]`` (negative indices follow the list rules)."""
+        return self.agents.pop(index)
 
     def generate(self, n=None, starting=None):
         """A population of ``n`` (default ``size()``) generated agents, or one per ``starting`` solution."""
@@ -138,27 +141,50 @@ cdef class Population:
         """An evaluated plain :class:`Agent` at ``solution`` (a candidate; no random draws)."""
         return Agent(solution).evaluate(self.problem)
 
-    cpdef object evaluate(self, object agents, object mode):
+    cdef object _batch_matrix(self, Py_ssize_t k):
+        return np.empty((k, self.problem.n_dims), dtype=np.float64)
+
+    cpdef object evaluate(self, object agents, str mode):
         """Evaluate ``agents`` (the batch step) and return them.
 
         ``"sequential"`` evaluates only the agents not evaluated yet (an algorithm
-        that evaluates one by one has done it already); ``"swarm"``/``"parallel"``
-        evaluate every agent. The batch is one ``problem.evaluate(X)`` call when the
-        problem is vectorized, or in ``"parallel"`` mode has a nogil evaluator
-        (OpenMP threads); otherwise one call per agent.
+        that evaluates one by one has done it already); ``"batch"``/``"parallel"``
+        evaluate every agent. The batch is one ``problem.evaluate(X)`` call, on
+        OpenMP threads in ``"parallel"`` mode when the problem has a nogil
+        evaluator (``self.threads`` fixes the team size, 0 lets OpenMP decide).
         """
         cdef Agent agent
-        cdef Py_ssize_t i
-        cdef bint parallel = mode == "parallel" and self.problem.evaluator is not None and self.problem.n_objs == 1
-        pending = [agent for agent in agents if agent.objectives is None] if mode == "sequential" else agents
-        if self.problem.vectorized or parallel:
-            if len(pending):
-                _, O = self.problem.evaluate(np.array([agent.solution for agent in pending], dtype=np.float64), parallel)
-                weights = self.problem.obj_weights
-                for i in range(len(pending)):
-                    agent = pending[i]
-                    agent.set_evaluation(O[i], weights)
-        else:
+        cdef Py_ssize_t i, k
+        cdef list items, pending
+        cdef object weights, fitness, O, X
+        items = agents.agents if isinstance(agents, Population) else list(agents)
+
+        if mode == "sequential" and not self.problem.vectorized:
+            pending = [agent for agent in items if agent.objectives is None]
+            for agent in pending:
+                (<Agent>agent).evaluate(self.problem)
+            return agents
+
+        pending = [agent for agent in items if agent.objectives is None] if mode == "sequential" else items
+        k = len(pending)
+        if k == 0:
+            return agents
+        try:
+            X = self._batch_matrix(k)
+            for i in range(k):
+                agent = <Agent>pending[i]
+                X[i, :] = agent.solution
+            fitness, O = self.problem.evaluate(
+                X, mode == "parallel", self.threads if self.threads > 0 else 0
+            )
+            weights = self.problem.obj_weights
+            for i in range(k):
+                agent = <Agent>pending[i]
+                agent.set_evaluation(O[i], weights)
+        except (TypeError, ValueError):
+            # Non-numeric solutions (string/permutation bounds) cannot share one batch
+            # matrix: fall back to the per-agent evaluation (duck-typed, so the
+            # decorator API's agents also work).
             for agent in pending:
                 agent.evaluate(self.problem)
         return agents
@@ -230,10 +256,6 @@ cdef class Population:
     def reverse(self):
         self.agents.reverse()
 
-    def copy(self):
-        """Shallow copy: the same agent objects."""
-        return self.spawn(list(self.agents))
-
     # -- arrays ------------------------------------------------------------------
     @property
     def fitness(self):
@@ -256,28 +278,123 @@ cdef class Population:
     # -- ranking -----------------------------------------------------------------
     def argsort(self):
         """Positions best first (``np.argsort`` of the fitness, reversed when maximizing)."""
-        return argsort_agents(self.agents, self.sense)
+        fitness = np.array([agent.fitness for agent in self.agents], dtype=float)
+        order = np.argsort(fitness).tolist()
+        return order if self._minimize else order[::-1]
 
     cpdef Population sort(self):
-        """New population, best first; ``.idx`` holds the source positions."""
+        """New population, best first."""
+        return self.spawn(self.selected(self.argsort()))
+
+    def selected(self, order):
+        """The agents at ``order`` (positions of ``argsort``), as a plain list."""
+        return [self.agents[i] for i in order]
+
+    cpdef list top(self, Py_ssize_t k):
+        """The ``k`` best agents, best first (a partial ``sort()[:k]``)."""
+        if k <= 0:
+            return []
         order = self.argsort()
-        ranked = self.spawn([self.agents[i] for i in order])
-        ranked.idx = order
-        return ranked
+        if k > len(order):
+            k = len(order)
+        return [self.agents[i] for i in order[:k]]
+
+    cpdef list bottom(self, Py_ssize_t k):
+        """The ``k`` worst agents, worst first."""
+        if k <= 0:
+            return []
+        order = self.argsort()
+        if k > len(order):
+            k = len(order)
+        return [self.agents[i] for i in order[len(order) - k:]]
 
     @property
     def best(self):
-        fitness = self.fitness
-        return self.agents[int(np.argmax(fitness) if self.sense == "max" else np.argmin(fitness))]
+        """The first agent of the best fitness (strictly better replaces; ties keep the first)."""
+        if len(self.agents) == 0:
+            return None
+        sense = self.sense_str()
+        best_agent = self.agents[0]
+        best_fit = best_agent.fitness
+        for agent in self.agents:
+            if better_fitness(agent.fitness, best_fit, sense):
+                best_agent, best_fit = agent, agent.fitness
+        return best_agent
 
     @property
     def worst(self):
-        fitness = self.fitness
-        return self.agents[int(np.argmin(fitness) if self.sense == "max" else np.argmax(fitness))]
+        """The first agent of the worst fitness (ties keep the first)."""
+        if len(self.agents) == 0:
+            return None
+        sense = self.sense_str()
+        worst_agent = self.agents[0]
+        worst_fit = worst_agent.fitness
+        for agent in self.agents:
+            if better_fitness(worst_fit, agent.fitness, sense):
+                worst_agent, worst_fit = agent, agent.fitness
+        return worst_agent
 
     cpdef Population greedy(self, object candidates, str mode="swarm"):
         """Per position, the candidate when better, else the current agent (``greedy_agents``, same ``mode`` rule)."""
-        return self.spawn(greedy_agents(self.agents, candidates, self.sense, mode))
+        return self.spawn(greedy_agents(self.agents, candidates, self.sense_str(), mode))
+
+    cdef str sense_str(self):
+        if self.problem is not None:
+            return self.problem.sense
+        return "min" if self._minimize else "max"
+
+
+cpdef Population population(object size, object range=[5, 10000], type cls=None):
+    """An unbound population of ``size`` agents (``cls`` is ignored: the population is a single class)."""
+    if cls is not None and cls is not Population:
+        raise ValueError(
+            "Population is a single concrete class: population(size, cls=...) no longer accepts custom classes."
+        )
+    return Population(validator(int, size, range, "pop_size"))
+
+
+cpdef Population population_with_factory(object size, AgentFactory factory, object range=[5, 10000]):
+    """``cy.population(size, factory)`` with the agent factory attached.
+
+    Pass both positionally (``cy.population_with_factory(pop_size, MyAgents(self))``) — a
+    ``factory=`` keyword would make Cython fall back to a Python-space call.
+    """
+    cdef Population new = population(size, range)
+    new.factory = factory
+    return new
+
+
+cpdef Population empty_snapshot(Population population):
+    """An empty population of the same problem and state."""
+    return population.empty()
+
+
+cpdef Population snapshot(Population population):
+    """A population holding a copy (``duplicate_agent``) of every agent."""
+    return population.snapshot()
+
+
+cpdef object correct_solution(object problem, object solution):
+    """Clip ``solution`` to the bounds, then apply the problem's own correction."""
+    return problem.correct_solution(np.clip(solution, problem.bounds.low, problem.bounds.up))
+
+
+cpdef object reset_solution(object problem, object generator, object solution):
+    """Redraw the out-of-bounds values of ``solution`` uniformly, then apply the problem's own correction.
+
+    The draw covers every dimension (one ``generator.uniform(low, up)`` call), as the clip-free MEALPY repair did.
+    """
+    low, up = problem.bounds.low, problem.bounds.up
+    return problem.correct_solution(np.where((low <= solution) & (solution <= up), solution, generator.uniform(low, up)))
+
+
+cpdef object opposite_solution(object problem, object generator, Agent agent, Agent g_best):
+    """Opposition-based candidate of ``agent`` around ``g_best``, corrected."""
+    pos_new = (
+        problem.bounds.low + problem.bounds.up - g_best.solution
+        + generator.uniform() * (g_best.solution - agent.solution)
+    )
+    return correct_solution(problem, pos_new)
 
 
 MutableSequence.register(Population)

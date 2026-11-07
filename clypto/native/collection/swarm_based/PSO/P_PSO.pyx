@@ -6,7 +6,8 @@
 import numpy as np
 cimport clypto.core as cy
 
-from clypto.native.collection.swarm_based.PSO._base cimport PSOPopulation
+from clypto.native.collection.swarm_based.PSO._base cimport update_pbest
+from clypto.native.collection.swarm_based.PSO._factory cimport PSOAgents
 
 
 cdef class P_PSO(cy.Optimizer):
@@ -48,13 +49,15 @@ cdef class P_PSO(cy.Optimizer):
         """
         super().__init__(**kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=PSOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = PSOAgents(self)
         self.parameters = ["epoch", "pop_size"]
         self.sort_flag = False
 
     def initialize_variables(self):
         pop_size = self.population.size()
         self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
+        self.v_min = -self.v_max
         self.dyn_delta_list = self.generator.uniform(0, 2 * np.pi, pop_size)
 
     cdef void evolve(self, int epoch):
@@ -84,4 +87,6 @@ cdef class P_PSO(cy.Optimizer):
             candidate = self.population.evaluate_solution(x)
             if cy.is_better(candidate, agent, self.problem.sense):
                 agent.update_solution(candidate)
-            agent.update_pbest(candidate, self.problem.sense)
+            update_pbest(agent, candidate, self.problem.sense)
+
+

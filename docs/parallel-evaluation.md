@@ -6,8 +6,8 @@ a batch of candidate agents is evaluated:
 | `mode` | Evaluation |
 | --- | --- |
 | `"sequential"` (default) | agent by agent, in the order of the classic algorithm |
-| `"swarm"` | the whole batch at once, in one thread |
-| `"parallel"` | the whole batch at once, on OpenMP threads when the problem has a nogil `evaluator` (single objective) |
+| `"batch"` (alias of the old `"swarm"`) | the whole batch at once, in one thread |
+| `"parallel"` | the batch at once on the OpenMP team (the problem needs a nogil `evaluator`, single or multi objective; `solve` fixes the team once with `threads`; without an evaluator it warns and falls back to sequential) |
 
 Whenever an algorithm evaluates a batch, a problem built with `vectorized=True` receives it as one `(n, n_dims)` matrix: one
 objective call per batch instead of one per agent.
@@ -42,7 +42,7 @@ that held that line were removed in 2026-10).
 `AAO`, `BaseGA`, `CMA_ES`, `ChaoticGWO`, `DevALO`, `DevBA`, `DevCHIO`, `DevGCO`, `DevHS`, `DevQSA`, `DevSARO`, `DevSCA`, `DevSOA`, `ER_GWO`, `EliteMultiGA`, `EliteSingleGA`, `ExGWO`, `FuzzyGWO`, `GWO_WOA`, `HI_WOA`, `IGWO`, `ImprovedQSA`, `IncrementalGWO`, `JADE`, `L_SHADE`, `LevyEP`, `LevyES`, `LevyQSA`, `Matlab101GTO`, `MultiGA`, `OGWO`, `OppoQSA`, `OriginalACOR`, `OriginalALO`, `OriginalAOA`, `OriginalBeesA`, `OriginalCDO`, `OriginalCEM`, `OriginalCHIO`, `OriginalCOA`, `OriginalCSA`, `OriginalEHO`, `OriginalEO`, `OriginalEP`, `OriginalES`, `OriginalFA`, `OriginalGCO`, `OriginalGTO`, `OriginalGWO`, `OriginalHBA`, `OriginalHCO`, `OriginalHGSO`, `OriginalHS`, `OriginalIWO`, `OriginalMShOA`, `OriginalPFA`, `OriginalQSA`, `OriginalRIME`, `OriginalSARO`, `OriginalSCA`, `OriginalSFOA`, `OriginalSHADE`, `OriginalSHIO`, `OriginalSeaHO`, `OriginalTS`, `OriginalWCA`, `OriginalWDO`, `ProbBeesA`, `QleSCA`, `SADE`, `Simple_CMA_ES`, `SingleGA`, `SwarmSA`.
 
 **Order-dependent (124).** They keep the classic one-by-one step when `mode="sequential"`
-(`if self.mode == "sequential": ...`) and evaluate their batch at once only in `"swarm"`/`"parallel"`,
+(`if self.mode == "sequential": ...`) and evaluate their batch at once only in `"batch"`/`"parallel"`,
 where they are a (documented, MEALPY) batch variant of the algorithm:
 `AdaptiveBA`, `AdaptiveEO`, `AugmentedAEO`, `CL_PSO`, `CleverBookBeesA`, `DevBBO`, `DevEFO`, `DevFBIO`, `DevFOA`, `DevFOX`, `DevGSKA`, `DevJA`, `DevLCO`, `DevMVO`, `DevSBO`, `DevSMA`, `DevSPBO`, `DevSSA`, `DevTLO`, `DevTPO`, `DevVCS`, `DevWOA`, `EnhancedAEO`, `EnhancedTWO`, `IARO`, `ImprovedAEO`, `ImprovedBSO`, `ImprovedLCO`, `ImprovedNMRA`, `ImprovedSFO`, `ImprovedSLO`, `ImprovedTLO`, `LARO`, `LevyJA`, `LevyTWO`, `MGTO`, `Matlab102GTO`, `ModifiedAEO`, `ModifiedEO`, `ModifiedSLO`, `OCRO`, `OppoTWO`, `OriginalAEO`, `OriginalAFT`, `OriginalAGTO`, `OriginalAO`, `OriginalARO`, `OriginalASO`, `OriginalAVOA`, `OriginalArchOA`, `OriginalBA`, `OriginalBBO`, `OriginalBBOA`, `OriginalBCO`, `OriginalBES`, `OriginalBMO`, `OriginalBSA`, `OriginalBSO`, `OriginalBWO`, `OriginalCDDO`, `OriginalCRO`, `OriginalCSO`, `OriginalCircleSA`, `OriginalDE`, `OriginalDO`, `OriginalDOA`, `OriginalEFO`, `OriginalEOA`, `OriginalEVO`, `OriginalFBIO`, `OriginalFLA`, `OriginalFOA`, `OriginalFOX`, `OriginalFPA`, `OriginalGBO`, `OriginalGJO`, `OriginalGOA`, `OriginalGSKA`, `OriginalHC`, `OriginalHGS`, `OriginalHHO`, `OriginalICA`, `OriginalINFO`, `OriginalJA`, `OriginalLCO`, `OriginalMA`, `OriginalMFO`, `OriginalMGO`, `OriginalMPA`, `OriginalMRFO`, `OriginalMSA`, `OriginalMVO`, `OriginalNMRA`, `OriginalNRO`, `OriginalPSS`, `OriginalSBO`, `OriginalSCSO`, `OriginalSFO`, `OriginalSHO`, `OriginalSLO`, `OriginalSMA`, `OriginalSOA`, `OriginalSOO`, `OriginalSPBO`, `OriginalSRSR`, `OriginalSSA`, `OriginalSSDO`, `OriginalSSO`, `OriginalSSpiderA`, `OriginalSSpiderO`, `OriginalSquirrelSA`, `OriginalTLO`, `OriginalTSA`, `OriginalTSO`, `OriginalTWO`, `OriginalVCS`, `OriginalWHO`, `OriginalWOA`, `OriginalZOA`, `RW_GWO`, `SAP_DE`, `SwarmHC`, `WMQIMRFO`, `WhaleFOA`.
 

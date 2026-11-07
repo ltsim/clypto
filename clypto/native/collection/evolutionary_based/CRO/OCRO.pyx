@@ -160,7 +160,7 @@ cdef class OCRO(OriginalCRO):
         if self.G1 >= self.gamma_min:
             self.G1 -= self.gama
         self.reset_count += 1
-        local_best = cy.duplicate_agent(self.population.sort()[0])
+        local_best = cy.duplicate_agent(self.population.best)
         if cy.is_better(local_best, self.g_best, self.problem.sense):
             self.reset_count = 0
         if self.reset_count == self.restart_count:

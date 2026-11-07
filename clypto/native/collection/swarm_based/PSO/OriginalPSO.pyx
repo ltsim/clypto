@@ -6,7 +6,8 @@
 import numpy as np
 cimport clypto.core as cy
 
-from clypto.native.collection.swarm_based.PSO._base cimport PSOAgent, PSOPopulation
+from clypto.native.collection.swarm_based.PSO._base cimport move, update_pbest, update_velocity
+from clypto.native.collection.swarm_based.PSO._factory cimport PSOAgents
 
 
 cdef class OriginalPSO(cy.Optimizer):
@@ -42,6 +43,8 @@ cdef class OriginalPSO(cy.Optimizer):
     [1] Kennedy, J. and Eberhart, R., 1995, November. Particle swarm optimization. In Proceedings of
     ICNN'95-international conference on neural networks (Vol. 4, pp. 1942-1948). IEEE.
     """
+    cdef public object v_max
+    cdef public object v_min
 
     cdef public double c1
     cdef public double c2
@@ -66,10 +69,16 @@ cdef class OriginalPSO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "c1", "c2", "w"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=PSOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = PSOAgents(self)
         self.c1 = cy.validator(float, c1, (0.0, 5.0), "c1")
         self.c2 = cy.validator(float, c2, (0.0, 5.0), "c2")
         self.w = cy.validator(float, w, (0.0, 1.0), "w")
+
+    def initialize_variables(self):
+        self.v_max = 0.5 * (self.problem.bounds.up - self.problem.bounds.low)
+        self.v_min = -self.v_max
+
 
     cdef void evolve(self, int epoch):
         """
@@ -78,15 +87,17 @@ cdef class OriginalPSO(cy.Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        cdef PSOAgent agent
+        cdef cy.Agent agent
         # sequential on purpose: g_best is one of the particles, and update_solution moves it in place,
         # so the particles after it already follow the new g_best (a batch step would change results)
         for agent in self.population.toarray():
             # 1. The particle updates its velocity and proposes a position inside the bounds
-            agent.update_velocity(self.g_best.solution, self.w, self.c1, self.c2, self.generator)
+            update_velocity(agent, self.g_best.solution, self.w, self.c1, self.c2, self.generator)
             # 2. Evaluate that position as a candidate
-            candidate = self.population.evaluate_solution(cy.reset_solution(self.problem, self.generator, agent.move()))
+            candidate = self.population.evaluate_solution(cy.reset_solution(self.problem, self.generator, move(agent)))
             # 3. Greedy: move only if better, then refresh the personal best
             if cy.is_better(candidate, agent, self.problem.sense):
                 agent.update_solution(candidate)
-            agent.update_pbest(candidate, self.problem.sense)
+            update_pbest(agent, candidate, self.problem.sense)
+
+

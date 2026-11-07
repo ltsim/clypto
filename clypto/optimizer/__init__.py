@@ -12,11 +12,12 @@ from clypto.optimizer.bounds import (
     StringBounds,
     TransferBounds,
 )
-from clypto.optimizer.history import Tracker
+from clypto.optimizer.history import DefaultMetrics, Tracker, metrics
 from clypto.optimizer.native.agent import Agent, duplicate_agent
 from clypto.optimizer.native.legacy import LegacyOptimizer
 from clypto.optimizer.native.population import (
-    Population, correct_solution, empty_snapshot, opposite_solution, population, reset_solution, snapshot,
+    Population, correct_solution, empty_snapshot, opposite_solution, population, population_with_factory,
+    reset_solution, snapshot,
 )
 from clypto.optimizer.native.problem import Problem
 from clypto.optimizer.native.utils import validator
@@ -31,6 +32,7 @@ __all__ = [
     "BaseBounds",
     "Bounds",
     "DecoratedOptimizer",
+    "DefaultMetrics",
     "LegacyOptimizer",
     "NumberBounds",
     "Optimizer",
@@ -47,9 +49,11 @@ __all__ = [
     "correct_solution",
     "duplicate_agent",
     "empty_snapshot",
+    "metrics",
     "opposite_solution",
     "optimizer",
     "population",
+    "population_with_factory",
     "reset_solution",
     "snapshot",
     "validator",

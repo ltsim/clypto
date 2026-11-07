@@ -1,15 +1,73 @@
+import cython
+
 cimport numpy as cnp
 
+from clypto.optimizer.native.problem cimport Problem
 
+
+# Agent is the single base structure for agent state. It is not final: catalog
+# algorithms and user code may subclass it to carry extra state, but a subclass
+# MUST implement ``_new_instance`` and ``_copy_state_to`` (see the scaffold in
+# tools/scaffold_agent.py) or ``cy.duplicate_agent`` reports it.
 cdef class Agent:
     cdef public cnp.ndarray solution
     cdef readonly cnp.ndarray objectives
-    cdef readonly double fitness
     cdef readonly object weights
+    cdef readonly double fitness
+
+    # -- state of algorithms (all None/0 until the algorithm sets them) --------
+    cdef public object acc
+    cdef public object age
+    cdef public object bitstring
+    cdef public object cost
+    cdef public object crossover
+    cdef public object damage
+    cdef public object den
+    cdef public object flag
+    cdef public object g
+    cdef public object hunger
+    cdef public object intensity
+    cdef public object interaction
+    cdef public object local_best
+    cdef public object local_solution
+    cdef public object local_vector
+    cdef public object loudness
+    cdef public object m
+    cdef public object mask
+    cdef public object mass
+    cdef public object model_weights
+    cdef public object mu
+    cdef public object mutation
+    cdef public object nutrients
+    cdef public cnp.ndarray pbest_solution
+    cdef public double pbest_fitness
+    cdef public object pop_size
+    cdef public object pulse_frequency
+    cdef public object pulse_rate
+    cdef public object q_table
+    cdef public object sigma
+    cdef public object solution_new
+    cdef public object step
+    cdef public object strategy
+    cdef public object target_move
+    cdef public object target_new
+    cdef public object target_solution
+    cdef public object v
+    cdef public object velocity
+    cdef public object vol
+    cdef public object weight
+    cdef public object win
 
     cdef void set_evaluation(self, object objectives, object weights)
     cdef void copy_evaluation(self, Agent other)
-    cdef Agent clone(self)
+    cpdef Agent evaluate(self, Problem problem)
+    cpdef void update_solution(self, Agent other, object solution=*)
+
+    # -- the copy protocol (cy.duplicate_agent dispatches on these) -------------
+    cdef Agent _new_instance(self)
+    cdef void _copy_state_to(self, Agent other)
+    cpdef Agent copy(self)
+    cpdef Agent snapshot(self)
 
 
 cpdef Agent duplicate_agent(Agent agent)

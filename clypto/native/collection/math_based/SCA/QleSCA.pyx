@@ -7,19 +7,8 @@ import numpy as np
 cimport clypto.core as cy
 
 from clypto.native.collection.math_based.SCA.DevSCA cimport DevSCA
-
-
-cdef class QleSCAAgent(cy.Agent):
-    cdef public object q_table
-
-    def __init__(self, solution=None, objectives=None, weights=None, q_table=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.q_table = q_table
-
-    cdef cy.Agent clone(self):
-        cdef QleSCAAgent new = <QleSCAAgent>cy.Agent.clone(self)
-        new.q_table = self.q_table
-        return new
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 class QTable:
@@ -66,14 +55,23 @@ class QTable:
         )
 
 
-cdef class QleSCAPopulation(cy.Population):
-    """Agents of :class:`QleSCA`."""
 
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+
+cdef class QleSCAAgents(AgentFactory):
+    """The agent factory of ``QleSCA`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         q_table = QTable(n_states=9, n_actions=9, generator=self.generator)
-        return QleSCAAgent(solution=solution, q_table=q_table)
+
+        agent = cy.Agent(solution)
+        agent.q_table = q_table
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class QleSCA(DevSCA):
@@ -131,7 +129,8 @@ cdef class QleSCA(DevSCA):
             gama (float): the discount factor, default=0.9
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.population = cy.population(pop_size, range=[5, 10000], cls=QleSCAPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = QleSCAAgents()
         self.alpha = cy.validator(float, alpha, [0.0, 1.0], "alpha")
         self.gama = cy.validator(float, gama, [0.0, 1.0], "gama")
         self.parameters = ["epoch", "pop_size", "alpha", "gama"]
@@ -202,3 +201,5 @@ cdef class QleSCA(DevSCA):
                 self.population[idx].q_table.update(
                     state, action, reward=-1, alpha=self.alpha, gama=self.gama
                 )
+
+

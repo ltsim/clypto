@@ -269,5 +269,5 @@ These affect every optimizer rather than a single taxonomy group.
   check no longer reads an uninitialized `__history` buffer, the dict form no
   longer reads nonexistent `Problem.log_to` / `log_file` attributes, and
   `debug=True` now records per-epoch metrics (and, with
-  `track_population=True`, full population snapshots) into the Zarr-backed
+  `track_population=True`, full population snapshots) into the in-memory
   `model.tracker`.

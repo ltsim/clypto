@@ -5,36 +5,30 @@
 # --------------------------------------------------%
 import numpy as np
 cimport clypto.core as cy
+from clypto.optimizer.native.agent cimport Agent
+from clypto.optimizer.native.factory cimport AgentFactory
 
 
 
-cdef class OriginalSSDOAgent(cy.Agent):
-    cdef public object velocity
-    cdef public object local_solution
-
-    def __init__(self, solution=None, objectives=None, weights=None, velocity=None, local_solution=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.velocity = velocity
-        self.local_solution = local_solution
-
-    cdef cy.Agent clone(self):
-        cdef OriginalSSDOAgent new = <OriginalSSDOAgent>cy.Agent.clone(self)
-        new.velocity = self.velocity
-        new.local_solution = self.local_solution
-        return new
 
 
-cdef class OriginalSSDOPopulation(cy.Population):
-    """Agents of :class:`OriginalSSDO`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
+cdef class OriginalSSDOAgents(AgentFactory):
+    """The agent factory of ``OriginalSSDO`` (moved off the optimizer)."""
+    cdef Agent create(self, object solution=None):
         if solution is None:
             solution = self.problem.generate_solution(encoded=True)
         velocity = self.generator.uniform(self.problem.bounds.low, self.problem.bounds.up)
         pos_local = solution.copy()
-        return OriginalSSDOAgent(
-            solution=solution, velocity=velocity, local_solution=pos_local
-        )
+
+        agent = cy.Agent(solution)
+        agent.velocity = velocity
+        agent.local_solution = pos_local
+        return agent
+
+    cdef Agent generate(self, object solution=None):
+        agent = self.create(solution)
+        agent.evaluate(self.problem)
+        return agent
 
 
 cdef class OriginalSSDO(cy.Optimizer):
@@ -80,7 +74,8 @@ cdef class OriginalSSDO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=OriginalSSDOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = OriginalSSDOAgents()
 
     cdef void evolve(self, int epoch):
         """
@@ -124,3 +119,5 @@ cdef class OriginalSSDO(cy.Optimizer):
         if self.mode != "sequential":
             pop_new = self.population.evaluate(pop_new, self.mode)
             self.population = self.population.greedy(pop_new)
+
+

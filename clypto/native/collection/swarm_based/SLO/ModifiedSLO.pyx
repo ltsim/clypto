@@ -6,52 +6,10 @@
 from math import gamma
 import numpy as np
 cimport clypto.core as cy
+from clypto.native.collection.swarm_based.SLO._factory cimport ModifiedSLOAgents
 
 
 
-cdef class ModifiedSLOAgent(cy.Agent):
-    cdef public object local_solution
-    cdef public object local_best
-
-    def __init__(self, solution=None, objectives=None, weights=None, local_solution=None, local_best=None):
-        cy.Agent.__init__(self, solution, objectives, weights)
-        self.local_solution = local_solution
-        self.local_best = local_best
-
-    cdef cy.Agent clone(self):
-        cdef ModifiedSLOAgent new = <ModifiedSLOAgent>cy.Agent.clone(self)
-        new.local_solution = self.local_solution
-        new.local_best = self.local_best
-        return new
-
-
-cdef class ModifiedSLOPopulation(cy.Population):
-    """Agents of :class:`ModifiedSLO`."""
-
-    def create_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        if solution is None:
-            solution = self.problem.generate_solution(encoded=True)
-        local_pos = self.problem.bounds.low + self.problem.bounds.up - solution
-        local_pos = cy.correct_solution(self.problem, local_pos)
-        return ModifiedSLOAgent(solution=solution, local_solution=local_pos)
-
-    def generate_agent(self, solution: np.ndarray | None = None) -> cy.Agent:
-        agent = self.create_agent(solution)
-        target = self.evaluate_solution(agent.solution)
-        local_best = self.evaluate_solution(agent.local_solution)
-        if cy.is_better(target, local_best, self.problem.sense):
-            t1 = agent.local_solution.copy()
-            t2 = agent.solution.copy()
-            agent.update_solution(local_best, t1)
-            agent.local_solution = t2
-            agent.local_best = target
-        else:
-            t1 = agent.solution.copy()
-            t2 = agent.local_solution.copy()
-            agent.update_solution(target, t1)
-            agent.local_solution = t2
-            agent.local_best = local_best
-        return agent
 
 
 cdef class ModifiedSLO(cy.Optimizer):
@@ -93,7 +51,8 @@ cdef class ModifiedSLO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=ModifiedSLOPopulation)
+        self.population = cy.population(pop_size, range=[5, 10000])
+        self.population.factory = ModifiedSLOAgents()
 
     def shrink_encircling_levy__(self, current_pos, epoch, dist, c, beta=1):
         up = gamma(1 + beta) * np.sin(np.pi * beta / 2)
@@ -161,3 +120,4 @@ cdef class ModifiedSLO(cy.Optimizer):
                 if cy.is_better(n_population[idx], self.population[idx].local_best, self.problem.sense):
                     self.population[idx].local_solution = n_population[idx].solution.copy()
                     self.population[idx].local_best = cy.duplicate_agent(n_population[idx])
+

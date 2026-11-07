@@ -1,6 +1,6 @@
 # Installation
 
-clypto supports CPython 3.11–3.14 and depends on `numpy`, `scipy`, and `zarr` at
+clypto supports CPython 3.11–3.14 and depends on `numpy` and `scipy` at
 runtime.
 
 ## Precompiled wheels (no compiler needed)
@@ -18,30 +18,30 @@ Building from source compiles the entire package to native code with Cython, so
 a C compiler is required. The build dependencies (`Cython`, `numpy`,
 `setuptools`) are fetched automatically by PEP 517 build isolation.
 
-=== "From the repository"
+### From the repository
 
-    ```bash
-    git clone https://github.com/ltsim/clypto.git
-    cd clypto
-    python -m pip install .
-    ```
+```bash
+git clone https://github.com/ltsim/clypto.git
+cd clypto
+python -m pip install .
+```
 
-=== "Editable dev install (uv)"
+### Editable dev install (uv)
 
-    [uv](https://docs.astral.sh/uv/) compiles the extensions in place and links
-    them into the project:
+[uv](https://docs.astral.sh/uv/) compiles the extensions in place and links
+them into the project:
 
-    ```bash
-    git clone https://github.com/ltsim/clypto.git
-    cd clypto
-    uv sync --extra dev          # or: make uv-sync
-    ```
+```bash
+git clone https://github.com/ltsim/clypto.git
+cd clypto
+uv sync --extra dev          # or: make uv-sync
+```
 
-=== "Latest from GitHub"
+### Latest from GitHub
 
-    ```bash
-    pip install git+https://github.com/ltsim/clypto.git
-    ```
+```bash
+pip install git+https://github.com/ltsim/clypto.git
+```
 
 The [Makefile](https://github.com/ltsim/clypto/blob/master/Makefile) wraps the uv
 workflow (`uv-lock`, `uv-sync`, `uv-test`) and offers `make clean` to wipe build,
@@ -110,11 +110,11 @@ with:
 
 ```bash
 uv sync --extra docs --no-install-project
-uv run --no-sync mkdocs serve
+uv run --no-sync sphinx-autobuild docs docs/build/html  # or: make docs-serve
 ```
 
-!!! note "Compile before benchmarking"
-
-    A fresh clone ships only its `.py` sources. Compile first
-    (`uv sync --extra dev` or `pip install .`), otherwise clypto runs as
-    un-compiled Python and its compiled-by-design performance is lost.
+:::{note} Compile before running anything
+A fresh clone ships `.pyx`/`.pxd` sources, not compiled extensions. Build
+first (`uv sync --extra dev`, `make build-ext`, or `pip install .`); without
+a build, `import clypto` fails because the compiled modules do not exist.
+:::

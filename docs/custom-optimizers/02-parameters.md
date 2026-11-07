@@ -4,10 +4,11 @@ Continuing from [Your first optimizer](01-first-optimizer.md), `RandomSearch`
 declares one hyper-parameter, `scale`, as a `cy.Argument`. This part covers how
 that declaration is validated.
 
+```{literalinclude} _snippets/problem.py
+:language: python
+```
+
 ```python
---8<-- "docs/custom-optimizers/_snippets/problem.py"
-
-
 @cy.optimizer
 class RandomSearch:
     scale: cy.Argument[float, (0.0, 1.0), 0.5]
