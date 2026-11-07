@@ -5,7 +5,7 @@ slots of the catalog (`velocity`, `age`, ...) and one copy entry point. When you
 own classic algorithm needs *extra* per-agent state beyond those slots, subclass
 it and implement the two hooks `cy.duplicate_agent` dispatches on:
 
-```{literalinclude} /tests/optimizer/_agent_subclass.pyx
+```{literalinclude} ../../tests/optimizer/_agent_subclass.pyx
 :language: cython
 :start-after: cdef class TaggedAgent(Agent):
 :end-before: cdef class NaughtyAgent
