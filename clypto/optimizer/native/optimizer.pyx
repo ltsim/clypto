@@ -120,10 +120,11 @@ cdef class NativeOptimizer:
         threads=0,
         before_iteration=None,
         after_iteration=None,
+        metrics=None,
     ):
         cdef int epoch, repeated_times = 0, n_threads, previous_threads
         cdef double time_epoch = 0.0
-        cdef bint tracking = debug or track_population
+        cdef bint tracking = debug or track_population or (metrics is not None)
         last_gbest_fit = None
 
         # The tracker always describes the most recent run; drop the previous one.
@@ -163,6 +164,7 @@ cdef class NativeOptimizer:
                 problem=self.problem,
                 seed=seed,
                 capture_population=track_population,
+                metrics=metrics,
             )
 
         # OpenMP: the team is fixed once for this run; every parallel region reuses it.
