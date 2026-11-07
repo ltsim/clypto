@@ -24,7 +24,7 @@ def test_max_epoch(max_epoch, system_code):
     }
     with pytest.raises(ValueError) as e:
         Termination(termination=term)
-    assert e.type == ValueError
+    assert e.type is ValueError
 
 
 @pytest.mark.parametrize(
@@ -41,7 +41,7 @@ def test_max_time(max_time, system_code):
     term = {"max_time": max_time}
     with pytest.raises(ValueError) as e:
         Termination(termination=term)
-    assert e.type == ValueError
+    assert e.type is ValueError
 
 
 @pytest.mark.parametrize(
@@ -58,7 +58,7 @@ def test_max_fe(max_fe, system_code):
     term = {"max_fe": max_fe}
     with pytest.raises(ValueError) as e:
         Termination(termination=term)
-    assert e.type == ValueError
+    assert e.type is ValueError
 
 
 @pytest.mark.parametrize(
@@ -75,4 +75,4 @@ def test_max_early_stop(max_early_stop, system_code):
     term = {"max_early_stop": max_early_stop}
     with pytest.raises(ValueError) as e:
         Termination(termination=term)
-    assert e.type == ValueError
+    assert e.type is ValueError
