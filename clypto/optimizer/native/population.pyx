@@ -159,32 +159,33 @@ cdef class Population:
         cdef object weights, fitness, O, X
         items = agents.agents if isinstance(agents, Population) else list(agents)
 
-        if mode == "sequential":
+        if mode == "sequential" and not self.problem.vectorized:
             pending = [agent for agent in items if agent.objectives is None]
             for agent in pending:
                 (<Agent>agent).evaluate(self.problem)
             return agents
 
-        k = len(items)
+        pending = [agent for agent in items if agent.objectives is None] if mode == "sequential" else items
+        k = len(pending)
         if k == 0:
             return agents
         try:
             X = self._batch_matrix(k)
             for i in range(k):
-                agent = <Agent>items[i]
+                agent = <Agent>pending[i]
                 X[i, :] = agent.solution
             fitness, O = self.problem.evaluate(
-                X, mode == "parallel" and k >= MIN_PARALLEL_BATCH, self.threads if self.threads > 0 else 0
+                X, mode == "parallel", self.threads if self.threads > 0 else 0
             )
             weights = self.problem.obj_weights
             for i in range(k):
-                agent = <Agent>items[i]
+                agent = <Agent>pending[i]
                 agent.set_evaluation(O[i], weights)
         except (TypeError, ValueError):
             # Non-numeric solutions (string/permutation bounds) cannot share one batch
             # matrix: fall back to the per-agent evaluation (duck-typed, so the
             # decorator API's agents also work).
-            for agent in items:
+            for agent in pending:
                 agent.evaluate(self.problem)
         return agents
 
@@ -341,9 +342,6 @@ cdef class Population:
         if self.problem is not None:
             return self.problem.sense
         return "min" if self._minimize else "max"
-
-
-cdef Py_ssize_t MIN_PARALLEL_BATCH = 32
 
 
 cpdef Population population(object size, object range=[5, 10000], type cls=None):

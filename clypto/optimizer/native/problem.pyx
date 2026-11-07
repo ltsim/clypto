@@ -1,5 +1,6 @@
 """The optimization problem: an objective over a :class:`Bounds` search space."""
 import numbers
+import warnings
 
 import numpy as np
 from cython.parallel cimport prange
@@ -90,7 +91,7 @@ cdef class Problem:
 
     cpdef object obj_func(self, object x):
         if self.vectorized:
-            return self._obj_func(np.asarray(x)[None, :])[0]
+            return self._obj_func(np.atleast_2d(x))[0]
         return self._obj_func(x)
 
     def encode_solution(self, values):
@@ -145,15 +146,21 @@ cdef class Problem:
                     f"`evaluator` produces {evaluator._n_objs} objectives, but the problem has {m}."
                 )
             Xv = np.ascontiguousarray(X, dtype=np.float64)
-            O = np.empty((k, m))
+            O = np.empty((k, m), dtype=np.float64)
             Ov = O
             d = Xv.shape[1]
             with nogil:
                 for i in prange(k, schedule="static"):
                     evaluator.row(&Xv[i, 0], d, &Ov[i, 0])
         elif self.vectorized:
-            O = np.asarray(self._obj_func(X), dtype=float).reshape(k, -1)
+            O = np.asarray(self._obj_func(X), dtype=np.float64).reshape(k, -1)
         else:
-            O = np.array([np.array(self.obj_func(X[i])).flatten() for i in range(k)], dtype=float)
+            if parallel:
+                warnings.warn(
+                    "mode='parallel' requested without a nogil evaluator; falling back to sequential.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            O = np.array([np.array(self.obj_func(X[i])).flatten() for i in range(k)], dtype=np.float64)
         self.n_evals += k
         return self.fitness(O), O
