@@ -1,14 +1,15 @@
 cdef class Problem:
-    cdef readonly object bounds
-    cdef readonly str sense
-    cdef readonly str name
-    cdef readonly object evaluator
-    cdef readonly bint vectorized
-    cdef public long long n_evals
-    cdef object _obj_func
-    cdef object _seed
-    cdef object _obj_weights
-    cdef Py_ssize_t _n_objs
+    cdef object __bounds
+    cdef str __sense
+    cdef str __name
+    cdef object __evaluator
+    cdef bint __vectorized
+    cdef bint __decode
+    cdef long long __n_evals
+    cdef object __obj_func
+    cdef object __seed
+    cdef object __obj_weights
+    cdef Py_ssize_t __n_objs
 
     cpdef object obj_func(self, object x)
     cpdef object generate_solution(self, bint encoded=*)

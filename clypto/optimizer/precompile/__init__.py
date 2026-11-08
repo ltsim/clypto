@@ -1,5 +1,6 @@
 from clypto.optimizer.precompile.declaration import Argument
 from clypto.optimizer.precompile.decorator import optimizer
+from clypto.optimizer.precompile.problem import problem
 from clypto.optimizer.precompile.base import DecoratedOptimizer
 from clypto.optimizer.precompile.compiler import compile_decorated, is_precompiling
 
@@ -9,4 +10,5 @@ __all__ = [
     "compile_decorated",
     "is_precompiling",
     "optimizer",
+    "problem",
 ]

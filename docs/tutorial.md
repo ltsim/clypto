@@ -4,9 +4,84 @@ This tutorial covers the complete workflow of using Clypto: constructing problem
 
 ## Defining a problem
 
-You can define optimization problems in three ways:
+You can define optimization problems in four ways:
 
-### 1. Direct instantiation with `Problem` (Recommended)
+### 1. Decorator API with `@cy.problem` (Recommended)
+
+Decorate a function or class with `@cy.problem`. Setting `compile=True` automatically JIT-compiles your code to C/Cython for maximum execution speed:
+
+#### Function-based problem
+```python
+import numpy as np
+import clypto as cy
+from clypto.native.collection.swarm_based import PSO
+
+@cy.problem(
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",
+    compile=True,  # Compiles to native C code via Cython JIT
+)
+def sphere(x):
+    return np.sum(x ** 2)
+
+model = PSO.OriginalPSO(epoch=100, pop_size=50)
+g_best = model.solve(sphere, seed=42)
+print("Best fitness:", g_best.fitness)
+```
+
+#### Class-based problem (with state and custom `evaluate`)
+Use class definitions when you need training data, configuration, or state:
+
+```python
+import numpy as np
+import clypto as cy
+from clypto.native.collection.system_based import AEO
+
+@cy.problem(compile=True)
+class CurveFitting:
+    bounds = cy.NumberBounds(float, low=[-10.0] * 3, up=[10.0] * 3)
+    sense = "min"
+
+    def __init__(self, x_data, y_data):
+        self.x_data = x_data
+        self.y_data = y_data
+
+    def evaluate(self, solution):
+        # solution is [a, b, c]
+        a, b, c = solution
+        predicted = a * (self.x_data ** 2) + b * self.x_data + c
+        return float(np.mean((self.y_data - predicted) ** 2))
+
+# Synthetic dataset
+x = np.linspace(-5, 5, 50)
+y = 2.5 * (x ** 2) - 1.2 * x + 0.5 + np.random.normal(0, 0.1, 50)
+
+problem = CurveFitting(x_data=x, y_data=y)
+model = AEO.OriginalAEO(epoch=150, pop_size=40)
+best = model.solve(problem, seed=42)
+```
+
+#### Automatic Decoding with `decode=True`
+For combinatorial (e.g. TSP with `PermutationBounds`), categorical or mixed problems, pass `decode=True`. Your function/method receives the already decoded representations instead of flat continuous random keys:
+
+```python
+import clypto as cy
+
+cities = ["Madrid", "Barcelona", "Valencia", "Sevilla"]
+dist_matrix = ...  # Distances matrix
+
+@cy.problem(
+    bounds=cy.PermutationBounds(cities, name="tour"),
+    sense="min",
+    decode=True,  # Receives decoded dictionary {'tour': ['Madrid', ...]}
+    compile=True,
+)
+def tsp(decoded_solution):
+    tour = decoded_solution["tour"]
+    return calculate_route_cost(tour, dist_matrix)
+```
+
+### 2. Direct instantiation with `Problem`
 
 Pass the objective function, the bounds, and the direction directly:
 
@@ -30,41 +105,25 @@ g_best = model.solve(problem, seed=42)
 print("Best fitness:", g_best.fitness)
 ```
 
-### 2. Subclassing `Problem` (For custom data or state)
+### 3. Subclassing `Problem`
 
-For problems requiring training datasets, external evaluators, or stateful parameters, subclass `Problem` and implement `obj_func`:
+Subclass `Problem` directly and implement `evaluate(self, solution)` or `obj_func`:
 
 ```python
 import numpy as np
 from clypto import Problem, NumberBounds
-from clypto.native.collection.system_based import AEO
 
-class CurveFitting(Problem):
-    def __init__(self, x_data, y_data, bounds, sense="min", **kwargs):
-        super().__init__(bounds, sense, **kwargs)
-        self.x_data = x_data
-        self.y_data = y_data
+class MyCustomProblem(Problem):
+    def evaluate(self, solution):
+        return np.sum(solution ** 2)
 
-    def obj_func(self, solution):
-        # Example: fit y = a * x^2 + b * x + c
-        a, b, c = solution
-        predicted = a * (self.x_data ** 2) + b * self.x_data + c
-        return np.mean((self.y_data - predicted) ** 2)
-
-# Generate synthetic data
-x = np.linspace(-5, 5, 50)
-y = 2.5 * (x ** 2) - 1.2 * x + 0.5 + np.random.normal(0, 0.1, 50)
-
-problem = CurveFitting(
-    x_data=x,
-    y_data=y,
-    bounds=NumberBounds(float, low=[-10.0] * 3, up=[10.0] * 3),
+problem = MyCustomProblem(
+    bounds=NumberBounds(float, low=[-5.0] * 10, up=[5.0] * 10),
     sense="min",
-    name="CurveFitting",
 )
 ```
 
-### 3. Dictionary shorthand
+### 4. Dictionary shorthand
 
 For quick scripts, passing a dictionary is also supported:
 

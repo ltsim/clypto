@@ -40,6 +40,7 @@ from clypto.optimizer import (
     optimizer,
     population,
     population_with_factory,
+    problem,
     reset_solution,
     snapshot,
     validator,
@@ -144,7 +145,7 @@ def get_optimizer_by_name(name: str, verbose=False):
 
 __all__ = [
     "Problem", "Optimizer", "NativeOptimizer", "LegacyOptimizer",
-    "agent", "optimizer", "metrics", "DefaultMetrics", "Tracker",
+    "agent", "optimizer", "problem", "metrics", "DefaultMetrics", "Tracker",
     "AgentFactory", "Attribute", "Argument", "Agent", "Population", "population",
     "population_with_factory", "snapshot", "empty_snapshot", "duplicate_agent",
     "correct_solution", "reset_solution", "opposite_solution", "validator", "Termination",
