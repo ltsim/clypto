@@ -1,7 +1,7 @@
 """Reusable Python API for writing optimizers (decorator-based) and the engine classes."""
 # precompile must load before agents: agents.declaration imports
 # precompile.decoration, whose package __init__ imports agents back.
-from clypto.optimizer.precompile import Argument, DecoratedOptimizer, optimizer
+from clypto.optimizer.precompile import Argument, DecoratedOptimizer, optimizer, problem
 from clypto.optimizer.agents import Attribute, RuntimeAgent, agent
 from clypto.optimizer.bounds import (
     BaseBounds,
@@ -54,6 +54,7 @@ __all__ = [
     "optimizer",
     "population",
     "population_with_factory",
+    "problem",
     "reset_solution",
     "snapshot",
     "validator",

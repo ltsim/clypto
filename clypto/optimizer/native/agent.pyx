@@ -158,7 +158,7 @@ cdef class Agent:
 
     cpdef Agent evaluate(self, Problem problem):
         """Evaluate ``solution`` on ``problem`` (counted in ``problem.n_evals``)."""
-        self.set_evaluation(problem.evaluate_solution(self.solution), problem._obj_weights)
+        self.set_evaluation(problem.evaluate_solution(self.solution), problem.obj_weights)
         return self
 
     cpdef void update_solution(self, Agent other, object solution=None):

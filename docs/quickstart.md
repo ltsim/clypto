@@ -15,16 +15,18 @@ def sphere(solution):
 
 ## 2. Build a `Problem`
 
-`Problem` binds the objective function, the search space bounds, and the optimization direction (`"min"` or `"max"`):
+Define the objective function and search space bounds with `@cy.problem` (compiling it to native C code via Cython JIT) or using `cy.Problem`:
 
 ```python
 import clypto as cy
 
-problem = cy.Problem(
-    obj_func=sphere,
+@cy.problem(
     bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
     sense="min",  # "min" to minimize, "max" to maximize
+    compile=True,
 )
+def problem(solution):
+    return np.sum(solution ** 2)
 ```
 
 ## 3. Pick an optimizer and solve
