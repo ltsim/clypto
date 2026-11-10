@@ -367,6 +367,7 @@ pyrightconfig.json
 # Agent harness
 skills/
 graphify-out/
+.awb/
 .claude/
 .opencode/
 AGENTS.md
