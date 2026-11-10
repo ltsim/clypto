@@ -82,7 +82,14 @@ cdef class OriginalEHO(cy.Optimizer):
         pop_size = self.population.size()
         if len(self.population) == 0:
             self.population = self.population.generate(pop_size)
-        self.pop_group = cy.split_groups(self.population, self.n_clans, self.n_individuals)
+        base = pop_size // self.n_clans
+        rem = pop_size % self.n_clans
+        start = 0
+        self.pop_group = []
+        for i in range(self.n_clans):
+            size = base + (1 if i < rem else 0)
+            self.pop_group.append([cy.duplicate_agent(a) for a in self.population[start:start + size]])
+            start += size
 
     cdef void evolve(self, int epoch):
         """
@@ -94,29 +101,26 @@ cdef class OriginalEHO(cy.Optimizer):
         pop_size = self.population.size()
         # Clan updating operator
         cdef cy.Population n_population = cy.empty_snapshot(self.population)
-        for idx in range(0, pop_size):
-            clan_idx = int(idx / self.n_individuals)
-            pos_clan_idx = int(idx % self.n_individuals)
-            if (
-                    pos_clan_idx == 0
-            ):  # The best in clan, because all clans are sorted based on fitness
-                center = np.mean(
-                    np.array([agent.solution for agent in self.pop_group[clan_idx]]),
-                    axis=0,
-                )
-                x = self.beta * center
-            else:
-                x = self.pop_group[clan_idx][
-                              pos_clan_idx
-                          ].solution + self.alpha * self.generator.random() * (
-                                  self.pop_group[clan_idx][0].solution
-                                  - self.pop_group[clan_idx][pos_clan_idx].solution
-                          )
-            x = cy.correct_solution(self.problem, x)
-            agent = self.population.create_agent(x)
-            n_population.append(agent)
+        for clan in self.pop_group:
+            center = np.mean(
+                np.array([agent.solution for agent in clan]),
+                axis=0,
+            )
+            for pos_clan_idx, agent in enumerate(clan):
+                if pos_clan_idx == 0:
+                    x = self.beta * center
+                else:
+                    x = agent.solution + self.alpha * self.generator.random() * (
+                        clan[0].solution - agent.solution
+                    )
+                x = cy.correct_solution(self.problem, x)
+                n_population.append(self.population.create_agent(x))
         self.population = self.population.greedy(self.population.evaluate(n_population, self.mode), self.mode)
-        self.pop_group = cy.split_groups(self.population, self.n_clans, self.n_individuals)
+        start = 0
+        for clan_idx in range(self.n_clans):
+            size = len(self.pop_group[clan_idx])
+            self.pop_group[clan_idx] = [cy.duplicate_agent(a) for a in self.population[start:start + size]]
+            start += size
         # Separating operator
         for idx in range(0, self.n_clans):
             self.pop_group[idx] = cy.sort_agents(self.pop_group[idx], self.problem.sense)

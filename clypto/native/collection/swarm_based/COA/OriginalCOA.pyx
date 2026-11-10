@@ -84,6 +84,8 @@ cdef class OriginalCOA(cy.Optimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[5, 10000])
         self.population.factory = OriginalCOAAgents()
+        if n_coyotes == 5 and pop_size < 10:
+            n_coyotes = max(2, int(pop_size / 2))
         self.n_coyotes = cy.validator(int, n_coyotes, [2, int(self.population.size() / 2)], "n_coyotes")
         self.n_packs = int(pop_size / self.n_coyotes)
 
@@ -91,7 +93,14 @@ cdef class OriginalCOA(cy.Optimizer):
         pop_size = self.population.size()
         if len(self.population) == 0:
             self.population = self.population.spawn([self.population.generate_agent() for _ in range(pop_size)])
-        self.pop_group = cy.split_groups(self.population, self.n_packs, self.n_coyotes)
+        base = pop_size // self.n_packs
+        rem = pop_size % self.n_packs
+        start = 0
+        self.pop_group = []
+        for p in range(self.n_packs):
+            p_size = base + (1 if p < rem else 0)
+            self.pop_group.append([cy.duplicate_agent(a) for a in self.population[start:start + p_size]])
+            start += p_size
         self.ps = 1.0 / self.problem.n_dims
         self.p_leave = 0.005 * (self.n_coyotes**2)  # Probability of leaving a pack
 
@@ -104,6 +113,7 @@ cdef class OriginalCOA(cy.Optimizer):
         """
         # Execute the operations inside each pack
         for p in range(self.n_packs):
+            pack_len = len(self.pop_group[p])
             # Get the coyotes that belong to each pack
             self.pop_group[p] = cy.sort_agents(self.pop_group[p], self.problem.sense)
             # Detect alphas according to the costs (Eq. 5)
@@ -112,9 +122,9 @@ cdef class OriginalCOA(cy.Optimizer):
 
             #  Update coyotes' social condition
             pop_new = []
-            for i in range(self.n_coyotes):
+            for i in range(pack_len):
                 rc1, rc2 = self.generator.choice(
-                    list(set(range(0, self.n_coyotes)) - {i}), 2, replace=False
+                    list(set(range(0, pack_len)) - {i}), 2, replace=False
                 )
                 # Try to update the social condition according to the alpha and the pack tendency(Eq. 12)
                 x = (
@@ -136,7 +146,7 @@ cdef class OriginalCOA(cy.Optimizer):
 
             # Birth of a new coyote from random parents (Eq. 7 and Alg. 1)
             id_dad, id_mom = self.generator.choice(
-                list(range(0, self.n_coyotes)), 2, replace=False
+                list(range(0, pack_len)), 2, replace=False
             )
             prob1 = (1.0 - self.ps) / 2.0
             # Generate the pup considering intrinsic and extrinsic influence
@@ -168,9 +178,8 @@ cdef class OriginalCOA(cy.Optimizer):
                 id_pack1, id_pack2 = self.generator.choice(
                     list(range(0, self.n_packs)), 2, replace=False
                 )
-                id1, id2 = self.generator.choice(
-                    list(range(0, self.n_coyotes)), 2, replace=False
-                )
+                id1 = self.generator.integers(0, len(self.pop_group[id_pack1]))
+                id2 = self.generator.integers(0, len(self.pop_group[id_pack2]))
                 self.pop_group[id_pack1][id1], self.pop_group[id_pack2][id2] = (
                     self.pop_group[id_pack2][id2],
                     self.pop_group[id_pack1][id1],
@@ -178,7 +187,7 @@ cdef class OriginalCOA(cy.Optimizer):
 
         # Update coyotes ages
         for id_pack in range(0, self.n_packs):
-            for id_coy in range(0, self.n_coyotes):
+            for id_coy in range(0, len(self.pop_group[id_pack])):
                 self.pop_group[id_pack][id_coy].age += 1
         self.population = self.population.spawn([agent for pack in self.pop_group for agent in pack])
 

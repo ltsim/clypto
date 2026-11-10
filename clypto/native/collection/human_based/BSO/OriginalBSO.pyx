@@ -94,50 +94,49 @@ cdef class OriginalBSO(ImprovedBSO):
             idx = self.generator.integers(0, self.m_clusters)
             self.centers[idx] = self.population.generate_agent()
         pop_group = self.pop_group
-        for idx in range(0, pop_size):  # Generate new individuals
-            cluster_id = int(idx / self.m_solution)
-            location_id = int(idx % self.m_solution)
-            if self.generator.uniform() < self.p2:  # p_6b
-                if self.generator.uniform() < self.p3:  # p_6i
-                    cluster_id = self.generator.integers(0, self.m_clusters)
-                if self.generator.uniform() < self.p3:
-                    pos_new = self.centers[
-                                  cluster_id
-                              ].solution + epsilon * self.generator.normal(
-                        0, 1, self.problem.n_dims
+        for cluster_id in range(self.m_clusters):
+            c_len = len(pop_group[cluster_id])
+            for location_id in range(c_len):
+                c_pick = cluster_id
+                if self.generator.uniform() < self.p2:  # p_6b
+                    if self.generator.uniform() < self.p3:  # p_6i
+                        c_pick = self.generator.integers(0, self.m_clusters)
+                    if self.generator.uniform() < self.p3:
+                        pos_new = self.centers[
+                                      c_pick
+                                  ].solution + epsilon * self.generator.normal(
+                            0, 1, self.problem.n_dims
+                        )
+                    else:
+                        rand_idx = self.generator.integers(0, len(self.pop_group[c_pick]))
+                        pos_new = self.pop_group[c_pick][
+                                      rand_idx
+                                  ].solution + self.generator.normal(0, 1, self.problem.n_dims)
+                else:
+                    id1, id2 = self.generator.choice(
+                        range(0, self.m_clusters), 2, replace=False
                     )
-                else:
-                    rand_idx = self.generator.integers(0, self.m_solution)
-                    pos_new = self.pop_group[cluster_id][
-                                  rand_idx
-                              ].solution + self.generator.normal(0, 1, self.problem.n_dims)
-            else:
-                id1, id2 = self.generator.choice(
-                    range(0, self.m_clusters), 2, replace=False
-                )
-                if self.generator.uniform() < self.p4:
-                    pos_new = 0.5 * (
-                            self.centers[id1].solution + self.centers[id2].solution
-                    ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
-                else:
-                    rand_id1 = self.generator.integers(0, self.m_solution)
-                    rand_id2 = self.generator.integers(0, self.m_solution)
-                    pos_new = 0.5 * (
-                            self.pop_group[id1][rand_id1].solution
-                            + self.pop_group[id2][rand_id2].solution
-                    ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
-            pos_new = cy.reset_solution(self.problem, self.generator, pos_new)
-            agent = self.population.create_agent(pos_new)
-            pop_group[cluster_id][location_id] = agent
-            if self.mode == "sequential":
-                agent.evaluate(self.problem)
-                pop_group[cluster_id][location_id] = cy.get_better_agent(agent, self.pop_group[cluster_id][location_id], self.problem.sense)
+                    if self.generator.uniform() < self.p4:
+                        pos_new = 0.5 * (
+                                self.centers[id1].solution + self.centers[id2].solution
+                        ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
+                    else:
+                        rand_id1 = self.generator.integers(0, len(self.pop_group[id1]))
+                        rand_id2 = self.generator.integers(0, len(self.pop_group[id2]))
+                        pos_new = 0.5 * (
+                                self.pop_group[id1][rand_id1].solution
+                                + self.pop_group[id2][rand_id2].solution
+                        ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
+                pos_new = cy.reset_solution(self.problem, self.generator, pos_new)
+                agent = self.population.create_agent(pos_new)
+                pop_group[cluster_id][location_id] = agent
+                if self.mode == "sequential":
+                    agent.evaluate(self.problem)
+                    pop_group[cluster_id][location_id] = cy.get_better_agent(agent, self.pop_group[cluster_id][location_id], self.problem.sense)
         if self.mode != "sequential":
             for idx in range(0, self.m_clusters):
                 pop_group[idx] = self.population.evaluate(pop_group[idx], self.mode)
                 pop_group[idx] = cy.greedy_agents(self.pop_group[idx], pop_group[idx], self.problem.sense)
         # Needed to update the centers and population
         self.centers = self.find_cluster__(pop_group)
-        self.population = self.population.spawn([])
-        for idx in range(0, self.m_clusters):
-            self.population += pop_group[idx]
+        self.population = self.population.spawn([agent for group in pop_group for agent in group])

@@ -92,7 +92,14 @@ cdef class ImprovedBSO(cy.Optimizer):
         pop_size = self.population.size()
         if len(self.population) == 0:
             self.population = self.population.generate(pop_size)
-        self.pop_group = cy.split_groups(self.population, self.m_clusters, self.m_solution)
+        base = pop_size // self.m_clusters
+        rem = pop_size % self.m_clusters
+        start = 0
+        self.pop_group = []
+        for i in range(self.m_clusters):
+            size = base + (1 if i < rem else 0)
+            self.pop_group.append([cy.duplicate_agent(a) for a in self.population[start:start + size]])
+            start += size
         self.centers = self.find_cluster__(self.pop_group)
 
     cdef void evolve(self, int epoch):
@@ -108,43 +115,42 @@ cdef class ImprovedBSO(cy.Optimizer):
             idx = self.generator.integers(0, self.m_clusters)
             self.centers[idx] = self.population.generate_agent()
         pop_group = self.pop_group
-        for idx in range(0, pop_size):  # Generate new individuals
-            cluster_id = int(idx / self.m_solution)
-            location_id = int(idx % self.m_solution)
-
-            if self.generator.uniform() < self.p2:  # p_6b
-                if self.generator.uniform() < self.p3:
-                    x = self.centers[
-                                  cluster_id
-                              ].solution + epsilon * self.generator.normal(
-                        0, 1, self.problem.n_dims
-                    )
-                else:  # 2. Using levy flight here
-                    levy_step = cy.levy_flight(self.generator, beta=1.0, multiplier=0.001, size=self.problem.n_dims, case=-1)
-                    x = (
-                            self.pop_group[cluster_id][location_id].solution + levy_step
-                    )
-            else:
-                id1, id2 = self.generator.choice(
-                    range(0, self.m_clusters), 2, replace=False
-                )
-                if self.generator.uniform() < self.p4:
-                    x = 0.5 * (
-                            self.centers[id1].solution + self.centers[id2].solution
-                    ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
+        for cluster_id in range(self.m_clusters):
+            c_len = len(pop_group[cluster_id])
+            for location_id in range(c_len):
+                if self.generator.uniform() < self.p2:  # p_6b
+                    if self.generator.uniform() < self.p3:
+                        x = self.centers[
+                                      cluster_id
+                                  ].solution + epsilon * self.generator.normal(
+                            0, 1, self.problem.n_dims
+                        )
+                    else:  # 2. Using levy flight here
+                        levy_step = cy.levy_flight(self.generator, beta=1.0, multiplier=0.001, size=self.problem.n_dims, case=-1)
+                        x = (
+                                self.pop_group[cluster_id][location_id].solution + levy_step
+                        )
                 else:
-                    rand_id1 = self.generator.integers(0, self.m_solution)
-                    rand_id2 = self.generator.integers(0, self.m_solution)
-                    x = 0.5 * (
-                            self.pop_group[id1][rand_id1].solution
-                            + self.pop_group[id2][rand_id2].solution
-                    ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
-            x = cy.correct_solution(self.problem, x)
-            agent = self.population.create_agent(x)
-            pop_group[cluster_id][location_id] = agent
-            if self.mode == "sequential":
-                agent.evaluate(self.problem)
-                pop_group[cluster_id][location_id] = cy.get_better_agent(agent, self.pop_group[cluster_id][location_id], self.problem.sense)
+                    id1, id2 = self.generator.choice(
+                        range(0, self.m_clusters), 2, replace=False
+                    )
+                    if self.generator.uniform() < self.p4:
+                        x = 0.5 * (
+                                self.centers[id1].solution + self.centers[id2].solution
+                        ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
+                    else:
+                        rand_id1 = self.generator.integers(0, len(self.pop_group[id1]))
+                        rand_id2 = self.generator.integers(0, len(self.pop_group[id2]))
+                        x = 0.5 * (
+                                self.pop_group[id1][rand_id1].solution
+                                + self.pop_group[id2][rand_id2].solution
+                        ) + epsilon * self.generator.normal(0, 1, self.problem.n_dims)
+                x = cy.correct_solution(self.problem, x)
+                agent = self.population.create_agent(x)
+                pop_group[cluster_id][location_id] = agent
+                if self.mode == "sequential":
+                    agent.evaluate(self.problem)
+                    pop_group[cluster_id][location_id] = cy.get_better_agent(agent, self.pop_group[cluster_id][location_id], self.problem.sense)
         if self.mode != "sequential":
             for idx in range(0, self.m_clusters):
                 pop_group[idx] = self.population.evaluate(pop_group[idx], self.mode)
@@ -152,6 +158,4 @@ cdef class ImprovedBSO(cy.Optimizer):
 
         # Needed to update the centers and population
         self.centers = self.find_cluster__(pop_group)
-        self.population = self.population.spawn([])
-        for idx in range(0, self.m_clusters):
-            self.population += pop_group[idx]
+        self.population = self.population.spawn([agent for group in pop_group for agent in group])
