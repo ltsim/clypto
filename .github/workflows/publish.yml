@@ -15,15 +15,17 @@ jobs:
       matrix:
         # macOS builds natively per architecture: Homebrew's libomp only exists
         # for the runner's own arch, so x86_64 cannot be cross-built on arm64.
+        # macos-14 was retired from GitHub Actions on 2026-11-02
+        # (actions/runner-images#15226); arm64 builds on macos-15.
         include:
           - os: ubuntu-latest
           - os: windows-latest
           - os: macos-15-intel
             macos_arch: x86_64
             macos_target: "15.0"
-          - os: macos-14
+          - os: macos-15
             macos_arch: arm64
-            macos_target: "14.0"
+            macos_target: "15.0"
 
     steps:
       - uses: actions/checkout@v4
