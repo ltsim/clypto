@@ -95,64 +95,75 @@ cdef class OriginalASO(cy.Optimizer):
 
     def update_mass__(self, population):
         pop_size = self.population.size()
-        list_fit = np.array([agent.fitness for agent in population])
+        list_fit = np.array([agent.fitness for agent in population], dtype=np.float64)
+        cdef double max_fit = np.max(list_fit)
+        cdef double min_fit = np.min(list_fit)
         list_fit = np.exp(
-            -(list_fit - np.max(list_fit))
-            / (np.max(list_fit) - np.min(list_fit) + self.EPSILON)
+            -(list_fit - max_fit)
+            / (max_fit - min_fit + self.EPSILON)
         )
         list_fit = list_fit / np.sum(list_fit)
         for idx in range(0, pop_size):
             population[idx].mass = list_fit[idx]
         return population
 
-    def find_LJ_potential__(self, iteration, average_dist, radius):
-        c = (1 - iteration / self.epoch) ** 3
-        # g0 = 1.1, u = 2.4
-        rsmin = 1.1 + 0.1 * np.sin(iteration / self.epoch * np.pi / 2)
-        rsmax = 1.24
-        if radius / average_dist < rsmin:
+    cdef inline double find_LJ_potential__(self, int iteration, double average_dist, double radius) noexcept:
+        cdef double c = (1.0 - <double>iteration / self.epoch) ** 3
+        cdef double rsmin = 1.1 + 0.1 * np.sin(<double>iteration / self.epoch * np.pi / 2.0)
+        cdef double rsmax = 1.24
+        cdef double rs
+        if average_dist <= 0:
             rs = rsmin
         else:
-            if radius / average_dist > rsmax:
+            rs = radius / average_dist
+            if rs < rsmin:
+                rs = rsmin
+            elif rs > rsmax:
                 rs = rsmax
-            else:
-                rs = radius / average_dist
-        potential = c * (12 * (-rs) ** (-13) - 6 * (-rs) ** (-7))
-        return potential
+        cdef double inv_rs = 1.0 / (-rs)
+        cdef double inv_rs7 = inv_rs ** 7
+        cdef double inv_rs13 = inv_rs7 * (inv_rs ** 6)
+        return c * (12.0 * inv_rs13 - 6.0 * inv_rs7)
 
     def acceleration__(self, population, g_best, iteration):
-        pop_size = self.population.size()
-        eps = 2.0 ** (-52)
+        cdef int pop_size = self.population.size()
+        cdef int n_dims = self.problem.n_dims
+        cdef double eps = 2.0 ** (-52)
         pop = self.update_mass__(population)
-        G = np.exp(-20.0 * iteration / self.epoch)
-        k_best = (
-            int(pop_size - (pop_size - 2) * (iteration / self.epoch) ** 0.5)
+        cdef double G = np.exp(-20.0 * <double>iteration / self.epoch)
+        cdef int k_best = (
+            int(pop_size - (pop_size - 2) * (<double>iteration / self.epoch) ** 0.5)
             + 1
         )
         if self.problem.sense == "min":
-            k_best_pop = sorted(pop, key=lambda agent: agent.mass, reverse=True)[
-                :k_best
-            ].copy()
+            k_best_pop = sorted(pop, key=lambda agent: agent.mass, reverse=True)[:k_best]
         else:
-            k_best_pop = sorted(pop, key=lambda agent: agent.mass)[:k_best].copy()
+            k_best_pop = sorted(pop, key=lambda agent: agent.mass)[:k_best]
+
         mk_average = np.mean([agent.solution for agent in k_best_pop])
-        acc_list = np.zeros((pop_size, self.problem.n_dims))
-        for idx in range(0, pop_size):
-            dist_average = np.linalg.norm(pop[idx].solution - mk_average)
-            temp = np.zeros((self.problem.n_dims))
-            for atom in k_best_pop:
-                # calculate LJ-potential
-                radius = np.linalg.norm(pop[idx].solution - atom.solution)
+        k_best_solutions = np.array([atom.solution for atom in k_best_pop], dtype=np.float64)
+        pop_solutions = np.array([pop[idx].solution for idx in range(pop_size)], dtype=np.float64)
+        g_best_sol = np.asarray(g_best.solution, dtype=np.float64)
+
+        acc_list = np.zeros((pop_size, n_dims), dtype=np.float64)
+        cdef double dist_average, radius, potential
+        cdef int k
+
+        for idx in range(pop_size):
+            dist_average = np.linalg.norm(pop_solutions[idx] - mk_average)
+            diffs = k_best_solutions - pop_solutions[idx]
+            radii = np.linalg.norm(diffs, axis=1)
+            temp = np.zeros(n_dims, dtype=np.float64)
+            for k in range(k_best):
+                radius = radii[k]
                 potential = self.find_LJ_potential__(iteration, dist_average, radius)
                 temp += (
                     potential
-                    * self.generator.uniform(0, 1, self.problem.n_dims)
-                    * ((atom.solution - pop[idx].solution) / (radius + eps))
+                    * self.generator.random(n_dims)
+                    * (diffs[k] / (radius + eps))
                 )
-            temp = self.alpha * temp + self.beta * (g_best.solution - pop[idx].solution)
-            # calculate acceleration
-            acc = G * temp / pop[idx].mass
-            acc_list[idx] = acc
+            temp = self.alpha * temp + self.beta * (g_best_sol - pop_solutions[idx])
+            acc_list[idx] = G * temp / pop[idx].mass
         return acc_list
 
     cdef void evolve(self, int epoch):

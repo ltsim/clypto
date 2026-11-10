@@ -22,6 +22,24 @@ All notable changes to Clypto are documented in this file. The project follows [
 - **Module Relocation**: Moved tracker into `clypto.optimizer.history` (`tracker.pyx`).
 - **Citation Metadata**: Updated `CITATION.cff` for Clypto.
 
+#### Fixed
+- **Algorithm Repairs & Implementations**:
+  - **`OriginalGA`**: Repaired `OriginalGA` by inheriting from `BaseGA`, implementing the complete genetic algorithm lifecycle and evolution loop with support for configurable multi-point and single-point mutation strategies; removed `NotImplementedError`.
+  - **`DS_GWO`**: Implemented the missing `evolve()` step following Jiang et al. (2022) with group-stage competition in the exploration phase and 3-leader convergence in the exploitation phase; removed `NotImplementedError`.
+- **Performance & Algorithm Optimizations**:
+  - **`OriginalASO`**: Vectorized Lennard-Jones (LJ) potential and acceleration calculations, inlined potential evaluations in C, and eliminated per-atom quadratic memory allocations and loop overhead in the atom force calculation loop.
+  - **`AAO`**: Optimized `evolve()` by hoisting epoch-level invariants (`sigmoid_factor`, exploration probability, population mean position `x_mean`) outside the agent loop; replaced unseeded global `np.random.rand()` with `self.generator.random()`; eliminated unused random index choice overwrite.
+  - **`EliteMultiGA` / `MultiGA`**: Optimized swap mutation by directly swapping two elements via `generator.integers` (eliminating `set` difference and list conversions), and vectorized flip mutation via `generator.random`.
+  - **`DevEPC`**: Optimized penguin attractiveness and spiral movement calculation; precomputed trigonometric constants (`cos_theta`, `sin_theta`); inlined C-level math and vector operations; eliminated dynamic rotation matrix allocations and `np.allclose` comparisons in inner loops.
+  - **`ImprovedBSO`**: Clamped `m_clusters` dynamically to `max_clusters = max(2, int(pop_size / 5))` when `pop_size < 25`, avoiding validator range exceptions on small population budgets.
+- **Budget-Dependent Parameter Defaults Adaptation**:
+  - Dynamically adapted hyperparameter defaults that scale with `epoch` or `pop_size` to prevent validator out-of-bounds exceptions on small budgets:
+    - **`CHIO`** (`OriginalCHIO`, `DevCHIO`): `max_age` default adapted to upper bound `[1, max(1, 1 + int(epoch / 5))]`.
+    - **`HI_WOA`**: `feedback_max` default adapted to upper bound `[2, max(2, 2 + int(epoch / 2))]`.
+    - **`OCRO`**: `restart_count` default adapted to upper bound `[2, max(2, int(epoch / 2))]`.
+    - **`OriginalEHO`**: `n_clans` default adapted to upper bound `[2, max(2, int(pop_size / 5))]`.
+    - **`OriginalGSKA`**: `kg` default adapted to upper bound `[1, max(1, 1 + int(epoch / 2))]`.
+
 #### Removed / Breaking Changes
 - Removed `zarr>=3` dependency, `tracker.meta`, `history_path`, and on-disk tracking stores.
 - Removed `tracker.before`, `tracker.after`, `on_before`, and `on_after` (use `solve(before_iteration=..., after_iteration=...)`).

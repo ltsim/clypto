@@ -72,7 +72,10 @@ cdef class OriginalEHO(cy.Optimizer):
         self.population = cy.population(pop_size)
         self.alpha = cy.validator(float, alpha, (0, 3.0), "alpha")
         self.beta = cy.validator(float, beta, (0, 1.0), "beta")
-        self.n_clans = cy.validator(int, n_clans, [2, int(self.population.size() / 5)], "n_clans")
+        max_clans = max(2, int(self.population.size() / 5))
+        if n_clans == 5 and 5 > max_clans:
+            n_clans = max_clans
+        self.n_clans = cy.validator(int, n_clans, [2, max_clans], "n_clans")
         self.n_individuals = int(self.population.size() / self.n_clans)
 
     def initialization(self):

@@ -70,7 +70,10 @@ cdef class ImprovedBSO(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size", "m_clusters", "p1", "p2", "p3", "p4"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size, range=[10, 10000])
-        self.m_clusters = cy.validator(int, m_clusters, [2, int(self.population.size() / 5)], "m_clusters")
+        max_clusters = max(2, int(self.population.size() / 5))
+        if m_clusters == 5 and 5 > max_clusters:
+            m_clusters = max_clusters
+        self.m_clusters = cy.validator(int, m_clusters, [2, max_clusters], "m_clusters")
         self.p1 = cy.validator(float, p1, (0, 1.0), "p1")
         self.p2 = cy.validator(float, p2, (0, 1.0), "p2")
         self.p3 = cy.validator(float, p3, (0, 1.0), "p3")

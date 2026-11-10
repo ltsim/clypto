@@ -84,29 +84,29 @@ cdef class AAO(cy.Optimizer):
         QF = epoch ** (
                 (2 * self.generator.random() - 1) / (1 - self.epoch) ** 2
         )  # Eq.(15)        Quality function
+
+        # Dynamically balance the exploration and exploitation phases (constant for epoch)
+        cdef double sigmoid_factor = 1.0 / (
+                1.0 + np.exp(-self.sharpness * (<double>epoch / self.epoch - self.sigmoid_midpoint))
+        )
+        cdef double explore_prob = 1.0 - sigmoid_factor
+
+        # Population mean solution for the epoch
+        x_mean = np.mean([child.solution for child in self.population], axis=0)
+
         cdef cy.Population n_population = cy.empty_snapshot(self.population)
 
         for idx, agent in enumerate(self.population.toarray()):
-            x_mean = np.mean(np.array([child.solution for child in self.population]), axis=0)
             levy_step = cy.levy_flight(self.generator, beta=1.5, multiplier=1.0, size=None, case=-1)
 
-            # Dynamically balance the exploration and exploitation phases
-            sigmoid_factor = 1 / (
-                    1
-                    + np.exp(-self.sharpness * (epoch / self.epoch - self.sigmoid_midpoint))
-            )
-
-            if np.random.rand() <= (1 - sigmoid_factor):
+            if self.generator.random() <= explore_prob:
                 if self.generator.random() < 0.5:
                     pos_new = self.g_best.solution * (
-                            1 - epoch / self.epoch
+                            1.0 - <double>epoch / self.epoch
                     ) + self.generator.random() * (
                                       x_mean - self.g_best.solution
                               )  # Eq. (3) and Eq. (4)
                 else:
-                    idx = self.generator.choice(
-                        list(set(range(0, pop_size)) - {idx})
-                    )
                     pos_new = (
                             self.g_best.solution * levy_step
                             + agent.solution

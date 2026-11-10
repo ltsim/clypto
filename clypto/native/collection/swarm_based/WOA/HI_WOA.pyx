@@ -62,7 +62,10 @@ cdef class HI_WOA(cy.Optimizer):
         super().__init__(parameters=["epoch", "pop_size", "feedback_max"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size)
-        self.feedback_max = cy.validator(int, feedback_max, [2, 2 + int(self.epoch / 2)], "feedback_max")
+        max_feedback = max(2, 2 + int(self.epoch / 2))
+        if feedback_max == 10 and 10 > max_feedback:
+            feedback_max = max_feedback
+        self.feedback_max = cy.validator(int, feedback_max, [2, max_feedback], "feedback_max")
         # The maximum of times g_best doesn't change -> need to change half of population
 
     def initialize_variables(self):

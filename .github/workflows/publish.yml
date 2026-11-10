@@ -30,11 +30,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pypa/cibuildwheel@v2.22.0
+      # v4.3.5 (not v2.x): cp314 needs cibuildwheel >= 3.1.0 and cp315 is built
+      # by default since 4.2.0. v2.22.0 silently skipped both, which is why
+      # 2026b1 shipped no cp314/cp315 wheels. cp310 is absent because
+      # requires-python is >=3.11 (cibuildwheel filters build ids by it).
+      - uses: pypa/cibuildwheel@v4.3.5
         env:
           # Precompiled wheel per CPython version; Cython+numpy come from
           # [build-system].requires, so no CIBW_BEFORE_BUILD needed.
-          CIBW_BUILD: "cp310-* cp311-* cp312-* cp313-* cp314-*"
+          # The explicit list excludes the free-threaded builds (cp314t-*),
+          # which are untested here.
+          CIBW_BUILD: "cp311-* cp312-* cp313-* cp314-* cp315-*"
           CIBW_ARCHS_LINUX: "x86_64"
           CIBW_ARCHS_WINDOWS: "AMD64"
           CIBW_ARCHS_MACOS: ${{ matrix.macos_arch }}

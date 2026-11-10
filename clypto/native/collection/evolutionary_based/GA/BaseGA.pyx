@@ -157,15 +157,19 @@ cdef class BaseGA(cy.Optimizer):
             list: The position of dad and mom
         """
         if self.selection == "roulette":
-            list_fitness = np.array([agent.fitness for agent in pop_selected])
+            list_fitness = getattr(pop_selected, "_cached_fit", None)
+            if list_fitness is None:
+                list_fitness = np.array([agent.fitness for agent in pop_selected], dtype=np.float64)
+                try:
+                    pop_selected._cached_fit = list_fitness
+                except Exception:
+                    pass
             id_c1 = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
             id_c2 = cy.roulette_wheel(self.generator, self.problem.sense, list_fitness)
             if id_c2 == id_c1:
-                # Fall back to a uniform pick among the remaining indices instead of
-                # retrying roulette selection, which can loop forever once floating-point
-                # underflow drives every other candidate's probability to exactly 0.0.
-                others = [i for i in range(len(list_fitness)) if i != id_c1]
-                id_c2 = self.generator.choice(others)
+                # Uniform pick among the remaining indices
+                if len(list_fitness) > 1:
+                    id_c2 = (id_c1 + self.generator.integers(1, len(list_fitness))) % len(list_fitness)
         elif self.selection == "random":
             id_c1, id_c2 = self.generator.choice(
                 range(len(pop_selected)), 2, replace=False
@@ -188,8 +192,20 @@ cdef class BaseGA(cy.Optimizer):
             list: The position of dad and mom
         """
         if self.selection == "roulette":
-            list_fit_dad = np.array([agent.fitness for agent in pop_dad])
-            list_fit_mom = np.array([agent.fitness for agent in pop_mom])
+            list_fit_dad = getattr(pop_dad, "_cached_fit", None)
+            if list_fit_dad is None:
+                list_fit_dad = np.array([agent.fitness for agent in pop_dad], dtype=np.float64)
+                try:
+                    pop_dad._cached_fit = list_fit_dad
+                except Exception:
+                    pass
+            list_fit_mom = getattr(pop_mom, "_cached_fit", None)
+            if list_fit_mom is None:
+                list_fit_mom = np.array([agent.fitness for agent in pop_mom], dtype=np.float64)
+                try:
+                    pop_mom._cached_fit = list_fit_mom
+                except Exception:
+                    pass
             id_c1 = cy.roulette_wheel(self.generator, self.problem.sense, list_fit_dad)
             id_c2 = cy.roulette_wheel(self.generator, self.problem.sense, list_fit_mom)
         elif self.selection == "random":

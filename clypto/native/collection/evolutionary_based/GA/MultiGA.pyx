@@ -105,14 +105,14 @@ cdef class MultiGA(BaseGA):
         Returns:
             np.array: The mutated vector of the child
         """
+        cdef int n_dims = self.problem.n_dims
+        cdef int idx_swap
         if self.mutation == "swap":
-            for idx in range(self.problem.n_dims):
-                idx_swap = self.generator.choice(
-                    list(set(range(0, self.problem.n_dims)) - {idx})
-                )
-                child[idx], child[idx_swap] = child[idx_swap], child[idx]
-                return child
+            if n_dims > 1:
+                idx_swap = self.generator.integers(1, n_dims)
+                child[0], child[idx_swap] = child[idx_swap], child[0]
+            return child
         else:  # "flip"
             mutation_child = self.problem.generate_solution()
-            flag_child = self.generator.uniform(0, 1, self.problem.n_dims) < self.pm
+            flag_child = self.generator.random(n_dims) < self.pm
             return np.where(flag_child, mutation_child, child)

@@ -53,6 +53,11 @@ cdef class DevEPC(cy.Optimizer):
     cdef public double mutation_factor
     cdef public double spiral_a
     cdef public double spiral_b
+    cdef public double cos_theta
+    cdef public double sin_theta
+    cdef public double heat_radiation
+    cdef public double mu
+    cdef public double current_mutation_factor
 
     def __init__(
             self,
@@ -88,6 +93,10 @@ cdef class DevEPC(cy.Optimizer):
         self.stefan_boltzmann = 5.6703e-8  # W/m^2K^4
         self.body_temperature = 308.15  # K (35°C)
         self.mu = 0.01  # Attenuation coefficient (can be tuned)
+        # Precompute spiral rotation components
+        cdef double theta = self.spiral_b * np.pi
+        self.cos_theta = np.cos(theta)
+        self.sin_theta = np.sin(theta)
         # Calculate heat radiation using Stefan-Boltzmann law (Equation 6)
         self.heat_radiation = (
                 self.surface_area
@@ -96,77 +105,37 @@ cdef class DevEPC(cy.Optimizer):
                 * (self.body_temperature ** 4)
         )
 
-    def calculate_attractiveness(self, heat_radiation: float, distance: float) -> float:
+    cdef inline double calculate_attractiveness(self, double heat_radiation, double distance) noexcept:
         """
         Calculate attractiveness between two penguins based on heat radiation and distance
-
-        Parameters:
-        -----------
-        heat_radiation : float
-            Heat radiation of the source penguin
-        distance : float
-            Distance between penguins
-
-        Returns:
-        --------
-        float : Attractiveness value
         """
-        # Linear heat source model with photon attenuation (Equations 9-11)
         if distance == 0:
             return heat_radiation
-        else:
-            # Heat intensity with linear source and attenuation
-            return heat_radiation * np.exp(-self.mu * distance) / distance
+        return heat_radiation * np.exp(-self.mu * distance) / distance
 
-    def spiral_movement(
-            self, penguin_i: np.ndarray, penguin_j: np.ndarray, attractiveness: float
-    ) -> np.ndarray:
+    cdef object spiral_movement(
+            self, object penguin_i, object penguin_j, double attractiveness
+    ):
         """
         Calculate spiral-like movement from penguin i towards penguin j
-
-        Parameters:
-        -----------
-        penguin_i : np.ndarray
-            Position of penguin i (moving penguin)
-        penguin_j : np.ndarray
-            Position of penguin j (target penguin)
-        attractiveness : float
-            Attractiveness value between penguins
-
-        Returns:
-        --------
-        np.ndarray : New position after spiral movement
         """
-        # Convert to polar coordinates
         diff = penguin_j - penguin_i
-        # Simplified spiral movement calculation
-        # Instead of complex polar coordinate transformation, use direct approach
-        distance = np.linalg.norm(diff)
-        if distance == 0 or np.allclose(penguin_i, penguin_j):
+        cdef double distance = np.linalg.norm(diff)
+        if distance == 0:
             return penguin_i.copy()
-        # Direction vector
         direction = diff / distance
-        # Spiral movement distance based on attractiveness
-        move_distance = attractiveness * distance * self.spiral_a
-        # Add spiral rotation effect
-        theta = self.spiral_b * np.pi
-        rotation_matrix = np.array(
-            [[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]]
-        )
-        # Apply rotation to direction (for 2D, extend for higher dimensions)
+        cdef double move_distance = attractiveness * distance * self.spiral_a
+        cdef double d0, d1
         if self.problem.n_dims >= 2:
             rotated_dir = direction.copy()
-            rotated_dir[:2] = rotation_matrix @ direction[:2]
+            d0 = direction[0]
+            d1 = direction[1]
+            rotated_dir[0] = self.cos_theta * d0 - self.sin_theta * d1
+            rotated_dir[1] = self.sin_theta * d0 + self.cos_theta * d1
         else:
             rotated_dir = direction
-        # Calculate new position - Add random component (mutation) - Equation 19
-        new_position = (
-                penguin_i
-                + move_distance * rotated_dir
-                + self.current_mutation_factor
-                * self.generator.uniform(-1, 1, self.problem.n_dims)
-        )
-        return new_position
+        rand_noise = 2.0 * self.generator.random(self.problem.n_dims) - 1.0
+        return penguin_i + move_distance * rotated_dir + self.current_mutation_factor * rand_noise
 
     cdef void evolve(self, int epoch):
         """
@@ -175,11 +144,13 @@ cdef class DevEPC(cy.Optimizer):
         Args:
             epoch (int): The current iteration
         """
-        pop_size = self.population.size()
+        cdef int pop_size = self.population.size()
+        cdef double distance, attractiveness
+        cdef object pos_new
         # Decrease heat absorption coefficient
         self.heat_radiation = self.heat_radiation * self.heat_damping_factor
         # Decrease mutation factor
-        self.current_mutation_factor = self.mutation_factor * (1 - epoch / self.epoch)
+        self.current_mutation_factor = self.mutation_factor * (1.0 - <double>epoch / self.epoch)
 
         # For each penguin i
         for idx in range(pop_size):

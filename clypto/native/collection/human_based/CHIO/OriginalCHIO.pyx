@@ -64,7 +64,10 @@ cdef class OriginalCHIO(cy.Optimizer):
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
         self.population = cy.population(pop_size)
         self.brr = cy.validator(float, brr, (0, 1.0), "brr")
-        self.max_age = cy.validator(int, max_age, [1, 1 + int(epoch / 5)], "max_age")
+        max_age_bound = max(1, 1 + int(epoch / 5))
+        if max_age == 10 and 10 > max_age_bound:
+            max_age = max_age_bound
+        self.max_age = cy.validator(int, max_age, [1, max_age_bound], "max_age")
 
     def initialize_variables(self):
         pop_size = self.population.size()

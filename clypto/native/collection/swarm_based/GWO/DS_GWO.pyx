@@ -130,3 +130,49 @@ cdef class DS_GWO(cy.Optimizer):
         distances = np.linalg.norm(delta_pos - self.alpha.solution, axis=1)
         beta_idx = np.argmax(distances)
         self.beta = cy.duplicate_agent(self.delta_candidates[beta_idx])
+
+    cdef void evolve(self, int epoch):
+        """
+        The main operations (equations) of algorithm.
+
+        Args:
+            epoch (int): The current iteration
+        """
+        cdef int pop_size = self.population.size()
+        cdef double a = 2.0 * (1.0 - <double>epoch / self.epoch)
+        cdef cy.Population n_population = cy.empty_snapshot(self.population)
+        cdef int n_dims = self.problem.n_dims
+
+        if epoch < self.explore_epoch:
+            # Exploration phase: group-stage competition updates
+            self.group_stage_competition()
+            for idx, agent in enumerate(self.population.toarray()):
+                A1, C1 = self.get_coefficients(a)
+                A2, C2 = self.get_coefficients(a)
+                X1 = self.alpha.solution - A1 * np.abs(C1 * self.alpha.solution - agent.solution)
+                X2 = self.beta.solution - A2 * np.abs(C2 * self.beta.solution - agent.solution)
+                x = (X1 + X2) / 2.0
+                x = cy.correct_solution(self.problem, x)
+                child = self.population.create_agent(x)
+                n_population.append(child)
+        else:
+            # Exploitation phase: standard 3-leader GWO convergence
+            ranked = self.population.sort()
+            list_best = [cy.duplicate_agent(ag) for ag in ranked[:3]]
+            for idx, agent in enumerate(self.population.toarray()):
+                A1 = a * (2 * self.generator.random(n_dims) - 1)
+                A2 = a * (2 * self.generator.random(n_dims) - 1)
+                A3 = a * (2 * self.generator.random(n_dims) - 1)
+                C1 = 2 * self.generator.random(n_dims)
+                C2 = 2 * self.generator.random(n_dims)
+                C3 = 2 * self.generator.random(n_dims)
+                X1 = list_best[0].solution - A1 * np.abs(C1 * list_best[0].solution - agent.solution)
+                X2 = list_best[1].solution - A2 * np.abs(C2 * list_best[1].solution - agent.solution)
+                X3 = list_best[2].solution - A3 * np.abs(C3 * list_best[2].solution - agent.solution)
+                x = (X1 + X2 + X3) / 3.0
+                x = cy.correct_solution(self.problem, x)
+                child = self.population.create_agent(x)
+                n_population.append(child)
+
+        self.population = self.population.greedy(self.population.evaluate(n_population, self.mode), self.mode)
+

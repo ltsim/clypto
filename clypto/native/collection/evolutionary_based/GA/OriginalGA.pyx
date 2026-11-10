@@ -1,3 +1,4 @@
+from clypto.native.collection.evolutionary_based.GA.BaseGA cimport BaseGA
 cimport clypto.core as cy
 #!/usr/bin/env python
 # Created by "Thieu" at 09:33, 16/03/2020 ----------%
@@ -7,7 +8,7 @@ cimport clypto.core as cy
 
 
 
-cdef class OriginalGA(cy.Optimizer):
+cdef class OriginalGA(BaseGA):
     """
     The fully tuned version of: Genetic Algorithm (GA)
 
@@ -86,11 +87,7 @@ cdef class OriginalGA(cy.Optimizer):
             k_way (float): Optional, set it when use "tournament" selection, default = 0.2
             mutation_multipoints (bool): Optional, True or False, effect on mutation process, default = False
         """
-        super().__init__(parameters=[ "epoch", "pop_size", "pc", "pm", "selection", "crossover", "mutation", "k_way", "mutation_multipoints", ], sort_flag=False, **kwargs)
-        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size)
-        self.pc = cy.validator(float, pc, (0, 1.0), "pc")
-        self.pm = cy.validator(float, pm, (0, 1.0), "pm")
+        super().__init__(epoch, pop_size, pc, pm, **kwargs)
         self.selection = cy.validator(str, selection, ["tournament", "random", "roulette"], "selection")
         self.crossover = cy.validator(str, crossover, ["one_point", "multi_points", "uniform", "arithmetic"], "crossover")
         self.mutation_multipoints = cy.validator(bool, mutation_multipoints, bound=None, name="mutation_multipoints")
@@ -99,3 +96,8 @@ cdef class OriginalGA(cy.Optimizer):
         else:
             self.mutation = cy.validator(str, mutation, ["flip", "swap", "scramble", "inversion"], "mutation")
         self.k_way = cy.validator(float, k_way, (0, 1.0), "k_way")
+        self.parameters = [
+            "epoch", "pop_size", "pc", "pm", "selection", "crossover",
+            "mutation", "k_way", "mutation_multipoints",
+        ]
+        self.sort_flag = False

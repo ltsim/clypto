@@ -76,7 +76,10 @@ cdef class OriginalGSKA(cy.Optimizer):
         self.pb = cy.validator(float, pb, (0, 1.0), "pb")
         self.kf = cy.validator(float, kf, (0, 1.0), "kf")
         self.kr = cy.validator(float, kr, (0, 1.0), "kr")
-        self.kg = cy.validator(int, kg, [1, 1 + int(epoch / 2)], "kg")
+        max_kg = max(1, 1 + int(epoch / 2))
+        if kg == 5 and 5 > max_kg:
+            kg = max_kg
+        self.kg = cy.validator(int, kg, [1, max_kg], "kg")
 
     cdef void evolve(self, int epoch):
         """

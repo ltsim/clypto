@@ -21,6 +21,7 @@ jobs:
           - "3.12"
           - "3.13"
           - "3.14"
+          - "3.15"
 
     steps:
       - uses: actions/checkout@v6
@@ -29,12 +30,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: uv sync --extra dev
-
+      # libomp first: `uv sync` builds the project, and setup.py passes
+      # -fopenmp on macOS, so the build fails with 'omp.h' not found otherwise.
       - name: Install libomp (OpenMP for Apple clang)
         if: runner.os == 'macOS'
         run: brew install libomp
+
+      # --extra compile puts Cython in the venv: the in-place build below runs
+      # setup.py directly, outside the isolated build env where Cython lives.
+      - name: Install dependencies
+        run: uv sync --extra dev --extra compile
 
       - name: Build Cython extensions in place
         run: uv run --no-sync python setup.py build_ext --inplace

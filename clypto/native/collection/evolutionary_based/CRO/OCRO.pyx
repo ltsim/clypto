@@ -102,7 +102,10 @@ cdef class OCRO(OriginalCRO):
             n_trials,
             **kwargs
         )
-        self.restart_count = cy.validator(int, restart_count, [2, int(epoch / 2)], "restart_count")
+        max_restart = max(2, int(epoch / 2))
+        if restart_count == 20 and 20 > max_restart:
+            restart_count = max_restart
+        self.restart_count = cy.validator(int, restart_count, [2, max_restart], "restart_count")
         self.parameters = [ "epoch", "pop_size", "po", "Fb", "Fa", "Fd", "Pd", "GCR", "gamma_min", "gamma_max", "n_trials", "restart_count", ]
         self.sort_flag = False
 

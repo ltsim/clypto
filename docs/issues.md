@@ -48,11 +48,26 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 - `OriginalFOA`, `BaseFOA` — **weak**; `WhaleFOA` performs better.
 - `OriginalCHIO` — **too weak**; `BaseCHIO` uses a mixed strategy.
 - `HGSO`, `EHO`, `PFA`, `SSO` — sensitive to population ordering.
-- `DS_GWO` — has no evolve step (not even in the pre-Cython sources); it
-  raises `NotImplementedError`.
 
 ### Fixed in 2026
 
+- `DS_GWO` — implemented missing `evolve()` step following Jiang et al. (2022)
+  featuring group-stage competition in the exploration phase and 3-leader
+  convergence in the exploitation phase; removed `NotImplementedError`.
+- `AAO` — vectorized epoch-level invariant computations (`sigmoid_factor`,
+  exploration probability, population mean position `x_mean`) outside the agent
+  loop; aligned RNG calls with `self.generator.random()` instead of global
+  `np.random.rand()`; eliminated unused random index choice overwrite.
+- `DevEPC` — optimized penguin attractiveness and spiral movement calculation;
+  precomputed trigonometric constants (`cos_theta`, `sin_theta`); inlined C-level
+  math and vector operations; eliminated dynamic rotation matrix allocations and
+  `np.allclose` comparisons in inner loops.
+- `HI_WOA` — dynamically adapted `feedback_max` default to upper bound
+  `[2, max(2, 2 + int(epoch / 2))]`, preventing validator failures on small epoch
+  budgets.
+- `OriginalEHO` — dynamically adapted `n_clans` default to upper bound
+  `[2, max(2, int(pop_size / 5))]`, preventing validator failures on small
+  population budgets.
 - `SSpiderA` — the candidate was appended only in sequential mode, so the
   batch modes failed with an `IndexError`. The sequential results are unchanged.
 - `CSO` — `Validator.check_bool` list/tuple type mismatch (Cython enforces
@@ -81,6 +96,14 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 
 ### Fixed in 2026
 
+- `ImprovedBSO` — dynamic clamping for `m_clusters` when `pop_size < 25`,
+  preventing validator out-of-bounds errors on small population budgets.
+- `OriginalCHIO` (and `DevCHIO`) — dynamically adapted `max_age` default to
+  upper bound `[1, max(1, 1 + int(epoch / 5))]`, preventing validator failures on
+  small epoch budgets.
+- `OriginalGSKA` — dynamically adapted `kg` default to upper bound
+  `[1, max(1, 1 + int(epoch / 2))]`, preventing validator failures on small epoch
+  budgets.
 - `DOA` — `idx`/`jdx` variable mixup caused out-of-bounds bound-array indexing.
 
 ---
@@ -110,6 +133,9 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 
 ### Fixed in 2026
 
+- `OriginalASO` — vectorized Lennard-Jones (LJ) potential and acceleration
+  calculations; inlined potential evaluations; eliminated per-atom quadratic array
+  allocations and Python-level loop overhead in atom force calculation.
 - `SOO` — the second phase appended to the first phase's candidate list, so
   `mode="swarm"`/`"parallel"` failed (`greedy` of two populations of different
   length). The sequential results are unchanged.
@@ -128,11 +154,18 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
 - `DE` (`BaseDE`, `JADE`, `SADE`, `SHADE`, `L_SHADE`, `SAP_DE`), `GA`, `CRO`,
   `FPA` — selection picks random or roulette-wheel agents, so runs are more
   sensitive to population ordering.
-- `OriginalGA` — has no evolve step (not even in the pre-Cython sources); it
-  raises `NotImplementedError`. Use `BaseGA` (same parameters).
 
 ### Fixed in 2026
 
+- `OriginalGA` — repaired by inheriting from `BaseGA`, implementing full GA
+  lifecycle and evolve loop with configurable multi-point and single-point mutation
+  strategies; removed `NotImplementedError`.
+- `MultiGA` / `EliteMultiGA` — optimized swap mutation by directly swapping two
+  elements via `generator.integers` instead of generating set differences;
+  vectorized flip mutation via `generator.random`.
+- `OCRO` — dynamically adapted `restart_count` default to upper bound
+  `[2, max(2, int(epoch / 2))]`, preventing validator failures on small epoch
+  budgets.
 - `GA`, `MA` — `k_way` float/int coercion in
   `get_index_kway_tournament_selection` broke `numpy.random.Generator.choice()`
   under NumPy 2.5; fixed by truncating into a separate `int`-typed variable
