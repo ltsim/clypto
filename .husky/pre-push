@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# The gate before code leaves the machine: the version as committed, and the
+# full suite -- the same command CI runs (.github/workflows/test.yml).
+#
+# The suite imports the compiled package, so this needs a built environment:
+# uv sync --extra dev. Bypass with HUSKY=0 git push, or git push --no-verify.
+
+set -e
+
+sh .husky/check-version.sh head
+
+if ! uv run --no-sync python -c 'import clypto, pytest' >/dev/null 2>&1; then
+    echo "pre-push: the dev environment is not ready." >&2
+    echo "pre-push: run 'uv sync --extra dev' (or 'make uv-sync') to build the package," >&2
+    echo "pre-push: then push again, or push with HUSKY=0." >&2
+    exit 1
+fi
+
+uv run --no-sync pytest tests/

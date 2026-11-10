@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+# Fast gate: check the release version and the files this commit actually touches.
+#
+# ruff and mypy run over the staged Python files only. The repository carries
+# pre-existing lint and typing debt (see docs/releasing.md); checking the whole
+# tree here would block every commit, so each file is expected to be clean from
+# the moment you touch it instead.
+#
+# Needs the dev environment once: uv sync --extra dev. Bypass with HUSKY=0 git commit.
+
+set -e
+
+sh .husky/check-version.sh staged
+
+# --diff-filter=ACMR: skip deletions, keep renames at their new path.
+if [ -z "$(git diff --cached --name-only --diff-filter=ACMR -- '*.py')" ]; then
+    exit 0
+fi
+
+if ! uv run --no-sync python -c 'import numpy, scipy' >/dev/null 2>&1; then
+    echo "pre-commit: the dev environment is not ready." >&2
+    echo "pre-commit: run 'uv sync --extra dev' (or 'make uv-sync'), or commit with HUSKY=0." >&2
+    exit 1
+fi
+
+# -z / xargs -0 so unusual filenames survive; the emptiness check above means
+# xargs never runs with an empty list, which would make ruff check the tree.
+git diff --cached --name-only --diff-filter=ACMR -z -- '*.py' |
+    xargs -0 uv run --no-sync ruff check
+
+# --follow-imports=silent keeps mypy reporting only the staged files, not the
+# pre-existing errors in the modules they import.
+git diff --cached --name-only --diff-filter=ACMR -z -- '*.py' |
+    xargs -0 uv run --no-sync mypy --follow-imports=silent

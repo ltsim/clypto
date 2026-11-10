@@ -1,0 +1,11 @@
+{
+  "name": "clypto",
+  "private": true,
+  "description": "Dev-only tooling for this repository (Husky git hooks). Not a Node package.",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

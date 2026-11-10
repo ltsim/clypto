@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 
 import clypto as cy
-from clypto.utils.target import Target
 
 
 @cy.agent
@@ -22,7 +21,7 @@ class MinimalAgent:
 
 
 def evaluate(solution):
-    return Target(objectives=float(np.sum(solution**2)))
+    return cy.Agent(solution, float(np.sum(solution**2)))
 
 
 def test_decorator_collects_declared_attributes():
@@ -51,7 +50,7 @@ def test_fitness_is_none_until_a_solution_is_evaluated():
     agent = CustomAgent()
 
     assert agent.solution is None
-    assert agent.target is None
+    assert agent.objectives is None
     assert agent.fitness is None
 
 
@@ -107,7 +106,7 @@ def test_ellipsis_and_single_parameter_defaults():
 
 
 def test_decorated_agent_is_a_runtime_agent():
-    from clypto.agents.precompile.runtime import RuntimeAgent
+    from clypto.optimizer.agents.runtime import RuntimeAgent
 
     assert issubclass(CustomAgent, RuntimeAgent)
     assert isinstance(CustomAgent(), RuntimeAgent)

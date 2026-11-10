@@ -15,44 +15,11 @@ What remains is a pure, ultra-lightweight, bloat-free catalog of compiled legacy
 implementations: a high-speed, decoupled foundation built to power heavy
 taxonomic processing and intensive benchmarks in the `cmenpy` ecosystem.
 
-<div class="grid cards" markdown>
-
-- :material-rocket-launch: **Get running in minutes**
-
-    ---
-
-    Install from a precompiled wheel and solve your first problem with the
-    [Quickstart](quickstart.md).
-
-- :material-school: **Learn the API**
-
-    ---
-
-    Problems, decision variables, termination, and seeding are covered in the
-    [Tutorial](tutorial.md).
-
-- :material-pencil: **Write your own optimizer**
-
-    ---
-
-    Implement a custom metaheuristic from scratch with the
-    [Custom optimizers](custom-optimizers/index.md) series.
-
-- :material-shape: **Browse the catalog**
-
-    ---
-
-    Explore all **244 optimizers across 147 modules**, grouped by
-    [taxonomy category](categories/index.md).
-
-- :material-alert-circle: **Check before you benchmark**
-
-    ---
-
-    Review [Known Issues](issues.md) — weak, buggy, or plagiarism-suspect
-    algorithms, grouped by category.
-
-</div>
+- **Get running in minutes** — Install from a precompiled wheel and solve your first problem with the [Quickstart](quickstart.md).
+- **Learn the API** — Problems, decision variables, termination, and seeding are covered in the [Tutorial](tutorial.md).
+- **Write your own optimizer** — Implement a custom metaheuristic from scratch with the [Custom optimizers](custom-optimizers/index.md) series.
+- **Browse the catalog** — Explore all **244 optimizers across 147 modules**, grouped by [taxonomy category](categories/index.md).
+- **Check before you benchmark** — Review [Known Issues](issues.md) — weak, buggy, or plagiarism-suspect algorithms, grouped by category.
 
 ## Why clypto?
 
@@ -75,7 +42,55 @@ This project is built entirely upon the foundational work of the original
 implemented the algorithms in this collection. Please cite the original work —
 see [Citations](reference/citations.md).
 
-!!! warning "Scientific integrity"
+:::{warning} Scientific integrity
+A number of algorithms ship with concerns about originality. See
+[Known Issues](issues.md) before using or benchmarking them.
+:::
 
-    A number of algorithms ship with concerns about originality. See
-    [Known Issues](issues.md) before using or benchmarking them.
+```{toctree}
+:maxdepth: 2
+:caption: Getting Started
+
+installation
+quickstart
+tutorial
+parallel-evaluation
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Custom Optimizers
+
+custom-optimizers/index
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: Algorithm Categories
+
+categories/index
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Project & Quality
+
+issues
+audit
+releasing
+```
+
+```{toctree}
+:maxdepth: 2
+:caption: API Reference
+
+api/core
+```
+
+```{toctree}
+:maxdepth: 1
+:caption: Reference
+
+reference/citations
+reference/changelog
+```

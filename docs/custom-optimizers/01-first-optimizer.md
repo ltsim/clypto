@@ -3,8 +3,8 @@
 Every optimizer solves a `Problem`: an objective function, a search space, and a
 direction. We minimize the sphere function in 30 dimensions.
 
-```python
---8<-- "docs/custom-optimizers/_snippets/problem.py"
+```{literalinclude} _snippets/problem.py
+:language: python
 ```
 
 ## A first optimizer
@@ -69,7 +69,7 @@ class RandomSearch(cy.DecoratedOptimizer):
 ```
 
 For the classic API the base is `cy.LegacyOptimizer` (this is how the catalog
-algorithms are written), which makes `self.pop`, `self.g_best` and
+algorithms are written), which makes `self.population`, `self.g_best` and
 `self.problem` statically known as well.
 
 ---

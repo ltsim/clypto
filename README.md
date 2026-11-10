@@ -10,6 +10,7 @@
 
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/clypto/publish.yml?style=flat-square&logo=pypi&label=Publish)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ltsim/clypto/test.yml?style=flat-square&logo=pytest&label=Testing)
+[![Documentation Status](https://img.shields.io/github/actions/workflow/status/ltsim/clypto/docs.yml?style=flat-square&logo=sphinx&label=Docs)](https://ltsim.github.io/clypto/)
 
 Is a high-performance, heavily compiled fork of [MEALPY (MEta-Heuristic Algorithms using PYthon)](https://github.com/thieu1995/mealpy), stripped down to its absolute mathematical core and fully optimized via Cython.
 
@@ -83,7 +84,7 @@ The sole purpose of this repository is to preserve a clean, decoupled collection
 
 ### Precompiled wheels (no compiler needed)
 
-Wheels are precompiled per platform and Python version — Linux, macOS (Intel + Apple Silicon), and Windows, for CPython 3.10–3.14 — so a plain `pip install` is all you need:
+Wheels are precompiled per platform and Python version — Linux, macOS (Intel + Apple Silicon), and Windows, for CPython 3.11–3.14 — so a plain `pip install` is all you need:
 
 ```bash
 $ pip install clypto --upgrade
@@ -119,12 +120,40 @@ The [Makefile](Makefile) wraps the uv workflow (`uv-lock`, `uv-sync`, `uv-test`)
 
 ### Running the tests
 
+The algorithm collection is native Cython (`.pyx`), so build the extensions once before importing clypto from a fresh clone:
+
 ```bash
 $ uv sync --extra dev
-$ uv run pytest tests/          # or: make uv-test
+$ make build-ext            # python setup.py build_ext --inplace
+$ uv run --no-sync pytest tests/   # or: make uv-test
 ```
 
-> **Note:** a fresh clone ships only its `.py` sources. Compile first (`uv sync --extra dev` or `pip install .`), otherwise clypto runs as un-compiled Python and its compiled-by-design performance is lost.
+The collection lives in `clypto/native/collection/<category>/<Module>/<Class>.pyx`. `CLYPTO_COLLECTION=0 make build-ext`
+builds only the core for faster development builds; `cy.get_all_optimizers()` then raises an `ImportError`.
+
+> **Note:** a fresh clone ships `.pyx`/`.pxd` sources, not compiled extensions. Build first (`make build-ext` or `pip install .`); without a build, `import clypto` fails because the compiled collection modules do not exist.
+
+### Documentation
+
+Documentation is built with [Sphinx](https://www.sphinx-doc.org/) using the `nature` theme and [MyST-Parser](https://myst-parser.readthedocs.io/).
+
+To build and serve it locally:
+
+```bash
+$ uv sync --extra docs --no-install-project
+$ make docs-serve            # Live-reload server (sphinx-autobuild on port 8000)
+$ make docs-build            # Build HTML documentation strictly with -W
+$ make docs-open             # Open HTML documentation in default browser
+```
+
+Or directly from the `docs/` folder:
+
+```bash
+$ cd docs
+$ make html                  # Build HTML docs
+$ make serve                 # Live-reload server
+$ make clean                 # Clean build artifacts
+```
 
 ## Writing and compiling custom optimizers
 
@@ -150,37 +179,48 @@ class MyOptimizer:
 
 problem = cy.Problem(
     obj_func=lambda x: np.sum(x ** 2),
-    bounds=cy.FloatVar(lb=[-10.0] * 30, ub=[10.0] * 30),
-    minmax="min",
+    bounds=cy.NumberBounds(float, low=[-10.0] * 30, up=[10.0] * 30),
+    sense="min",
 )
 g_best = MyOptimizer(epoch=200, pop_size=50).solve(problem, seed=7)
 ```
 
-Agents can carry their own state with `@cy.agent` + `cy.Attribute`, while
-classic MEALPY-style code keeps working untouched through `@cy.legacy`:
+Agents can carry their own state with `@cy.agent` + `cy.Attribute`. The classic
+API, used by the built-in catalog, is Cython: `cimport clypto.core as cy` and
+implement the C method `cdef void evolve`:
 
-```python
-import clypto as cy
+```cython
+cimport clypto.core as cy
 
 
-@cy.legacy
-class MyClassicOptimizer:
+cdef class MyClassicOptimizer(cy.Optimizer):
     def __init__(self, epoch=100, pop_size=30, **kwargs):
-        super().__init__(**kwargs)          # LegacyOptimizer is injected
-        self.epoch = self.validator.check_int("epoch", epoch, [1, 100000])
-        self.pop_size = self.validator.check_int("pop_size", pop_size, [5, 10000])
-        self.set_parameters(["epoch", "pop_size"])
-        self.sort_flag = True
+        super().__init__(parameters=["epoch", "pop_size"], sort_flag=True, **kwargs)
+        self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
+        self.population = cy.population(pop_size, range=[5, 10000])
 
-    def evolve(self, epoch):
-        ...
+    cdef void evolve(self, int epoch):
+        cdef cy.Population n_population = cy.empty_snapshot(self.population)
+        for agent in self.population.toarray():
+            x = cy.correct_solution(self.problem, agent.solution + self.generator.normal(0, 0.1, self.problem.n_dims))
+            n_population.append(self.population.create_agent(x))
+        self.population = self.population.greedy(self.population.evaluate(n_population, self.mode), self.mode)
 ```
 
-The classic base class was renamed `Optimizer` → `LegacyOptimizer`; `cy.Optimizer`
-is kept as an alias. See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration/).
+An agent holds its `solution` and a read-only `fitness`/`objectives`; copies are
+static (`cy.duplicate_agent`), bounds repair is a function (`cy.correct_solution`)
+and `mode="sequential" | "batch" | "parallel"` picks how a batch is evaluated
+([batch and parallel evaluation](https://ltsim.github.io/clypto/parallel-evaluation.html)).
+See the [migration guide](https://ltsim.github.io/clypto/custom-optimizers/migration.html).
 
-Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent`, or
-`precompile=True` to `@cy.legacy`, and install the `compile` extra:
+Tracking is opt-in: `solve(debug=True)` fills `model.tracker` with per-epoch
+numpy arrays (best/worst fitness, diversity, runtime, nfe), and
+`track_population=True` adds the full `(epoch, pop, n_dims)` population
+snapshots. The history is plain memory, always describes the most recent run,
+and adds no dependency ([tracking](https://ltsim.github.io/clypto/tutorial.html#tracking)).
+
+Compilation is opt-in. Pass `compile=True` to `@cy.optimizer`/`@cy.agent` and
+install the `compile` extra:
 
 ```bash
 $ pip install "clypto[compile]"
