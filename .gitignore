@@ -365,6 +365,7 @@ poetry.toml
 pyrightconfig.json
 
 # Agent harness
+skills/
 graphify-out/
 .claude/
 .opencode/
