@@ -125,14 +125,12 @@ cdef class OriginalSOO(cy.Optimizer):
         # Get top 3 stars
         ranked = self.population.sort()
         best3 = [cy.duplicate_agent(agent) for agent in ranked[:3]]
+        avg3 = np.mean([child.solution for child in best3], axis=0)
 
         # Perform oscillatory movement update (a new batch: MEALPY reused the first one, so the batch
         # modes failed with twice pop_size candidates)
         n_population = cy.empty_snapshot(self.population)
         for idx, agent in enumerate(self.population.toarray()):
-            # Average of top star positions
-            avg3 = np.mean([child.solution for child in best3], axis=0)
-
             # Select 3 random indices different from current
             r1, r2, r3 = self.generator.choice(
                 list(set(range(pop_size)) - {idx}), size=3, replace=False

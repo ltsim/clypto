@@ -117,12 +117,12 @@ cdef class OriginalAGTO(cy.Optimizer):
         self.g_best = ranked[0]
 
         pos_list = np.array([agent.solution for agent in self.population])
+        g = 2 ** c
+        delta = (np.abs(np.mean(pos_list, axis=0)) ** g) ** (1.0 / g)
         ## Exploitation
         pop_new = []
         for idx, agent in enumerate(self.population.toarray()):
             if a >= self.p2:
-                g = 2 ** c
-                delta = (np.abs(np.mean(pos_list, axis=0)) ** g) ** (1.0 / g)
                 x = (
                         c * delta * (agent.solution - self.g_best.solution)
                         + agent.solution

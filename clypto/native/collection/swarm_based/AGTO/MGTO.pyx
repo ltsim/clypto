@@ -128,10 +128,11 @@ cdef class MGTO(cy.Optimizer):
         pos_list = np.array([agent.solution for agent in self.population])
         ## Exploitation
         pop_new = []
+        pos_mean = np.mean(pos_list, axis=0)
         for idx, agent in enumerate(self.population.toarray()):
             if np.abs(C) >= 1:
                 g = self.generator.choice([-0.5, 2.0])
-                M = (np.abs(np.mean(pos_list, axis=0)) ** g) ** (1.0 / g)
+                M = (np.abs(pos_mean) ** g) ** (1.0 / g)
                 # print(M)
                 p = self.generator.uniform(0, 1, self.problem.n_dims)
                 x = (
