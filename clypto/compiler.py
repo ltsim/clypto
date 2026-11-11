@@ -21,8 +21,17 @@ import types
 from typing import Any, Sequence
 
 import numpy
-from Cython.Build import cythonize
-from setuptools import Distribution, Extension
+
+try:
+    from Cython.Build import cythonize
+except ImportError:
+    cythonize = None  # type: ignore[assignment]
+
+try:
+    from setuptools import Distribution, Extension
+except ImportError:
+    Distribution = None  # type: ignore[assignment]
+    Extension = None  # type: ignore[assignment]
 
 import clypto
 from clypto.optimizer.native.legacy import LegacyOptimizer
@@ -86,6 +95,14 @@ def openmp_flags() -> tuple[list[str], list[str]]:
     return ["-fopenmp", "-ffp-contract=off"], ["-fopenmp"]
 
 
+def _ensure_build_dependencies() -> None:
+    if cythonize is None or Extension is None or Distribution is None:
+        raise ImportError(
+            "Clypto compilation tools require 'Cython' and 'setuptools'. "
+            "Install them with: pip install 'clypto[compile]'"
+        )
+
+
 def _augment_extension(
     ext: Extension,
     inc_dirs: list[str],
@@ -124,7 +141,7 @@ def _normalize_sources(
                 **kwargs,
             )
         ]
-    if isinstance(sources, Extension):
+    if Extension is not None and isinstance(sources, Extension):
         return [_augment_extension(sources, inc_dirs, extra_compile, extra_link)]
     if isinstance(sources, Sequence):
         if ext_name is not None:
@@ -140,7 +157,7 @@ def _normalize_sources(
             ]
         res: list[Extension] = []
         for s in sources:
-            if isinstance(s, Extension):
+            if Extension is not None and isinstance(s, Extension):
                 res.append(_augment_extension(s, inc_dirs, extra_compile, extra_link))
             elif isinstance(s, str):
                 s_name = os.path.splitext(os.path.basename(s))[0]
@@ -188,6 +205,7 @@ def build_extension(
     list[Extension]
         The cythonized extensions ready for setuptools.
     """
+    _ensure_build_dependencies()
     inc_dirs = [clypto.get_include(), numpy.get_include()]
     if "include_dirs" in kwargs:
         user_inc = kwargs.pop("include_dirs")
@@ -258,6 +276,7 @@ def compile_module(source: str, name: str | None = None) -> types.ModuleType:
     types.ModuleType
         The loaded compiled Cython module.
     """
+    _ensure_build_dependencies()
     digest = hashlib.sha1(source.encode("utf-8")).hexdigest()
     cache_dir = DEFAULT_CACHE_DIR
     os.makedirs(cache_dir, exist_ok=True)
