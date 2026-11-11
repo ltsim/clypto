@@ -89,7 +89,7 @@ enforce.
 ## Just-in-time compilation (`compile` extra)
 
 The `@cy.optimizer` and `@cy.agent` decorators can compile a
-user-defined class on import via `pyximport`, which needs Cython and
+user-defined class on import via `clypto.compile`, which needs Cython and
 `setuptools`. Install the `compile` extra:
 
 ```bash

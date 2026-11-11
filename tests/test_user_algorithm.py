@@ -2,12 +2,10 @@
 """Tests for user-defined algorithms in both Python and Cython (.pyx)."""
 
 import os
-import sys
 import numpy as np
 import pytest
 
 import clypto as cy
-from clypto.optimizer.precompile._runtime import install_pyximport
 
 N_DIMS = 3
 
@@ -82,7 +80,7 @@ def test_python_subclass_custom_agent_state(problem):
     assert np.isfinite(best.fitness)
 
 
-def test_cython_pyx_user_algorithm(problem, tmp_path):
+def test_cython_pyx_user_algorithm(problem):
     pytest.importorskip("Cython")
 
     pyx_content = """# cython: language_level=3
@@ -107,17 +105,8 @@ cdef class CythonUserAlgo(cy.Optimizer):
             agent.solution = agent.solution * self.factor
             agent.evaluate(self.problem)
 """
-    module_name = "_test_user_cython_algo"
-    pyx_file = tmp_path / f"{module_name}.pyx"
-    pyx_file.write_text(pyx_content, encoding="utf-8")
 
-    install_pyximport()
-    if str(tmp_path) not in sys.path:
-        sys.path.insert(0, str(tmp_path))
-
-    import importlib
-    mod = importlib.import_module(module_name)
-    cls = mod.CythonUserAlgo
+    cls = cy.compile(pyx_content, name="CythonUserAlgo")
 
     algo = cls(epoch=10, pop_size=8, factor=0.3)
     assert algo.epoch == 10
