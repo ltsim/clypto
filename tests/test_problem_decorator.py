@@ -156,6 +156,6 @@ def test_problem_vectorized_support():
     assert sphere_vec.vectorized is True
 
     X = np.ones((5, 3))
-    fitness, O = sphere_vec.evaluate(X)
+    fitness, objectives = sphere_vec.evaluate(X)
     assert fitness.shape == (5,)
     assert np.allclose(fitness, [3.0] * 5)
