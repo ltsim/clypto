@@ -88,6 +88,11 @@ class NumberBounds(BaseBounds):
         self.values_low, self.values_up = low.ravel(), up.ravel()
         half = 0.0 if value_type is float else 0.5
         super().__init__(low - half, up + half, name)
+        if self.value_type is float:
+            # Generator.uniform rejects non-finite bounds before drawing anything
+            # (OverflowError "Range exceeds valid bounds"). Flag it once here so
+            # generate() can take the bit-identical inline path on every call.
+            self._uniform_like = bool(np.isfinite(self.low).all() and np.isfinite(self.up).all())
 
     def decode(self, x):
         x = self.correct(x)
@@ -97,6 +102,11 @@ class NumberBounds(BaseBounds):
 
     def generate(self):
         if self.value_type is float:
+            if self._uniform_like:
+                # Bit-identical to generator.uniform(self.low, self.up): the same
+                # uniform doubles in the same order, then numpy's random_uniform
+                # arithmetic low + (up - low) * r per element.
+                return self.low + (self.up - self.low) * self.generator.random(self.n_vars)
             return self.generator.uniform(self.low, self.up)
         return self.generator.integers(self.values_low, self.values_up + 1).astype(self.value_type)
 
