@@ -419,6 +419,11 @@ cpdef Population snapshot(Population population):
 
 cpdef object correct_solution(object problem, object solution):
     """Clip ``solution`` to the bounds, then apply the problem's own correction."""
+    if getattr(problem.bounds, "_all_float", False):
+        # All-float bounds correct with one element-wise ``np.clip``; clipping the
+        # clipped vector again is a no-op, so the extra pass (and its temporaries)
+        # is only paid by spaces with non-float blocks, where it does matter.
+        return problem.correct_solution(solution)
     return problem.correct_solution(np.clip(solution, problem.bounds.low, problem.bounds.up))
 
 
@@ -426,8 +431,40 @@ cpdef object reset_solution(object problem, object generator, object solution):
     """Redraw the out-of-bounds values of ``solution`` uniformly, then apply the problem's own correction.
 
     The draw covers every dimension (one ``generator.uniform(low, up)`` call), as the clip-free MEALPY repair did.
+
+    Fast path for float64 row vectors: ``Generator.uniform(low, up)`` is exactly
+    ``low + (up - low) * random(n)`` (same stream, same rounding), and the mask
+    + ``np.where`` combination is one C loop — the array-argument ``uniform``
+    spends far more time in NumPy's own Python-level validation
+    (``np.all``/``np.any``/``np.full``) than on the draw itself.
     """
-    low, up = problem.bounds.low, problem.bounds.up
+    cdef Py_ssize_t i, n
+    cdef double* sp = NULL
+    cdef double* lp = NULL
+    cdef double* upp = NULL
+    cdef double* rp = NULL
+    cdef double* op = NULL
+    cdef cnp.ndarray low, up, sol, raw, out
+    low = problem.bounds.low
+    up = problem.bounds.up
+    if (type(solution) is np.ndarray and solution.ndim == 1 and solution.dtype == np.float64
+            and cnp.PyArray_ISCARRAY_RO(solution)
+            and low.dtype == np.float64 and up.dtype == np.float64
+            and low.ndim == 1 and up.ndim == 1
+            and cnp.PyArray_ISCARRAY_RO(low) and cnp.PyArray_ISCARRAY_RO(up)
+            and low.shape[0] == solution.shape[0] and up.shape[0] == solution.shape[0]):
+        sol = solution
+        n = solution.shape[0]
+        raw = generator.random(n)
+        out = np.empty(n, dtype=np.float64)
+        sp = <double*>cnp.PyArray_DATA(sol)
+        lp = <double*>cnp.PyArray_DATA(low)
+        upp = <double*>cnp.PyArray_DATA(up)
+        rp = <double*>cnp.PyArray_DATA(raw)
+        op = <double*>cnp.PyArray_DATA(out)
+        for i in range(n):
+            op[i] = sp[i] if lp[i] <= sp[i] <= upp[i] else lp[i] + (upp[i] - lp[i]) * rp[i]
+        return problem.correct_solution(out)
     return problem.correct_solution(np.where((low <= solution) & (solution <= up), solution, generator.uniform(low, up)))
 
 
