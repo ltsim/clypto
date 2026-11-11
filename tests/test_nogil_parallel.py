@@ -34,11 +34,16 @@ cdef class SphereEvaluator(_NogilEvaluator):
 
 @pytest.fixture(scope="module")
 def sphere_evaluator():
+    import clypto
+    import numpy
     import pyximport
 
     tmp = Path(tempfile.mkdtemp(prefix="clypto-nogil-"))
     (tmp / "_clypto_nogil_probe.pyx").write_text(_EVALUATOR_PYX)
-    pyximport.install(language_level=3)
+    pyximport.install(
+        language_level=3,
+        setup_args={"include_dirs": [clypto.get_include(), numpy.get_include()]},
+    )
     sys.path.insert(0, str(tmp))
     try:
         module = __import__("_clypto_nogil_probe")

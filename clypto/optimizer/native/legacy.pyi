@@ -15,9 +15,9 @@ class LegacyOptimizer(NativeOptimizer):
         self,
         parameters: typing.Sequence[str] = ...,
         sort_flag: bool = ...,
-        epoch: typing.Optional[int] = ...,
-        pop_size: typing.Optional[int] = ...,
-        **kwargs: object,
+        epoch: typing.Any = ...,
+        pop_size: typing.Any = ...,
+        **kwargs: typing.Any,
     ) -> None: ...
 
     def generate(self, agent: typing.Any, solution: typing.Any) -> typing.Any: ...
