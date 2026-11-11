@@ -9,5 +9,16 @@ class LegacyOptimizer(NativeOptimizer):
     g_best: typing.Any
     g_worst: typing.Any
     problem: typing.Any
+    bounds: typing.Any
 
-    def __init__(self, parameters: typing.Sequence[str] = ..., sort_flag: bool = ..., **kwargs: object) -> None: ...
+    def __init__(
+        self,
+        parameters: typing.Sequence[str] = ...,
+        sort_flag: bool = ...,
+        epoch: typing.Optional[int] = ...,
+        pop_size: typing.Optional[int] = ...,
+        **kwargs: object,
+    ) -> None: ...
+
+    def generate(self, agent: typing.Any, solution: typing.Any) -> typing.Any: ...
+    def generate_agent(self, solution: typing.Optional[typing.Any] = ...) -> typing.Any: ...

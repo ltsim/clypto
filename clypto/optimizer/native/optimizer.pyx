@@ -60,7 +60,30 @@ cdef class NativeOptimizer:
     @property
     def parameters(self):
         """Current values of the registered hyper-parameters."""
-        return {name: getattr(self, name) for name in self._params_name_ordered}
+        if self._params_name_ordered:
+            return {name: getattr(self, name) for name in self._params_name_ordered}
+
+        cdef dict res = {}
+        if self.epoch > 0:
+            res["epoch"] = self.epoch
+        if getattr(self, "population", None) is not None:
+            res["pop_size"] = getattr(self, "pop_size", 0)
+
+        for klass in type(self).__mro__:
+            if klass.__name__ in ("NativeOptimizer", "LegacyOptimizer", "Optimizer", "object"):
+                continue
+            for name, val in vars(klass).items():
+                if not name.startswith("_") and name not in res:
+                    if type(val).__name__ == "getset_descriptor":
+                        res[name] = getattr(self, name)
+
+        cdef dict d = getattr(self, "__dict__", None)
+        if d is not None:
+            for k, v in d.items():
+                if not k.startswith("_") and k not in res and not callable(v):
+                    res[k] = v
+
+        return res
 
     @parameters.setter
     def parameters(self, parameters):
@@ -77,12 +100,20 @@ cdef class NativeOptimizer:
         else:
             self._params_name_ordered = tuple(parameters)
 
+    def set_parameters(self, names):
+        """Register hyper-parameter names."""
+        self._params_name_ordered = tuple(names)
+
     def __str__(self):
         return type(self).__name__
 
     # -- algorithm hooks -----------------------------------------------------------
     def initialize_variables(self):
         """Set up algorithm state once the problem is bound (before the population exists)."""
+        pass
+
+    def initialize(self):
+        """Hook to set up algorithm state once the problem is bound and population is initialized."""
         pass
 
     def initialization(self):
@@ -93,7 +124,11 @@ cdef class NativeOptimizer:
         pass
 
     cdef void evolve(self, int epoch):
-        raise NotImplementedError(f"{type(self).__name__} does not implement evolve().")
+        py_evolve = getattr(self, "evolve", None)
+        if py_evolve is not None and callable(py_evolve):
+            py_evolve(epoch)
+        else:
+            raise NotImplementedError(f"{type(self).__name__} does not implement evolve().")
 
     # -- engine steps ----------------------------------------------------------------
     cdef void check_problem(self, object problem, object seed):
@@ -132,12 +167,6 @@ cdef class NativeOptimizer:
 
         self.generator = np.random.default_rng(seed)
         self.rng = random.Random(seed)  # local RNG for the random module
-        for klass in type(self).__mro__:
-            if "evolve" in vars(klass):
-                raise TypeError(
-                    f"{klass.__name__}.evolve is a Python method; the engine calls the C method "
-                    "`cdef void evolve(self, int epoch)` (write a Python optimizer with @cy.optimizer)."
-                )
         self.check_problem(problem, seed)
         if type(threads) is not int or threads < 0:
             raise ValueError("threads must be a non-negative int (0 lets OpenMP decide).")
@@ -156,6 +185,7 @@ cdef class NativeOptimizer:
         self.before_initialization(starting_solutions)
         self.initialization()
         self.after_initialization()
+        self.initialize()
         self.before_main_loop()
 
         if tracking:

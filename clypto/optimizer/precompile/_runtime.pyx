@@ -41,12 +41,13 @@ def install_pyximport() -> None:
         return
 
     import pyximport
+    import clypto
 
     pyximport.install(
         build_dir=CACHE_DIR,
         build_in_temp=False,
         language_level="3",
-        setup_args={"include_dirs": [numpy.get_include()]},
+        setup_args={"include_dirs": [clypto.get_include(), numpy.get_include()]},
     )
 
     if CACHE_DIR not in sys.path:
