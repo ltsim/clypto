@@ -68,16 +68,16 @@ cdef class OriginalEVO(cy.Optimizer):
         """
         pop_size = self.population.size()
         pop_new = []
+        pos_list = np.array([child.solution for child in self.population])
+        fit_list = np.array([child.fitness for child in self.population])
+        x_avg_pop = np.mean(pos_list, axis=0)
+        eb = np.mean(fit_list)
         for idx, agent in enumerate(self.population.toarray()):
-            pos_list = np.array([child.solution for child in self.population])
-            fit_list = np.array([child.fitness for child in self.population])
             dis = np.sqrt(np.sum((agent.solution - pos_list) ** 2, axis=1))
             idx_dis_sort = np.argsort(dis)
             CnPtIdx = self.generator.choice(list(set(range(2, pop_size)) - {idx}))
             x_team = pos_list[idx_dis_sort[1:CnPtIdx], :]
             x_avg_team = np.mean(x_team, axis=0)
-            x_avg_pop = np.mean(pos_list, axis=0)
-            eb = np.mean(fit_list)
             sl = (fit_list[idx] - self.g_best.fitness) / (
                     self.g_worst.fitness - self.g_best.fitness + self.EPSILON
             )
