@@ -50,7 +50,7 @@ cdef class OriginalSCA(DevSCA):
             pop_size (int): number of population size, default = 100
         """
         super().__init__(epoch, pop_size, **kwargs)
-        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.Population)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.sort_flag = False
 
     cdef void evolve(self, int epoch):

@@ -69,7 +69,7 @@ cdef class OriginalEFO(DevEFO):
             n_field (float): default = 0.45    portion of population, negative field
         """
         super().__init__(epoch, pop_size, r_rate, ps_rate, p_field, n_field, **kwargs)
-        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.Population)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.support_parallel_modes = False
 
     def initialization(self):

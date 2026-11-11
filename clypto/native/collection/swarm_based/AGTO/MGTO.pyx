@@ -58,7 +58,7 @@ cdef class MGTO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "pp"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.Population)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.pp = cy.validator(float, pp, (0, 1), "p1")  # p in the paper
 
     cdef void evolve(self, int epoch):

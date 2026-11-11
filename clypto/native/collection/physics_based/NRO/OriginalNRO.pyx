@@ -55,7 +55,7 @@ cdef class OriginalNRO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size"], sort_flag=False, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.Population)
+        self.population = cy.population(pop_size, range=[5, 10000])
 
     cdef void evolve(self, int epoch):
         """
