@@ -115,9 +115,9 @@ cdef class SAP_DE(cy.Optimizer):
         pop = []
         for idx in range(0, self.population.size()):
             # Choose 3 random element and different to idx
-            idxs = self.generator.choice(
-                list(set(range(0, self.population.size())) - {idx}), 3, replace=False
-            )
+            pool = list(range(0, self.population.size()))
+            del pool[idx]
+            idxs = self.generator.choice(pool, 3, replace=False)
             j = self.generator.integers(0, self.population.size())
             self.F = self.generator.normal(0, 1)
             ## Crossover

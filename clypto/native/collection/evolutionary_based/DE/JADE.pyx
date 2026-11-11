@@ -120,11 +120,14 @@ cdef class JADE(cy.Optimizer):
             temp_cr.append(cr)
             top = int(pop_size * self.pt)
             x_best = pop_sorted[self.generator.integers(0, top)]
-            r1_idx = self.generator.choice(list(set(range(0, pop_size)) - {idx}))
+            pool = list(range(0, pop_size))
+            del pool[idx]
+            r1_idx = self.generator.choice(pool)
             new_pop = self.population + self.dyn_pop_archive
-            r2_idx = self.generator.choice(
-                list(set(range(0, len(new_pop))) - {idx, r1_idx})
-            )
+            pool = list(range(0, len(new_pop)))
+            del pool[max(idx, r1_idx)]
+            del pool[min(idx, r1_idx)]
+            r2_idx = self.generator.choice(pool)
             x_r1 = self.population[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
             x_new = (
