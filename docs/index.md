@@ -17,7 +17,7 @@ taxonomic processing and intensive benchmarks in the `cmenpy` ecosystem.
 
 - **Get running in minutes** — Install from a precompiled wheel and solve your first problem with the [Quickstart](quickstart.md).
 - **Learn the API** — Problems, decision variables, termination, and seeding are covered in the [Tutorial](tutorial.md).
-- **Write your own optimizer** — Implement a custom metaheuristic from scratch with the [Custom optimizers](custom-optimizers/index.md) series.
+- **Write your own optimizer** — Implement a custom metaheuristic from scratch with the [Custom algorithms](custom_algorithms.md) guide and the [Custom optimizers](custom-optimizers/index.md) series.
 - **Browse the catalog** — Explore all **244 optimizers across 147 modules**, grouped by [taxonomy category](categories/index.md).
 - **Check before you benchmark** — Review [Known Issues](issues.md) — weak, buggy, or plagiarism-suspect algorithms, grouped by category.
 
@@ -61,6 +61,7 @@ parallel-evaluation
 :maxdepth: 2
 :caption: Custom Optimizers
 
+custom_algorithms
 custom-optimizers/index
 ```
 
