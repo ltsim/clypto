@@ -15,6 +15,8 @@ Bounds repair is a set of plain functions (``correct_solution``, ``reset_solutio
 """
 import cython
 
+from libc.string cimport memcpy
+
 from collections.abc import MutableSequence
 
 import numpy as np
@@ -260,12 +262,53 @@ cdef class Population:
     @property
     def fitness(self):
         """``(n,)`` fitness of every agent."""
-        return np.array([agent.fitness for agent in self.agents], dtype=float)
+        cdef Py_ssize_t n = len(self.agents)
+        if n == 0:
+            return np.empty(0, dtype=np.float64)
+        cdef cnp.ndarray[cnp.float64_t, ndim=1] res = np.empty(n, dtype=np.float64)
+        cdef double* data = <double*>cnp.PyArray_DATA(res)
+        cdef Py_ssize_t i
+        if isinstance(self.agents[0], Agent):
+            for i in range(n):
+                data[i] = (<Agent>self.agents[i]).fitness
+        else:
+            for i in range(n):
+                data[i] = self.agents[i].fitness
+        return res
 
     @property
     def solutions(self):
         """``(n, n_dims)`` solution matrix."""
-        return np.array([agent.solution for agent in self.agents], dtype=float)
+        cdef Py_ssize_t n = len(self.agents)
+        if n == 0:
+            return np.empty((0, 0), dtype=np.float64)
+        cdef Py_ssize_t n_dims
+        first_sol = self.agents[0].solution
+        if self.problem is not None:
+            n_dims = self.problem.n_dims
+        else:
+            n_dims = len(first_sol)
+        cdef cnp.ndarray[cnp.float64_t, ndim=2] res = np.empty((n, n_dims), dtype=np.float64)
+        cdef double* dest = <double*>cnp.PyArray_DATA(res)
+        cdef Py_ssize_t i, bytes_per_row = n_dims * sizeof(double)
+        cdef object row_obj
+        cdef cnp.ndarray row
+        cdef double* src
+        cdef bint is_native = isinstance(self.agents[0], Agent)
+        for i in range(n):
+            if is_native:
+                row_obj = (<Agent>self.agents[i]).solution
+            else:
+                row_obj = self.agents[i].solution
+            if isinstance(row_obj, np.ndarray):
+                row = <cnp.ndarray>row_obj
+                if (cnp.PyArray_IS_C_CONTIGUOUS(row) and cnp.PyArray_TYPE(row) == cnp.NPY_FLOAT64
+                        and row.ndim == 1 and row.shape[0] == n_dims):
+                    src = <double*>cnp.PyArray_DATA(row)
+                    memcpy(dest + i * n_dims, src, bytes_per_row)
+                    continue
+            res[i, :] = row_obj
+        return res
 
     @solutions.setter
     def solutions(self, values):
@@ -278,7 +321,7 @@ cdef class Population:
     # -- ranking -----------------------------------------------------------------
     def argsort(self):
         """Positions best first (``np.argsort`` of the fitness, reversed when maximizing)."""
-        fitness = np.array([agent.fitness for agent in self.agents], dtype=float)
+        fitness = self.fitness
         order = np.argsort(fitness).tolist()
         return order if self._minimize else order[::-1]
 
