@@ -4,7 +4,7 @@
 #       Github: https://github.com/thieu1995        %
 # --------------------------------------------------%
 
-__version__ = "2026b1"
+__version__ = "2026b2"
 
 import functools
 import importlib
@@ -46,6 +46,21 @@ from clypto.optimizer import (
     validator,
 )
 from clypto.optimizer.native.optimizer import NativeOptimizer
+from clypto.compiler import (
+    build_extension,
+    compile,
+    compile_file,
+)
+
+
+def get_include() -> str:
+    """Return the directory containing Clypto's Cython declaration files (.pxd).
+
+    Pass this to Cython's ``include_dirs`` when compiling custom algorithms:
+        include_dirs=[clypto.get_include(), numpy.get_include()]
+    """
+    import os
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _algorithm_modules():
@@ -150,6 +165,8 @@ __all__ = [
     "population_with_factory", "snapshot", "empty_snapshot", "duplicate_agent",
     "correct_solution", "reset_solution", "opposite_solution", "validator", "Termination",
     "DecoratedOptimizer", "RuntimeAgent",
+    "get_include",
+    "compile", "compile_file", "build_extension",
     "get_all_optimizers", "get_optimizer_by_name", "get_optimizer_by_class",
     "Bounds", "BaseBounds", "NumberBounds", "TransferBounds", "StringBounds", "SequenceBounds", "PermutationBounds",
 ]
