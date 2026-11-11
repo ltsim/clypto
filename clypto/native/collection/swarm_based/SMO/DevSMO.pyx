@@ -82,11 +82,15 @@ cdef class DevSMO(cy.Optimizer):
         k: số group.
         """
         n = len(pop)
-        gsize = -(-n // n_groups)  # ceil(n/k)
-        # Cắt lát theo chỉ số group i
-        return [
-            pop[i * gsize : (i + 1) * gsize] for i in range(n_groups) if i * gsize < n
-        ]
+        base = n // n_groups
+        rem = n % n_groups
+        groups = []
+        start = 0
+        for i in range(n_groups):
+            gsize = base + (1 if i < rem else 0)
+            groups.append(pop[start:start + gsize])
+            start += gsize
+        return groups
 
     def merge_groups(self, groups):
         return [x for g in groups for x in g]
@@ -120,11 +124,15 @@ cdef class DevSMO(cy.Optimizer):
         for group_idx, group in enumerate(self.groups):
             n_items = len(group)
             for idx in range(n_items):
-                list_rand = self.generator.choice(
-                    list(set(range(n_items)) - {idx}),
-                    size=self.problem.n_dims,
-                    replace=True,
-                )
+                if n_items > 1:
+                    candidates = list(set(range(n_items)) - {idx})
+                    list_rand = self.generator.choice(
+                        candidates,
+                        size=self.problem.n_dims,
+                        replace=True,
+                    )
+                else:
+                    list_rand = [idx] * self.problem.n_dims
                 vector = np.array(
                     [group[jdx].solution[kdx] for kdx, jdx in enumerate(list_rand)]
                 )
@@ -159,21 +167,27 @@ cdef class DevSMO(cy.Optimizer):
         max_fitness = np.max(fitness)
         prob = 0.9 * (fitness / max_fitness) + 0.1
 
+        offset = 0
         for group_idx, group in enumerate(self.groups):
+            g_len = len(group)
+            if g_len == 0:
+                continue
             attempts = 0
-            while attempts < self.group_size:
+            while attempts < g_len:
                 for idx, agent in enumerate(group):
-                    if attempts >= self.group_size:
+                    if attempts >= g_len:
                         break
-                    prob_idx = idx + group_idx * self.group_size
+                    prob_idx = min(offset + idx, len(prob) - 1)
                     if self.generator.uniform(0, 1) < prob[prob_idx]:
                         attempts += 1
                         # Randomly select dimension to update
                         k = self.generator.integers(0, self.problem.n_dims)
                         # Select random monkey
-                        jdx = self.generator.choice(
-                            list(set(range(self.group_size)) - {idx})
-                        )
+                        if g_len > 1:
+                            candidates = list(set(range(g_len)) - {idx})
+                            jdx = self.generator.choice(candidates)
+                        else:
+                            jdx = idx
                         pos_new = agent.solution.copy()
                         # Update using equation (4)
                         pos_new[k] = (
@@ -189,6 +203,7 @@ cdef class DevSMO(cy.Optimizer):
                         # Greedy selection
                         if cy.is_better(agent, self.g_best, self.problem.sense):
                             self.groups[group_idx][idx] = agent
+            offset += g_len
 
     def local_leader_decision_phase(self):
         """Local Leader Decision Phase - handle stagnated local leaders"""

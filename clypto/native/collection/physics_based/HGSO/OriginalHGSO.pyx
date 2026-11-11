@@ -83,7 +83,14 @@ cdef class OriginalHGSO(cy.Optimizer):
         pop_size = self.population.size()
         if len(self.population) == 0:
             self.population = self.population.generate(pop_size)
-        self.pop_group = cy.split_groups(self.population, self.n_clusters, self.n_elements)
+        base = pop_size // self.n_clusters
+        rem = pop_size % self.n_clusters
+        start = 0
+        self.pop_group = []
+        for i in range(self.n_clusters):
+            size = base + (1 if i < rem else 0)
+            self.pop_group.append([cy.duplicate_agent(a) for a in self.population[start:start + size]])
+            start += size
         self.p_best = self.get_best_solution_in_team__(
             self.pop_group
         )  # multiple element
@@ -113,7 +120,7 @@ cdef class OriginalHGSO(cy.Optimizer):
         for idx in range(self.n_clusters):
             ### Loop based on the number of individual in each gases type
             pop_new = []
-            for jdx in range(self.n_elements):
+            for jdx in range(len(self.pop_group[idx])):
                 F = -1.0 if self.generator.uniform() < 0.5 else 1.0
                 ##### Based on Eq. 8, 9, 10
                 self.H_j = self.H_j * np.exp(
@@ -167,5 +174,9 @@ cdef class OriginalHGSO(cy.Optimizer):
         pop_new = self.population.evaluate(pop_new, self.mode)
         for idx, id_selected in enumerate(pop_idx):
             self.population[id_selected] = cy.duplicate_agent(pop_new[idx])
-        self.pop_group = cy.split_groups(self.population, self.n_clusters, self.n_elements)
+        start = 0
+        for idx in range(self.n_clusters):
+            size = len(self.pop_group[idx])
+            self.pop_group[idx] = [cy.duplicate_agent(a) for a in self.population[start:start + size]]
+            start += size
         self.p_best = self.get_best_solution_in_team__(self.pop_group)

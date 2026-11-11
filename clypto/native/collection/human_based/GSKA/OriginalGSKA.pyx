@@ -126,17 +126,16 @@ cdef class OriginalGSKA(cy.Optimizer):
                             )
                 else:  # senior gaining and sharing
                     if self.generator.uniform() <= self.kr:
-                        id1 = int(self.pb * pop_size)
-                        id2 = int(id1 + pop_size * (1 - 2 * self.pb))
-                        rand_best = self.generator.choice(
-                            list(set(range(0, id1)) - {idx})
-                        )
-                        rand_worst = self.generator.choice(
-                            list(set(range(id2, pop_size)) - {idx})
-                        )
-                        rand_mid = self.generator.choice(
-                            list(set(range(id1, id2)) - {idx})
-                        )
+                        id1 = max(1, int(self.pb * pop_size))
+                        id2 = max(id1 + 1, int(id1 + pop_size * (1 - 2 * self.pb)))
+                        if id2 >= pop_size:
+                            id2 = max(id1, pop_size - 1)
+                        c_best = list(set(range(0, id1)) - {idx})
+                        rand_best = self.generator.choice(c_best) if c_best else (0 if idx != 0 else (1 if pop_size > 1 else 0))
+                        c_worst = list(set(range(id2, pop_size)) - {idx})
+                        rand_worst = self.generator.choice(c_worst) if c_worst else (pop_size - 1 if idx != pop_size - 1 else max(0, pop_size - 2))
+                        c_mid = list(set(range(id1, id2)) - {idx})
+                        rand_mid = self.generator.choice(c_mid) if c_mid else (id1 if id1 < pop_size else 0)
                         if cy.is_better(self.population[rand_mid], agent, self.problem.sense):
                             x[j] = agent.solution[j] + self.kf * (
                                     self.population[rand_best].solution[j]

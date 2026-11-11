@@ -117,9 +117,19 @@ cpdef int roulette_wheel(object generator, str sense, object fitness):
 
 cpdef list kway_tournament(object generator, str sense, object agents, object k_way=0.2, int output=2, bint reverse=False):
     """Indexes of the ``output`` best (``reverse``: worst) of ``k_way`` random agents."""
+    cdef Py_ssize_t n_agents = len(agents)
+    cdef Py_ssize_t k
     if 0 < k_way < 1:
-        k_way = int(k_way * len(agents))
-    list_id = generator.choice(range(len(agents)), int(k_way), replace=False)
+        k = int(k_way * n_agents)
+    else:
+        k = int(k_way)
+    if k < output:
+        k = output
+    if k > n_agents:
+        k = n_agents
+    if output > n_agents:
+        output = <int>n_agents
+    list_id = generator.choice(range(n_agents), k, replace=False)
     list_parents = sorted(
         [[idx, agents[idx].fitness] for idx in list_id],
         key=itemgetter(1), reverse=sense != "min",

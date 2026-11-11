@@ -62,6 +62,8 @@ cdef class ImprovedTLO(DevTLO):
             n_teachers (int): number of teachers in class
         """
         super().__init__(epoch, pop_size, **kwargs)
+        if n_teachers == 3 and self.population.size() < 16:
+            n_teachers = max(2, int(np.sqrt(self.population.size()) - 1))
         self.n_teachers = cy.validator(int, n_teachers, [2, int(np.sqrt(self.population.size()) - 1)], "n_teachers")
         self.parameters = ["epoch", "pop_size", "n_teachers"]
         self.n_students = self.population.size() - self.n_teachers
@@ -78,11 +80,15 @@ cdef class ImprovedTLO(DevTLO):
         sorted_pop = sorted_pop[self.n_teachers:]
         idx_list = self.generator.permutation(range(0, self.n_students))
         self.teams = []
+        base = self.n_students // self.n_teachers
+        rem = self.n_students % self.n_teachers
+        start_index = 0
         for id_teacher in range(0, self.n_teachers):
+            team_size = base + (1 if id_teacher < rem else 0)
             group = []
-            for idx in range(0, self.n_students_in_team):
-                start_index = id_teacher * self.n_students_in_team + idx
-                group.append(sorted_pop[idx_list[start_index]])
+            for idx in range(0, team_size):
+                group.append(sorted_pop[idx_list[start_index + idx]])
+            start_index += team_size
             self.teams.append(group)
 
     cdef void evolve(self, int epoch):
@@ -137,10 +143,14 @@ cdef class ImprovedTLO(DevTLO):
             ef = round(1 + self.generator.random())
             team = self.teams[id_teach]
             pop_new = []
+            team_len = len(team)
             for id_stud, student in enumerate(team):
-                id2 = self.generator.choice(
-                    list(set(range(0, self.n_students_in_team)) - {id_stud})
-                )
+                if team_len > 1:
+                    id2 = self.generator.choice(
+                        list(set(range(0, team_len)) - {id_stud})
+                    )
+                else:
+                    id2 = id_stud
                 if cy.is_better(student, team[id2], self.problem.sense):
                     pos_new = (
                             student.solution
@@ -172,4 +182,4 @@ cdef class ImprovedTLO(DevTLO):
             team = cy.sort_agents(team, self.problem.sense)
             self.teachers[id_teach] = cy.duplicate_agent(team[0])
             self.teams[id_teach] = team[1:]
-        self.population = self.population.spawn(self.teachers + reduce(lambda x, y: x + y, self.teams))
+        self.population = self.population.spawn(self.teachers + [student for team in self.teams for student in team])

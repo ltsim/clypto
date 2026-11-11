@@ -73,6 +73,9 @@ dependencies = [
     "scipy>=1.15.3",
 ]
 
+[project.scripts]
+clypto = "clypto.cli:main"
+
 [project.optional-dependencies]
 compile = [
     "Cython>=3.0.0",
@@ -103,6 +106,9 @@ version = { attr = "clypto.__version__" }
 
 [tool.setuptools.packages.find]
 exclude = ["tests*", "examples*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.pxd", "*.pyi"]
 
 [tool.pytest.ini_options]
 markers = [

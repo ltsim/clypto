@@ -59,7 +59,7 @@ def test_mode_is_validated():
         optimizer(mode="thread")
 
 
-def test_python_evolve_is_rejected(problem):
+def test_python_evolve_is_supported(problem):
     class PythonSearch(cy.Optimizer):
         def __init__(self, **kwargs):
             super().__init__(parameters=["epoch"], **kwargs)
@@ -69,5 +69,5 @@ def test_python_evolve_is_rejected(problem):
         def evolve(self, epoch):
             pass
 
-    with pytest.raises(TypeError, match="cdef void evolve"):
-        PythonSearch().solve(problem, seed=1)
+    best = PythonSearch().solve(problem, seed=1)
+    assert best is not None
