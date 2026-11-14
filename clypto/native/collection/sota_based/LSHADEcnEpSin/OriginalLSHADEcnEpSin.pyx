@@ -187,7 +187,7 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
         """Standard binomial crossover"""
         if CR is None:
             r_idx = self.generator.integers(0, self.H)
-            CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1)
+            CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1, random_state=self.generator)
             CR = np.clip(CR, 0, 1)
         trial = np.where(
             self.generator.uniform(0, 1, self.problem.n_dims) <= CR, mutant, target
@@ -226,7 +226,7 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
 
                 # Generate random CR for this crossover
                 r_idx = self.generator.integers(0, self.H)
-                CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1)
+                CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1, random_state=self.generator)
                 CR = np.clip(CR, 0, 1)
 
                 # Binomial crossover in eigen space
@@ -303,7 +303,7 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
                 else:
                     # Configuration 2: adaptive increasing
                     r_idx = self.generator.integers(0, self.H)
-                    freq = cauchy.rvs(loc=self.M_freq[r_idx], scale=0.1)
+                    freq = cauchy.rvs(loc=self.M_freq[r_idx], scale=0.1, random_state=self.generator)
                     freq = np.clip(freq, 0.1, 2.0)
                     F = self.sinusoidal_adaptation(
                         epoch, self.epoch, config_type=2, freq=freq
@@ -312,13 +312,13 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
             else:
                 # Second half: standard LSHADE
                 r_idx = self.generator.integers(0, self.H)
-                F = cauchy.rvs(loc=self.M_F[r_idx], scale=0.1)
+                F = cauchy.rvs(loc=self.M_F[r_idx], scale=0.1, random_state=self.generator)
                 F = np.clip(F, 0.1, 1.0)
                 config_used = 0
 
             # Generate CR
             r_idx = self.generator.integers(0, self.H)
-            CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1)
+            CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1, random_state=self.generator)
             CR = np.clip(CR, 0, 1)
 
             # Mutation

@@ -110,7 +110,7 @@ cdef class JADE(cy.Optimizer):
             cr = self.generator.normal(self.dyn_miu_cr, 0.1)
             cr = np.clip(cr, 0, 1)
             while True:
-                f = cauchy.rvs(self.dyn_miu_f, 0.1)
+                f = cauchy.rvs(self.dyn_miu_f, 0.1, random_state=self.generator)
                 if f < 0:
                     continue
                 elif f > 1:
