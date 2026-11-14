@@ -452,7 +452,8 @@ cpdef object reset_solution(object problem, object generator, object solution):
             and low.dtype == np.float64 and up.dtype == np.float64
             and low.ndim == 1 and up.ndim == 1
             and cnp.PyArray_ISCARRAY_RO(low) and cnp.PyArray_ISCARRAY_RO(up)
-            and low.shape[0] == solution.shape[0] and up.shape[0] == solution.shape[0]):
+            and low.shape[0] == solution.shape[0] and up.shape[0] == solution.shape[0]
+            and getattr(problem.bounds, "_uniform_like", False)):
         sol = solution
         n = solution.shape[0]
         raw = generator.random(n)

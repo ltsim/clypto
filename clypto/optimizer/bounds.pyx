@@ -89,10 +89,13 @@ class NumberBounds(BaseBounds):
         half = 0.0 if value_type is float else 0.5
         super().__init__(low - half, up + half, name)
         if self.value_type is float:
-            # Generator.uniform rejects non-finite bounds before drawing anything
-            # (OverflowError "Range exceeds valid bounds"). Flag it once here so
-            # generate() can take the bit-identical inline path on every call.
-            self._uniform_like = bool(np.isfinite(self.low).all() and np.isfinite(self.up).all())
+            # Generator.uniform rejects non-finite bounds, or a span that overflows
+            # to inf, before drawing anything (OverflowError "Range exceeds valid
+            # bounds"). Flag it once here so generate() can take the bit-identical
+            # inline path on every call and fall back where uniform would raise.
+            self._uniform_like = bool(
+                np.isfinite(self.low).all() and np.isfinite(self.up).all() and np.isfinite(self.up - self.low).all()
+            )
 
     def decode(self, x):
         x = self.correct(x)
@@ -250,6 +253,8 @@ class Bounds:
         self._slices = np.cumsum([0] + [b.n_vars for b in flat])
         # np.clip is element-wise, so a float-only space corrects a row or a matrix at once.
         self._all_float = all(type(b) is NumberBounds and b.value_type is float for b in flat)
+        # Same guard as NumberBounds, at the composite level, so `reset_solution` can reuse it.
+        self._uniform_like = bool(self._all_float and np.isfinite(self.up - self.low).all())
         self.seed = None
 
     @property
