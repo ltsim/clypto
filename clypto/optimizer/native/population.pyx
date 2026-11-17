@@ -85,7 +85,21 @@ cdef class Population:
 
     cpdef Population snapshot(self):
         """A population of copies (``duplicate_agent``) of every agent."""
-        return self.spawn([duplicate_agent(<Agent>a) for a in self.agents])
+        return self.spawn([self._snapshot_agent(a) for a in self.agents])
+
+    cdef object _snapshot_agent(self, object a):
+        # ``agents`` is public and mutable: a decorated (duck-typed) agent may be
+        # appended to a native population. Cast only after the type check; duck
+        # agents copy through their own ``snapshot``/``copy`` when they have one.
+        if isinstance(a, Agent):
+            return duplicate_agent(<Agent>a)
+        snap = getattr(a, "snapshot", None)
+        if callable(snap):
+            return snap()
+        cp = getattr(a, "copy", None)
+        if callable(cp):
+            return cp()
+        return a
 
     cpdef Population copy(self):
         """Shallow copy: the same agent objects, bound to the same problem."""
@@ -146,6 +160,31 @@ cdef class Population:
     cdef object _batch_matrix(self, Py_ssize_t k):
         return np.empty((k, self.problem.n_dims), dtype=np.float64)
 
+    cdef void _evaluate_duck(self, object item):
+        """Evaluate one duck-typed (decorator API) agent without touching its read-only props.
+
+        Duck agents may define ``evaluate(problem)``, or carry the bound evaluator
+        callback like :class:`RuntimeAgent` (whose ``objectives``/``fitness`` are
+        read-only properties); only as a last resort the objectives are written
+        directly on the instance.
+        """
+        evaluate = getattr(item, "evaluate", None)
+        if callable(evaluate):
+            evaluate(self.problem)
+            return
+        solution = item.solution
+        evaluator = getattr(item, "_evaluator", None)
+        if callable(evaluator):
+            # RuntimeAgent: its solution setter re-runs the evaluator and stores
+            # objectives/fitness through the private attributes.
+            item.solution = solution
+            return
+        objectives = self.problem.evaluate_solution(solution)
+        try:
+            item.objectives = objectives
+        except AttributeError:
+            object.__setattr__(item, "_objectives", np.asarray(objectives, dtype=np.float64))
+
     cpdef object evaluate(self, object agents, str mode):
         """Evaluate ``agents`` (the batch step) and return them.
 
@@ -156,39 +195,57 @@ cdef class Population:
         evaluator (``self.threads`` fixes the team size, 0 lets OpenMP decide).
         """
         cdef Agent agent
+        cdef object item
         cdef Py_ssize_t i, k
         cdef list items, pending
         cdef object weights, fitness, O, X
         items = agents.agents if isinstance(agents, Population) else list(agents)
 
         if mode == "sequential" and not self.problem.vectorized:
-            pending = [agent for agent in items if agent.objectives is None]
-            for agent in pending:
-                (<Agent>agent).evaluate(self.problem)
+            # ``agents`` is public and mutable: decorated (duck-typed) agents may
+            # sit in the list. No typed ``Agent`` loop variable here — it would
+            # force a checked conversion of every element (TypeError on duck).
+            pending = [item for item in items if getattr(item, "_objectives", getattr(item, "objectives", None)) is None]
+            for item in pending:
+                if isinstance(item, Agent):
+                    (<Agent>item).evaluate(self.problem)
+                else:
+                    self._evaluate_duck(item)
             return agents
 
-        pending = [agent for agent in items if agent.objectives is None] if mode == "sequential" else items
+        pending = [item for item in items if getattr(item, "_objectives", getattr(item, "objectives", None)) is None] if mode == "sequential" else items
         k = len(pending)
         if k == 0:
             return agents
-        try:
-            X = self._batch_matrix(k)
-            for i in range(k):
-                agent = <Agent>pending[i]
-                X[i, :] = agent.solution
-            fitness, O = self.problem.evaluate(
-                X, mode == "parallel", self.threads if self.threads > 0 else 0
-            )
-            weights = self.problem.obj_weights
-            for i in range(k):
-                agent = <Agent>pending[i]
-                agent.set_evaluation(O[i], weights)
-        except (TypeError, ValueError):
-            # Non-numeric solutions (string/permutation bounds) cannot share one batch
-            # matrix: fall back to the per-agent evaluation (duck-typed, so the
-            # decorator API's agents also work).
-            for agent in pending:
-                agent.evaluate(self.problem)
+        # The batch path casts every element to Agent: only native populations may
+        # take it. A duck-typed agent (decorator API) in the list would segfault on
+        # the unchecked cast, so any non-Agent routes to the per-agent evaluation.
+        all_native = True
+        for item in pending:
+            if not isinstance(item, Agent):
+                all_native = False
+                break
+        if all_native:
+            try:
+                X = self._batch_matrix(k)
+                for i in range(k):
+                    agent = <Agent>pending[i]
+                    X[i, :] = agent.solution
+                fitness, O = self.problem.evaluate(
+                    X, mode == "parallel", self.threads if self.threads > 0 else 0
+                )
+                weights = self.problem.obj_weights
+                for i in range(k):
+                    agent = <Agent>pending[i]
+                    agent.set_evaluation(O[i], weights)
+            except (TypeError, ValueError):
+                # Non-numeric solutions (string/permutation bounds) cannot share one batch
+                # matrix: fall back to the per-agent evaluation.
+                for item in pending:
+                    (<Agent>item).evaluate(self.problem)
+        else:
+            for item in pending:
+                self._evaluate_duck(item)
         return agents
 
     # -- sequence protocol -------------------------------------------------------
@@ -268,12 +325,16 @@ cdef class Population:
         cdef cnp.ndarray[cnp.float64_t, ndim=1] res = np.empty(n, dtype=np.float64)
         cdef double* data = <double*>cnp.PyArray_DATA(res)
         cdef Py_ssize_t i
-        if isinstance(self.agents[0], Agent):
-            for i in range(n):
-                data[i] = (<Agent>self.agents[i]).fitness
-        else:
-            for i in range(n):
-                data[i] = self.agents[i].fitness
+        cdef object item
+        # Per-element check: the list is public and mutable, so a mixed native /
+        # duck-typed population is reachable; checking only the first element
+        # would read garbage (wrong fitness values) for the rest.
+        for i in range(n):
+            item = self.agents[i]
+            if isinstance(item, Agent):
+                data[i] = (<Agent>item).fitness
+            else:
+                data[i] = item.fitness
         return res
 
     @property
@@ -294,12 +355,14 @@ cdef class Population:
         cdef object row_obj
         cdef cnp.ndarray row
         cdef double* src
-        cdef bint is_native = isinstance(self.agents[0], Agent)
+        cdef bint is_native
         for i in range(n):
+            item = self.agents[i]
+            is_native = isinstance(item, Agent)
             if is_native:
-                row_obj = (<Agent>self.agents[i]).solution
+                row_obj = (<Agent>item).solution
             else:
-                row_obj = self.agents[i].solution
+                row_obj = item.solution
             if isinstance(row_obj, np.ndarray):
                 row = <cnp.ndarray>row_obj
                 if (cnp.PyArray_IS_C_CONTIGUOUS(row) and cnp.PyArray_TYPE(row) == cnp.NPY_FLOAT64
