@@ -140,6 +140,15 @@ def test_argsort_matches_numpy():
     assert population.argsort() == np.argsort([3.0, 1.0, 1.0, 5.0]).tolist()[::-1]
 
 
+def test_argsort_ties_keep_the_population_order():
+    # 20 agents: above numpy's insertion-sort cut-off, so an unstable argsort scrambles these
+    # ties (it picks agent 3 here) instead of returning the population order (agent 2).
+    fits = [2.0, 1, 0, 0, 2, 1, 1, 1, 2, 1, 0, 2, 0, 0, 2, 1, 0, 0, 1, 2]
+    population = bound(agents(*fits), "min")
+
+    assert population.argsort() == sorted(range(len(fits)), key=lambda i: fits[i])
+
+
 @pytest.mark.parametrize("sense, expected", [("min", [1.0, 2.0, 2.0]), ("max", [3.0, 4.0, 2.0])])
 def test_greedy_keeps_strict_improvements(sense, expected):
     population = bound(agents(3.0, 2.0, 2.0), sense)

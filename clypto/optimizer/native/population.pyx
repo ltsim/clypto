@@ -383,9 +383,9 @@ cdef class Population:
 
     # -- ranking -----------------------------------------------------------------
     def argsort(self):
-        """Positions best first (``np.argsort`` of the fitness, reversed when maximizing)."""
+        """Positions best first (stable ``np.argsort`` of the fitness, reversed when maximizing)."""
         fitness = self.fitness
-        order = np.argsort(fitness).tolist()
+        order = np.argsort(fitness, kind="stable").tolist()
         return order if self._minimize else order[::-1]
 
     cpdef Population sort(self):
