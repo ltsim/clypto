@@ -12,7 +12,8 @@ All notable changes to Clypto are documented in this file. The project follows [
 - **`OriginalPSS` samples its Latin hypercube from the optimizer stream**: `scipy.stats.qmc.LatinHypercube` was built without a seed, so it drew from its own uncontrolled generator and `solve(seed=...)` did not reproduce `OriginalPSS` on the `LHS` branch (the `MC` branch already used `self.generator`). It now receives `rng=self.generator`.
 
 #### Changed
-- **Seeded runs (BREAKING-SEEDED)**: seeded runs draw different populations than 2026b2; bit compatibility with earlier releases is lost. The same seed on the same version still replays exactly, but fitness and solutions recorded on 2026b2 or earlier change bit for bit and cannot be diffed against a new capture — re-run baselines instead. `problem.n_evals` is unchanged: the probe is still one real objective call that the counter does not charge.
+- **Seeded runs (BREAKING-SEEDED)**: seeded runs draw different populations than 2026b2; bit compatibility with earlier releases is lost. The same seed on the same version still replays exactly, but fitness and solutions recorded on 2026b2 or earlier change bit for bit and cannot be diffed against a new capture — re-run baselines instead. `problem.n_evals` now counts the `n_objs` probe too, so a fresh `Problem`'s counter reads one higher than in 2026b2, and a `max_fe` budget hit exactly by a population step stops one epoch earlier.
+- **A seeded `Problem` seeds the whole run**: `Problem.coerce` used to overwrite `problem.seed` with the `solve()` argument unconditionally, so `solve(problem)` with no seed discarded `Problem(seed=...)` and produced a different result on every call. `None` now means "no seed given": the Problem's seed is kept and drives the engine's own generators, so `Problem(seed=1)` plus `solve(problem)` replays exactly like `solve(problem, seed=1)`. Pass an explicit seed, or build an unseeded `Problem`, for a fresh random run.
 
 ### [2026b1]
 

@@ -13,7 +13,6 @@ steps (``check_problem``, ``before_initialization``, ``after_initialization``,
 evaluator; the team is fixed once per ``solve`` via ``threads``). ``"swarm"``
 remains an alias of ``"batch"``.
 """
-import random
 import time
 
 import numpy as np
@@ -173,8 +172,6 @@ cdef class NativeOptimizer:
         # The tracker always describes the most recent run; drop the previous one.
         self.tracker.reset()
 
-        self.generator = np.random.default_rng(seed)
-        self.rng = random.Random(seed)  # local RNG for the random module
         self.check_problem(problem, seed)
         if type(threads) is not int or threads < 0:
             raise ValueError("threads must be a non-negative int (0 lets OpenMP decide).")

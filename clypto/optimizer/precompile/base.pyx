@@ -106,7 +106,9 @@ class DecoratedOptimizer:
         self.problem.n_evals = 0
         pop_size = typing.cast(int, self.pop_size)
         epochs = typing.cast(int, self.epoch)
-        self.rng = np.random.default_rng(seed)
+        # coerce keeps a seeded Problem's seed when no seed is passed: the run stream
+        # must follow it too, or only the initial population is reproducible.
+        self.rng = np.random.default_rng(seed if seed is not None else self.problem.seed)
         self.termination = self._build_termination(termination)
         self.population = Population(pop_size)
         self.population.bind(self.problem, self.rng)

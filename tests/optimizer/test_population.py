@@ -80,7 +80,8 @@ def test_population_validates_its_size_and_binds_later():
         cy.population(3)
     population.bind(bound().problem, np.random.default_rng(1))
     generated = population.generate()
-    assert len(generated) == 30 and generated.size() == 30 and population.problem.n_evals == 30
+    # The 30 agents plus the one-solution ``n_objs`` probe.
+    assert len(generated) == 30 and generated.size() == 30 and population.problem.n_evals == 31
 
 
 def test_state_survives_slices_sort_and_snapshots():

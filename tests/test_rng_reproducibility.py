@@ -72,5 +72,5 @@ def test_n_objs_probe_does_not_consume_bounds_draws():
     assert np.array_equal(population, expected), (
         f"initial population is not bounds draws 1..5 (the probe consumed a draw):\n  population = {population}\n  expected   = {expected.tolist()}\n  full order = {recorded}"
     )
-    # The probe is a real objective call, so it stays uncounted in n_evals for now.
-    assert len(recorded) - model.problem.n_evals == 1
+    # The probe is a real objective call, so n_evals counts it too.
+    assert len(recorded) == model.problem.n_evals
