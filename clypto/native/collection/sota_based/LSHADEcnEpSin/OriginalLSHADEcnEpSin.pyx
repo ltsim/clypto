@@ -91,7 +91,9 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
     def initialize_variables(self):
         pop_size = self.population.size()
         self.NP_init = pop_size if pop_size else 18 * self.problem.n_dims
-        self.NP_min = self.pop_size_min  # Minimum population size
+        # Shrink-only schedule: NP_min above NP_init would grow ``self.NP`` past len(population)
+        # and every index draw in current_to_pbest_mutation would run off the end.
+        self.NP_min = min(self.pop_size_min, self.NP_init)  # Minimum population size
         self.NP = self.NP_init  # population size will be updated in each iteration
 
         # Memory settings

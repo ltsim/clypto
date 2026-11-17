@@ -116,7 +116,9 @@ cdef class OriginalSHADE(cy.Optimizer):
                 break
             list_cr_new[idx] = cr
             list_f_new[idx] = f
-            p = self.generator.uniform(2 / pop_size, 0.2)
+            # p ~ U[2/NP, 0.2] (SHADE, Tanabe & Fukunaga 2013); the interval inverts for NP < 10,
+            # where the 2/NP floor exceeds the cap: fall back to the cap so small populations run.
+            p = self.generator.uniform(min(2 / pop_size, 0.2), 0.2)
             top = int(pop_size * p)
             x_best = pop_sorted[self.generator.integers(0, top)]
             pool = list(range(0, pop_size))
