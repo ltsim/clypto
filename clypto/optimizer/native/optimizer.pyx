@@ -157,6 +157,14 @@ cdef class NativeOptimizer:
         after_iteration=None,
         metrics=None,
     ):
+        """Run the algorithm and return the best agent.
+
+        The returned agent is the live ``g_best`` of ``self.population``, not a
+        copy. It keeps the population, its factory and the optimizer alive (the
+        PSO family's ``owner`` back-reference), so a caller that stores it pins
+        one whole generation until the next ``solve`` or ``gc.collect()``. Copy
+        ``g_best.solution`` when only the values are needed.
+        """
         cdef int epoch, repeated_times = 0, n_threads, previous_threads
         cdef double time_epoch = 0.0
         cdef bint tracking = debug or track_population or (metrics is not None)
