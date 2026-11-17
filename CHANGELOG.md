@@ -4,6 +4,15 @@ All notable changes to Clypto are documented in this file. The project follows [
 
 ## Clypto
 
+### [Unreleased]
+
+#### Fixed
+- **The `n_objs` probe no longer consumes a bounds draw**: `Problem.n_objs` evaluates one random solution on first access, and `Agent.evaluate` reads `obj_weights` right after each evaluation, so the probe fired inside initialisation and shifted the whole initial population by one draw (draws `[1, 3, 4, 5, 6]` instead of `[1, 2, 3, 4, 5]`). The probe now saves and restores every bounds block's `bit_generator` state, so the run's stream is left untouched.
+- **`OriginalPSS` samples its Latin hypercube from the optimizer stream**: `scipy.stats.qmc.LatinHypercube` was built without a seed, so it drew from its own uncontrolled generator and `solve(seed=...)` did not reproduce `OriginalPSS` on the `LHS` branch (the `MC` branch already used `self.generator`). It now receives `rng=self.generator`.
+
+#### Changed
+- **Seeded runs (BREAKING-SEEDED)**: seeded runs draw different populations than 2026b2; bit compatibility with earlier releases is lost. The same seed on the same version still replays exactly, but fitness and solutions recorded on 2026b2 or earlier change bit for bit and cannot be diffed against a new capture — re-run baselines instead. `problem.n_evals` is unchanged: the probe is still one real objective call that the counter does not charge.
+
 ### [2026b1]
 
 #### Added

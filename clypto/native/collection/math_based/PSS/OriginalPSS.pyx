@@ -79,7 +79,7 @@ cdef class OriginalPSS(cy.Optimizer):
         if self.sampling_method == "MC":
             pop = self.generator.random(self.population.size(), self.problem.n_dims)
         else:  # Default: "LHS"
-            sampler = qmc.LatinHypercube(d=self.problem.n_dims)
+            sampler = qmc.LatinHypercube(d=self.problem.n_dims, rng=self.generator)
             pop = sampler.random(n=pop_size)
         return pop
 

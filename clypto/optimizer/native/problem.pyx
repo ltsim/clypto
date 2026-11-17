@@ -152,8 +152,15 @@ cdef class Problem:
         cdef object test_mat
         cdef object target
         cdef object result
+        cdef object states
+        cdef object block, state
         if self.__n_objs < 0:
+            # A throwaway probe must not consume the draws of the run that asked for it:
+            # one draw here shifts the whole initial population by a vector.
+            states = [block.generator.bit_generator.state for block in self.__bounds.blocks]
             test_sol = self.generate_solution(True)
+            for block, state in zip(self.__bounds.blocks, states, strict=True):
+                block.generator.bit_generator.state = state
             if self.__vectorized:
                 test_mat = np.atleast_2d(test_sol)
                 target = self.decode_solution(test_mat) if self.__decode else test_mat
