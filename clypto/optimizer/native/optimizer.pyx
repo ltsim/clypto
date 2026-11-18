@@ -158,11 +158,14 @@ cdef class NativeOptimizer:
     ):
         """Run the algorithm and return the best agent.
 
-        The returned agent is the live ``g_best`` of ``self.population``, not a
-        copy. It keeps the population, its factory and the optimizer alive (the
-        PSO family's ``owner`` back-reference), so a caller that stores it pins
-        one whole generation until the next ``solve`` or ``gc.collect()``. Copy
-        ``g_best.solution`` when only the values are needed.
+        The return value is a ``snapshot_agent`` copy of ``self.g_best``: its own
+        solution vector, no reference back to the population or the optimizer, so
+        storing it pins nothing. An algorithm that assigns a live member inside
+        ``evolve`` is re-snapshotted by ``after_evolve`` before this returns.
+
+        The decorator API is the exception: its returned agent carries
+        ``_evaluator``, a strong reference to the optimizer -- see
+        ``DecoratedOptimizer.solve``.
         """
         cdef int epoch, repeated_times = 0, n_threads, previous_threads
         cdef double time_epoch = 0.0

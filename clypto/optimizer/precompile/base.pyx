@@ -99,7 +99,14 @@ class DecoratedOptimizer:
         termination: typing.Optional[Termination | dict] = None,
         seed: typing.Optional[int] = None,
     ) -> RuntimeAgent:
-        """Run the optimizer and return the best agent found so far (never worse than an earlier epoch)."""
+        """Run the optimizer and return the best agent found so far (never worse than an earlier epoch).
+
+        The agent is a snapshot of the population's best, but it still carries
+        ``_evaluator``, a strong reference to this optimizer: a caller that stores the
+        returned agent pins this optimizer, its population and the agents behind it
+        (+3 refs on ``problem``) until the agent is dropped. Bounded and
+        caller-controlled; copy ``agent.solution`` when only the values are needed.
+        """
         self._bind_problem(problem, seed)
         assert self.problem is not None and self.bounds is not None
 
