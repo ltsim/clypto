@@ -9,13 +9,13 @@
 
 | Item | Value |
 |---|---|
-| HEAD | `c678e115` — *docs(optimizer): correct what solve() returns and what it pins* |
-| origin | `c678e115` — **pushed** (pre-push hook: 449 passed) |
-| Tracked tree | clean |
-| Untracked (deliberate) | `benchmarks/memleak_*.py`, `reports/` |
+| PR | **https://github.com/ltsim/clypto/pull/28** — `refactoring/audit-simplifications` → `release/v2026b2` (23 commits, 64 files, +2264/−482) |
+| HEAD | `b49a26be` — *chore(reports): add the audit plans, reports and progress control* |
+| origin | `b49a26be` — pushed (pre-push hook: 449 passed) |
+| Tracked tree | clean; only `reports/probe-final.py.bak` left untracked on purpose |
 | Build | 269 `.pyx`, 0 stale or missing `.so` |
-| Checks at `c678e115` | pytest **449 passed** · ruff **clean** · mypy **clean** (189 files) |
-| Golden | `c678e115` → `8c02c16b…` — **byte-identical to `c235f3bd`** (docstrings only; 13/13 contract identical, `n_evals` 1551→1551) |
+| Checks at `b49a26be` | pytest **449 passed** · ruff **clean** · mypy **clean** (189 files) |
+| Golden | `c678e115` → `8c02c16b…` (byte-identical to `c235f3bd`; docstrings only) |
 
 ## History on this branch (19 commits over `release/v2026b2`)
 
@@ -67,19 +67,20 @@ on the rebuilt extension + the suite; the controller re-ran suite, ruff and mypy
 
 ## Pending
 
-1. ~~Push `f7cc3595..c235f3bd`~~ — **done**: `origin` at `c678e115` (5 commits, pre-push hook 449 passed).
-2. ~~Settle the run's board~~ — done by `cy-fix-report` on the controller's GO:
-   M1/M2/M3 completed with the verification note; seven superseded tasks cancelled (`failed`,
-   `cancelled: superseded`) with the artifact path preserved.
-3. ~~R5 memory re-measure~~ — **PASS**: RSS 6/6 plateaus (+0.000…+0.005 MB/100 iters);
-   Valgrind 4/4 at 40,705 B / 168 blocks with **0 frames of our build** (all scipy/numpy import
-   registration); refcounts flat (`delta=[0,0,0,0,0]`, 20 solves). Caveat: the current probe
-   imports the collection packages, so `ga`/`de`/`churn` now also carry the scipy bucket — same
-   bytes and signature as `pso`, not a regression.
-4. ~~R7~~ — **decisión del usuario: dejar `7654d659`**. Remaining user decision: whether to open the
-   PR to `release/v2026b2`.
-5. ~~Re-pin the golden on `c678e115`~~ — done: **same sha256 `8c02c16b…`**, contract 13/13
-   identical; only `optimizer.so` and `precompile/base.so` changed (embedded docstrings), 0 stale.
+1. ~~Push `f7cc3595..c235f3bd`~~ — **done**, and continued: `origin` at `b49a26be` (23 commits,
+   pre-push hook 449 passed each time).
+2. ~~Settle the run's board~~ — done by `cy-fix-report` on the controller's GO.
+3. ~~R5 memory re-measure~~ — **PASS**: RSS 6/6 plateaus (+0.000…+0.005 MB/100 iters); Valgrind
+   4/4 at 40,705 B / 168 blocks with **0 frames of our build** (all scipy/numpy import
+   registration); refcounts flat. Caveat recorded: the current probe imports the collection
+   packages, so `ga`/`de`/`churn` carry the scipy bucket too — same bytes, not a regression.
+4. ~~R7~~ — **decisión del usuario: dejar `7654d659`**.
+5. ~~Re-pin the golden on `c678e115`~~ — done: same sha256 `8c02c16b…`, contract 13/13 identical.
+6. ~~Doc sync + pending commits~~ — `f4831363` (CHANGELOG/tutorial/issues), `cf1af222`
+   (memory-leak probes, ruff+mypy clean), `b49a26be` (reports). `reports/probe-final.py.bak`
+   deliberately left untracked (backup of the probe).
+7. **Open:** PR #28 → `release/v2026b2`. Note: `test.yml`/`type.yml` trigger only on PRs to
+   `master`, so this PR reports no checks; local gate (449 / ruff / mypy) is the evidence.
 
 ## Evidence index
 
