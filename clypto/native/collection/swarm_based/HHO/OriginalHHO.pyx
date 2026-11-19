@@ -62,6 +62,7 @@ cdef class OriginalHHO(cy.Optimizer):
         """
         pop_size = self.population.size()
         pop_new = []
+        X_m = np.mean([x.solution for x in self.population])
         for idx in range(0, pop_size):
             # -1 < E0 < 1
             E0 = 2 * self.generator.uniform() - 1
@@ -82,7 +83,6 @@ cdef class OriginalHHO(cy.Optimizer):
                         X_rand - 2 * self.generator.uniform() * self.population[idx].solution
                     )
                 else:  # perch on a random tall tree (random site inside group's home range)
-                    X_m = np.mean([x.solution for x in self.population])
                     pos_new = (
                                       self.g_best.solution - X_m
                               ) - self.generator.uniform() * (
@@ -115,7 +115,6 @@ cdef class OriginalHHO(cy.Optimizer):
                             J * self.g_best.solution - self.population[idx].solution
                         )
                     else:  # Hard besiege Eq. (11) in paper
-                        X_m = np.mean([x.solution for x in self.population])
                         Y = self.g_best.solution - E * np.abs(
                             J * self.g_best.solution - X_m
                         )

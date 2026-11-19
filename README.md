@@ -227,7 +227,7 @@ $ pip install "clypto[compile]"
 ```
 
 The decorators compile the class to a native extension on import (backed by
-`pyximport`) and cache the build by source hash, so unchanged code is not
+`clypto.compile`) and cache the build by source hash, so unchanged code is not
 rebuilt. It fails loudly rather than running uncompiled: `ImportError` if Cython
 is missing, `RuntimeError` if the source cannot be read (REPL/notebook) or
 compilation fails.

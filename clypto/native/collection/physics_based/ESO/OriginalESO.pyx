@@ -120,6 +120,9 @@ cdef class OriginalESO(cy.Optimizer):
 
         # Update each lighting agent
         cdef cy.Population n_population = cy.empty_snapshot(self.population)
+        avg_ionized = None
+        if len(ionized_pop) > 0:
+            avg_ionized = np.mean([item.solution for item in ionized_pop], axis=0)
         for idx in range(0, pop_size):
             # Initialize new lighting position
             if idx == 0 or len(ionized_pop) == 0:
@@ -149,10 +152,6 @@ cdef class OriginalESO(cy.Optimizer):
             else:
                 # Propagate towards ionized areas
                 if len(ionized_pop) > 0:
-                    # Average position of ionized areas
-                    avg_ionized = np.mean(
-                        [agent.solution for agent in ionized_pop], axis=0
-                    )
                     # Random perturbation
                     x = avg_ionized + storm_power * np.exp(
                         fc

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """Unit tests for :class:`clypto.Population`."""
 
+import os
+import sys
 import numpy as np
 import pytest
 
@@ -28,7 +30,8 @@ def bound(items=(), sense="min", size=None):
 
 @cy.agent
 class CountingAgent:
-    v: cy.Attribute[int, (1, 100), 5]
+    # The decorator's generic takes a tuple literal; mypy cannot parse it.
+    v: cy.Attribute[int, (1, 100), 5]  # type: ignore[valid-type, type-arg, syntax]
 
 
 @cy.optimizer(agent=CountingAgent)
@@ -77,7 +80,8 @@ def test_population_validates_its_size_and_binds_later():
         cy.population(3)
     population.bind(bound().problem, np.random.default_rng(1))
     generated = population.generate()
-    assert len(generated) == 30 and generated.size() == 30 and population.problem.n_evals == 30
+    # The 30 agents plus the one-solution ``n_objs`` probe.
+    assert len(generated) == 30 and generated.size() == 30 and population.problem.n_evals == 31
 
 
 def test_state_survives_slices_sort_and_snapshots():
@@ -134,6 +138,15 @@ def test_argsort_matches_numpy():
     population = bound(agents(3.0, 1.0, 1.0, 5.0), "max")
 
     assert population.argsort() == np.argsort([3.0, 1.0, 1.0, 5.0]).tolist()[::-1]
+
+
+def test_argsort_ties_keep_the_population_order():
+    # 20 agents: above numpy's insertion-sort cut-off, so an unstable argsort scrambles these
+    # ties (it picks agent 3 here) instead of returning the population order (agent 2).
+    fits = [2.0, 1, 0, 0, 2, 1, 1, 1, 2, 1, 0, 2, 0, 0, 2, 1, 0, 0, 1, 2]
+    population = bound(agents(*fits), "min")
+
+    assert population.argsort() == sorted(range(len(fits)), key=lambda i: fits[i])
 
 
 @pytest.mark.parametrize("sense, expected", [("min", [1.0, 2.0, 2.0]), ("max", [3.0, 4.0, 2.0])])
@@ -248,3 +261,97 @@ def test_evaluate_uses_one_call_for_a_vectorized_problem():
 
     population.evaluate(candidates, "swarm")
     assert calls == [3] and [agent.fitness for agent in candidates] == [0.0, 3.0, 12.0]
+
+
+# --- duck-typed (decorator API) agents in a native Population -----------------
+# ``agents`` is public and mutable, so RuntimeAgent / user classes can end up in a
+# native population; the unchecked <Agent> casts used to SIGSEGV (no Python error).
+# The crash cases must run in a subprocess: a segfault cannot be asserted in-process.
+
+_DUCK_POP_SRC = """
+import sys
+sys.path.insert(0, {root!r})
+import os
+import sys
+import numpy as np
+import clypto as cy
+from clypto.optimizer.native.population import Population
+from clypto.optimizer.agents.runtime import RuntimeAgent
+
+problem = cy.Problem(obj_func=lambda x: float(np.sum(np.asarray(x) ** 2)),
+                     bounds=cy.NumberBounds(float, low=[-1.] * 3, up=[1.] * 3), sense="min")
+pop = Population(3)
+pop.bind(problem, np.random.default_rng(0))
+{setup}
+{body}
+"""
+
+
+def _run_duck_case(setup, body):
+    """Run one snippet inside a fresh interpreter; return (exit code, stdout, stderr)."""
+    import subprocess
+
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    src = _DUCK_POP_SRC.format(root=root, setup=setup, body=body)
+    proc = subprocess.run([sys.executable, "-c", src], capture_output=True, text=True, timeout=60)
+    return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
+
+
+_RUNTIME_SETUP = """_ev = lambda s: cy.Agent(np.asarray(s)).evaluate(problem)
+ra = RuntimeAgent(np.zeros(3))
+object.__setattr__(ra, '_evaluator', _ev)
+pop.agents = [ra]"""
+_MIXED_SETUP = (
+    "from clypto.optimizer.native.agent import Agent\n"
+    "class Duck:\n"
+    "    def __init__(self, solution):\n"
+    "        self.solution = np.asarray(solution, dtype=float)\n"
+    "        self.objectives = None\n"
+    "        self.fitness = None\n"
+    "        self._objectives = None\n"
+    "    def evaluate(self, problem):\n"
+    "        objectives = np.atleast_1d(problem.evaluate_solution(self.solution))\n"
+    "        self._objectives = self.objectives = objectives\n"
+    "        self.fitness = float(objectives[0])\n"
+    "pop.agents = [Agent(np.zeros(3), objectives=1.0), Duck(np.ones(3)), Duck(np.ones(3))]"
+)
+
+
+@pytest.mark.parametrize("mode", ["batch", "swarm", "parallel", "sequential"])
+def test_evaluate_runtime_agents_does_not_segfault(mode):
+    code, out, err = _run_duck_case(_RUNTIME_SETUP, f"pop.evaluate(pop, {mode!r})\nprint('OK', pop.fitness.tolist())")
+    assert code == 0, f"exit {code}: {err[-400:]}"
+    assert out.startswith("OK") and eval(out.split(" ", 1)[1]) == [0.0]
+
+
+def test_evaluate_mixed_native_first_does_not_segfault():
+    code, out, err = _run_duck_case(_MIXED_SETUP, "pop.evaluate(pop, 'batch')\nprint('OK')")
+    assert code == 0, f"exit {code}: {err[-400:]}"
+    assert out == "OK"
+
+
+def test_snapshot_runtime_and_mixed_do_not_segfault():
+    code, out, err = _run_duck_case(_RUNTIME_SETUP, "print(len(pop.snapshot()))")
+    assert code == 0, f"exit {code}: {err[-400:]}"
+    assert out == "1"
+    code, out, err = _run_duck_case(_MIXED_SETUP, "s = pop.snapshot()\nprint(len(s), type(s.agents[1]).__name__)")
+    assert code == 0, f"exit {code}: {err[-400:]}"
+    assert out.split()[0] == "3" and out.split()[1] == "Duck"
+
+
+def test_fitness_mixed_reads_real_values():
+    # before the fix this read garbage from the wrong struct offset (silent corruption)
+    duck = _MIXED_SETUP.replace(
+        "        self.fitness = None\n",
+        "        self.fitness = 12345.0\n",
+    )
+    code, out, err = _run_duck_case(duck, "print(pop.fitness.tolist())")
+    assert code == 0, f"exit {code}: {err[-400:]}"
+    assert eval(out) == [1.0, 12345.0, 12345.0]
+
+
+def test_solutions_mixed_returns_real_rows():
+    code, out, err = _run_duck_case(_MIXED_SETUP, "print(pop.solutions.tolist())")
+    assert code == 0, f"exit {code}: {err[-400:]}"
+    rows = eval(out)
+    assert rows[0] == [0.0, 0.0, 0.0] and rows[1] == [1.0, 1.0, 1.0] and rows[2] == [1.0, 1.0, 1.0]

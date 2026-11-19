@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-"""Just-in-time Cython compilation for user-defined optimizers via pyximport."""
+"""Just-in-time Cython compilation for user-defined optimizers via ``clypto.compiler``."""
+import hashlib
 import inspect
 import sys
 import textwrap
 
-from clypto.optimizer.precompile import _runtime, _builder
+from clypto.compiler import compile_module
 
 __all__ = ["compile_decorated", "is_precompiling"]
 
@@ -14,6 +15,26 @@ _PRECOMPILING = False
 def is_precompiling() -> bool:
     """True while a compiled module is being imported and re-runs its decorators."""
     return _PRECOMPILING
+
+
+def _build_preamble(module_name: str, names: list[str], imports: list[str] | None = None) -> str:
+    # Each global is copied in with a real assignment so Cython sees it as a
+    # declared module name; an undeclared name in a class base is a compile
+    # error in .pyx mode, and `globals().update(...)` does not declare one.
+    lines = [
+        "import sys as __clypto_sys__",
+        f"__clypto_mod__ = __clypto_sys__.modules.get({module_name!r})",
+    ]
+
+    # Injected base classes (the decorators add a base the source does not name)
+    # are imported explicitly so the .pyx class header can reference them.
+    for statement in imports or ():
+        lines.append(statement)
+
+    for name in names:
+        lines.append(f"{name} = getattr(__clypto_mod__, {name!r}, None)")
+
+    return "\n".join(lines) + "\n"
 
 
 def compile_decorated(
@@ -34,8 +55,6 @@ def compile_decorated(
     if _PRECOMPILING:
         return cls
 
-    version = _runtime.cython_version()
-
     if source is None:
         try:
             source = textwrap.dedent(inspect.getsource(cls))
@@ -54,20 +73,23 @@ def compile_decorated(
         if name.isidentifier() and not (name.startswith("__") and name.endswith("__"))
     )
 
-    module_name = _builder.build_module_name(
-        cls.__name__, _runtime.source_digest(source, version)
+    module_source = (
+        _build_preamble(cls.__module__, names, imports=imports) + "\n" + source + "\n"
     )
+    # Digest includes the preamble so injected bases/global sets participate in
+    # the cache key, not just the visible class body.
+    digest = hashlib.sha1(module_source.encode("utf-8")).hexdigest()[:16]
 
     _PRECOMPILING = True
 
     try:
-        compiled_cls = _builder.compile_class(
-            cls, source, module_name, names, imports=imports
-        )
+        module = compile_module(module_source, name=f"{cls.__name__}_{digest}")
+        compiled_cls = getattr(module, cls.__name__)
+    except Exception as exc:
+        raise RuntimeError(f"Cython compilation of {cls.__name__} failed.") from exc
     finally:
         _PRECOMPILING = False
 
     compiled_cls.__clypto_precompiled__ = True  # type: ignore[attr-defined]
 
     return compiled_cls
-

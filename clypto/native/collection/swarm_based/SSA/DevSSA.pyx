@@ -66,7 +66,7 @@ cdef class DevSSA(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "ST", "PD", "SD"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.Population)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.ST = cy.validator(float, ST, (0, 1.0), "ST")
         self.PD = cy.validator(float, PD, (0, 1.0), "PD")
         self.SD = cy.validator(float, SD, (0, 1.0), "SD")

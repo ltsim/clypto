@@ -76,6 +76,7 @@ cdef class IncrementalGWO(cy.Optimizer):
         a = 2 * (1.0 - (epoch / self.epoch) ** self.explore_factor)
         pop_sorted = self.population.sort()
         list_best = [cy.duplicate_agent(agent) for agent in pop_sorted[:3]]
+        p_temp = np.array([child.solution for child in pop_sorted])
         cdef cy.Population n_population = cy.empty_snapshot(self.population)
         for idx, agent in enumerate(self.population.toarray()):
             if idx == 0:
@@ -88,7 +89,6 @@ cdef class IncrementalGWO(cy.Optimizer):
             else:
                 # Other wolves update based on all previous wolves (Equation 19)
                 # Average position of all previous wolves (n-1 wolves)
-                p_temp = np.array([child.solution for child in pop_sorted])
                 mask = np.arange(p_temp.shape[0]) != idx
                 x = p_temp[mask].mean(axis=0)
             x = cy.correct_solution(self.problem, x)

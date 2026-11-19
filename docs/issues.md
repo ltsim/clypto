@@ -174,6 +174,12 @@ Several are flagged on [PubPeer](https://pubpeer.com/publications/1F5DCE5BC42BF2
   offspring pairing.
 - `GA` — off-by-one `IndexError` from population-size mismatch after crossover
   in survivor selection.
+- `OriginalSHADE` / `OriginalLSHADEcnEpSin` — the family crashed with
+  `pop_size < 10`: `p ~ U[2/NP, 0.2]` inverts below `NP = 10`
+  (`ValueError: high - low < 0`) and `NP_min = pop_size_min` grew `NP` past
+  `len(population)` (`IndexError` in `current_to_pbest_mutation`). The floor now
+  clamps to the `0.2` cap and `NP_min` to `NP_init`; `L_SHADE` was unaffected.
+  Bit-for-bit unchanged for `pop_size >= 10`.
 
 ---
 
@@ -304,3 +310,23 @@ These affect every optimizer rather than a single taxonomy group.
   `debug=True` now records per-epoch metrics (and, with
   `track_population=True`, full population snapshots) into the in-memory
   `model.tracker`.
+- **Duck-typed agents crashed `Population`.** `agents` is public and mutable, so a
+  decorator-API agent (or any user class) could sit next to a native `Agent`:
+  `evaluate`/`snapshot` cast without checking and segfaulted, while `fitness` and
+  `solutions` read the wrong struct offsets (or raised `TypeError` for a `list`
+  solution). Each site now checks or converts explicitly, with subprocess regression
+  tests covering the crash matrix.
+- **`NumberBounds` overflowed to `inf` spans.** A span wider than
+  `sys.float_info.max` made `low + span * random()` produce `NaN` positions; such
+  spans now draw through `Generator.uniform`.
+- **Seeded runs were not reproducible.** `scipy.stats.*.rvs` used scipy's own global
+  generator (`JADE`, `OriginalSHADE`, `L_SHADE`, `LSHADEcnEpSin`), `OriginalPSS`
+  seeded its Latin hypercube outside the optimizer stream, the `n_objs` probe
+  consumed one bounds draw during initialisation, and `Problem.coerce` discarded
+  `Problem(seed=...)` when `solve()` was called without a seed. All four now follow
+  the run's stream — see the **BREAKING-SEEDED** note in `CHANGELOG.md`, since seeded
+  trajectories changed.
+- **Ranking broke fitness ties arbitrarily.** `Population.argsort` and
+  `argsort_agents` used numpy's default (unstable) sort, so which agent came first
+  inside a tie group depended on the partition; both are stable now and keep the
+  population order, as `kway_tournament` already did.

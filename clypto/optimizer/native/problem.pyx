@@ -20,8 +20,9 @@ cdef class Problem:
     evaluator used by ``evaluate(X, parallel=True)``. ``obj_weights`` turn
     several objectives into one fitness (default: all ones).
 
-    ``n_evals`` counts the evaluations (``evaluate_solution`` and ``evaluate``);
-    ``solve()`` resets it, and ``optimizer.nf_counter`` reads it.
+    ``n_evals`` counts the solutions evaluated -- ``evaluate_solution``, ``evaluate``
+    and the one-solution ``n_objs`` probe included; ``solve()`` resets it, and
+    ``optimizer.nf_counter`` reads it.
     """
 
     def __init__(self, bounds=None, sense="min", obj_func=None, name="Problem",
@@ -85,12 +86,19 @@ cdef class Problem:
 
     @staticmethod
     def coerce(problem, seed=None):
-        """``problem`` (a ``Problem`` or the dict of its arguments) seeded with ``seed``."""
+        """``problem`` (a ``Problem`` or the dict of its arguments) seeded with ``seed``.
+
+        A ``None`` seed keeps the problem's own seed: ``solve(problem)`` must not
+        silently discard ``Problem(seed=...)`` and leave the run unreproducible.
+        """
         if type(problem) is dict:
+            seed = problem.get("seed") if seed is None else seed
             return Problem(**{**problem, "seed": seed})
         if not isinstance(problem, Problem):
             raise ValueError("problem needs to be a dict or an instance of Problem class.")
-        problem.seed = seed
+        if seed is None:
+            seed = problem.seed
+        problem.seed = seed  # restarts the bounds stream for this run
         return problem
 
     @property
@@ -147,13 +155,20 @@ cdef class Problem:
 
     @property
     def n_objs(self):
-        """Number of objectives; the first access evaluates one random solution."""
+        """Number of objectives; the first access evaluates one random solution (counted)."""
         cdef object test_sol
         cdef object test_mat
         cdef object target
         cdef object result
+        cdef object states
+        cdef object block, state
         if self.__n_objs < 0:
+            # A throwaway probe must not consume the draws of the run that asked for it:
+            # one draw here shifts the whole initial population by a vector.
+            states = [block.generator.bit_generator.state for block in self.__bounds.blocks]
             test_sol = self.generate_solution(True)
+            for block, state in zip(self.__bounds.blocks, states, strict=True):
+                block.generator.bit_generator.state = state
             if self.__vectorized:
                 test_mat = np.atleast_2d(test_sol)
                 target = self.decode_solution(test_mat) if self.__decode else test_mat
@@ -163,6 +178,7 @@ cdef class Problem:
             else:
                 target = self.decode_solution(test_sol) if self.__decode else test_sol
                 result = self.obj_func(target)
+            self.__n_evals += 1  # the probe is real objective work: one count, like any evaluation
             if isinstance(result, SUPPORTED_ARRAYS):
                 self.__n_objs = len(np.asarray(result).ravel())
             elif isinstance(result, numbers.Number):
