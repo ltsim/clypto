@@ -6,6 +6,8 @@ All notable changes to Clypto are documented in this file. The project follows [
 
 ### [Unreleased]
 
+### [2026b2]
+
 #### Fixed
 - **The SHADE family runs with a population below 10**: `OriginalSHADE` sampled `p ~ U[2/NP, 0.2]`, an inverted interval for `NP < 10`, which raised `ValueError: high - low < 0` on the first epoch; the `2/NP` floor now falls back to the `0.2` cap when it would exceed it. `OriginalLSHADEcnEpSin` set `NP_min = pop_size_min` unconditionally, so the default `pop_size_min = 10` with a smaller population grew `NP` past `len(population)` and the mutation index ran off the end (`IndexError`); `NP_min` is now clamped to `NP_init`. Results for `pop_size >= 10` are bit-for-bit unchanged.
 - **The `n_objs` probe no longer consumes a bounds draw**: `Problem.n_objs` evaluates one random solution on first access, and `Agent.evaluate` reads `obj_weights` right after each evaluation, so the probe fired inside initialisation and shifted the whole initial population by one draw (draws `[1, 3, 4, 5, 6]` instead of `[1, 2, 3, 4, 5]`). The probe now saves and restores every bounds block's `bit_generator` state, so the run's stream is left untouched.

@@ -8,7 +8,7 @@ authors:
     given-names: "Seyedali"
     orcid: "https://orcid.org/0000-0002-1599-3573"
 title: "clypto: An Open-source Library for Latest Meta-heuristic Algorithms in Cython"
-version: "2026b1"
+version: "2026b2"
 url: "https://github.com/ltsim/clypto"
 preferred-citation:
   type: article
