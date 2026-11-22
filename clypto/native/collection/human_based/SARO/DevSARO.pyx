@@ -54,7 +54,7 @@ cdef class DevSARO(cy.Optimizer):
         """
         super().__init__(parameters=["epoch", "pop_size", "se", "mu"], sort_flag=True, **kwargs)
         self.epoch = cy.validator(int, epoch, [1, 100000], "epoch")
-        self.population = cy.population(pop_size, range=[5, 10000], cls=cy.Population)
+        self.population = cy.population(pop_size, range=[5, 10000])
         self.se = cy.validator(float, se, (0, 1.0), "se")
         self.mu = cy.validator(int, mu, [2, 2 + int(self.population.size() / 2)], "mu")
 

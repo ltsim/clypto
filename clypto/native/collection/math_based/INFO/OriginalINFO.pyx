@@ -68,6 +68,16 @@ cdef class OriginalINFO(cy.Optimizer):
         better = self.population[idx_better]
         g_worst = self.population[-1]
 
+        fit_1 = self.g_best.fitness
+        fit_2 = better.fitness
+        fit_3 = g_worst.fitness
+        omg2 = np.max([fit_1, fit_2, fit_3])
+        MM2 = np.array([fit_1 - fit_2, fit_1 - fit_3, fit_2 - fit_3])
+        w4 = np.cos(MM2[0] + np.pi) * np.exp(-np.abs(MM2[0] / omg2))  # Eq. (4.7)
+        w5 = np.cos(MM2[1] + np.pi) * np.exp(-np.abs(MM2[1] / omg2))  # Eq. (4.8)
+        w6 = np.cos(MM2[2] + np.pi) * np.exp(-np.abs(MM2[2] / omg2))  # Eq. (4.9)
+        Wt2 = np.sum([w4, w5, w6])
+
         cdef cy.Population n_population = cy.empty_snapshot(self.population)
         for idx, agent in enumerate(self.population.toarray()):
             ## Updating rule stage
@@ -98,15 +108,6 @@ cdef class OriginalINFO(cy.Optimizer):
                     + epsilon
             )
 
-            fit_1 = self.g_best.fitness
-            fit_2 = better.fitness
-            fit_3 = g_worst.fitness
-            omg2 = np.max([fit_1, fit_2, fit_3])
-            MM2 = np.array([fit_1 - fit_2, fit_1 - fit_3, fit_2 - fit_3])
-            w4 = np.cos(MM2[0] + np.pi) * np.exp(-np.abs(MM2[0] / omg2))  # Eq. (4.7)
-            w5 = np.cos(MM2[1] + np.pi) * np.exp(-np.abs(MM2[1] / omg2))  # Eq. (4.8)
-            w6 = np.cos(MM2[2] + np.pi) * np.exp(-np.abs(MM2[2] / omg2))  # Eq. (4.9)
-            Wt2 = np.sum([w4, w5, w6])
             WM2 = (
                     delta
                     * (

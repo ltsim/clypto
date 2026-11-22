@@ -101,11 +101,11 @@ cdef class DevGCO(cy.Optimizer):
                 self.dyn_list_cell_counter[idx] += 10
                 self.population[idx] = cy.duplicate_agent(n_population[idx])
         ## Light-zone process   (no needs parallelization)
+        fit = self.population.fitness
+        fit_max = fit.max()
+        fit_min = fit.min()
         for idx, agent in enumerate(self.population.toarray()):
             self.dyn_list_cell_counter[idx] = 10
-            fit_list = np.array([child.fitness for child in self.population])
-            fit_max = np.max(fit_list)
-            fit_min = np.min(fit_list)
             self.dyn_list_cell_counter[idx] += (
                     10
                     * (agent.fitness - fit_max)

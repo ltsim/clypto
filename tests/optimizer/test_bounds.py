@@ -254,3 +254,18 @@ def test_decode_2d_batch_and_combinatorial_vectorized():
     decoded_best = problem.decode_solution(best.solution)
     assert len(decoded_best["tour"]) == 4
 
+
+
+def test_float_generate_falls_back_to_uniform_when_the_span_overflows():
+    # `Generator.uniform` raises when low/up are non-finite or `up - low` overflows;
+    # the inline `low + (up - low) * random` path must not silently produce inf.
+    block = cy.NumberBounds(float, low=-1e308, up=1e308, name="x")
+
+    assert block._uniform_like is False
+    with pytest.raises(OverflowError):
+        block.generate()
+    assert cy.Bounds(block)._uniform_like is False
+
+
+def test_float_generate_takes_the_inline_uniform_path_for_a_finite_span():
+    assert cy.Bounds(cy.NumberBounds(float, low=0.0, up=1.0, name="x"))._uniform_like is True

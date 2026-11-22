@@ -6,9 +6,11 @@ exclusive, a ``list`` inclusive. The operators take the optimizer's
 """
 import math
 import numbers
-from operator import itemgetter
 
 import numpy as np
+cimport numpy as cnp
+
+cnp.import_array()
 
 from clypto.optimizer.native.agent cimport duplicate_agent
 
@@ -130,13 +132,17 @@ cpdef list kway_tournament(object generator, str sense, object agents, object k_
     if output > n_agents:
         output = <int>n_agents
     list_id = generator.choice(range(n_agents), k, replace=False)
-    list_parents = sorted(
-        [[idx, agents[idx].fitness] for idx in list_id],
-        key=itemgetter(1), reverse=sense != "min",
-    )
+    # np.argsort(kind="stable") orders exactly like Python's ``sorted(key=fitness,
+    # reverse=...)``: ascending ties keep the draw order, and ``-fitness`` gives
+    # the stable descending order of a maximizing tournament.
+    cdef cnp.ndarray[cnp.float64_t, ndim=1] fits = np.empty(k, dtype=np.float64)
+    cdef Py_ssize_t j
+    for j in range(k):
+        fits[j] = agents[list_id[j]].fitness
+    order = np.argsort(fits if sense == "min" else -fits, kind="stable")
     if reverse:
-        return [parent[0] for parent in list_parents[-output:]]
-    return [parent[0] for parent in list_parents[:output]]
+        return [list_id[order[k - output + j]] for j in range(output)]
+    return [list_id[order[j]] for j in range(output)]
 
 
 cpdef list split_groups(object agents, Py_ssize_t n_groups, Py_ssize_t m_agents):

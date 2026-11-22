@@ -34,6 +34,8 @@ cdef class Population:
     cpdef list bottom(self, Py_ssize_t k)
     cdef str sense_str(self)
     cdef object _batch_matrix(self, Py_ssize_t k)
+    cdef object _snapshot_agent(self, object a)
+    cdef void _evaluate_duck(self, object item)
 
 
 cpdef Population population(object size, object range=*, type cls=*)

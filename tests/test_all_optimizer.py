@@ -71,3 +71,17 @@ def test_python_evolve_is_supported(problem):
 
     best = PythonSearch().solve(problem, seed=1)
     assert best is not None
+
+
+@pytest.mark.parametrize("name", ["JADE", "OriginalSHADE", "L_SHADE", "OriginalLSHADEcnEpSin"])
+def test_seeded_solve_ignores_the_global_numpy_rng(name, problem):
+    # scipy's `rvs` defaults to the global numpy RNG, which used to make these four
+    # ignore `solve(seed=...)`; the optimizer stream must make the solve reproducible.
+    optimizer = OPTIMIZERS[name]
+    np.random.seed(0)
+    first = optimizer(epoch=50, pop_size=25).solve(problem, seed=7)
+    np.random.seed(12345)
+    second = optimizer(epoch=50, pop_size=25).solve(problem, seed=7)
+
+    assert first.fitness == second.fitness
+    assert np.array_equal(first.solution, second.solution)

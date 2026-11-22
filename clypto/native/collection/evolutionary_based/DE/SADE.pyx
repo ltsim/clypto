@@ -83,9 +83,9 @@ cdef class SADE(cy.Optimizer):
                 elif f > 1:
                     f = 1
                 break
-            id1, id2, id3 = self.generator.choice(
-                list(set(range(0, pop_size)) - {idx}), 3, replace=False
-            )
+            pool = list(range(0, pop_size))
+            del pool[idx]
+            id1, id2, id3 = self.generator.choice(pool, 3, replace=False)
             if self.generator.random() < self.p1:
                 x_new = self.population[id1].solution + f * (
                     self.population[id2].solution - self.population[id3].solution

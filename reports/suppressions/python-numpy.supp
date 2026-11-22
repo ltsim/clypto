@@ -1,0 +1,75 @@
+# Memcheck suppressions for CPython 3.14 + NumPy under clypto memory audit.
+# Every entry is noise from the interpreter/allocator, NOT clypto code.
+# Validated against valgrind-3.27.1 (Memcheck:Leak + match-leak-kinds).
+# NOTE on format: a suppression is '{', name on its own line, tool line, then
+# one or more 'fun:' lines TAB-indented. Names are descriptive, not functional.
+
+# --- CPython core ------------------------------------------------------------
+{
+   CPython-pymalloc-arenas
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:arena_map_new
+}
+{
+   CPython-domain-init
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:domain_init_reasonable
+}
+{
+   CPython-object-alloc-noise
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:_PyObject_Alloc
+}
+{
+   CPython-codecache
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:_PyCodeCache_Init
+}
+{
+   CPython-importlib-caches
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:PyImport_FindBuiltin
+}
+{
+   CPython-finalize-path
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:Py_FinalizeEx
+}
+{
+   libc-dynamic-loader
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:_dl_allocate_tls_init
+}
+{
+   ld-linux-tls
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:allocate_dtv
+}
+
+# --- NumPy -------------------------------------------------------------------
+{
+   NumPy-global-datastructures
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:npy_alloc_cache_default
+}
+{
+   NumPy-import-time-init
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:PyArray_SetBaseObject
+}
+{
+   NumPy-threading-init
+Memcheck:Leak
+match-leak-kinds: definite
+	fun:npythread_runtime_lock_init
+}
