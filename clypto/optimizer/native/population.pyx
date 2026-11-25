@@ -15,6 +15,7 @@ Bounds repair is a set of plain functions (``correct_solution``, ``reset_solutio
 """
 import cython
 
+from libc.math cimport NAN
 from libc.string cimport memcpy
 
 from collections.abc import MutableSequence
@@ -183,7 +184,9 @@ cdef class Population:
         try:
             item.objectives = objectives
         except AttributeError:
-            object.__setattr__(item, "_objectives", np.asarray(objectives, dtype=np.float64))
+            obs = np.asarray(objectives, dtype=np.float64).ravel()
+            object.__setattr__(item, "_objectives", obs)
+            object.__setattr__(item, "_fitness", float(self.problem.fitness(obs.reshape(1, -1))[0]))
 
     cpdef object evaluate(self, object agents, str mode):
         """Evaluate ``agents`` (the batch step) and return them.
@@ -325,7 +328,7 @@ cdef class Population:
         cdef cnp.ndarray[cnp.float64_t, ndim=1] res = np.empty(n, dtype=np.float64)
         cdef double* data = <double*>cnp.PyArray_DATA(res)
         cdef Py_ssize_t i
-        cdef object item
+        cdef object item, fit
         # Per-element check: the list is public and mutable, so a mixed native /
         # duck-typed population is reachable; checking only the first element
         # would read garbage (wrong fitness values) for the rest.
@@ -334,7 +337,11 @@ cdef class Population:
             if isinstance(item, Agent):
                 data[i] = (<Agent>item).fitness
             else:
-                data[i] = item.fitness
+                fit = item.fitness
+                if fit is None:
+                    data[i] = NAN
+                else:
+                    data[i] = fit
         return res
 
     @property
@@ -366,6 +373,7 @@ cdef class Population:
             if isinstance(row_obj, np.ndarray):
                 row = <cnp.ndarray>row_obj
                 if (cnp.PyArray_IS_C_CONTIGUOUS(row) and cnp.PyArray_TYPE(row) == cnp.NPY_FLOAT64
+                        and cnp.PyArray_ISNOTSWAPPED(row)
                         and row.ndim == 1 and row.shape[0] == n_dims):
                     src = <double*>cnp.PyArray_DATA(row)
                     memcpy(dest + i * n_dims, src, bytes_per_row)

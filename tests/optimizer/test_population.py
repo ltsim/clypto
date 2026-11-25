@@ -355,3 +355,32 @@ def test_solutions_mixed_returns_real_rows():
     assert code == 0, f"exit {code}: {err[-400:]}"
     rows = eval(out)
     assert rows[0] == [0.0, 0.0, 0.0] and rows[1] == [1.0, 1.0, 1.0] and rows[2] == [1.0, 1.0, 1.0]
+
+
+def test_fitness_unevaluated_runtime_agent_returns_nan():
+    from clypto.optimizer.agents.runtime import RuntimeAgent
+
+    population = bound()
+    population.agents = [RuntimeAgent(np.zeros(N_DIMS))]
+    fit = population.fitness
+    assert fit.shape == (1,) and np.isnan(fit[0])
+    assert population.argsort() == [0]
+
+
+def test_evaluate_duck_fallback_sets_fitness():
+    from clypto.optimizer.agents.runtime import RuntimeAgent
+
+    population = bound()
+    ra = RuntimeAgent(np.ones(N_DIMS))
+    population.agents = [ra]
+    population.evaluate(population.agents, "sequential")
+    assert ra.objectives is not None and ra.objectives.shape == (1,)
+    assert ra.fitness == 3.0
+
+
+def test_solutions_handles_non_native_endian_float64():
+    swapped = np.dtype(np.float64).newbyteorder()
+    population = bound()
+    agent = population.create_agent(np.array([1.0, 2.0, 3.0], dtype=swapped))
+    population.agents = [agent]
+    assert np.allclose(population.solutions, [[1.0, 2.0, 3.0]])
