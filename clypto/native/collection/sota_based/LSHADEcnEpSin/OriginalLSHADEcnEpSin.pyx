@@ -91,7 +91,9 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
     def initialize_variables(self):
         pop_size = self.population.size()
         self.NP_init = pop_size if pop_size else 18 * self.problem.n_dims
-        self.NP_min = self.pop_size_min  # Minimum population size
+        # Shrink-only schedule: NP_min above NP_init would grow ``self.NP`` past len(population)
+        # and every index draw in current_to_pbest_mutation would run off the end.
+        self.NP_min = min(self.pop_size_min, self.NP_init)  # Minimum population size
         self.NP = self.NP_init  # population size will be updated in each iteration
 
         # Memory settings
@@ -187,7 +189,7 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
         """Standard binomial crossover"""
         if CR is None:
             r_idx = self.generator.integers(0, self.H)
-            CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1)
+            CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1, random_state=self.generator)
             CR = np.clip(CR, 0, 1)
         trial = np.where(
             self.generator.uniform(0, 1, self.problem.n_dims) <= CR, mutant, target
@@ -226,7 +228,7 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
 
                 # Generate random CR for this crossover
                 r_idx = self.generator.integers(0, self.H)
-                CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1)
+                CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1, random_state=self.generator)
                 CR = np.clip(CR, 0, 1)
 
                 # Binomial crossover in eigen space
@@ -303,7 +305,7 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
                 else:
                     # Configuration 2: adaptive increasing
                     r_idx = self.generator.integers(0, self.H)
-                    freq = cauchy.rvs(loc=self.M_freq[r_idx], scale=0.1)
+                    freq = cauchy.rvs(loc=self.M_freq[r_idx], scale=0.1, random_state=self.generator)
                     freq = np.clip(freq, 0.1, 2.0)
                     F = self.sinusoidal_adaptation(
                         epoch, self.epoch, config_type=2, freq=freq
@@ -312,13 +314,13 @@ cdef class OriginalLSHADEcnEpSin(cy.Optimizer):
             else:
                 # Second half: standard LSHADE
                 r_idx = self.generator.integers(0, self.H)
-                F = cauchy.rvs(loc=self.M_F[r_idx], scale=0.1)
+                F = cauchy.rvs(loc=self.M_F[r_idx], scale=0.1, random_state=self.generator)
                 F = np.clip(F, 0.1, 1.0)
                 config_used = 0
 
             # Generate CR
             r_idx = self.generator.integers(0, self.H)
-            CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1)
+            CR = norm.rvs(loc=self.M_CR[r_idx], scale=0.1, random_state=self.generator)
             CR = np.clip(CR, 0, 1)
 
             # Mutation

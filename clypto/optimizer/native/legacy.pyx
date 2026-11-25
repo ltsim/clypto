@@ -21,6 +21,10 @@ from clypto.optimizer.native.population cimport Population, population
 from clypto.optimizer.native.problem import Problem
 from clypto.optimizer.native.utils cimport validator
 
+import random
+
+import numpy as np
+
 
 cdef Agent snapshot_agent(Agent agent):
     """An independent copy of ``agent`` (``snapshot``): the solution vector is copied, the rest shared."""
@@ -63,6 +67,12 @@ cdef class LegacyOptimizer(NativeOptimizer):
         if self.epoch <= 0:
             self.epoch = 100
         self.problem = Problem.coerce(problem, seed)
+        # coerce resolved the run seed (an absent one keeps the Problem's own seed):
+        # the engine streams must follow it, or only the initial population is bound
+        # to the seed and everything the algorithm draws is quietly random.
+        seed = self.problem.seed
+        self.generator = np.random.default_rng(seed)
+        self.rng = random.Random(seed)
         self.g_best, self.g_worst = None, None
         self.population.bind(self.problem, self.generator)
 

@@ -4,6 +4,32 @@ All notable changes to Clypto are documented in this file. The project follows [
 
 ## Clypto
 
+### [Unreleased]
+
+### [2026b2]
+
+#### Fixed
+- **The SHADE family runs with a population below 10**: `OriginalSHADE` sampled `p ~ U[2/NP, 0.2]`, an inverted interval for `NP < 10`, which raised `ValueError: high - low < 0` on the first epoch; the `2/NP` floor now falls back to the `0.2` cap when it would exceed it. `OriginalLSHADEcnEpSin` set `NP_min = pop_size_min` unconditionally, so the default `pop_size_min = 10` with a smaller population grew `NP` past `len(population)` and the mutation index ran off the end (`IndexError`); `NP_min` is now clamped to `NP_init`. Results for `pop_size >= 10` are bit-for-bit unchanged.
+- **The `n_objs` probe no longer consumes a bounds draw**: `Problem.n_objs` evaluates one random solution on first access, and `Agent.evaluate` reads `obj_weights` right after each evaluation, so the probe fired inside initialisation and shifted the whole initial population by one draw (draws `[1, 3, 4, 5, 6]` instead of `[1, 2, 3, 4, 5]`). The probe now saves and restores every bounds block's `bit_generator` state, so the run's stream is left untouched.
+- **`OriginalPSS` samples its Latin hypercube from the optimizer stream**: `scipy.stats.qmc.LatinHypercube` was built without a seed, so it drew from its own uncontrolled generator and `solve(seed=...)` did not reproduce `OriginalPSS` on the `LHS` branch (the `MC` branch already used `self.generator`). It now receives `rng=self.generator`.
+- **Duck-typed agents no longer crash `Population`**: `evaluate`, `snapshot`, `fitness` and `solutions` cast the public `agents` list to `Agent` without checking, so a decorator-API agent sitting next to a native one raised `TypeError`, segfaulted, or silently returned the wrong fitness/solutions. Each site now checks or converts explicitly; covered by subprocess regression tests.
+- **Bounds fall back when the span overflows**: a `NumberBounds` span that overflows to `inf` (very wide `low`/`up`, or `±sys.float_info.max`) produced `NaN` positions. Such spans now draw through `Generator.uniform`, which handles them.
+- **`scipy.stats.*.rvs` draws come from the optimizer stream**: `JADE`, `OriginalSHADE`, `L_SHADE` and `LSHADEcnEpSin` drew from scipy's unseeded global generator, so `solve(seed=...)` did not reproduce them. They now draw from `self.generator`.
+
+#### Changed
+- **Ranking breaks fitness ties by population order**: `Population.argsort` and `argsort_agents` use a stable `argsort`, so inside a tie group the population order decides, matching the `sorted()` the mealpy port is compared against (and `kway_tournament`, which was already stable). Results without ties are unchanged.
+- **Decorator compilation no longer uses `pyximport`**: `@cy.optimizer(..., compile=True)` builds the extension through `clypto.compiler` and caches it by source hash, deleting the `pyximport` engine (`precompile/_builder.pyx`, `precompile/_runtime.pyx`).
+- **Seeded runs (BREAKING-SEEDED)**: seeded runs draw different populations than 2026b2; bit compatibility with earlier releases is lost. The same seed on the same version still replays exactly, but fitness and solutions recorded on 2026b2 or earlier change bit for bit and cannot be diffed against a new capture — re-run baselines instead. `problem.n_evals` now counts the `n_objs` probe too, so a fresh `Problem`'s counter reads one higher than in 2026b2, and a `max_fe` budget hit exactly by a population step stops one epoch earlier.
+- **A seeded `Problem` seeds the whole run**: `Problem.coerce` used to overwrite `problem.seed` with the `solve()` argument unconditionally, so `solve(problem)` with no seed discarded `Problem(seed=...)` and produced a different result on every call. `None` now means "no seed given": the Problem's seed is kept and drives the engine's own generators, so `Problem(seed=1)` plus `solve(problem)` replays exactly like `solve(problem, seed=1)`. Pass an explicit seed, or build an unseeded `Problem`, for a fresh random run.
+
+#### Performance
+- **`Population` hot paths**: `fill()` writes `fitness` and `solutions` through C pointers instead of boxing a float per agent, and a pointer reset plus a single `clip` replaced per-agent work in the evaluation loop; `argsort`/`sort` and the tournament helper use a stable sort.
+- **PSO `update_velocity`** walks the population through pointers instead of Python indexing.
+- **`Bounds`** inlines the float `uniform` draw instead of building a per-agent helper object.
+- **DE families** (`BaseDE`, `JADE`, `SADE`, `SHADE`, `L_SHADE`, `SAP_DE`) build their crossover pools as lists, dropping `set` differences per agent.
+- **Loop-invariant aggregates hoisted** out of the per-agent loop across the collection (evolutionary, GCO, and the shared swarm/human/physics modules); the redundant `cls=cy.Population` argument was dropped from the catalog.
+- **Decorator engine**: classes are built by `clypto.compiler` with a source-hash cache, and the redundant compiler/CLI test suite was removed.
+
 ### [2026b1]
 
 #### Added

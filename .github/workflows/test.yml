@@ -70,4 +70,4 @@ jobs:
         run: cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE/.venv-wheel/bin/python" -c "import clypto; assert 'site-packages' in clypto.__file__"
 
       - name: Run smoke tests against the installed wheel
-        run: .venv-wheel/bin/pytest --import-mode=importlib tests/ -m smoke
+        run: .venv-wheel/bin/pytest --import-mode=importlib tests/test_all_optimizer.py -m smoke

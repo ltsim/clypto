@@ -108,7 +108,7 @@ cdef class OriginalSHADE(cy.Optimizer):
             cr = self.generator.normal(self.dyn_miu_cr[idx_rand], 0.1)
             cr = np.clip(cr, 0, 1)
             while True:
-                f = cauchy.rvs(self.dyn_miu_f[idx_rand], 0.1)
+                f = cauchy.rvs(self.dyn_miu_f[idx_rand], 0.1, random_state=self.generator)
                 if f < 0:
                     continue
                 elif f > 1:
@@ -116,14 +116,19 @@ cdef class OriginalSHADE(cy.Optimizer):
                 break
             list_cr_new[idx] = cr
             list_f_new[idx] = f
-            p = self.generator.uniform(2 / pop_size, 0.2)
+            # p ~ U[2/NP, 0.2] (SHADE, Tanabe & Fukunaga 2013); the interval inverts for NP < 10,
+            # where the 2/NP floor exceeds the cap: fall back to the cap so small populations run.
+            p = self.generator.uniform(min(2 / pop_size, 0.2), 0.2)
             top = int(pop_size * p)
             x_best = pop_sorted[self.generator.integers(0, top)]
-            r1_idx = self.generator.choice(list(set(range(0, pop_size)) - {idx}))
+            pool = list(range(0, pop_size))
+            del pool[idx]
+            r1_idx = self.generator.choice(pool)
             new_pop = self.population + self.dyn_pop_archive
-            r2_idx = self.generator.choice(
-                list(set(range(0, len(new_pop))) - {idx, r1_idx})
-            )
+            pool = list(range(0, len(new_pop)))
+            del pool[max(idx, r1_idx)]
+            del pool[min(idx, r1_idx)]
+            r2_idx = self.generator.choice(pool)
             x_r1 = self.population[r1_idx].solution
             x_r2 = new_pop[r2_idx].solution
             x_new = (

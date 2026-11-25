@@ -90,9 +90,9 @@ cpdef Agent get_better_agent(Agent x, Agent y, str sense="min", bint reverse=Fal
 
 
 cpdef list argsort_agents(object agents, str sense):
-    """Positions best first (``np.argsort`` of the fitness, reversed when maximizing)."""
+    """Positions best first (stable ``np.argsort`` of the fitness, reversed when maximizing)."""
     fitness = np.array([agent.fitness for agent in agents], dtype=float)
-    order = np.argsort(fitness).tolist()
+    order = np.argsort(fitness, kind="stable").tolist()
     return order[::-1] if sense == "max" else order
 
 

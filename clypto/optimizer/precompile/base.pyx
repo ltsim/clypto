@@ -99,14 +99,23 @@ class DecoratedOptimizer:
         termination: typing.Optional[Termination | dict] = None,
         seed: typing.Optional[int] = None,
     ) -> RuntimeAgent:
-        """Run the optimizer and return the best agent found so far (never worse than an earlier epoch)."""
+        """Run the optimizer and return the best agent found so far (never worse than an earlier epoch).
+
+        The agent is a snapshot of the population's best, but it still carries
+        ``_evaluator``, a strong reference to this optimizer: a caller that stores the
+        returned agent pins this optimizer, its population and the agents behind it
+        (+3 refs on ``problem``) until the agent is dropped. Bounded and
+        caller-controlled; copy ``agent.solution`` when only the values are needed.
+        """
         self._bind_problem(problem, seed)
         assert self.problem is not None and self.bounds is not None
 
         self.problem.n_evals = 0
         pop_size = typing.cast(int, self.pop_size)
         epochs = typing.cast(int, self.epoch)
-        self.rng = np.random.default_rng(seed)
+        # coerce keeps a seeded Problem's seed when no seed is passed: the run stream
+        # must follow it too, or only the initial population is reproducible.
+        self.rng = np.random.default_rng(seed if seed is not None else self.problem.seed)
         self.termination = self._build_termination(termination)
         self.population = Population(pop_size)
         self.population.bind(self.problem, self.rng)

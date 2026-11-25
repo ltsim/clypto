@@ -82,17 +82,23 @@ cdef class OriginalDE(cy.Optimizer):
     # -- strategies: the trial vector of agent ``idx`` (the draws of each block, in the same order) ----------
     cdef cnp.ndarray strategy_0(self, int idx, int pop_size):
         """DE/rand/1: three random agents other than ``idx``."""
-        r = self.generator.choice(list(set(range(0, pop_size)) - {idx}), 3, replace=False)
+        pool = list(range(0, pop_size))
+        del pool[idx]
+        r = self.generator.choice(pool, 3, replace=False)
         return self.population[r[0]].solution + self.wf * (self.population[r[1]].solution - self.population[r[2]].solution)
 
     cdef cnp.ndarray strategy_1(self, int idx, int pop_size):
         """DE/best/1."""
-        r = self.generator.choice(list(set(range(0, pop_size)) - {idx}), 2, replace=False)
+        pool = list(range(0, pop_size))
+        del pool[idx]
+        r = self.generator.choice(pool, 2, replace=False)
         return self.g_best.solution + self.wf * (self.population[r[0]].solution - self.population[r[1]].solution)
 
     cdef cnp.ndarray strategy_2(self, int idx, int pop_size):
         """DE/best/2."""
-        r = self.generator.choice(list(set(range(0, pop_size)) - {idx}), 4, replace=False)
+        pool = list(range(0, pop_size))
+        del pool[idx]
+        r = self.generator.choice(pool, 4, replace=False)
         return (
             self.g_best.solution
             + self.wf * (self.population[r[0]].solution - self.population[r[1]].solution)
@@ -101,7 +107,9 @@ cdef class OriginalDE(cy.Optimizer):
 
     cdef cnp.ndarray strategy_3(self, int idx, int pop_size):
         """DE/rand/2."""
-        r = self.generator.choice(list(set(range(0, pop_size)) - {idx}), 5, replace=False)
+        pool = list(range(0, pop_size))
+        del pool[idx]
+        r = self.generator.choice(pool, 5, replace=False)
         return (
             self.population[r[0]].solution
             + self.wf * (self.population[r[1]].solution - self.population[r[2]].solution)
@@ -110,7 +118,9 @@ cdef class OriginalDE(cy.Optimizer):
 
     cdef cnp.ndarray strategy_4(self, int idx, int pop_size):
         """DE/current-to-best/1."""
-        r = self.generator.choice(list(set(range(0, pop_size)) - {idx}), 2, replace=False)
+        pool = list(range(0, pop_size))
+        del pool[idx]
+        r = self.generator.choice(pool, 2, replace=False)
         current = self.population[idx].solution
         return (
             current
@@ -120,7 +130,9 @@ cdef class OriginalDE(cy.Optimizer):
 
     cdef cnp.ndarray strategy_5(self, int idx, int pop_size):
         """DE/current-to-rand/1."""
-        r = self.generator.choice(list(set(range(0, pop_size)) - {idx}), 3, replace=False)
+        pool = list(range(0, pop_size))
+        del pool[idx]
+        r = self.generator.choice(pool, 3, replace=False)
         current = self.population[idx].solution
         return (
             current

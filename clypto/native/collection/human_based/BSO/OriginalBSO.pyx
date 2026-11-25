@@ -76,7 +76,7 @@ cdef class OriginalBSO(ImprovedBSO):
             slope (int): changing logsig() function's slope (k: in the paper)
         """
         super().__init__(epoch, pop_size, m_clusters, p1, p2, p3, p4, **kwargs)
-        self.population = cy.population(pop_size, range=[10, 10000], cls=cy.Population)
+        self.population = cy.population(pop_size, range=[10, 10000])
         self.slope = cy.validator(int, slope, [10, 50], "slope")
         self.parameters = ["epoch", "pop_size", "m_clusters", "p1", "p2", "p3", "p4", "slope"]
 

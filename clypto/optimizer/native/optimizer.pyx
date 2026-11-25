@@ -13,7 +13,6 @@ steps (``check_problem``, ``before_initialization``, ``after_initialization``,
 evaluator; the team is fixed once per ``solve`` via ``threads``). ``"swarm"``
 remains an alias of ``"batch"``.
 """
-import random
 import time
 
 import numpy as np
@@ -157,6 +156,17 @@ cdef class NativeOptimizer:
         after_iteration=None,
         metrics=None,
     ):
+        """Run the algorithm and return the best agent.
+
+        The return value is a ``snapshot_agent`` copy of ``self.g_best``: its own
+        solution vector, no reference back to the population or the optimizer, so
+        storing it pins nothing. An algorithm that assigns a live member inside
+        ``evolve`` is re-snapshotted by ``after_evolve`` before this returns.
+
+        The decorator API is the exception: its returned agent carries
+        ``_evaluator``, a strong reference to the optimizer -- see
+        ``DecoratedOptimizer.solve``.
+        """
         cdef int epoch, repeated_times = 0, n_threads, previous_threads
         cdef double time_epoch = 0.0
         cdef bint tracking = debug or track_population or (metrics is not None)
@@ -165,8 +175,6 @@ cdef class NativeOptimizer:
         # The tracker always describes the most recent run; drop the previous one.
         self.tracker.reset()
 
-        self.generator = np.random.default_rng(seed)
-        self.rng = random.Random(seed)  # local RNG for the random module
         self.check_problem(problem, seed)
         if type(threads) is not int or threads < 0:
             raise ValueError("threads must be a non-negative int (0 lets OpenMP decide).")

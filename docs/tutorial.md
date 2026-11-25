@@ -228,6 +228,12 @@ g_best_b = PSO.OriginalPSO(epoch=200, pop_size=50).solve(problem, seed=7)
 assert (g_best_a.solution == g_best_b.solution).all()
 ```
 
+A `Problem` built with `seed=` seeds the run as well: `solve(problem)` with no
+seed keeps that value instead of drawing from entropy, so `Problem(seed=7)` plus
+`solve(problem)` replays exactly like `solve(problem, seed=7)`. Build the
+`Problem` without a seed — or pass an explicit `seed` to `solve()` — for a fresh
+random run.
+
 ## Tracking
 
 Pass `debug=True` to record a per-epoch history into `model.tracker`, an
